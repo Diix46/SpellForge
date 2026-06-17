@@ -1,9 +1,13 @@
 // Proxies Scryfall's card-name autocomplete (for quick-add by name).
+//
+// Cached: card names are stable, and the same prefixes are typed constantly,
+// so a 1h cache eliminates most autocomplete round-trips. Key is the (trimmed)
+// prefix; names are language-agnostic so no locale dimension is needed.
 
 const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
 const SCRYFALL = 'https://api.scryfall.com/cards/autocomplete'
 
-export default defineEventHandler(async (event): Promise<{ names: string[] }> => {
+export default defineCachedEventHandler(async (event): Promise<{ names: string[] }> => {
   const query = getQuery(event)
   const q = typeof query.q === 'string' ? query.q.trim() : ''
   if (q.length < 2) {
@@ -18,4 +22,11 @@ export default defineEventHandler(async (event): Promise<{ names: string[] }> =>
 
   const data = await res.json() as { data?: string[] }
   return { names: data.data ?? [] }
+}, {
+  maxAge: 3600,
+  name: 'scryfall-autocomplete',
+  getKey: (event) => {
+    const q = getQuery(event)
+    return (typeof q.q === 'string' ? q.q.trim() : '').toLowerCase()
+  },
 })

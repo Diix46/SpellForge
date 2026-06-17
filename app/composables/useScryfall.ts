@@ -99,6 +99,9 @@ const cardCache = new Map<string, ScryfallCard | null>()
 const frByNameCache = new Map<string, ScryfallCard | null>()
 
 const FR_CONCURRENCY = 8
+// Names per bulk French search. Scryfall query strings are URL-length bound
+// (~kB) and `!"name" or …` is verbose, so keep chunks modest.
+const FR_BULK_CHUNK = 40
 
 /** Map items through an async fn with bounded concurrency, preserving order. */
 async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
@@ -184,16 +187,71 @@ export function useScryfall() {
     }
   }
 
+  // Bulk-prefetch French printings for many names in ONE search per ~40 names,
+  // instead of one /cards/search per card. Pre-fills frByNameCache so the
+  // per-card resolveFrench() step 2 becomes a cache hit (or a cached null) and
+  // does no extra network. Same exact-name + real-image filtering as the
+  // single-name path, so correctness is identical — only the round-trip count
+  // drops from O(N) to O(N/40).
+  async function bulkPrefetchFrench(names: string[]): Promise<void> {
+    // Only names we haven't already resolved (or pre-resolved) this session.
+    const pending = [...new Set(names.map(n => n.trim()).filter(Boolean))]
+      .filter(n => !frByNameCache.has(n.toLowerCase()))
+    if (!pending.length)
+      return
+
+    for (let i = 0; i < pending.length; i += FR_BULK_CHUNK) {
+      const chunk = pending.slice(i, i + FR_BULK_CHUNK)
+      // Group the chunk's best FR printing by lowercased name.
+      const byName = new Map<string, ScryfallCard>()
+      try {
+        const q = `(${chunk.map(n => `!"${n.replace(/"/g, '')}"`).join(' or ')}) lang:fr`
+        const url = `${SCRYFALL_BASE}/cards/search?q=${encodeURIComponent(q)}&order=released&dir=desc&unique=prints`
+        const res = await fetch(url)
+        if (res.ok) {
+          const data = await res.json()
+          for (const c of (data.data ?? []) as ScryfallCard[]) {
+            if (!hasRealImage(c))
+              continue
+            const key = c.name.toLowerCase()
+            const existing = byName.get(key)
+            // Prefer the highest-quality scan, matching searchFrenchByName.
+            if (!existing || (c.image_status === 'highres_scan' && existing.image_status !== 'highres_scan'))
+              byName.set(key, c)
+          }
+        }
+      }
+      catch {
+        // Network error on the bulk query: leave these names unresolved so the
+        // per-card path can retry individually (don't poison the cache).
+        continue
+      }
+      // Record a result for every requested name — a hit, or a cached null so
+      // resolveFrench() step 2 short-circuits without another request.
+      for (const n of chunk) {
+        const key = n.toLowerCase()
+        if (!frByNameCache.has(key))
+          frByNameCache.set(key, byName.get(key) ?? null)
+      }
+    }
+  }
+
   // Resolve the best French version of a matched card with a REAL image,
   // or null if no usable French printing exists (caller keeps the English card).
   async function resolveFrench(match: ScryfallCard): Promise<ScryfallCard | null> {
     if (match.lang === 'fr' && hasRealImage(match))
       return match
+    // 0. If the bulk pre-pass already found an FR printing by name, use it and
+    //    skip the per-card exact-printing lookup (saves one request per card).
+    const preCached = frByNameCache.get(match.name.toLowerCase())
+    if (preCached && hasRealImage(preCached))
+      return preCached
     // 1. exact printing in FR (only if it has a real image)
     const exact = await fetchLocalized(match.set, match.collector_number, 'fr')
     if (hasRealImage(exact))
       return exact
-    // 2. any FR printing by name with a real image
+    // 2. any FR printing by name with a real image (cache may already hold a
+    //    null from the bulk pass, in which case this is a no-op cache read).
     const byName = await searchFrenchByName(match.name)
     if (hasRealImage(byName))
       return byName
@@ -237,9 +295,15 @@ export function useScryfall() {
         requestError = err instanceof Error ? err.message : 'erreur réseau'
       }
 
-      // Resolve each entry of the batch concurrently (bounded pool) — the FR
-      // resolution does up to 2 extra fetches per card, so serial would negate
-      // the batched collection fetch. Results stay in batch order.
+      // FR mode: warm the by-name cache for the whole batch in one search per
+      // ~40 names, so the per-card resolveFrench() fallback hits cache instead
+      // of firing a /cards/search per card (the main N+1 latency source).
+      if (lang === 'fr' && !requestError)
+        await bulkPrefetchFrench(batch.map(e => e.name))
+
+      // Resolve each entry of the batch concurrently (bounded pool). FR
+      // resolution may still do the exact-printing lookup per card, but the
+      // expensive by-name search is now pre-warmed. Results stay in batch order.
       const resolved = await mapPool(batch, FR_CONCURRENCY, async (entry): Promise<ResolvedCard> => {
         if (requestError) {
           return { entry, card: null, imageUrl: null, backImageUrl: null, lang, error: `Erreur réseau: ${requestError}` }

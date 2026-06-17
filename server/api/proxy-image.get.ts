@@ -6,7 +6,11 @@
 const ALLOWED_HOSTS = ['cards.scryfall.io', 'c1.scryfall.com', 'c2.scryfall.com', 'svgs.scryfall.io']
 const UPSTREAM_TIMEOUT_MS = 10_000
 
-export default defineEventHandler(async (event) => {
+// Cached 7 days: card art is immutable per printing, so once we've proxied an
+// image we never need to re-fetch it upstream. Warm hits skip the network
+// entirely; the browser still also caches via the immutable response header.
+// Key is the source URL (already validated against ALLOWED_HOSTS).
+export default defineCachedEventHandler(async (event) => {
   const query = getQuery(event)
   const url = typeof query.url === 'string' ? query.url : ''
 
@@ -56,4 +60,11 @@ export default defineEventHandler(async (event) => {
   setHeader(event, 'Access-Control-Allow-Origin', '*')
 
   return bytes
+}, {
+  maxAge: 604800,
+  name: 'proxy-image',
+  getKey: (event) => {
+    const q = getQuery(event)
+    return typeof q.url === 'string' ? q.url : ''
+  },
 })

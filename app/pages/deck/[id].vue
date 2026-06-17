@@ -192,6 +192,15 @@ function openDetail(card: ResolvedCard) {
   showDetail.value = true
 }
 
+// Build a high-quality ResolvedCard from a raw search result (large image, DFC
+// back) so the enlarged detail modal shows a crisp card, not the small thumb.
+function openSearchDetail(c: ScryfallCard) {
+  const front = c.image_uris?.large ?? c.image_uris?.png ?? c.image_uris?.normal
+    ?? c.card_faces?.[0]?.image_uris?.large ?? c.card_faces?.[0]?.image_uris?.normal ?? null
+  const back = c.card_faces?.[1]?.image_uris?.large ?? c.card_faces?.[1]?.image_uris?.normal ?? null
+  openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: front, backImageUrl: back, lang: c.lang })
+}
+
 // Init / re-init per deck. Vue Router REUSES this component when only the
 // :id param changes, so a watch (not onMounted) is required — otherwise
 // navigating deck A→B would leave A's state in place and autosave A into B.
@@ -501,7 +510,7 @@ const tabsUi = {
           :in-deck="inDeckNames"
           :commander-name="commanderName || builder.commanderName.value"
           @add="addSearchCard"
-          @details="(c) => openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: c.image_uris?.normal ?? null, backImageUrl: null, lang: c.lang })"
+          @details="openSearchDetail"
         />
         <BuilderDeckListPanel
           :entries="builder.entries.value"

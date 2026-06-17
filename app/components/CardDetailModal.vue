@@ -202,21 +202,21 @@ const oracleHtml = computed(() => {
   <UModal
     :open="open"
     :title="primaryName || 'Card'"
-    :ui="{ overlay: 'bg-ink-950/80 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)] sm:max-w-3xl', header: 'sr-only' }"
+    :ui="{ overlay: 'bg-ink-950/80 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)] w-[80vw] sm:max-w-[80vw]', header: 'sr-only' }"
     @update:open="emit('update:open', $event)"
   >
     <template #body>
       <div
         v-if="card"
-        class="grid grid-cols-1 gap-5 p-1 sm:grid-cols-[280px_1fr]"
+        class="grid grid-cols-1 gap-6 p-1 sm:grid-cols-[minmax(0,_46%)_1fr]"
       >
-        <!-- Image -->
+        <!-- Image (hero: scales with the modal, capped to the viewport height) -->
         <div class="relative">
           <img
             v-if="displayImage"
             :src="displayImage"
             :alt="englishName"
-            class="w-full rounded-[var(--radius-lg)] shadow-[var(--shadow-elev-3)]"
+            class="mx-auto block max-h-[78vh] w-full rounded-[var(--radius-lg)] object-contain shadow-[var(--shadow-elev-3)]"
           >
           <div
             v-else

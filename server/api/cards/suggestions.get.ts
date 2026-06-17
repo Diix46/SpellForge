@@ -20,7 +20,12 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-export default defineEventHandler(async (event): Promise<{ names: string[] }> => {
+// Cached 24h per commander: EDHREC updates ~weekly, so day-stale is fine, and
+// it shields us from EDHREC while a user browses several commanders. The key is
+// the normalized slug (so accent/case variants of the same commander share an
+// entry). Empty results (unknown commander) are cached too — that's correct,
+// an unknown commander stays unknown for the window.
+export default defineCachedEventHandler(async (event): Promise<{ names: string[] }> => {
   const query = getQuery(event)
   const commander = typeof query.commander === 'string' ? query.commander.trim() : ''
   if (!commander)
@@ -65,4 +70,12 @@ export default defineEventHandler(async (event): Promise<{ names: string[] }> =>
   }
 
   return { names }
+}, {
+  maxAge: 86400,
+  name: 'edhrec-suggestions',
+  getKey: (event) => {
+    const q = getQuery(event)
+    const commander = typeof q.commander === 'string' ? q.commander.trim() : ''
+    return slugify(commander)
+  },
 })
