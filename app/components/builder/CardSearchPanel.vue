@@ -5,27 +5,28 @@ import type { ScryfallCard } from '~/composables/useScryfall'
 import { computed, reactive, watch } from 'vue'
 import { emptyFilters, SEARCH_THEMES, useCardSearch } from '~/composables/useCardSearch'
 import { useLocale } from '~/composables/useLocale'
+import { useManaIdentity } from '~/composables/useManaIdentity'
 
 const props = defineProps<{
   /** Commander color identity to constrain results (null = no constraint). */
   identity: ManaColor[] | null
-  /** Names already in the deck (to mark as added). */
+  /** Names already in the deck (lowercased) to mark as added. */
   inDeck: Set<string>
 }>()
 
 const emit = defineEmits<{
   add: [card: ScryfallCard]
   details: [card: ScryfallCard]
-  setCommander: [card: ScryfallCard]
 }>()
 
-const { t, isFr } = useLocale()
+const { t, isFr, locale } = useLocale()
+const { colorVar } = useManaIdentity()
 const { state, search, loadMore } = useCardSearch()
 
 const filters = reactive(emptyFilters())
 
-// USelect can't use '' as an item value (it means "cleared"), so use 'any'
-// as the sentinel and map it back to '' in the filter via typeModel.
+const ctx = computed(() => ({ identity: props.identity, lang: locale.value }))
+
 const TYPE_OPTIONS: { value: string, key: string }[] = [
   { value: 'any', key: 'build.anyType' },
   { value: 'creature', key: 'type.creature' },
@@ -45,6 +46,22 @@ const typeModel = computed({
   },
 })
 
+const COLOR_PIPS: { c: ManaColor, label: string }[] = [
+  { c: 'w', label: 'W' },
+  { c: 'u', label: 'U' },
+  { c: 'b', label: 'B' },
+  { c: 'r', label: 'R' },
+  { c: 'g', label: 'G' },
+]
+
+function toggleColor(c: ManaColor) {
+  const i = filters.colors.indexOf(c)
+  if (i >= 0)
+    filters.colors.splice(i, 1)
+  else filters.colors.push(c)
+  runSearch()
+}
+
 function toggleTheme(key: string) {
   const i = filters.themes.indexOf(key)
   if (i >= 0)
@@ -54,7 +71,8 @@ function toggleTheme(key: string) {
 }
 
 const hasActiveQuery = computed(() =>
-  !!filters.text.trim() || filters.themes.length > 0 || !!filters.type || !!filters.subtype.trim() || filters.maxCmc != null,
+  !!filters.text.trim() || filters.themes.length > 0 || !!filters.type
+  || !!filters.subtype.trim() || filters.maxCmc != null || filters.colors.length > 0,
 )
 
 let debounce: ReturnType<typeof setTimeout> | null = null
@@ -64,7 +82,7 @@ function runSearch() {
     state.value.total = 0
     return
   }
-  search(filters, props.identity)
+  search(filters, ctx.value)
 }
 function debouncedSearch() {
   if (debounce)
@@ -72,8 +90,8 @@ function debouncedSearch() {
   debounce = setTimeout(runSearch, 350)
 }
 
-// Re-run when the commander identity changes (e.g. commander chosen).
-watch(() => props.identity, () => {
+// Re-run when the commander identity or locale changes.
+watch(ctx, () => {
   if (hasActiveQuery.value)
     runSearch()
 })
@@ -112,6 +130,28 @@ const maxCmcModel = computed({
       class="mb-3 w-full"
       @update:model-value="debouncedSearch"
     />
+
+    <!-- Color pips -->
+    <div class="mb-3 flex items-center gap-2">
+      <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">{{ t('build.colors') }}</span>
+      <div class="flex gap-1.5">
+        <button
+          v-for="pip in COLOR_PIPS"
+          :key="pip.c"
+          type="button"
+          class="grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold ring-2 transition-all"
+          :style="{
+            'background': filters.colors.includes(pip.c) ? colorVar(pip.c) : 'transparent',
+            'color': filters.colors.includes(pip.c) ? 'var(--color-bg-base)' : colorVar(pip.c),
+            '--tw-ring-color': colorVar(pip.c),
+          }"
+          :aria-pressed="filters.colors.includes(pip.c)"
+          @click="toggleColor(pip.c)"
+        >
+          {{ pip.label }}
+        </button>
+      </div>
+    </div>
 
     <!-- Themes -->
     <div class="mb-3 flex flex-wrap gap-1.5">
@@ -194,7 +234,7 @@ const maxCmcModel = computed({
             <img
               v-if="cardImage(card)"
               :src="cardImage(card)!"
-              :alt="card.name"
+              :alt="cardName(card)"
               loading="lazy"
               class="block w-full rounded-[var(--radius-md)]"
             >
@@ -232,7 +272,7 @@ const maxCmcModel = computed({
           variant="subtle"
           size="sm"
           :loading="state.loading"
-          @click="loadMore(filters, identity)"
+          @click="loadMore(filters, ctx)"
         >
           {{ t('build.loadMore') }}
         </UButton>

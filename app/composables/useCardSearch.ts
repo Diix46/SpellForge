@@ -42,22 +42,31 @@ export function emptyFilters(): SearchFilters {
   return { text: '', themes: [], type: '', subtype: '', colors: [], maxCmc: null, commanderOnly: false }
 }
 
+export interface QueryContext {
+  /** Commander color identity to constrain results (EDH legality). null = no constraint. */
+  identity: ManaColor[] | null
+  /** Site locale → return that printing (FR images in FR, EN in EN). */
+  lang: 'fr' | 'en'
+}
+
 /**
  * Build a Scryfall query string from structured filters, constrained to a
- * commander's color identity (so illegal cards never appear).
+ * commander's color identity (so illegal cards never appear) and the locale.
  */
-export function buildScryfallQuery(filters: SearchFilters, identity: ManaColor[] | null): string {
+export function buildScryfallQuery(filters: SearchFilters, ctx: QueryContext): string {
   const parts: string[] = []
 
   const text = filters.text.trim()
   if (text) {
-    // If it looks like raw Scryfall syntax (contains a `:` operator), pass through.
-    // Otherwise treat as a name/oracle fuzzy search.
+    // If it looks like raw Scryfall syntax (contains a `:`/`<`/`>` operator), pass through.
     if (/\w+[:<>=]/.test(text)) {
       parts.push(text)
     }
     else {
-      parts.push(`(name:/${escapeRegexLike(text)}/ or oracle:"${text.replace(/"/g, '')}")`)
+      // Bare term: Scryfall matches the card name in the current language
+      // (so the French printed name works too with lang:fr), OR the oracle text.
+      const safe = text.replace(/["()]/g, '')
+      parts.push(`("${safe}" or oracle:"${safe}")`)
     }
   }
 
@@ -71,6 +80,7 @@ export function buildScryfallQuery(filters: SearchFilters, identity: ManaColor[]
     parts.push(`type:${filters.type}`)
   if (filters.subtype.trim())
     parts.push(`type:${filters.subtype.trim().toLowerCase()}`)
+  // Explicit color filter (WUBRG pips): cards that ARE those colors.
   if (filters.colors.length)
     parts.push(`color>=${filters.colors.join('')}`)
   if (filters.maxCmc != null)
@@ -79,19 +89,17 @@ export function buildScryfallQuery(filters: SearchFilters, identity: ManaColor[]
     parts.push('is:commander')
 
   // Constrain to the commander's color identity (EDH legality).
-  if (identity) {
-    parts.push(identity.length ? `id<=${identity.join('')}` : 'id:colorless')
+  if (ctx.identity) {
+    parts.push(ctx.identity.length ? `id<=${ctx.identity.join('')}` : 'id:colorless')
   }
 
-  // Exclude funny/un-sets and digital-only by default for a cleaner pool.
+  // Return the printing matching the site locale (FR images when in French).
+  parts.push(`lang:${ctx.lang}`)
+
+  // Exclude funny/un-sets by default for a cleaner pool.
   parts.push('-is:funny legal:commander')
 
   return parts.join(' ').trim()
-}
-
-// Scryfall name regex search tolerates partial words; keep it simple/safe.
-function escapeRegexLike(s: string): string {
-  return s.replace(/[/\\]/g, '')
 }
 
 export interface SearchState {
@@ -145,14 +153,14 @@ export function useCardSearch() {
     }
   }
 
-  async function search(filters: SearchFilters, identity: ManaColor[] | null) {
-    await run(buildScryfallQuery(filters, identity), 1, false)
+  async function search(filters: SearchFilters, ctx: QueryContext) {
+    await run(buildScryfallQuery(filters, ctx), 1, false)
   }
 
-  async function loadMore(filters: SearchFilters, identity: ManaColor[] | null) {
+  async function loadMore(filters: SearchFilters, ctx: QueryContext) {
     if (state.value.loading || !state.value.hasMore)
       return
-    await run(buildScryfallQuery(filters, identity), state.value.page + 1, true)
+    await run(buildScryfallQuery(filters, ctx), state.value.page + 1, true)
   }
 
   async function autocomplete(text: string): Promise<string[]> {

@@ -1,12 +1,22 @@
 <script setup lang="ts">
-// Ambient cyber-magic background: aurora mesh (CSS) + drifting mana motes (canvas)
-// + cyber grid. Mounted ONCE in the shell. Performance-capped, reduced-motion aware.
-import { onBeforeUnmount, onMounted, shallowRef } from 'vue'
+// Ambient background: aurora mesh + drifting mana motes + cyber grid.
+// Mounted ONCE in the shell. Tinted by the active deck's mana identity
+// (useAppTheme) so the whole page takes on the deck's colours. Neutral elsewhere.
+import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
+import { useAppTheme } from '~/composables/useAppTheme'
+
+const { auroraRgb } = useAppTheme()
+
+// Two-stop tint for aurora + motes (1 hue mono, 2 hues multicolour, neutral = platinum).
+const tintA = computed(() => auroraRgb.value[0])
+const tintB = computed(() => auroraRgb.value[1])
 
 const canvas = shallowRef<HTMLCanvasElement | null>(null)
 let raf = 0
 let onResize: (() => void) | null = null
 let onVis: (() => void) | null = null
+// Live tint list read by spawn(); kept in sync with the theme.
+let moteTints = [tintA.value, tintB.value]
 
 onMounted(() => {
   const cv = canvas.value
@@ -22,9 +32,8 @@ onMounted(() => {
   let h = 0
   const isMobile = window.innerWidth < 640
   const CAP = Math.min(isMobile ? 18 : 38, 60)
-  const tints = ['34,232,255', '255,56,209']
 
-  interface Mote { x: number, y: number, r: number, vy: number, a: number, c: string }
+  interface Mote { x: number, y: number, r: number, vy: number, a: number, tint: number }
   const motes: Mote[] = []
 
   const resize = () => {
@@ -39,7 +48,7 @@ onMounted(() => {
     r: (Math.random() * 1.6 + 0.5) * dpr,
     vy: (Math.random() * 0.3 + 0.12) * dpr,
     a: Math.random() * 0.5 + 0.2,
-    c: tints[(Math.random() * tints.length) | 0] ?? '34,232,255',
+    tint: Math.random() < 0.5 ? 0 : 1, // index into moteTints, resolved at draw time
   })
 
   resize()
@@ -61,7 +70,7 @@ onMounted(() => {
         Object.assign(m, spawn())
       ctx.beginPath()
       ctx.arc(m.x, m.y, m.r, 0, 6.283)
-      ctx.fillStyle = `rgba(${m.c},${m.a})`
+      ctx.fillStyle = `rgba(${moteTints[m.tint] ?? moteTints[0]},${m.a})`
       ctx.fill()
     }
     raf = requestAnimationFrame(draw)
@@ -82,6 +91,11 @@ onMounted(() => {
   }
 })
 
+// Keep mote colours in sync with the active theme (no restart needed).
+watch([tintA, tintB], ([a, b]) => {
+  moteTints = [a, b]
+})
+
 onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
   if (onResize)
@@ -94,10 +108,17 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="fixed inset-0 pointer-events-none overflow-hidden"
-    :style="{ zIndex: 'var(--z-background)' }"
+    :style="{
+      'zIndex': 'var(--z-background)',
+      '--aurora-a': tintA,
+      '--aurora-b': tintB,
+    }"
     aria-hidden="true"
   >
-    <div class="aurora absolute inset-0 opacity-[.20]" />
+    <div
+      class="aurora absolute inset-0 transition-opacity duration-700"
+      :class="auroraRgb[0] === auroraRgb[1] && auroraRgb[0] === '168, 178, 196' ? 'opacity-[.10]' : 'opacity-[.22]'"
+    />
     <canvas
       ref="canvas"
       class="mote-canvas absolute inset-0"
@@ -113,9 +134,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .aurora {
   background:
-    radial-gradient(60% 60% at 18% 12%, rgba(34, 232, 255, 0.9), transparent 70%),
-    radial-gradient(55% 55% at 85% 88%, rgba(255, 56, 209, 0.85), transparent 70%),
-    radial-gradient(70% 70% at 50% 50%, rgba(110, 91, 255, 0.5), transparent 70%);
+    radial-gradient(60% 60% at 18% 12%, rgba(var(--aurora-a), 0.9), transparent 70%),
+    radial-gradient(55% 55% at 85% 88%, rgba(var(--aurora-b), 0.85), transparent 70%),
+    radial-gradient(70% 70% at 50% 50%, rgba(var(--aurora-a), 0.5), transparent 70%);
   filter: blur(40px);
   animation: aurora-drift 40s ease-in-out infinite alternate;
 }

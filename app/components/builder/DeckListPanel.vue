@@ -3,6 +3,7 @@ import type { ValidationIssue } from '~/composables/useDeckBuilder'
 import type { DeckEntry } from '~/composables/useDecklist'
 import { computed } from 'vue'
 import { useLocale } from '~/composables/useLocale'
+import { useManaIdentity } from '~/composables/useManaIdentity'
 
 const props = defineProps<{
   entries: DeckEntry[]
@@ -11,15 +12,47 @@ const props = defineProps<{
   validation: ValidationIssue[]
   /** name(lower) → simple category for grouping (creature/land/…); optional. */
   categoryByName?: Map<string, string>
+  /** name(lower) → color identity letters (for the colour distribution). */
+  colorByName?: Map<string, string[]>
+  identityLocked: boolean
 }>()
 
 const emit = defineEmits<{
   setQty: [name: string, qty: number]
   remove: [name: string]
   setCommander: [name: string]
+  toggleLock: []
 }>()
 
 const { t } = useLocale()
+const { colorVar } = useManaIdentity()
+
+const PIP_ORDER = ['w', 'u', 'b', 'r', 'g'] as const
+
+// Colour distribution: count cards (×qty) contributing to each WUBRG colour,
+// plus colourless. A multicolour card counts toward each of its colours.
+const distribution = computed(() => {
+  const counts: Record<string, number> = { w: 0, u: 0, b: 0, r: 0, g: 0, c: 0 }
+  for (const e of props.entries) {
+    const id = props.colorByName?.get(e.name.trim().toLowerCase())
+    if (!id || id.length === 0) {
+      counts.c = (counts.c ?? 0) + e.quantity
+    }
+    else {
+      for (const c of id) {
+        const k = c.toLowerCase()
+        counts[k] = (counts[k] ?? 0) + e.quantity
+      }
+    }
+  }
+  const max = Math.max(1, ...Object.values(counts))
+  return { counts, max }
+})
+const hasDistribution = computed(() => !!props.colorByName?.size)
+
+function barCount(c: string): number {
+  return distribution.value.counts[c] ?? 0
+}
 
 const CATEGORY_ORDER = ['commander', 'creature', 'instant', 'sorcery', 'artifact', 'enchantment', 'planeswalker', 'battle', 'land', 'other']
 const CATEGORY_KEY: Record<string, string> = {
@@ -81,6 +114,46 @@ function issueText(issue: ValidationIssue): string {
       >
         {{ total }} / 100
       </span>
+    </div>
+
+    <!-- Identity lock toggle -->
+    <button
+      type="button"
+      class="mb-3 flex items-center gap-1.5 self-start rounded-full border px-2.5 py-1 text-[11px] transition-colors"
+      :class="identityLocked
+        ? 'accent-border-c accent-soft-bg text-(--accent-text)'
+        : 'border-(--color-border-subtle) text-(--color-text-muted) hover:border-(--color-border-strong)'"
+      @click="emit('toggleLock')"
+    >
+      <UIcon :name="identityLocked ? 'i-lucide-lock' : 'i-lucide-lock-open'" class="h-3.5 w-3.5" />
+      {{ identityLocked ? t('build.lockOn') : t('build.lockOff') }}
+    </button>
+
+    <!-- Colour distribution -->
+    <div v-if="hasDistribution && entries.length" class="mb-3">
+      <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+        {{ t('build.distribution') }}
+      </div>
+      <div class="flex items-end gap-1">
+        <div
+          v-for="c in [...PIP_ORDER, 'c']"
+          :key="c"
+          class="flex flex-1 flex-col items-center gap-1"
+        >
+          <span class="font-mono text-[10px] text-(--color-text-muted)">{{ barCount(c) }}</span>
+          <div class="flex h-12 w-full items-end overflow-hidden rounded bg-(--color-surface-2)/50">
+            <div
+              class="w-full rounded transition-all"
+              :style="{
+                height: `${(barCount(c) / distribution.max) * 100}%`,
+                background: c === 'c' ? 'var(--color-ink-500)' : colorVar(c as 'w'),
+                minHeight: barCount(c) ? '3px' : '0',
+              }"
+            />
+          </div>
+          <span class="font-mono text-[9px] uppercase text-(--color-text-muted)">{{ c }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- Validation -->

@@ -33,8 +33,8 @@ useSeoMeta({
 
 const rawDecklist = ref('')
 const deckName = ref('')
-// Card language defaults to the site locale (overridable per deck below).
-const lang = ref<'en' | 'fr'>(locale.value)
+// Card language follows the site locale (FR site → FR card images, EN → EN).
+const lang = computed<'en' | 'fr'>(() => locale.value)
 
 const settings = ref<Omit<PdfSettings, 'format'>>({
   orientation: 'portrait',
@@ -50,7 +50,23 @@ const fetchProgress = ref({ loaded: 0, total: 0 })
 const exporting = ref<PageFormat | null>(null)
 const exportProgress = ref({ loaded: 0, total: 0, phase: '' })
 
-const activeTab = ref<'edit' | 'build' | 'preview' | 'buy'>('edit')
+const activeTab = ref<'deck' | 'preview' | 'buy'>('deck')
+
+// Import/Export modal (the old raw-text editor lives here now).
+const showImportExport = ref(false)
+const importExportText = ref('')
+function openImportExport() {
+  importExportText.value = rawDecklist.value
+  showImportExport.value = true
+}
+function applyImportExport() {
+  rawDecklist.value = importExportText.value
+  showImportExport.value = false
+}
+function copyDecklistText() {
+  navigator.clipboard.writeText(rawDecklist.value)
+  toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
+}
 
 // Commander override (index into resolvedCards), -1 = auto
 const commanderOverride = ref(-1)
@@ -108,16 +124,40 @@ const identityByName = computed(() => {
   }
   return m
 })
+// name(lower) → color identity letters (for the deck-panel colour distribution).
+const colorByName = computed(() => identityByName.value)
+
+// Commander identity lock: when on, out-of-identity cards can't be added.
+const identityLocked = ref(true)
+// True when the decklist changed since the last resolve (preview/stats stale).
+const resolvedDirty = ref(false)
+
+function isWithinIdentity(card: ScryfallCard): boolean {
+  // `commander` is defined later but this only runs from event handlers (lazy-safe).
+  // eslint-disable-next-line ts/no-use-before-define
+  const allowed = commander.value?.card?.color_identity
+  if (!identityLocked.value || !allowed)
+    return true
+  const set = new Set(allowed.map(c => c.toLowerCase()))
+  return (card.color_identity ?? []).every(c => set.has(c.toLowerCase()))
+}
 
 function addSearchCard(card: ScryfallCard) {
+  if (!isWithinIdentity(card)) {
+    toast.add({ title: t('toast.outOfIdentity'), description: card.name, color: 'warning', icon: 'i-lucide-shield-alert' })
+    return
+  }
   builderOp(() => builder.addScryfallCard(card))
+  resolvedDirty.value = true
   toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
 }
 function builderSetQty(name: string, qty: number) {
   builderOp(() => builder.setQuantity(name, qty))
+  resolvedDirty.value = true
 }
 function builderRemove(name: string) {
   builderOp(() => builder.removeCard(name))
+  resolvedDirty.value = true
 }
 function builderSetCommander(name: string) {
   builderOp(() => builder.setCommander(name))
@@ -208,6 +248,13 @@ const themeColors = computed(() => {
 })
 const themeStyle = computed(() => accentStyle(themeColors.value))
 
+// Drive the app-wide theme (background aurora + accents) from this deck's colours.
+const appTheme = useAppTheme()
+watch(themeColors, (c) => {
+  appTheme.setColors(c)
+}, { immediate: true })
+onBeforeUnmount(() => appTheme.reset())
+
 // ---- Builder search constraint + validation (depend on commander/theme above) ----
 // Search constraint: the commander's color identity (null until known).
 const builderIdentity = computed<ManaColor[] | null>(() => {
@@ -252,7 +299,10 @@ async function loadCards() {
     resolvedCards.value = await fetchCollection(allEntries.value, lang.value, (p) => {
       fetchProgress.value = p
     })
-    activeTab.value = 'preview'
+    resolvedDirty.value = false
+    // Jump to preview only when the user isn't actively building.
+    if (activeTab.value !== 'deck')
+      activeTab.value = 'preview'
     const missing = resolvedCards.value.filter(c => !c.imageUrl).length
     toast.add({
       title: t('toast.cardsLoaded'),
@@ -333,8 +383,7 @@ function copyWantsList() {
 }
 
 const tabItems = computed(() => [
-  { label: t('tab.edit'), icon: 'i-lucide-pencil', value: 'edit' as const },
-  { label: t('tab.build'), icon: 'i-lucide-hammer', value: 'build' as const },
+  { label: t('tab.deck'), icon: 'i-lucide-hammer', value: 'deck' as const },
   { label: `${t('tab.preview')}${successCards.value.length ? ` (${successCards.value.length})` : ''}`, icon: 'i-lucide-eye', value: 'preview' as const },
   { label: t('tab.buy'), icon: 'i-lucide-shopping-cart', value: 'buy' as const },
 ])
@@ -389,137 +438,60 @@ const tabsUi = {
       class="mb-6 max-w-md"
     />
 
-    <!-- EDIT TAB -->
-    <div
-      v-show="activeTab === 'edit'"
-      class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]"
-    >
-      <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <label class="font-mono text-xs uppercase tracking-wider text-(--color-text-muted)">{{ t('editor.decklist') }}</label>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-if="parsed"
-              class="accent-soft-bg rounded-full px-2.5 py-0.5 font-mono text-[11px] text-(--accent-text)"
-            >
-              {{ totalCards(parsed.mainboard) }} {{ t('editor.mainboard') }}
-            </span>
-            <span
-              v-if="parsed?.sideboard.length"
-              class="rounded-full bg-(--color-surface-2) px-2.5 py-0.5 font-mono text-[11px] text-(--color-text-mid)"
-            >
-              {{ totalCards(parsed.sideboard) }} {{ t('editor.sideboard') }}
-            </span>
-          </div>
-        </div>
-
-        <textarea
-          v-model="rawDecklist"
-          name="decklist"
-          aria-label="Decklist"
-          rows="22"
-          spellcheck="false"
-          placeholder="4 Lightning Bolt (M10) 146&#10;4 Counterspell&#10;1 Black Lotus&#10;&#10;Sideboard&#10;2 Red Elemental Blast"
-          class="glass-solid w-full resize-y rounded-[var(--radius-lg)] bg-(--color-surface-2)/60 p-4 font-mono text-sm leading-relaxed text-(--color-text-high) placeholder:text-(--color-text-disabled) focus:border-(--accent-border) focus:outline-none focus:ring-1 focus:ring-(--accent-border)"
-        />
-
-        <div
-          v-if="parsed?.errors.length"
-          class="flex flex-wrap gap-1.5"
-        >
-          <span
-            v-for="err in parsed.errors"
-            :key="err"
-            class="rounded-full border border-(--color-error)/40 bg-(--color-error)/10 px-2.5 py-0.5 text-xs text-(--color-error)"
+    <!-- DECK TAB (unified build + edit) -->
+    <div v-show="activeTab === 'deck'">
+      <!-- toolbar -->
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <UButton
+            icon="i-lucide-clipboard-list"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+            @click="openImportExport"
           >
-            {{ err }}
-          </span>
-        </div>
-      </div>
-
-      <div class="space-y-4">
-        <div class="glass-solid rounded-[var(--radius-xl)] p-5">
-          <h3 class="mb-3 font-mono text-[11px] uppercase tracking-[2px] text-(--color-text-muted)">
-            {{ t('editor.cardLang') }}
-          </h3>
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              class="rounded-[var(--radius-md)] border px-3 py-2.5 text-sm font-medium transition-all"
-              :class="lang === 'fr'
-                ? 'accent-border-c accent-soft-bg text-(--accent-text) shadow-[var(--accent-glow-soft)]'
-                : 'border-(--color-border-subtle) text-(--color-text-muted) hover:border-(--color-border-strong)'"
-              @click="lang = 'fr'"
-            >
-              🇫🇷 Français
-            </button>
-            <button
-              class="rounded-[var(--radius-md)] border px-3 py-2.5 text-sm font-medium transition-all"
-              :class="lang === 'en'
-                ? 'accent-border-c accent-soft-bg text-(--accent-text) shadow-[var(--accent-glow-soft)]'
-                : 'border-(--color-border-subtle) text-(--color-text-muted) hover:border-(--color-border-strong)'"
-              @click="lang = 'en'"
-            >
-              🇬🇧 English
-            </button>
-          </div>
-        </div>
-
-        <div class="neon-ring">
-          <button
-            class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] px-4 py-3.5 font-semibold text-(--color-text-on-neon) transition-transform active:scale-[.98] disabled:opacity-50"
-            style="background: var(--gradient-accent)"
+            {{ t('build.importExport') }}
+          </UButton>
+          <UButton
+            v-if="successCards.length === 0 || resolvedDirty"
+            :loading="fetching"
             :disabled="cardCount === 0 || fetching"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+            icon="i-lucide-refresh-cw"
             @click="loadCards"
           >
-            <UIcon
-              :name="fetching ? 'i-lucide-loader-circle' : 'i-lucide-images'"
-              class="h-5 w-5"
-              :class="fetching ? 'animate-spin' : ''"
-            />
-            <span v-if="fetching">{{ t('editor.loading') }} {{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
-            <span v-else>{{ t('editor.load') }} {{ cardCount }} {{ t('editor.cardsWord') }}</span>
-          </button>
+            <span v-if="fetching">{{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
+            <span v-else>{{ t('build.resolve') }}</span>
+          </UButton>
         </div>
-
-        <div
-          v-if="fetching"
-          class="h-1.5 overflow-hidden rounded-full bg-(--color-surface-1)"
-        >
-          <div
-            class="h-full rounded-full transition-all"
-            :style="{ width: `${fetchProgress.total ? (fetchProgress.loaded / fetchProgress.total * 100) : 0}%`, background: 'var(--gradient-accent)' }"
-          />
-        </div>
-
-        <p class="text-center text-xs text-(--color-text-muted)">
-          {{ lang === 'fr' ? t('editor.scryfallNoteFr') : t('editor.scryfallNoteEn') }}
-        </p>
       </div>
-    </div>
 
-    <!-- BUILD TAB -->
-    <div
-      v-show="activeTab === 'build'"
-      class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(320px,400px)]"
-      style="min-height: 70vh"
-    >
-      <BuilderCardSearchPanel
-        :identity="builderIdentity"
-        :in-deck="inDeckNames"
-        @add="addSearchCard"
-        @details="(c) => openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: c.image_uris?.normal ?? null, backImageUrl: null, lang: c.lang })"
-        @set-commander="(c) => builderSetCommander(c.name)"
-      />
-      <BuilderDeckListPanel
-        :entries="builder.entries.value"
-        :total="builder.totalCards.value"
-        :commander-name="builder.commanderName.value || commanderName"
-        :validation="validation"
-        :category-by-name="categoryByName"
-        @set-qty="builderSetQty"
-        @remove="builderRemove"
-        @set-commander="builderSetCommander"
-      />
+      <div
+        class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(340px,420px)]"
+        style="min-height: 70vh"
+      >
+        <BuilderCardSearchPanel
+          :identity="identityLocked ? builderIdentity : null"
+          :in-deck="inDeckNames"
+          @add="addSearchCard"
+          @details="(c) => openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: c.image_uris?.normal ?? null, backImageUrl: null, lang: c.lang })"
+        />
+        <BuilderDeckListPanel
+          :entries="builder.entries.value"
+          :total="builder.totalCards.value"
+          :commander-name="builder.commanderName.value || commanderName"
+          :validation="validation"
+          :category-by-name="categoryByName"
+          :color-by-name="colorByName"
+          :identity-locked="identityLocked"
+          @set-qty="builderSetQty"
+          @remove="builderRemove"
+          @set-commander="builderSetCommander"
+          @toggle-lock="identityLocked = !identityLocked"
+        />
+      </div>
     </div>
 
     <!-- PREVIEW TAB -->
@@ -791,6 +763,61 @@ const tabsUi = {
         </div>
       </div>
     </div>
+
+    <!-- Import / Export decklist modal (the old text editor) -->
+    <UModal
+      v-model:open="showImportExport"
+      :title="t('build.importExportTitle')"
+      :ui="{ overlay: 'bg-ink-950/70 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)]' }"
+    >
+      <template #body>
+        <div class="space-y-3">
+          <p class="text-sm text-(--color-text-muted)">
+            {{ t('build.importExportHelp') }}
+          </p>
+          <textarea
+            v-model="importExportText"
+            name="import-export"
+            aria-label="Decklist"
+            rows="16"
+            spellcheck="false"
+            placeholder="1 Atraxa, Praetors' Voice&#10;1 Sol Ring&#10;…"
+            class="glass-solid w-full resize-y rounded-[var(--radius-lg)] bg-(--color-surface-2)/60 p-3 font-mono text-sm leading-relaxed text-(--color-text-high) placeholder:text-(--color-text-disabled) focus:border-(--accent-border) focus:outline-none focus:ring-1 focus:ring-(--accent-border)"
+          />
+          <div
+            v-if="parsed?.errors.length"
+            class="flex flex-wrap gap-1.5"
+          >
+            <span
+              v-for="err in parsed.errors"
+              :key="err"
+              class="rounded-full border border-(--color-error)/40 bg-(--color-error)/10 px-2.5 py-0.5 text-xs text-(--color-error)"
+            >
+              {{ err }}
+            </span>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-clipboard-copy"
+            @click="copyDecklistText"
+          >
+            {{ t('build.copy') }}
+          </UButton>
+          <UButton
+            color="primary"
+            icon="i-lucide-check"
+            @click="applyImportExport"
+          >
+            {{ t('build.apply') }}
+          </UButton>
+        </div>
+      </template>
+    </UModal>
 
     <!-- Card detail modal -->
     <CardDetailModal
