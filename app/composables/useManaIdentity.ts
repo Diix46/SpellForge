@@ -45,6 +45,25 @@ export function useManaIdentity() {
     return `var(--color-mana-${c})`
   }
 
+  // Full localized colour names (for tooltips / aria-labels on the WUBRG pips).
+  const COLOR_NAMES: Record<'fr' | 'en', Record<ManaColor, string>> = {
+    fr: { w: 'Blanc', u: 'Bleu', b: 'Noir', r: 'Rouge', g: 'Vert' },
+    en: { w: 'White', u: 'Blue', b: 'Black', r: 'Red', g: 'Green' },
+  }
+  function colorName(c: ManaColor, isFr: boolean): string {
+    return COLOR_NAMES[isFr ? 'fr' : 'en'][c]
+  }
+
+  // Short pip codes. FR initials (Blanc/Bleu both start with B → Bl/Bu to
+  // disambiguate); EN keeps the universal single WUBRG letters.
+  const COLOR_CODES: Record<'fr' | 'en', Record<ManaColor, string>> = {
+    fr: { w: 'Bl', u: 'Bu', b: 'N', r: 'R', g: 'V' },
+    en: { w: 'W', u: 'U', b: 'B', r: 'R', g: 'G' },
+  }
+  function colorCode(c: ManaColor, isFr: boolean): string {
+    return COLOR_CODES[isFr ? 'fr' : 'en'][c]
+  }
+
   /**
    * Build the inline style object that re-themes a scope based on a set of
    * mana colors. Mono → solid accent. Multi → gradient between first & last.
@@ -63,5 +82,5 @@ export function useManaIdentity() {
     return ACCENT_RGB[c]
   }
 
-  return { identity, colorVar, accentStyle, accentRgb }
+  return { identity, colorVar, colorName, colorCode, accentStyle, accentRgb }
 }

@@ -28,8 +28,8 @@ const emit = defineEmits<{
   toggleLock: []
 }>()
 
-const { t } = useLocale()
-const { colorVar } = useManaIdentity()
+const { t, isFr } = useLocale()
+const { colorVar, colorCode } = useManaIdentity()
 
 // Colour distribution: count cards (×qty) contributing to each WUBRG colour,
 // plus colourless. A multicolour card counts toward each of its colours.
@@ -139,7 +139,7 @@ function issueText(issue: ValidationIssue): string {
               }"
             />
           </div>
-          <span class="font-mono text-[9px] uppercase text-(--color-text-muted)">{{ c }}</span>
+          <span class="font-mono text-[9px] uppercase text-(--color-text-muted)">{{ c === 'c' ? '◇' : colorCode(c, isFr) }}</span>
         </div>
       </div>
     </div>

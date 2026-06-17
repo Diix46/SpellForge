@@ -219,6 +219,16 @@ watch(deckId, (id) => {
   resolvedDirty.value = false
   activeTab.value = 'deck'
   builder.load()
+  // Resolve images/prices in the background so the Deck tab shows stats, prices
+  // and the commander right away (cheap on repeat: server cache + bulk FR).
+  // Deferred to nextTick so the computeds/functions below are initialized when
+  // this watcher fires immediately during setup.
+  nextTick(() => {
+    // eslint-disable-next-line ts/no-use-before-define
+    if (cardCount.value > 0 && resolvedCards.value.length === 0)
+
+      loadCards({ silent: true })
+  })
 }, { immediate: true })
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -376,6 +386,15 @@ function setCommander(card: ResolvedCard) {
   const name = card.card?.name ?? card.entry.name
   chooseCommander(name)
   toast.add({ title: t('toast.commanderSet'), description: name, icon: 'i-lucide-crown', color: 'success' })
+}
+
+// Pin a specific printing on a deck entry, then re-resolve so the chosen art
+// (and its price) replaces the auto-picked one across preview/buy/PDF.
+async function onSetPrinting(payload: { name: string, set: string, collectorNumber: string }) {
+  builderOp(() => builder.setPrinting(payload.name, payload.set, payload.collectorNumber))
+  showDetail.value = false
+  toast.add({ title: t('toast.printSet'), description: `${payload.set.toUpperCase()} #${payload.collectorNumber}`, icon: 'i-lucide-layers', color: 'success' })
+  await loadCards({ silent: true })
 }
 
 async function doExport(format: PageFormat) {
@@ -1065,6 +1084,7 @@ const tabsUi = {
       :card="detailCard"
       :is-commander="!!detailCard && detailCard === commander"
       @set-commander="(c) => { setCommander(c); showDetail = false }"
+      @set-printing="onSetPrinting"
     />
   </div>
 </template>

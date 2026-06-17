@@ -23,7 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const { t, isFr, locale } = useLocale()
-const { colorVar } = useManaIdentity()
+const { colorVar, colorName, colorCode } = useManaIdentity()
 const { state, search, loadMore, suggest, autocomplete } = useCardSearch()
 
 const suggestMode = ref(false)
@@ -223,16 +223,18 @@ const sortModel = computed({
           v-for="pip in WUBRG"
           :key="pip"
           type="button"
-          class="grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold ring-2 transition-all"
+          class="grid h-6 w-6 place-items-center rounded-full text-[9px] font-bold ring-2 transition-all"
           :style="{
             'background': filters.colors.includes(pip) ? colorVar(pip) : 'transparent',
             'color': filters.colors.includes(pip) ? 'var(--color-bg-base)' : colorVar(pip),
             '--tw-ring-color': colorVar(pip),
           }"
           :aria-pressed="filters.colors.includes(pip)"
+          :aria-label="colorName(pip, isFr)"
+          :title="colorName(pip, isFr)"
           @click="toggleColor(pip)"
         >
-          {{ pip.toUpperCase() }}
+          {{ colorCode(pip, isFr) }}
         </button>
       </div>
     </div>
@@ -246,7 +248,7 @@ const sortModel = computed({
         class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all"
         :class="filters.themes.includes(theme.key)
           ? 'accent-border-c accent-soft-bg text-(--accent-text)'
-          : 'border-(--color-border-subtle) text-(--color-text-muted) hover:border-(--color-border-strong)'"
+          : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--color-border-strong)'"
         @click="toggleTheme(theme.key)"
       >
         <UIcon :name="theme.icon" class="h-3.5 w-3.5" />

@@ -1,0 +1,100 @@
+// All printings of a card (for the print-selector gallery in the detail modal).
+// Returns a slim list with set, collector number, set name, image, price and lang
+// so the user can pin a specific edition/art to a deck entry.
+//
+// Cached 24h per (name, lang): the set of printings for a card is stable.
+
+interface ScryImg { small?: string, normal?: string }
+interface ScryPrint {
+  id: string
+  name: string
+  printed_name?: string
+  set: string
+  set_name: string
+  collector_number: string
+  lang: string
+  released_at?: string
+  image_status?: string
+  image_uris?: ScryImg
+  card_faces?: Array<{ image_uris?: ScryImg }>
+  prices?: { eur?: string | null }
+  promo?: boolean
+}
+
+export interface PrintOption {
+  id: string
+  set: string
+  setName: string
+  collectorNumber: string
+  lang: string
+  image: string | null
+  priceEur: string | null
+  promo: boolean
+}
+
+const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
+const SCRYFALL = 'https://api.scryfall.com/cards/search'
+
+function thumb(c: ScryPrint): string | null {
+  return c.image_uris?.normal ?? c.image_uris?.small
+    ?? c.card_faces?.[0]?.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.small ?? null
+}
+
+function hasImage(c: ScryPrint): boolean {
+  return !!thumb(c) && c.image_status !== 'missing' && c.image_status !== 'placeholder'
+}
+
+export default defineCachedEventHandler(async (event): Promise<{ prints: PrintOption[] }> => {
+  const query = getQuery(event)
+  const name = typeof query.name === 'string' ? query.name.trim() : ''
+  const lang = query.lang === 'fr' ? 'fr' : 'en'
+  if (!name)
+    return { prints: [] }
+
+  // All printings (any language) of the exact card, newest first.
+  const q = `!"${name.replace(/"/g, '')}" include:extras`
+  const url = `${SCRYFALL}?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc&include_multilingual=true`
+
+  let data: { data?: ScryPrint[] }
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+    if (res.status === 404)
+      return { prints: [] }
+    if (!res.ok)
+      throw createError({ statusCode: 502, statusMessage: `Scryfall ${res.status}` })
+    data = await res.json()
+  }
+  catch (err) {
+    if (err && typeof err === 'object' && 'statusCode' in err)
+      throw err
+    throw createError({ statusCode: 502, statusMessage: 'Scryfall fetch failed' })
+  }
+
+  const target = name.toLowerCase()
+  const all = (data.data ?? [])
+    .filter(c => hasImage(c) && c.name.toLowerCase() === target)
+    .map<PrintOption>(c => ({
+      id: c.id,
+      set: c.set,
+      setName: c.set_name,
+      collectorNumber: c.collector_number,
+      lang: c.lang,
+      image: thumb(c),
+      priceEur: c.prices?.eur ?? null,
+      promo: !!c.promo,
+    }))
+
+  // Surface the requested language first, then the rest (released-desc within each).
+  const preferred = all.filter(p => p.lang === lang)
+  const others = all.filter(p => p.lang !== lang)
+  return { prints: [...preferred, ...others] }
+}, {
+  maxAge: 60 * 60 * 24,
+  name: 'scryfall-prints',
+  getKey: (event) => {
+    const q = getQuery(event)
+    const name = typeof q.name === 'string' ? q.name.trim().toLowerCase() : ''
+    const lang = q.lang === 'fr' ? 'fr' : 'en'
+    return `${lang}:${name}`
+  },
+})

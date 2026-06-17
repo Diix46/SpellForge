@@ -255,7 +255,7 @@ const modalUi = {
     >
       <!-- new deck tile (marching ants) -->
       <button
-        class="group relative flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[var(--radius-xl)] border border-dashed border-(--color-border-strong) bg-(--color-surface-1)/40 text-(--color-text-muted) transition-all hover:border-(--color-text-muted) hover:bg-(--color-surface-1) hover:text-(--color-text-high)"
+        class="group relative flex min-h-[180px] flex-col items-center justify-center gap-2 rounded-[var(--radius-xl)] border border-dashed border-(--color-border-strong) bg-(--color-surface-1)/60 text-(--color-text-mid) transition-all hover:border-(--color-text-muted) hover:bg-(--color-surface-1) hover:text-(--color-text-high)"
         @click="showNewDeck = true"
       >
         <UIcon
@@ -298,7 +298,7 @@ const modalUi = {
         <div class="flex w-full justify-end gap-2">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="subtle"
             @click="showNewDeck = false"
           >
             {{ t('modal.cancel') }}
@@ -330,7 +330,7 @@ const modalUi = {
         <div class="flex w-full justify-end gap-2">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="subtle"
             @click="showDelete = false"
           >
             {{ t('modal.cancel') }}
@@ -367,7 +367,7 @@ const modalUi = {
         <div class="flex w-full justify-end gap-2">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="subtle"
             @click="showRename = false"
           >
             {{ t('modal.cancel') }}
@@ -416,7 +416,7 @@ const modalUi = {
         <div class="flex w-full justify-end gap-2">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="subtle"
             @click="showImport = false"
           >
             {{ t('modal.cancel') }}

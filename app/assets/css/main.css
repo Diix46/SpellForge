@@ -31,7 +31,7 @@
   --color-text-high: #f2f5fc;
   --color-text-mid: #c2c9d6;
   --color-text-muted: #8a93a6;
-  --color-text-disabled: #525a6b;
+  --color-text-disabled: #7b8499; /* raised for WCAG AA: reused for meaningful placeholder/empty-value text */
   --color-text-on-neon: #06080d;
 
   /* ============ CYAN RAMP (primary) ============ */
@@ -83,8 +83,8 @@
   --accent-c: 168, 178, 196; /* colorless platinum */
 
   /* ============ BORDERS ============ */
-  --color-border-subtle: rgba(255, 255, 255, 0.07);
-  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-border-subtle: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
 
   /* ============ RADII ============ */
   --radius-xs: 4px;

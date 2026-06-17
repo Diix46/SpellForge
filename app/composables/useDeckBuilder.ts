@@ -36,7 +36,12 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
   }
 
   function serialise() {
-    const lines = entries.value.map(e => `${e.quantity} ${e.name}`)
+    const lines = entries.value.map((e) => {
+      // Preserve a pinned printing as the Arena "(SET) NUM" suffix so it
+      // round-trips through the raw decklist and survives reloads.
+      const suffix = e.set && e.collectorNumber ? ` (${e.set.toUpperCase()}) ${e.collectorNumber}` : ''
+      return `${e.quantity} ${e.name}${suffix}`
+    })
     rawModel.set(lines.join('\n') + sideboardRaw)
   }
 
@@ -92,6 +97,16 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     else serialise()
   }
 
+  /** Pin a specific printing (set + collector number) on a card, or clear it. */
+  function setPrinting(name: string, set?: string, collectorNumber?: string) {
+    const idx = findIndex(name)
+    if (idx < 0)
+      return
+    entries.value[idx]!.set = set
+    entries.value[idx]!.collectorNumber = collectorNumber
+    serialise()
+  }
+
   const totalCards = computed(() => entries.value.reduce((s, e) => s + e.quantity, 0))
 
   const uniqueCount = computed(() => entries.value.length)
@@ -108,6 +123,7 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     removeCard,
     setQuantity,
     setCommander,
+    setPrinting,
     findIndex,
   }
 }

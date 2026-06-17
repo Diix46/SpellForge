@@ -121,11 +121,12 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 
       <!-- FOOTER -->
       <footer class="glass mt-12 border-t border-(--color-border-subtle)">
-        <div class="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-4 px-6 py-6 text-sm text-(--color-text-muted) md:flex-row md:px-8">
-          <div class="flex items-center gap-2.5 opacity-70">
+        <div class="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-4 px-6 py-6 text-sm text-(--color-text-mid) md:flex-row md:px-8">
+          <div class="flex items-center gap-2.5">
             <AppLogo
               :wordmark="false"
               :size="22"
+              class="opacity-70"
             />
             <span>{{ t('footer.tagline') }}</span>
           </div>

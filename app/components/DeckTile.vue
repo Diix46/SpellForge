@@ -29,7 +29,7 @@ const cardCount = computed(() => {
 const colors = computed<ManaColor[]>(() => identity(props.deck.raw))
 
 const sourceBadge = computed(() => {
-  const neutral = 'text-(--color-text-muted) border-(--color-border-strong) bg-(--color-surface-2)'
+  const neutral = 'text-(--color-text-mid) border-(--color-border-strong) bg-(--color-surface-2)'
   if (!props.deck.source)
     return { label: t('source.manual'), cls: neutral }
   if (props.deck.source.includes('edhrec'))

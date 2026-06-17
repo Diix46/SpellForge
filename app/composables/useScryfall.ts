@@ -236,11 +236,17 @@ export function useScryfall() {
     }
   }
 
-  // Resolve the best French version of a matched card with a REAL image,
-  // or null if no usable French printing exists (caller keeps the English card).
-  async function resolveFrench(match: ScryfallCard): Promise<ScryfallCard | null> {
+  // Resolve the best French version of a matched card with a REAL image, or null
+  // if no usable French printing exists (caller keeps the matched card).
+  // When `pinned` is true the user chose a specific printing, so we ONLY try the
+  // FR version of THAT exact printing — we never substitute a different FR art.
+  async function resolveFrench(match: ScryfallCard, pinned = false): Promise<ScryfallCard | null> {
     if (match.lang === 'fr' && hasRealImage(match))
       return match
+    if (pinned) {
+      const exactPinned = await fetchLocalized(match.set, match.collector_number, 'fr')
+      return hasRealImage(exactPinned) ? exactPinned : null
+    }
     // 0. If the bulk pre-pass already found an FR printing by name, use it and
     //    skip the per-card exact-printing lookup (saves one request per card).
     const preCached = frByNameCache.get(match.name.toLowerCase())
@@ -315,9 +321,12 @@ export function useScryfall() {
 
         let finalCard = match
         let finalLang = match.lang
-        // Try to get a French version of the card (exact printing, then any FR printing).
+        // Try to get a French version of the card. A pinned printing (entry has
+        // set+number) is honoured: only its own FR version is tried, never a
+        // substitute art.
         if (lang === 'fr') {
-          const fr = await resolveFrench(match)
+          const isPinned = !!(entry.set && entry.collectorNumber)
+          const fr = await resolveFrench(match, isPinned)
           if (fr) {
             finalCard = fr
             finalLang = 'fr'

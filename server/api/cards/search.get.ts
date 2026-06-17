@@ -50,6 +50,12 @@ export default defineCachedEventHandler(async (event): Promise<SearchResult> => 
   }
 }, {
   maxAge: 60,
+  // Stale-while-revalidate: after maxAge a stale result is served INSTANTLY
+  // while a fresh one is fetched in the background. Scryfall full-text queries
+  // can take seconds when cold on their side; SWR means a user only ever eats
+  // that latency once per query, then it's always instant for ~24h.
+  staleMaxAge: 60 * 60 * 24,
+  swr: true,
   name: 'scryfall-search',
   getKey: (event) => {
     const q = getQuery(event)
