@@ -33,20 +33,34 @@ interface ImageData {
   format: 'PNG' | 'JPEG'
 }
 
-// Cache loaded images across exports (A4 then A3) so we don't re-download.
-const imageCache = new Map<string, ImageData>()
+// LRU cache of loaded images across exports (A4 then A3). Base64 data URLs are
+// heavy (~hundreds of KB each), so cap the cache and evict the oldest. A `null`
+// entry is a negative cache so permanently-broken images aren't re-fetched.
+const IMAGE_CACHE_MAX = 300
+const imageCache = new Map<string, ImageData | null>()
+
+function cacheImage(url: string, value: ImageData | null) {
+  if (imageCache.size >= IMAGE_CACHE_MAX) {
+    const oldest = imageCache.keys().next().value
+    if (oldest !== undefined)
+      imageCache.delete(oldest)
+  }
+  imageCache.set(url, value)
+}
 
 async function loadImageAsDataUrl(url: string): Promise<ImageData | null> {
   if (imageCache.has(url))
-    return imageCache.get(url)!
+    return imageCache.get(url) ?? null
 
   try {
     // Scryfall's image CDN has no CORS headers, so fetch through our proxy
     // to get a same-origin response we can read into a data URL.
     const proxied = `/api/proxy-image?url=${encodeURIComponent(url)}`
     const res = await fetch(proxied)
-    if (!res.ok)
+    if (!res.ok) {
+      cacheImage(url, null)
       return null
+    }
     const blob = await res.blob()
 
     const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -58,10 +72,11 @@ async function loadImageAsDataUrl(url: string): Promise<ImageData | null> {
 
     const format: 'PNG' | 'JPEG' = blob.type.includes('png') ? 'PNG' : 'JPEG'
     const result: ImageData = { dataUrl, format }
-    imageCache.set(url, result)
+    cacheImage(url, result)
     return result
   }
   catch {
+    cacheImage(url, null)
     return null
   }
 }
@@ -212,7 +227,11 @@ export function usePdfExport() {
     doc.save(filename)
   }
 
-  /** Generate a PDF and return a blob URL (for preview in an iframe). */
+  /**
+   * Generate a PDF and return a blob URL (for preview in an iframe).
+   * The CALLER owns the returned URL and must `URL.revokeObjectURL()` it when
+   * done (e.g. before creating a new one) to avoid leaking object URLs.
+   */
   async function generatePdfBlobUrl(
     cards: ResolvedCard[],
     settings: PdfSettings,

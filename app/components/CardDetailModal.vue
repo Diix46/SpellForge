@@ -3,6 +3,7 @@ import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
+import { displayName, displayOracle, displayType, englishTypeLine, isCommanderType } from '~/composables/useMtg'
 
 const props = defineProps<{
   open: boolean
@@ -17,10 +18,7 @@ const emit = defineEmits<{
 const { t, rarityLabel, isFr } = useLocale()
 
 // Only legendary creatures / planeswalkers can be commanders.
-const canBeCommander = computed(() => {
-  const tl = (props.card?.card?.type_line ?? '').toLowerCase()
-  return tl.includes('legendary') && (tl.includes('creature') || tl.includes('planeswalker'))
-})
+const canBeCommander = computed(() => isCommanderType(englishTypeLine(props.card?.card ?? null)))
 
 const { searchUrl } = useCardmarket()
 
@@ -49,16 +47,10 @@ const face = computed(() => {
   return null
 })
 
-const localizedName = computed(() => {
-  if (face.value)
-    return face.value.printed_name ?? face.value.name
-  return c.value?.printed_name ?? c.value?.name ?? props.card?.entry.name ?? ''
-})
-const englishName = computed(() => {
-  if (face.value)
-    return face.value.name
-  return c.value?.name ?? ''
-})
+const localizedName = computed(() =>
+  displayName(c.value, true, face.value) || props.card?.entry.name || '',
+)
+const englishName = computed(() => displayName(c.value, false, face.value))
 // Primary name follows the site locale; FR keeps the EN name as a subtitle.
 const primaryName = computed(() => (isFr.value ? localizedName.value : englishName.value))
 const subName = computed(() => {
@@ -69,23 +61,9 @@ const subName = computed(() => {
     : ''
 })
 
-const typeLine = computed(() => {
-  if (isFr.value) {
-    if (face.value)
-      return face.value.printed_type_line ?? face.value.type_line ?? ''
-    return c.value?.printed_type_line ?? c.value?.type_line ?? ''
-  }
-  if (face.value)
-    return face.value.type_line ?? face.value.printed_type_line ?? ''
-  return c.value?.type_line ?? c.value?.printed_type_line ?? ''
-})
+const typeLine = computed(() => displayType(c.value, isFr.value, face.value))
 const manaCost = computed(() => face.value?.mana_cost ?? c.value?.mana_cost ?? '')
-const oracle = computed(() => {
-  if (isFr.value) {
-    return face.value?.printed_text ?? face.value?.oracle_text ?? c.value?.printed_text ?? c.value?.oracle_text ?? ''
-  }
-  return face.value?.oracle_text ?? face.value?.printed_text ?? c.value?.oracle_text ?? c.value?.printed_text ?? ''
-})
+const oracle = computed(() => displayOracle(c.value, isFr.value, face.value))
 const setLine = computed(() => {
   if (!c.value)
     return ''

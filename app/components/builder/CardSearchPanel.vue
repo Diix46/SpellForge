@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { CardTypeFilter } from '~/composables/useCardSearch'
-import type { ManaColor } from '~/composables/useManaIdentity'
+import type { CardTypeFilter, SortOrder } from '~/composables/useCardSearch'
+import type { ManaColor } from '~/composables/useMtg'
 import type { ScryfallCard } from '~/composables/useScryfall'
 import { computed, reactive, ref, watch } from 'vue'
 import { emptyFilters, SEARCH_THEMES, useCardSearch } from '~/composables/useCardSearch'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
+import { displayName, WUBRG } from '~/composables/useMtg'
 
 const props = defineProps<{
   /** Commander color identity to constrain results (null = no constraint). */
@@ -23,7 +24,7 @@ const emit = defineEmits<{
 
 const { t, isFr, locale } = useLocale()
 const { colorVar } = useManaIdentity()
-const { state, search, loadMore, suggest } = useCardSearch()
+const { state, search, loadMore, suggest, autocomplete } = useCardSearch()
 
 const suggestMode = ref(false)
 function showSuggestions() {
@@ -56,14 +57,6 @@ const typeModel = computed({
   },
 })
 
-const COLOR_PIPS: { c: ManaColor, label: string }[] = [
-  { c: 'w', label: 'W' },
-  { c: 'u', label: 'U' },
-  { c: 'b', label: 'B' },
-  { c: 'r', label: 'R' },
-  { c: 'g', label: 'G' },
-]
-
 function toggleColor(c: ManaColor) {
   const i = filters.colors.indexOf(c)
   if (i >= 0)
@@ -95,20 +88,50 @@ function runSearch() {
   }
   search(filters, ctx.value)
 }
+
+// ---- Name autocomplete (Scryfall /autocomplete) ----
+const acItems = ref<string[]>([])
+const showAc = ref(false)
+let acDebounce: ReturnType<typeof setTimeout> | null = null
+let acSeq = 0
+async function refreshAutocomplete(text: string) {
+  const seq = ++acSeq
+  const names = await autocomplete(text)
+  if (seq !== acSeq)
+    return // a newer keystroke superseded this lookup
+  acItems.value = names.slice(0, 8)
+  showAc.value = acItems.value.length > 0
+}
+function pickSuggestion(name: string) {
+  filters.text = name
+  showAc.value = false
+  acItems.value = []
+  runSearch()
+}
+// Delay hiding on blur so a suggestion click (mousedown) still registers.
+function hideAcSoon() {
+  setTimeout(() => (showAc.value = false), 120)
+}
+
 function debouncedSearch() {
   if (debounce)
     clearTimeout(debounce)
   debounce = setTimeout(runSearch, 350)
+  if (acDebounce)
+    clearTimeout(acDebounce)
+  acDebounce = setTimeout(refreshAutocomplete, 200, filters.text)
 }
 
-// Re-run when the commander identity or locale changes.
-watch(ctx, () => {
+// Re-run when the commander identity or locale changes. Watch a stable string
+// key (not the freshly-allocated ctx object) so equal values don't re-trigger.
+const ctxKey = computed(() => `${ctx.value.identity?.join('') ?? ''}|${ctx.value.lang}`)
+watch(ctxKey, () => {
   if (hasActiveQuery.value)
     runSearch()
 })
 
 function cardName(c: ScryfallCard): string {
-  return isFr.value ? (c.printed_name ?? c.name) : c.name
+  return displayName(c, isFr.value)
 }
 function cardImage(c: ScryfallCard): string | null {
   return c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? null
@@ -124,6 +147,29 @@ const maxCmcModel = computed({
     runSearch()
   },
 })
+
+// Budget filter: max EUR price per card (0 = no limit).
+const maxPriceModel = computed({
+  get: () => filters.maxPrice ?? 0,
+  set: (v: number) => {
+    filters.maxPrice = v > 0 ? v : null
+    runSearch()
+  },
+})
+
+const SORT_OPTIONS: { value: SortOrder, key: string }[] = [
+  { value: 'edhrec', key: 'sort.edhrec' },
+  { value: 'eur', key: 'sort.price' },
+  { value: 'name', key: 'sort.name' },
+  { value: 'cmc', key: 'sort.cmc' },
+]
+const sortModel = computed({
+  get: () => filters.order,
+  set: (v: SortOrder) => {
+    filters.order = v
+    runSearch()
+  },
+})
 </script>
 
 <template>
@@ -132,34 +178,61 @@ const maxCmcModel = computed({
       {{ t('build.searchTitle') }}
     </h3>
 
-    <!-- Free text -->
-    <UInput
-      v-model="filters.text"
-      name="card-search"
-      :placeholder="t('build.searchPlaceholder')"
-      icon="i-lucide-search"
-      class="mb-3 w-full"
-      @update:model-value="debouncedSearch"
-    />
+    <!-- Free text + name autocomplete -->
+    <div class="relative mb-3">
+      <UInput
+        v-model="filters.text"
+        name="card-search"
+        :placeholder="t('build.searchPlaceholder')"
+        icon="i-lucide-search"
+        autocomplete="off"
+        class="w-full"
+        @update:model-value="debouncedSearch"
+        @focus="showAc = acItems.length > 0"
+        @keydown.escape="showAc = false"
+        @blur="hideAcSoon"
+      />
+      <ul
+        v-if="showAc"
+        class="glass-solid absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-[var(--radius-lg)] border border-(--color-border-strong) py-1 shadow-[var(--shadow-elev-3)]"
+      >
+        <li
+          v-for="name in acItems"
+          :key="name"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-(--color-text-mid) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
+            @mousedown.prevent="pickSuggestion(name)"
+          >
+            <UIcon
+              name="i-lucide-search"
+              class="h-3.5 w-3.5 shrink-0 text-(--color-text-muted)"
+            />
+            {{ name }}
+          </button>
+        </li>
+      </ul>
+    </div>
 
     <!-- Color pips -->
     <div class="mb-3 flex items-center gap-2">
       <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">{{ t('build.colors') }}</span>
       <div class="flex gap-1.5">
         <button
-          v-for="pip in COLOR_PIPS"
-          :key="pip.c"
+          v-for="pip in WUBRG"
+          :key="pip"
           type="button"
           class="grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold ring-2 transition-all"
           :style="{
-            'background': filters.colors.includes(pip.c) ? colorVar(pip.c) : 'transparent',
-            'color': filters.colors.includes(pip.c) ? 'var(--color-bg-base)' : colorVar(pip.c),
-            '--tw-ring-color': colorVar(pip.c),
+            'background': filters.colors.includes(pip) ? colorVar(pip) : 'transparent',
+            'color': filters.colors.includes(pip) ? 'var(--color-bg-base)' : colorVar(pip),
+            '--tw-ring-color': colorVar(pip),
           }"
-          :aria-pressed="filters.colors.includes(pip.c)"
-          @click="toggleColor(pip.c)"
+          :aria-pressed="filters.colors.includes(pip)"
+          @click="toggleColor(pip)"
         >
-          {{ pip.label }}
+          {{ pip.toUpperCase() }}
         </button>
       </div>
     </div>
@@ -209,7 +282,7 @@ const maxCmcModel = computed({
       />
     </div>
 
-    <div class="mb-4 flex items-center gap-3">
+    <div class="mb-3 flex items-center gap-3">
       <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
         {{ t('build.maxCmc') }}
       </label>
@@ -225,6 +298,38 @@ const maxCmcModel = computed({
       <span class="w-6 text-center font-mono text-sm text-(--color-text-high)">
         {{ filters.maxCmc ?? '∞' }}
       </span>
+    </div>
+
+    <!-- Budget filter: max € per card -->
+    <div class="mb-3 flex items-center gap-3">
+      <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+        {{ t('build.maxPrice') }}
+      </label>
+      <input
+        v-model.number="maxPriceModel"
+        type="range"
+        min="0"
+        max="50"
+        step="1"
+        class="flex-1 accent-(--accent)"
+        :aria-label="t('build.maxPrice')"
+      >
+      <span class="w-10 text-center font-mono text-sm text-(--color-text-high)">
+        {{ filters.maxPrice != null ? `${filters.maxPrice}€` : '∞' }}
+      </span>
+    </div>
+
+    <!-- Sort order -->
+    <div class="mb-4 flex items-center gap-2">
+      <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+        {{ t('build.sortBy') }}
+      </label>
+      <USelect
+        v-model="sortModel"
+        size="xs"
+        :items="SORT_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
+        class="flex-1"
+      />
     </div>
 
     <!-- Identity note -->
@@ -261,7 +366,7 @@ const maxCmcModel = computed({
               :src="cardImage(card)!"
               :alt="cardName(card)"
               loading="lazy"
-              class="block w-full rounded-[var(--radius-md)]"
+              class="block aspect-[63/88] w-full rounded-[var(--radius-md)] object-cover"
             >
             <div
               v-else
@@ -297,7 +402,7 @@ const maxCmcModel = computed({
           variant="subtle"
           size="sm"
           :loading="state.loading"
-          @click="loadMore(filters, ctx)"
+          @click="loadMore()"
         >
           {{ t('build.loadMore') }}
         </UButton>

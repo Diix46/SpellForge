@@ -98,6 +98,22 @@ function backImage(card: ScryfallCard, quality: 'normal' | 'large' | 'png' = 'la
 const cardCache = new Map<string, ScryfallCard | null>()
 const frByNameCache = new Map<string, ScryfallCard | null>()
 
+const FR_CONCURRENCY = 8
+
+/** Map items through an async fn with bounded concurrency, preserving order. */
+async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
+  const results = Array.from({ length: items.length }) as R[]
+  let next = 0
+  async function worker() {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i]!, i)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
+
 function hasImage(card: ScryfallCard | null): boolean {
   return !!card && (!!card.image_uris || !!card.card_faces?.[0]?.image_uris)
 }
@@ -221,41 +237,20 @@ export function useScryfall() {
         requestError = err instanceof Error ? err.message : 'erreur réseau'
       }
 
-      // Scryfall returns found cards in the SAME ORDER as the identifiers,
-      // but omits not-found ones, so we match by name/set to be safe.
-      for (const entry of batch) {
+      // Resolve each entry of the batch concurrently (bounded pool) — the FR
+      // resolution does up to 2 extra fetches per card, so serial would negate
+      // the batched collection fetch. Results stay in batch order.
+      const resolved = await mapPool(batch, FR_CONCURRENCY, async (entry): Promise<ResolvedCard> => {
         if (requestError) {
-          results.push({
-            entry,
-            card: null,
-            imageUrl: null,
-            backImageUrl: null,
-            lang,
-            error: `Erreur réseau: ${requestError}`,
-          })
-          processed++
-          onProgress?.({ loaded: processed, total: entries.length })
-          continue
+          return { entry, card: null, imageUrl: null, backImageUrl: null, lang, error: `Erreur réseau: ${requestError}` }
         }
-
         const match = findMatch(foundCards, entry)
         if (!match) {
-          results.push({
-            entry,
-            card: null,
-            imageUrl: null,
-            backImageUrl: null,
-            lang,
-            error: `Carte introuvable: ${entry.name}`,
-          })
-          processed++
-          onProgress?.({ loaded: processed, total: entries.length })
-          continue
+          return { entry, card: null, imageUrl: null, backImageUrl: null, lang, error: `Carte introuvable: ${entry.name}` }
         }
 
         let finalCard = match
         let finalLang = match.lang
-
         // Try to get a French version of the card (exact printing, then any FR printing).
         if (lang === 'fr') {
           const fr = await resolveFrench(match)
@@ -264,21 +259,21 @@ export function useScryfall() {
             finalLang = 'fr'
           }
         }
-
         // Price: prefer the displayed card's EUR, else the default printing's EUR.
         const priceEur = finalCard.prices?.eur ?? match.prices?.eur ?? null
-
-        results.push({
+        return {
           entry,
           card: finalCard,
           imageUrl: frontImage(finalCard),
           backImageUrl: isDoubleFaced(finalCard) ? backImage(finalCard) : null,
           lang: finalLang,
           priceEur,
-        })
-        processed++
-        onProgress?.({ loaded: processed, total: entries.length })
-      }
+        }
+      })
+
+      results.push(...resolved)
+      processed += batch.length
+      onProgress?.({ loaded: processed, total: entries.length })
 
       if (i + BATCH_SIZE < entries.length) {
         await new Promise(r => setTimeout(r, DELAY_MS))

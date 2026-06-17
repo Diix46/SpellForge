@@ -5,6 +5,7 @@ import type { DeckEntry } from '~/composables/useDecklist'
 import { computed } from 'vue'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
+import { CATEGORY_ORDER, categoryLabelKey, WUBRG } from '~/composables/useMtg'
 
 const props = defineProps<{
   entries: DeckEntry[]
@@ -29,8 +30,6 @@ const emit = defineEmits<{
 
 const { t } = useLocale()
 const { colorVar } = useManaIdentity()
-
-const PIP_ORDER = ['w', 'u', 'b', 'r', 'g'] as const
 
 // Colour distribution: count cards (×qty) contributing to each WUBRG colour,
 // plus colourless. A multicolour card counts toward each of its colours.
@@ -57,20 +56,6 @@ function barCount(c: string): number {
   return distribution.value.counts[c] ?? 0
 }
 
-const CATEGORY_ORDER = ['commander', 'creature', 'instant', 'sorcery', 'artifact', 'enchantment', 'planeswalker', 'battle', 'land', 'other']
-const CATEGORY_KEY: Record<string, string> = {
-  commander: 'commander.label',
-  creature: 'type.creature',
-  instant: 'type.instant',
-  sorcery: 'type.sorcery',
-  artifact: 'type.artifact',
-  enchantment: 'type.enchantment',
-  planeswalker: 'type.planeswalker',
-  battle: 'type.battle',
-  land: 'type.land',
-  other: 'build.deckTitle',
-}
-
 function categoryOf(entry: DeckEntry): string {
   if (entry.name.trim().toLowerCase() === props.commanderName.trim().toLowerCase())
     return 'commander'
@@ -89,8 +74,8 @@ const groups = computed(() => {
     .filter(c => map.has(c))
     .map(c => ({
       key: c,
-      label: t(CATEGORY_KEY[c] ?? 'build.deckTitle'),
-      cards: map.get(c)!.sort((a, b) => a.name.localeCompare(b.name)),
+      label: t(categoryLabelKey(c)),
+      cards: [...map.get(c)!].sort((a, b) => a.name.localeCompare(b.name)),
       count: map.get(c)!.reduce((s, e) => s + e.quantity, 0),
     }))
 })
@@ -139,7 +124,7 @@ function issueText(issue: ValidationIssue): string {
       </div>
       <div class="flex items-end gap-1">
         <div
-          v-for="c in [...PIP_ORDER, 'c']"
+          v-for="c in [...WUBRG, 'c']"
           :key="c"
           class="flex flex-1 flex-col items-center gap-1"
         >

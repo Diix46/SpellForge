@@ -7,37 +7,26 @@ import type { ResolvedCard } from './useScryfall'
 
 const CM_BASE = 'https://www.cardmarket.com/en/Magic'
 
+/** Sum quantities by card name, preserving first-seen order. */
+function aggregate<T>(items: T[], nameOf: (item: T) => string, qtyOf: (item: T) => number): Array<[string, number]> {
+  const seen = new Map<string, number>()
+  for (const item of items) {
+    const name = nameOf(item)
+    seen.set(name, (seen.get(name) ?? 0) + qtyOf(item))
+  }
+  return [...seen.entries()]
+}
+
 export function useCardmarket() {
   function searchUrl(cardName: string): string {
     const q = encodeURIComponent(cardName)
     return `${CM_BASE}/Products/Search?searchString=${q}`
   }
 
-  /** Build one search link per unique card in the deck. */
-  function linksForEntries(entries: DeckEntry[]): Array<{ name: string, quantity: number, url: string }> {
-    const seen = new Map<string, number>()
-    for (const e of entries) {
-      seen.set(e.name, (seen.get(e.name) ?? 0) + e.quantity)
-    }
-    return [...seen.entries()].map(([name, quantity]) => ({
-      name,
-      quantity,
-      url: searchUrl(name),
-    }))
-  }
-
+  /** Build one search link per unique card (search by English name for reliable matching). */
   function linksForResolved(cards: ResolvedCard[]): Array<{ name: string, quantity: number, url: string }> {
-    const seen = new Map<string, number>()
-    for (const c of cards) {
-      // Always search by the English name for reliable Cardmarket matching.
-      const name = c.card?.name ?? c.entry.name
-      seen.set(name, (seen.get(name) ?? 0) + c.entry.quantity)
-    }
-    return [...seen.entries()].map(([name, quantity]) => ({
-      name,
-      quantity,
-      url: searchUrl(name),
-    }))
+    return aggregate(cards, c => c.card?.name ?? c.entry.name, c => c.entry.quantity)
+      .map(([name, quantity]) => ({ name, quantity, url: searchUrl(name) }))
   }
 
   /**
@@ -45,11 +34,9 @@ export function useCardmarket() {
    * Format: "<qty> <card name>" per line, which matches Cardmarket's import.
    */
   function wantsListText(entries: DeckEntry[]): string {
-    const seen = new Map<string, number>()
-    for (const e of entries) {
-      seen.set(e.name, (seen.get(e.name) ?? 0) + e.quantity)
-    }
-    return [...seen.entries()].map(([name, qty]) => `${qty} ${name}`).join('\n')
+    return aggregate(entries, e => e.name, e => e.quantity)
+      .map(([name, qty]) => `${qty} ${name}`)
+      .join('\n')
   }
 
   /** Cardmarket wants-list import page (user pastes the wants list there). */
@@ -59,7 +46,6 @@ export function useCardmarket() {
 
   return {
     searchUrl,
-    linksForEntries,
     linksForResolved,
     wantsListText,
     wantsListImportUrl,

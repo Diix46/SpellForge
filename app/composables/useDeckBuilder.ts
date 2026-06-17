@@ -2,37 +2,13 @@ import type { DeckEntry } from './useDecklist'
 import type { ScryfallCard } from './useScryfall'
 import { computed, ref } from 'vue'
 import { useDecklist } from './useDecklist'
+import { allowsAnyQuantity, isBasicLand } from './useMtg'
 
 export interface ValidationIssue {
   level: 'error' | 'warning'
   /** i18n key + optional interpolation value. */
   key: string
   value?: string | number
-}
-
-const BASIC_LANDS = new Set([
-  'plains',
-  'island',
-  'swamp',
-  'mountain',
-  'forest',
-  'wastes',
-  'plaine',
-  'île',
-  'ile',
-  'marais',
-  'montagne',
-  'forêt',
-  'foret',
-  'snow-covered plains',
-  'snow-covered island',
-  'snow-covered swamp',
-  'snow-covered mountain',
-  'snow-covered forest',
-])
-
-function isBasicLand(name: string): boolean {
-  return BASIC_LANDS.has(name.trim().toLowerCase())
 }
 
 /**
@@ -133,7 +109,6 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     setQuantity,
     setCommander,
     findIndex,
-    isBasicLand,
   }
 }
 
@@ -157,9 +132,9 @@ export function validateCommander(
   if (total !== 100)
     issues.push({ level: total > 100 ? 'error' : 'warning', key: 'valid.size', value: total })
 
-  // Singleton rule (basics exempt).
+  // Singleton rule (basics + "any number" cards exempt).
   for (const e of entries) {
-    if (e.quantity > 1 && !isBasicLand(e.name))
+    if (e.quantity > 1 && !allowsAnyQuantity(e.name))
       issues.push({ level: 'error', key: 'valid.singleton', value: e.name })
   }
 

@@ -1,3 +1,5 @@
+import { useState } from '#app'
+
 export interface Deck {
   id: string
   name: string
@@ -34,15 +36,9 @@ function persist(decks: Deck[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(decks))
 }
 
-// Singleton reactive state shared across the app
-const decks = ref<Deck[]>([])
-let initialized = false
-
 export function useDeckStore() {
-  if (!initialized && import.meta.client) {
-    decks.value = load()
-    initialized = true
-  }
+  // SSR-safe shared singleton; lazily hydrated from localStorage on the client.
+  const decks = useState<Deck[]>('decks', load)
 
   function refresh() {
     decks.value = load()
@@ -71,6 +67,12 @@ export function useDeckStore() {
     const idx = decks.value.findIndex(d => d.id === id)
     const existing = idx === -1 ? undefined : decks.value[idx]
     if (!existing)
+      return
+    // No-op (and no updatedAt bump / reorder) when nothing actually changed,
+    // e.g. merely opening a deck and re-saving identical content.
+    const unchanged = (Object.keys(patch) as (keyof typeof patch)[])
+      .every(k => patch[k] === existing[k])
+    if (unchanged)
       return
     decks.value[idx] = {
       ...existing,

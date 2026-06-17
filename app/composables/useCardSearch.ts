@@ -1,4 +1,4 @@
-import type { ManaColor } from './useManaIdentity'
+import type { ManaColor } from './useMtg'
 import type { ScryfallCard } from './useScryfall'
 import { ref } from 'vue'
 
@@ -28,6 +28,8 @@ export const SEARCH_THEMES: SearchTheme[] = [
 
 export type CardTypeFilter = '' | 'creature' | 'instant' | 'sorcery' | 'artifact' | 'enchantment' | 'planeswalker' | 'land'
 
+export type SortOrder = 'edhrec' | 'eur' | 'name' | 'cmc'
+
 export interface SearchFilters {
   text: string // free text → name or oracle
   themes: string[] // theme keys
@@ -35,11 +37,13 @@ export interface SearchFilters {
   subtype: string // e.g. "elf", "dragon"
   colors: ManaColor[] // explicit color filter (within identity)
   maxCmc: number | null
+  maxPrice: number | null // budget filter: max EUR per card
+  order: SortOrder // result sort order
   commanderOnly: boolean // is:commander (for picking a commander)
 }
 
 export function emptyFilters(): SearchFilters {
-  return { text: '', themes: [], type: '', subtype: '', colors: [], maxCmc: null, commanderOnly: false }
+  return { text: '', themes: [], type: '', subtype: '', colors: [], maxCmc: null, maxPrice: null, order: 'edhrec', commanderOnly: false }
 }
 
 export interface QueryContext {
@@ -85,6 +89,9 @@ export function buildScryfallQuery(filters: SearchFilters, ctx: QueryContext): s
     parts.push(`color>=${filters.colors.join('')}`)
   if (filters.maxCmc != null)
     parts.push(`cmc<=${filters.maxCmc}`)
+  // Budget filter: only cards at or below the max EUR price.
+  if (filters.maxPrice != null)
+    parts.push(`eur<=${filters.maxPrice}`)
   if (filters.commanderOnly)
     parts.push('is:commander')
 
@@ -122,18 +129,20 @@ export function useCardSearch() {
   })
 
   let lastQuery = ''
+  let lastOrder: SortOrder = 'edhrec'
 
-  async function run(query: string, page = 1, append = false) {
+  async function run(query: string, page = 1, append = false, order: SortOrder = 'edhrec') {
     if (!query) {
       state.value = { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
       return
     }
     lastQuery = query
+    lastOrder = order
     state.value.loading = true
     state.value.error = null
     try {
       const res = await $fetch<{ total: number, hasMore: boolean, cards: ScryfallCard[] }>('/api/cards/search', {
-        params: { q: query, page, order: 'edhrec', dir: 'auto' },
+        params: { q: query, page, order, dir: 'auto' },
       })
       // Ignore out-of-order responses (a newer search superseded this one).
       if (query !== lastQuery)
@@ -154,13 +163,16 @@ export function useCardSearch() {
   }
 
   async function search(filters: SearchFilters, ctx: QueryContext) {
-    await run(buildScryfallQuery(filters, ctx), 1, false)
+    await run(buildScryfallQuery(filters, ctx), 1, false, filters.order)
   }
 
-  async function loadMore(filters: SearchFilters, ctx: QueryContext) {
-    if (state.value.loading || !state.value.hasMore)
+  async function loadMore() {
+    if (state.value.loading || !state.value.hasMore || !lastQuery)
       return
-    await run(buildScryfallQuery(filters, ctx), state.value.page + 1, true)
+    // Paginate the SAME query + order that produced the current results —
+    // rebuilding from filters could fetch page N of a query whose page 1 was
+    // never shown (e.g. filters changed but the debounced search hasn't re-run).
+    await run(lastQuery, state.value.page + 1, true, lastOrder)
   }
 
   async function autocomplete(text: string): Promise<string[]> {

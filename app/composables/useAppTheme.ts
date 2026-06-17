@@ -1,4 +1,4 @@
-import type { ManaColor } from './useManaIdentity'
+import type { ManaColor } from './useMtg'
 import { computed } from 'vue'
 import { useState } from '#app'
 import { useManaIdentity } from './useManaIdentity'

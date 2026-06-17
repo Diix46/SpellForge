@@ -4,6 +4,7 @@
 // server origin sidesteps that.
 
 const ALLOWED_HOSTS = ['cards.scryfall.io', 'c1.scryfall.com', 'c2.scryfall.com', 'svgs.scryfall.io']
+const UPSTREAM_TIMEOUT_MS = 10_000
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
@@ -26,9 +27,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'hôte non autorisé' })
   }
 
-  const upstream = await fetch(parsed.toString(), {
-    headers: { 'User-Agent': 'MTGProxyPrinter/1.0' },
-  })
+  // Abort a hung upstream fetch so it can't pin a server connection forever.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
+  let upstream: Response
+  try {
+    upstream = await fetch(parsed.toString(), {
+      headers: { 'User-Agent': 'MTGProxyPrinter/1.0' },
+      signal: controller.signal,
+    })
+  }
+  catch {
+    throw createError({ statusCode: 504, statusMessage: 'image upstream timeout' })
+  }
+  finally {
+    clearTimeout(timer)
+  }
 
   if (!upstream.ok) {
     throw createError({ statusCode: upstream.status, statusMessage: `image upstream ${upstream.status}` })

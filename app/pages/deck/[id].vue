@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type { ManaColor } from '~/composables/useManaIdentity'
+import type { ManaColor } from '~/composables/useMtg'
 import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDeckBuilder, validateCommander } from '~/composables/useDeckBuilder'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
+import { classifyType, displayName, displayType, englishTypeLine } from '~/composables/useMtg'
 import { usePdfExport } from '~/composables/usePdfExport'
 import { useScryfall } from '~/composables/useScryfall'
 
@@ -67,9 +68,37 @@ function copyDecklistText() {
   navigator.clipboard.writeText(rawDecklist.value)
   toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
 }
+// Download the current decklist as a .txt file.
+function downloadDecklist() {
+  const safeName = (deckName.value || 'deck').replace(/[^a-z0-9]+/gi, '_').toLowerCase()
+  const blob = new Blob([rawDecklist.value], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${safeName}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+// Load a .txt/.dec file into the import textarea.
+const importFileInput = ref<HTMLInputElement | null>(null)
+function pickImportFile() {
+  importFileInput.value?.click()
+}
+async function onImportFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file)
+    return
+  importExportText.value = await file.text()
+  input.value = '' // allow re-picking the same file
+}
 
 // Commander override (index into resolvedCards), -1 = auto
 const commanderOverride = ref(-1)
+
+// Pagination state (declared early: builder ops reset the page on commander change).
+const PAGE_SIZE = 24
+const page = ref(1)
 
 // ---- Builder (edits the deck on top of rawDecklist) ----
 const builder = useDeckBuilder({
@@ -88,7 +117,10 @@ watch(rawDecklist, () => {
 function builderOp(fn: () => void) {
   builderWriting = true
   fn()
-  builderWriting = false
+  // The rawDecklist watcher flushes asynchronously, so only clear the guard
+  // after that flush — otherwise builder writes would reload (and clobber) the
+  // very edit we just made.
+  nextTick(() => (builderWriting = false))
 }
 
 // Names already in the deck (lowercased) — for the search "added" state.
@@ -97,23 +129,8 @@ const inDeckNames = computed(() => new Set(builder.entries.value.map(e => e.name
 // Maps derived from resolved cards (when loaded) for grouping + EDH validation.
 const categoryByName = computed(() => {
   const m = new Map<string, string>()
-  for (const rc of resolvedCards.value) {
-    const tl = (rc.card?.type_line ?? '').toLowerCase()
-    const cat = tl.includes('land')
-      ? 'land'
-      : tl.includes('creature')
-        ? 'creature'
-        : tl.includes('instant')
-          ? 'instant'
-          : tl.includes('sorcery')
-            ? 'sorcery'
-            : tl.includes('artifact')
-              ? 'artifact'
-              : tl.includes('enchantment')
-                ? 'enchantment'
-                : tl.includes('planeswalker') ? 'planeswalker' : 'other'
-    m.set(rc.entry.name.trim().toLowerCase(), cat)
-  }
+  for (const rc of resolvedCards.value)
+    m.set(rc.entry.name.trim().toLowerCase(), classifyType(englishTypeLine(rc.card)))
   return m
 })
 const identityByName = computed(() => {
@@ -124,8 +141,6 @@ const identityByName = computed(() => {
   }
   return m
 })
-// name(lower) → color identity letters (for the deck-panel colour distribution).
-const colorByName = computed(() => identityByName.value)
 
 // Commander identity lock: when on, out-of-identity cards can't be added.
 const identityLocked = ref(true)
@@ -159,8 +174,14 @@ function builderRemove(name: string) {
   builderOp(() => builder.removeCard(name))
   resolvedDirty.value = true
 }
-function builderSetCommander(name: string) {
+// Single entry point for picking a commander: keep the builder's commander name
+// and the resolved-card override in sync so theme/featured/validation all agree.
+function chooseCommander(name: string) {
   builderOp(() => builder.setCommander(name))
+  const n = name.trim().toLowerCase()
+  const idx = resolvedCards.value.findIndex(rc => (rc.card?.name ?? rc.entry.name).trim().toLowerCase() === n)
+  commanderOverride.value = idx // -1 falls back to auto-detection until resolved
+  page.value = 1
 }
 
 // Card detail modal
@@ -171,19 +192,24 @@ function openDetail(card: ResolvedCard) {
   showDetail.value = true
 }
 
-// Pagination
-const PAGE_SIZE = 24
-const page = ref(1)
-
-onMounted(() => {
-  if (!deck.value) {
+// Init / re-init per deck. Vue Router REUSES this component when only the
+// :id param changes, so a watch (not onMounted) is required — otherwise
+// navigating deck A→B would leave A's state in place and autosave A into B.
+watch(deckId, (id) => {
+  const d = getDeck(id)
+  if (!d) {
     navigateTo('/')
     return
   }
-  rawDecklist.value = deck.value.raw
-  deckName.value = deck.value.name
+  rawDecklist.value = d.raw
+  deckName.value = d.name
+  resolvedCards.value = []
+  commanderOverride.value = -1
+  page.value = 1
+  resolvedDirty.value = false
+  activeTab.value = 'deck'
   builder.load()
-})
+}, { immediate: true })
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleSave() {
@@ -229,16 +255,9 @@ const commanderName = computed(() => {
   const c = commander.value?.card
   if (!c)
     return commander.value?.entry.name ?? ''
-  return locale.value === 'fr' ? (c.printed_name ?? c.name) : (c.name ?? c.printed_name ?? '')
+  return displayName(c, locale.value === 'fr')
 })
-const commanderType = computed(() => {
-  const c = commander.value?.card
-  if (!c)
-    return ''
-  return locale.value === 'fr'
-    ? (c.printed_type_line ?? c.type_line ?? '')
-    : (c.type_line ?? c.printed_type_line ?? '')
-})
+const commanderType = computed(() => displayType(commander.value?.card ?? null, locale.value === 'fr'))
 
 // Theme colors: from commander if resolved, else from decklist heuristic, else neutral.
 const themeColors = computed(() => {
@@ -324,12 +343,9 @@ async function loadCards() {
 }
 
 function setCommander(card: ResolvedCard) {
-  const idx = resolvedCards.value.indexOf(card)
-  if (idx >= 0) {
-    commanderOverride.value = idx
-    page.value = 1
-    toast.add({ title: t('toast.commanderSet'), description: card.card?.name ?? card.entry.name, icon: 'i-lucide-crown', color: 'success' })
-  }
+  const name = card.card?.name ?? card.entry.name
+  chooseCommander(name)
+  toast.add({ title: t('toast.commanderSet'), description: name, icon: 'i-lucide-crown', color: 'success' })
 }
 
 async function doExport(format: PageFormat) {
@@ -363,13 +379,19 @@ const cmLinks = computed(() => linksForResolved(
 ))
 
 function openAllCardmarket() {
-  const links = cmLinks.value.slice(0, 15)
-  for (const l of links) window.open(l.url, '_blank')
-  if (cmLinks.value.length > 15) {
+  // Browsers block all but the first popup from one gesture, so open the first
+  // card and copy the rest of the links to the clipboard.
+  const links = cmLinks.value
+  if (!links.length)
+    return
+  window.open(links[0]!.url, '_blank')
+  if (links.length > 1) {
+    navigator.clipboard.writeText(links.map(l => l.url).join('\n'))
     toast.add({
-      title: t('toast.tooManyCards'),
-      description: `${cmLinks.value.length} ${t('editor.cardsWord')} — ${t('toast.tooManyCardsDesc')}`,
+      title: t('toast.linksCopied'),
+      description: `${links.length} ${t('editor.cardsWord')}`,
       color: 'info',
+      icon: 'i-lucide-clipboard-copy',
     })
   }
 }
@@ -477,23 +499,23 @@ const tabsUi = {
         <BuilderCardSearchPanel
           :identity="identityLocked ? builderIdentity : null"
           :in-deck="inDeckNames"
-          :commander-name="commander?.card?.name || builder.commanderName.value"
+          :commander-name="commanderName || builder.commanderName.value"
           @add="addSearchCard"
           @details="(c) => openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: c.image_uris?.normal ?? null, backImageUrl: null, lang: c.lang })"
         />
         <BuilderDeckListPanel
           :entries="builder.entries.value"
           :total="builder.totalCards.value"
-          :commander-name="builder.commanderName.value || commanderName"
+          :commander-name="commanderName || builder.commanderName.value"
           :validation="validation"
           :category-by-name="categoryByName"
-          :color-by-name="colorByName"
+          :color-by-name="identityByName"
           :identity-locked="identityLocked"
           :curve="curve"
           :price="price"
           @set-qty="builderSetQty"
           @remove="builderRemove"
-          @set-commander="builderSetCommander"
+          @set-commander="chooseCommander"
           @toggle-lock="identityLocked = !identityLocked"
         />
       </div>
@@ -637,7 +659,7 @@ const tabsUi = {
             <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
               <MtgCardPreview
                 v-for="(card, idx) in pagedCards"
-                :key="(page - 1) * PAGE_SIZE + idx"
+                :key="card.card?.id ?? card.entry.name"
                 :card="card"
                 :index="idx"
                 @details="openDetail"
@@ -804,7 +826,31 @@ const tabsUi = {
         </div>
       </template>
       <template #footer>
-        <div class="flex w-full justify-end gap-2">
+        <input
+          ref="importFileInput"
+          type="file"
+          accept=".txt,.dec,text/plain"
+          class="hidden"
+          @change="onImportFile"
+        >
+        <div class="flex w-full flex-wrap items-center justify-end gap-2">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-upload"
+            class="mr-auto"
+            @click="pickImportFile"
+          >
+            {{ t('build.importFile') }}
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            icon="i-lucide-download"
+            @click="downloadDecklist"
+          >
+            {{ t('build.downloadTxt') }}
+          </UButton>
           <UButton
             color="neutral"
             variant="ghost"

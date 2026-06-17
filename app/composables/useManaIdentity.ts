@@ -2,7 +2,8 @@
 // Scryfall data. Uses basic land names + a small set of well-known mana dorks /
 // signets that strongly imply a color. Good enough for a visual "fingerprint".
 
-export type ManaColor = 'w' | 'u' | 'b' | 'r' | 'g'
+import type { ManaColor } from './useMtg'
+import { canonicalColors, WUBRG } from './useMtg'
 
 const LAND_HINTS: Record<ManaColor, RegExp> = {
   w: /\b(plains|plaine)\b/i,
@@ -36,14 +37,8 @@ export function useManaIdentity() {
   function identity(raw: string): ManaColor[] {
     if (!raw)
       return []
-    const found = new Set<ManaColor>()
-    const colors: ManaColor[] = ['w', 'u', 'b', 'r', 'g']
-    for (const c of colors) {
-      if (LAND_HINTS[c].test(raw) || CARD_HINTS[c].test(raw))
-        found.add(c)
-    }
-    // Keep WUBRG canonical order.
-    return colors.filter(c => found.has(c))
+    const found = WUBRG.filter(c => LAND_HINTS[c].test(raw) || CARD_HINTS[c].test(raw))
+    return canonicalColors(found)
   }
 
   function colorVar(c: ManaColor): string {

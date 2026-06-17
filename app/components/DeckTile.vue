@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Deck } from '~/composables/useDeckStore'
-import type { ManaColor } from '~/composables/useManaIdentity'
+import type { ManaColor } from '~/composables/useMtg'
 import { computed } from 'vue'
 import { useDecklist } from '~/composables/useDecklist'
 import { useManaIdentity } from '~/composables/useManaIdentity'
@@ -62,8 +62,13 @@ const menuItems = computed(() => [
   >
     <div
       ref="tiltEl"
-      class="tilt relative h-full rounded-[var(--radius-xl)] p-5"
+      role="button"
+      tabindex="0"
+      :aria-label="`${t('tile.open')} — ${deck.name}`"
+      class="tilt relative h-full rounded-[var(--radius-xl)] p-5 focus-visible:outline-2 focus-visible:outline-(--accent-text)"
       @click="emit('open', deck.id)"
+      @keydown.enter.prevent="emit('open', deck.id)"
+      @keydown.space.prevent="emit('open', deck.id)"
     >
       <!-- header row -->
       <div class="flex items-start justify-between gap-2">
