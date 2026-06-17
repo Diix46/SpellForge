@@ -1,0 +1,32 @@
+{
+  "name": "spellforge",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Spellforge — gestionnaire de decks Magic: The Gathering & impression de proxies FR/EN (A4/A3).",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@iconify-json/lucide": "^1.2.112",
+    "@iconify-json/simple-icons": "^1.2.86",
+    "@nuxt/ui": "^4.8.2",
+    "jspdf": "^2.5.2",
+    "nuxt": "^4.4.8",
+    "tailwindcss": "^4.3.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.0.0",
+    "@nuxt/fonts": "^0.14.0",
+    "eslint": "^10.5.0",
+    "eslint-plugin-format": "^2.0.1",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.5"
+  }
+}

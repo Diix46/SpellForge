@@ -1,0 +1,493 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+@theme static {
+  /* ============ FONTS (families resolved by @nuxt/fonts) ============ */
+  --font-display: 'Orbitron', 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* ============ BACKGROUNDS / SURFACES ============ */
+  --color-bg-base: #07080c;
+  --color-bg-base-2: #0a0c12;
+  --color-surface-1: #0e1118;
+  --color-surface-2: #141926;
+  --color-surface-3: #1b2231;
+
+  /* ============ INK NEUTRAL RAMP (full 50–950) ============ */
+  --color-ink-50: #ebedf3;
+  --color-ink-100: #d5d9e3;
+  --color-ink-200: #aeb4c6;
+  --color-ink-300: #828aa3;
+  --color-ink-400: #5c6480;
+  --color-ink-500: #3d4459;
+  --color-ink-600: #2a3042;
+  --color-ink-700: #1b2231;
+  --color-ink-800: #141926;
+  --color-ink-900: #0a0c12;
+  --color-ink-950: #07080c;
+
+  /* ============ TEXT ============ */
+  --color-text-high: #f2f5fc;
+  --color-text-mid: #c2c9d6;
+  --color-text-muted: #8a93a6;
+  --color-text-disabled: #525a6b;
+  --color-text-on-neon: #06080d;
+
+  /* ============ CYAN RAMP (primary) ============ */
+  --color-cyan-50: #e0fcff;
+  --color-cyan-100: #b8f7ff;
+  --color-cyan-200: #7deeff;
+  --color-cyan-300: #3fe3ff;
+  --color-cyan-400: #22e8ff;
+  --color-cyan-500: #06c7e6;
+  --color-cyan-600: #04a0bd;
+  --color-cyan-700: #077c92;
+  --color-cyan-800: #0c5c6d;
+  --color-cyan-900: #0e3d49;
+  --color-cyan-950: #072530;
+
+  /* ============ MAGENTA RAMP (secondary / accent) ============ */
+  --color-magenta-50: #ffe5f7;
+  --color-magenta-100: #ffc2ec;
+  --color-magenta-200: #ff8fdd;
+  --color-magenta-300: #ff5ad0;
+  --color-magenta-400: #ff38d1;
+  --color-magenta-500: #e81db8;
+  --color-magenta-600: #c00e97;
+  --color-magenta-700: #960b76;
+  --color-magenta-800: #6e0d58;
+  --color-magenta-900: #4a0b3c;
+  --color-magenta-950: #2e0826;
+
+  /* ============ BRIDGE + SEMANTIC ============ */
+  --color-violet-bridge: #6e5bff;
+  --color-success: #2be89b;
+  --color-warning: #ffc24b;
+  --color-error: #ff4d6d;
+  --color-info: #3fe3ff;
+
+  /* WUBRG mana identity */
+  --color-mana-w: #e9e2c8;
+  --color-mana-u: #4fa8e8;
+  --color-mana-b: #8c86a0;
+  --color-mana-r: #e85844;
+  --color-mana-g: #38b883;
+
+  /* WUBRG accent triplets (r,g,b) — drive the dynamic per-deck theme. */
+  --accent-w: 224, 200, 130; /* warm gold */
+  --accent-u: 79, 168, 232; /* azure */
+  --accent-b: 150, 130, 175; /* amethyst-grey */
+  --accent-r: 232, 88, 68; /* ember */
+  --accent-g: 56, 184, 131; /* emerald */
+  --accent-c: 168, 178, 196; /* colorless platinum */
+
+  /* ============ BORDERS ============ */
+  --color-border-subtle: rgba(255, 255, 255, 0.07);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* ============ RADII ============ */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* ============ BLUR (glass) ============ */
+  --blur-glass-sm: 8px;
+  --blur-glass: 14px;
+  --blur-glass-lg: 24px;
+
+  /* ============ ELEVATION + GLOW ============ */
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-elev-2: 0 8px 24px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-elev-3: 0 24px 60px rgba(0, 0, 0, 0.65), 0 8px 20px rgba(0, 0, 0, 0.45);
+  --shadow-glow-cyan:
+    0 0 0 1px rgba(34, 232, 255, 0.35), 0 0 18px rgba(34, 232, 255, 0.45), 0 0 48px rgba(34, 232, 255, 0.22);
+  --shadow-glow-magenta:
+    0 0 0 1px rgba(255, 56, 209, 0.35), 0 0 18px rgba(255, 56, 209, 0.45), 0 0 48px rgba(255, 56, 209, 0.22);
+  --shadow-glow-cyan-soft: 0 0 16px -4px rgba(34, 232, 255, 0.5);
+  --shadow-glow-magenta-soft: 0 0 16px -4px rgba(255, 56, 209, 0.5);
+  --shadow-glow-success: 0 0 16px rgba(43, 232, 155, 0.4);
+  --shadow-glow-error: 0 0 16px rgba(255, 77, 109, 0.45);
+
+  /* ============ Z-INDEX LADDER ============ */
+  --z-background: 0;
+  --z-particles: 1;
+  --z-grid: 2;
+  --z-content: 10;
+  --z-elevated: 20;
+  --z-header: 100;
+  --z-dropdown: 200;
+  --z-overlay: 900;
+  --z-modal: 1000;
+  --z-toast: 1100;
+  --z-tooltip: 1200;
+}
+
+/* ---------------- ROOT DEFAULTS ---------------- */
+:root {
+  color-scheme: dark;
+
+  /* DYNAMIC ACCENT — default is neutral platinum. The deck page overrides
+     --accent-rgb / --accent-rgb-2 inline based on the commander's mana identity.
+     Everything below is derived so a single override re-themes the whole scope. */
+  --accent-rgb: 168, 178, 196; /* neutral platinum */
+  --accent-rgb-2: 168, 178, 196; /* second hue for multicolor; same = solid */
+
+  --accent: rgb(var(--accent-rgb));
+  --accent-2: rgb(var(--accent-rgb-2));
+  --accent-soft: rgba(var(--accent-rgb), 0.18);
+  --accent-border: rgba(var(--accent-rgb), 0.45);
+  --accent-text: rgb(var(--accent-rgb));
+  --accent-glow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.35), 0 0 18px rgba(var(--accent-rgb), 0.42),
+    0 0 48px rgba(var(--accent-rgb), 0.2);
+  --accent-glow-soft: 0 0 16px -4px rgba(var(--accent-rgb), 0.55);
+  --gradient-accent: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-rgb-2)) 100%);
+  --gradient-accent-text: linear-gradient(92deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-rgb-2)) 100%);
+}
+html,
+body {
+  background: var(--color-bg-base);
+  color: var(--color-text-mid);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-ink-700);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-500);
+  background-clip: content-box;
+}
+
+/* ---------------- UTILITY CLASSES ---------------- */
+
+/* Real frosted glass — chrome ONLY (header, modals, console). */
+.glass {
+  background: rgba(20, 25, 38, 0.55);
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow:
+    var(--shadow-elev-2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.glass-strong {
+  background: rgba(20, 25, 38, 0.72);
+  -webkit-backdrop-filter: blur(var(--blur-glass-lg)) saturate(150%);
+  backdrop-filter: blur(var(--blur-glass-lg)) saturate(150%);
+  border: 1px solid var(--color-border-subtle);
+}
+/* Faux-glass for REPEATED items (deck tiles, preview cards, list rows). */
+.glass-solid {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 40%), var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow:
+    var(--shadow-elev-1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Gradient text — DISPLAY/H2+ ONLY. Solid fallback first. Uses dynamic accent. */
+.text-gradient {
+  color: var(--accent-text);
+  background: var(--gradient-accent-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Cyber grid texture */
+.grid-texture {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 70%);
+  mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 70%);
+}
+
+/* Top hairline accent edge. NOTE: do not apply to `fixed`/`absolute` elements
+   (e.g. modal panels) — this `position: relative` would override their
+   positioning since unlayered CSS beats Tailwind's layered utilities. */
+.neon-edge {
+  position: relative;
+}
+.neon-edge::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--gradient-accent-text);
+  opacity: 0.5;
+  transition: opacity 0.18s ease;
+  border-radius: inherit;
+}
+.neon-edge:hover::before {
+  opacity: 1;
+}
+
+/* Hover glow for grid items (accent-driven) */
+.glow-accent-soft:hover {
+  box-shadow: var(--shadow-elev-2), var(--accent-glow-soft);
+}
+
+/* Spotlight overlay (driven by useSpotlight --mx/--my). */
+.spotlight {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(var(--accent-rgb), 0.14),
+    transparent 60%
+  );
+  transition: opacity 0.25s ease;
+}
+.spotlight:hover::after {
+  opacity: 1;
+}
+
+/* 3D tilt (driven by useTilt --rx/--ry) */
+.tilt {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tilt:hover {
+  transition: none;
+}
+
+/* Holographic foil sheen (card preview hover) — neutral white sheen, color-agnostic */
+.holo-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.holo-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: overlay;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.35) 45%,
+    rgba(var(--accent-rgb), 0.3) 55%,
+    transparent 70%
+  );
+  background-position: var(--mx, 50%) var(--my, 50%);
+  background-size: 220% 220%;
+  transition: opacity 0.25s ease;
+}
+.holo-sheen:hover::after {
+  opacity: 1;
+}
+
+/* Skeleton shimmer sweep */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-1);
+  border-radius: var(--radius-lg);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06) 40%, transparent 80%);
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Animated accent ring (focal CTA — export / load buttons) */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.neon-ring {
+  position: relative;
+  isolation: isolate;
+  border-radius: var(--radius-md);
+}
+.neon-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--angle),
+    rgb(var(--accent-rgb)),
+    rgba(var(--accent-rgb), 0.3),
+    rgb(var(--accent-rgb-2)),
+    rgb(var(--accent-rgb))
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ring-spin 4s linear infinite;
+  pointer-events: none;
+}
+@keyframes ring-spin {
+  to {
+    --angle: 360deg;
+  }
+}
+@supports not (background: conic-gradient(from 0deg, red, blue)) {
+  .neon-ring::before {
+    background: var(--gradient-accent);
+    animation: none;
+  }
+}
+
+/* Animated accent divider rule */
+.rule-gradient {
+  height: 2px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, transparent, rgb(var(--accent-rgb)), rgb(var(--accent-rgb-2)), transparent);
+  background-size: 200% 100%;
+  animation: rule-shift 6s ease-in-out infinite;
+}
+@keyframes rule-shift {
+  0%,
+  100% {
+    background-position: 0% 0;
+  }
+  50% {
+    background-position: 100% 0;
+  }
+}
+
+/* Marching-ants dashed border (new-deck tile) */
+.marching {
+  background-image: repeating-linear-gradient(90deg, rgba(var(--accent-rgb), 0.6) 0 8px, transparent 8px 16px);
+  background-size: 200% 1px;
+  animation: march 12s linear infinite;
+}
+@keyframes march {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* Soft float/bob */
+.bob {
+  animation: bob 3.5s ease-in-out infinite;
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Entrance: fade-up (with stagger via inline delay) */
+.fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------------- PAGE TRANSITION ---------------- */
+.cine-enter-active,
+.cine-leave-active {
+  transition:
+    opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cine-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+.cine-leave-to {
+  opacity: 0;
+  transform: scale(0.985);
+}
+
+/* ---------------- GLOBAL FOCUS RING (accent-driven) ---------------- */
+:where(a, button, [role='button'], input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--color-bg-base),
+    0 0 0 4px rgb(var(--accent-rgb)),
+    0 0 16px -2px rgba(var(--accent-rgb), 0.6);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------------- ACCENT HELPER CLASSES ---------------- */
+.accent-text {
+  color: var(--accent-text);
+}
+.accent-fill {
+  background: var(--gradient-accent);
+  color: var(--color-text-on-neon);
+}
+.accent-soft-bg {
+  background: var(--accent-soft);
+}
+.accent-border-c {
+  border-color: var(--accent-border);
+}
+
+/* ---------------- REDUCED MOTION ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .tilt,
+  .mote-canvas,
+  .aurora,
+  .bob,
+  .fade-up {
+    transform: none !important;
+  }
+}
