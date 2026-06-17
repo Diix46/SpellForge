@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { ManaColor } from '~/composables/useManaIdentity'
 import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
-import type { ResolvedCard } from '~/composables/useScryfall'
+import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
+import { useDeckBuilder, validateCommander } from '~/composables/useDeckBuilder'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
@@ -48,10 +50,78 @@ const fetchProgress = ref({ loaded: 0, total: 0 })
 const exporting = ref<PageFormat | null>(null)
 const exportProgress = ref({ loaded: 0, total: 0, phase: '' })
 
-const activeTab = ref<'edit' | 'preview' | 'buy'>('edit')
+const activeTab = ref<'edit' | 'build' | 'preview' | 'buy'>('edit')
 
 // Commander override (index into resolvedCards), -1 = auto
 const commanderOverride = ref(-1)
+
+// ---- Builder (edits the deck on top of rawDecklist) ----
+const builder = useDeckBuilder({
+  get: () => rawDecklist.value,
+  set: (v) => { rawDecklist.value = v },
+})
+// Reload the builder's structured view whenever the raw text changes from elsewhere
+// (initial mount, paste in the Edit tab, import). Guard against feedback loops:
+// builder.serialise() sets rawDecklist, which we don't want to echo back as a reload.
+let builderWriting = false
+watch(rawDecklist, () => {
+  if (builderWriting)
+    return
+  builder.load()
+})
+function builderOp(fn: () => void) {
+  builderWriting = true
+  fn()
+  builderWriting = false
+}
+
+// Names already in the deck (lowercased) — for the search "added" state.
+const inDeckNames = computed(() => new Set(builder.entries.value.map(e => e.name.trim().toLowerCase())))
+
+// Maps derived from resolved cards (when loaded) for grouping + EDH validation.
+const categoryByName = computed(() => {
+  const m = new Map<string, string>()
+  for (const rc of resolvedCards.value) {
+    const tl = (rc.card?.type_line ?? '').toLowerCase()
+    const cat = tl.includes('land')
+      ? 'land'
+      : tl.includes('creature')
+        ? 'creature'
+        : tl.includes('instant')
+          ? 'instant'
+          : tl.includes('sorcery')
+            ? 'sorcery'
+            : tl.includes('artifact')
+              ? 'artifact'
+              : tl.includes('enchantment')
+                ? 'enchantment'
+                : tl.includes('planeswalker') ? 'planeswalker' : 'other'
+    m.set(rc.entry.name.trim().toLowerCase(), cat)
+  }
+  return m
+})
+const identityByName = computed(() => {
+  const m = new Map<string, string[]>()
+  for (const rc of resolvedCards.value) {
+    if (rc.card?.color_identity)
+      m.set(rc.entry.name.trim().toLowerCase(), rc.card.color_identity)
+  }
+  return m
+})
+
+function addSearchCard(card: ScryfallCard) {
+  builderOp(() => builder.addScryfallCard(card))
+  toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
+}
+function builderSetQty(name: string, qty: number) {
+  builderOp(() => builder.setQuantity(name, qty))
+}
+function builderRemove(name: string) {
+  builderOp(() => builder.removeCard(name))
+}
+function builderSetCommander(name: string) {
+  builderOp(() => builder.setCommander(name))
+}
 
 // Card detail modal
 const detailCard = ref<ResolvedCard | null>(null)
@@ -72,6 +142,7 @@ onMounted(() => {
   }
   rawDecklist.value = deck.value.raw
   deckName.value = deck.value.name
+  builder.load()
 })
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
@@ -136,6 +207,20 @@ const themeColors = computed(() => {
   return identity(rawDecklist.value)
 })
 const themeStyle = computed(() => accentStyle(themeColors.value))
+
+// ---- Builder search constraint + validation (depend on commander/theme above) ----
+// Search constraint: the commander's color identity (null until known).
+const builderIdentity = computed<ManaColor[] | null>(() => {
+  if (commander.value?.card)
+    return commanderColors(commander.value.card)
+  return themeColors.value.length ? themeColors.value : null
+})
+
+const validation = computed(() => validateCommander(builder.entries.value, {
+  commanderName: builder.commanderName.value || commanderName.value,
+  identityByName: identityByName.value,
+  commanderIdentity: commander.value?.card?.color_identity,
+}))
 
 // Cards excluding the commander (for the grid).
 const gridCards = computed(() =>
@@ -249,6 +334,7 @@ function copyWantsList() {
 
 const tabItems = computed(() => [
   { label: t('tab.edit'), icon: 'i-lucide-pencil', value: 'edit' as const },
+  { label: t('tab.build'), icon: 'i-lucide-hammer', value: 'build' as const },
   { label: `${t('tab.preview')}${successCards.value.length ? ` (${successCards.value.length})` : ''}`, icon: 'i-lucide-eye', value: 'preview' as const },
   { label: t('tab.buy'), icon: 'i-lucide-shopping-cart', value: 'buy' as const },
 ])
@@ -409,6 +495,31 @@ const tabsUi = {
           {{ lang === 'fr' ? t('editor.scryfallNoteFr') : t('editor.scryfallNoteEn') }}
         </p>
       </div>
+    </div>
+
+    <!-- BUILD TAB -->
+    <div
+      v-show="activeTab === 'build'"
+      class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(320px,400px)]"
+      style="min-height: 70vh"
+    >
+      <BuilderCardSearchPanel
+        :identity="builderIdentity"
+        :in-deck="inDeckNames"
+        @add="addSearchCard"
+        @details="(c) => openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: c.image_uris?.normal ?? null, backImageUrl: null, lang: c.lang })"
+        @set-commander="(c) => builderSetCommander(c.name)"
+      />
+      <BuilderDeckListPanel
+        :entries="builder.entries.value"
+        :total="builder.totalCards.value"
+        :commander-name="builder.commanderName.value || commanderName"
+        :validation="validation"
+        :category-by-name="categoryByName"
+        @set-qty="builderSetQty"
+        @remove="builderRemove"
+        @set-commander="builderSetCommander"
+      />
     </div>
 
     <!-- PREVIEW TAB -->

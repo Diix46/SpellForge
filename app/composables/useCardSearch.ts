@@ -1,0 +1,171 @@
+import type { ManaColor } from './useManaIdentity'
+import type { ScryfallCard } from './useScryfall'
+import { ref } from 'vue'
+
+export interface SearchTheme {
+  key: string
+  /** i18n key for the label. */
+  labelKey: string
+  icon: string
+  /** Scryfall fragment this theme contributes. */
+  query: string
+}
+
+// Predefined themes → battle-tested Scryfall fragments. The player picks an
+// intention ("removal", "ramp") instead of needing to know card names.
+export const SEARCH_THEMES: SearchTheme[] = [
+  { key: 'draw', labelKey: 'theme.draw', icon: 'i-lucide-book-open', query: 'oracle:"draw a card"' },
+  { key: 'removal', labelKey: 'theme.removal', icon: 'i-lucide-crosshair', query: '(oracle:destroy or oracle:exile) (oracle:creature or oracle:permanent)' },
+  { key: 'ramp', labelKey: 'theme.ramp', icon: 'i-lucide-trending-up', query: '(oracle:"search your library for a" oracle:land) or oracle:"add {" type:artifact' },
+  { key: 'tokens', labelKey: 'theme.tokens', icon: 'i-lucide-copy', query: 'oracle:"create" oracle:token' },
+  { key: 'lifegain', labelKey: 'theme.lifegain', icon: 'i-lucide-heart-pulse', query: 'oracle:"gain" oracle:life' },
+  { key: 'counter', labelKey: 'theme.counter', icon: 'i-lucide-shield-x', query: 'oracle:"counter target"' },
+  { key: 'boardwipe', labelKey: 'theme.boardwipe', icon: 'i-lucide-bomb', query: 'oracle:"destroy all" or oracle:"each creature"' },
+  { key: 'tutor', labelKey: 'theme.tutor', icon: 'i-lucide-search', query: 'oracle:"search your library for a"' },
+  { key: 'graveyard', labelKey: 'theme.graveyard', icon: 'i-lucide-skull', query: 'oracle:"from your graveyard"' },
+  { key: 'flying', labelKey: 'theme.flying', icon: 'i-lucide-feather', query: 'keyword:flying' },
+]
+
+export type CardTypeFilter = '' | 'creature' | 'instant' | 'sorcery' | 'artifact' | 'enchantment' | 'planeswalker' | 'land'
+
+export interface SearchFilters {
+  text: string // free text → name or oracle
+  themes: string[] // theme keys
+  type: CardTypeFilter
+  subtype: string // e.g. "elf", "dragon"
+  colors: ManaColor[] // explicit color filter (within identity)
+  maxCmc: number | null
+  commanderOnly: boolean // is:commander (for picking a commander)
+}
+
+export function emptyFilters(): SearchFilters {
+  return { text: '', themes: [], type: '', subtype: '', colors: [], maxCmc: null, commanderOnly: false }
+}
+
+/**
+ * Build a Scryfall query string from structured filters, constrained to a
+ * commander's color identity (so illegal cards never appear).
+ */
+export function buildScryfallQuery(filters: SearchFilters, identity: ManaColor[] | null): string {
+  const parts: string[] = []
+
+  const text = filters.text.trim()
+  if (text) {
+    // If it looks like raw Scryfall syntax (contains a `:` operator), pass through.
+    // Otherwise treat as a name/oracle fuzzy search.
+    if (/\w+[:<>=]/.test(text)) {
+      parts.push(text)
+    }
+    else {
+      parts.push(`(name:/${escapeRegexLike(text)}/ or oracle:"${text.replace(/"/g, '')}")`)
+    }
+  }
+
+  for (const key of filters.themes) {
+    const theme = SEARCH_THEMES.find(t => t.key === key)
+    if (theme)
+      parts.push(`(${theme.query})`)
+  }
+
+  if (filters.type)
+    parts.push(`type:${filters.type}`)
+  if (filters.subtype.trim())
+    parts.push(`type:${filters.subtype.trim().toLowerCase()}`)
+  if (filters.colors.length)
+    parts.push(`color>=${filters.colors.join('')}`)
+  if (filters.maxCmc != null)
+    parts.push(`cmc<=${filters.maxCmc}`)
+  if (filters.commanderOnly)
+    parts.push('is:commander')
+
+  // Constrain to the commander's color identity (EDH legality).
+  if (identity) {
+    parts.push(identity.length ? `id<=${identity.join('')}` : 'id:colorless')
+  }
+
+  // Exclude funny/un-sets and digital-only by default for a cleaner pool.
+  parts.push('-is:funny legal:commander')
+
+  return parts.join(' ').trim()
+}
+
+// Scryfall name regex search tolerates partial words; keep it simple/safe.
+function escapeRegexLike(s: string): string {
+  return s.replace(/[/\\]/g, '')
+}
+
+export interface SearchState {
+  loading: boolean
+  error: string | null
+  total: number
+  hasMore: boolean
+  page: number
+  cards: ScryfallCard[]
+}
+
+export function useCardSearch() {
+  const state = ref<SearchState>({
+    loading: false,
+    error: null,
+    total: 0,
+    hasMore: false,
+    page: 1,
+    cards: [],
+  })
+
+  let lastQuery = ''
+
+  async function run(query: string, page = 1, append = false) {
+    if (!query) {
+      state.value = { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
+      return
+    }
+    lastQuery = query
+    state.value.loading = true
+    state.value.error = null
+    try {
+      const res = await $fetch<{ total: number, hasMore: boolean, cards: ScryfallCard[] }>('/api/cards/search', {
+        params: { q: query, page, order: 'edhrec', dir: 'auto' },
+      })
+      // Ignore out-of-order responses (a newer search superseded this one).
+      if (query !== lastQuery)
+        return
+      state.value.total = res.total
+      state.value.hasMore = res.hasMore
+      state.value.page = page
+      state.value.cards = append ? [...state.value.cards, ...res.cards] : res.cards
+    }
+    catch (err: unknown) {
+      state.value.error = err instanceof Error ? err.message : 'erreur'
+      if (!append)
+        state.value.cards = []
+    }
+    finally {
+      state.value.loading = false
+    }
+  }
+
+  async function search(filters: SearchFilters, identity: ManaColor[] | null) {
+    await run(buildScryfallQuery(filters, identity), 1, false)
+  }
+
+  async function loadMore(filters: SearchFilters, identity: ManaColor[] | null) {
+    if (state.value.loading || !state.value.hasMore)
+      return
+    await run(buildScryfallQuery(filters, identity), state.value.page + 1, true)
+  }
+
+  async function autocomplete(text: string): Promise<string[]> {
+    if (text.trim().length < 2)
+      return []
+    try {
+      const res = await $fetch<{ names: string[] }>('/api/cards/autocomplete', { params: { q: text.trim() } })
+      return res.names
+    }
+    catch {
+      return []
+    }
+  }
+
+  return { state, search, loadMore, autocomplete }
+}
