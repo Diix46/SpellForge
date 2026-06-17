@@ -80,25 +80,6 @@ const priceEur = computed(() => {
 const cmUrl = computed(() => searchUrl(englishName.value || props.card?.entry.name || ''))
 const scryUrl = computed(() => c.value?.scryfall_uri?.replace(/\?.*$/, '') ?? null)
 
-// Render mana symbols like {2}{W}{U} as readable pips.
-const manaSymbols = computed(() => {
-  const m = manaCost.value
-  if (!m)
-    return []
-  return (m.match(/\{[^}]+\}/g) ?? []).map(s => s.replace(/[{}]/g, ''))
-})
-
-function symbolColor(sym: string): string {
-  const map: Record<string, string> = {
-    W: 'var(--color-mana-w)',
-    U: 'var(--color-mana-u)',
-    B: 'var(--color-mana-b)',
-    R: 'var(--color-mana-r)',
-    G: 'var(--color-mana-g)',
-  }
-  return map[sym] ?? 'var(--color-ink-500)'
-}
-
 // ----- Keyword highlighting -----
 // English keyword → French translation (the common evergreen + popular ones).
 const KW_FR: Record<string, string> = {
@@ -181,20 +162,40 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-// Build oracle text as HTML with keyword terms wrapped in a highlight span.
-const oracleHtml = computed(() => {
-  let html = oracle.value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-  // Copy before sorting so we don't mutate the source computed array.
-  const terms = [...keywordTerms.value].sort((a, b) => b.length - a.length)
-  for (const term of terms) {
-    // word-boundary-ish: start of line or non-letter before; case-insensitive
-    const re = new RegExp(`(^|[^\\p{L}])(${escapeRe(term)})`, 'giu')
-    html = html.replace(re, (_m, pre, word) => `${pre}<span class="kw">${word}</span>`)
+// Oracle text → typed segments so we can render mana pips and keyword highlights
+// as real elements (no v-html). A segment is plain text, a mana symbol, a
+// keyword to highlight, or a line break.
+type Segment
+  = | { t: 'text', v: string }
+    | { t: 'mana', v: string }
+    | { t: 'kw', v: string }
+    | { t: 'br' }
+
+const oracleSegments = computed<Segment[]>(() => {
+  const text = oracle.value
+  if (!text)
+    return []
+  const terms = [...keywordTerms.value].filter(Boolean).sort((a, b) => b.length - a.length)
+  // One regex: a {mana} token, a newline, or any keyword (whole-word-ish).
+  const kwAlt = terms.length ? `|(?<kw>(?<=^|[^\\p{L}])(?:${terms.map(escapeRe).join('|')})(?=$|[^\\p{L}]))` : ''
+  const re = new RegExp(`(?<mana>\\{[^}]+\\})|(?<br>\\n)${kwAlt}`, 'giu')
+  const out: Segment[] = []
+  let last = 0
+  for (const m of text.matchAll(re)) {
+    if (m.index > last)
+      out.push({ t: 'text', v: text.slice(last, m.index) })
+    const g = m.groups ?? {}
+    if (g.mana)
+      out.push({ t: 'mana', v: g.mana.replace(/[{}]/g, '') })
+    else if (g.br)
+      out.push({ t: 'br' })
+    else if (g.kw)
+      out.push({ t: 'kw', v: m[0] })
+    last = m.index + m[0].length
   }
-  return html.replace(/\n/g, '<br>')
+  if (last < text.length)
+    out.push({ t: 'text', v: text.slice(last) })
+  return out
 })
 </script>
 
@@ -255,17 +256,12 @@ const oracleHtml = computed(() => {
                 {{ subName }}
               </p>
             </div>
-            <div
-              v-if="manaSymbols.length"
-              class="flex shrink-0 items-center gap-1"
-            >
-              <span
-                v-for="(s, i) in manaSymbols"
-                :key="i"
-                class="grid h-6 w-6 place-items-center rounded-full text-xs font-bold text-(--color-bg-base)"
-                :style="{ background: symbolColor(s) }"
-              >{{ s }}</span>
-            </div>
+            <ManaCost
+              v-if="manaCost"
+              :cost="manaCost"
+              :size="24"
+              class="shrink-0"
+            />
           </div>
 
           <div class="mb-3 flex flex-wrap items-center gap-2">
@@ -301,16 +297,32 @@ const oracleHtml = computed(() => {
             >{{ kw }}</span>
           </div>
 
-          <!-- Oracle text with highlighted keywords.
-               Safe: oracleHtml escapes <,>,& from the source text and only injects
-               our own <span class="kw"> / <br> markup (see oracleHtml computed). -->
-          <!-- eslint-disable vue/no-v-html -->
+          <!-- Oracle text: mana symbols as pips, keywords highlighted. Rendered
+               from typed segments (no v-html). -->
           <p
             v-if="oracle"
             class="oracle mb-4 rounded-[var(--radius-lg)] bg-(--color-surface-2)/60 p-3 text-sm leading-relaxed text-(--color-text-mid)"
-            v-html="oracleHtml"
-          />
-          <!-- eslint-enable vue/no-v-html -->
+          >
+            <template
+              v-for="(seg, i) in oracleSegments"
+              :key="i"
+            >
+              <br v-if="seg.t === 'br'">
+              <ManaSymbol
+                v-else-if="seg.t === 'mana'"
+                :sym="seg.v"
+                :size="15"
+                class="mx-px"
+              />
+              <span
+                v-else-if="seg.t === 'kw'"
+                class="kw"
+              >{{ seg.v }}</span>
+              <template v-else>
+                {{ seg.v }}
+              </template>
+            </template>
+          </p>
 
           <p
             v-if="setLine"

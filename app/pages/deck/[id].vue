@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ManaColor } from '~/composables/useMtg'
+import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
@@ -20,7 +20,7 @@ const { getDeck, updateDeck } = useDeckStore()
 const { parse, totalCards } = useDecklist()
 const { fetchCollection } = useScryfall()
 const { exportPdf } = usePdfExport()
-const { linksForResolved, wantsListText, wantsListImportUrl } = useCardmarket()
+const { searchUrl, linksForResolved, wantsListText, wantsListImportUrl } = useCardmarket()
 const { identity, colorVar, accentStyle } = useManaIdentity()
 const { typeStats, detectCommanderIndex, commanderColors, manaCurve, priceSummary } = useDeckAnalysis()
 const { locale, t } = useLocale()
@@ -100,6 +100,9 @@ const commanderOverride = ref(-1)
 const PAGE_SIZE = 24
 const page = ref(1)
 
+// True when the decklist changed since the last image resolve (preview stale).
+const resolvedDirty = ref(false)
+
 // ---- Builder (edits the deck on top of rawDecklist) ----
 const builder = useDeckBuilder({
   get: () => rawDecklist.value,
@@ -110,6 +113,9 @@ const builder = useDeckBuilder({
 // builder.serialise() sets rawDecklist, which we don't want to echo back as a reload.
 let builderWriting = false
 watch(rawDecklist, () => {
+  // Any decklist change makes the resolved preview stale (covers builder ops,
+  // textarea edits, import). The auto-load watcher re-resolves on next preview.
+  resolvedDirty.value = true
   if (builderWriting)
     return
   builder.load()
@@ -144,8 +150,6 @@ const identityByName = computed(() => {
 
 // Commander identity lock: when on, out-of-identity cards can't be added.
 const identityLocked = ref(true)
-// True when the decklist changed since the last resolve (preview/stats stale).
-const resolvedDirty = ref(false)
 
 function isWithinIdentity(card: ScryfallCard): boolean {
   // `commander` is defined later but this only runs from event handlers (lazy-safe).
@@ -163,16 +167,13 @@ function addSearchCard(card: ScryfallCard) {
     return
   }
   builderOp(() => builder.addScryfallCard(card))
-  resolvedDirty.value = true
   toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
 }
 function builderSetQty(name: string, qty: number) {
   builderOp(() => builder.setQuantity(name, qty))
-  resolvedDirty.value = true
 }
 function builderRemove(name: string) {
   builderOp(() => builder.removeCard(name))
-  resolvedDirty.value = true
 }
 // Single entry point for picking a commander: keep the builder's commander name
 // and the resolved-card override in sync so theme/featured/validation all agree.
@@ -307,32 +308,42 @@ const stats = computed(() => typeStats(resolvedCards.value))
 const curve = computed(() => manaCurve(resolvedCards.value))
 const price = computed(() => priceSummary(resolvedCards.value))
 
+// ---- Interactive composition filter (click a type stat to filter the grid) ----
+const typeFilter = ref<CategoryKey | null>(null)
+function toggleTypeFilter(key: CategoryKey) {
+  typeFilter.value = typeFilter.value === key ? null : key
+  page.value = 1
+}
+const filteredGridCards = computed(() => {
+  if (!typeFilter.value)
+    return gridCards.value
+  return gridCards.value.filter(rc => classifyType(englishTypeLine(rc.card)) === typeFilter.value)
+})
+
 // ---- Pagination ----
-const totalPages = computed(() => Math.max(1, Math.ceil(gridCards.value.length / PAGE_SIZE)))
+const totalPages = computed(() => Math.max(1, Math.ceil(filteredGridCards.value.length / PAGE_SIZE)))
 const pagedCards = computed(() => {
   const start = (page.value - 1) * PAGE_SIZE
-  return gridCards.value.slice(start, start + PAGE_SIZE)
+  return filteredGridCards.value.slice(start, start + PAGE_SIZE)
 })
-watch(gridCards, () => {
+watch(filteredGridCards, () => {
   if (page.value > totalPages.value)
     page.value = 1
 })
 
-async function loadCards() {
-  if (cardCount.value === 0)
+async function loadCards(opts: { silent?: boolean } = {}) {
+  if (cardCount.value === 0 || fetching.value)
     return
   fetching.value = true
   fetchProgress.value = { loaded: 0, total: cardCount.value }
-  commanderOverride.value = -1
   page.value = 1
   try {
     resolvedCards.value = await fetchCollection(allEntries.value, lang.value, (p) => {
       fetchProgress.value = p
     })
     resolvedDirty.value = false
-    // Jump to preview only when the user isn't actively building.
-    if (activeTab.value !== 'deck')
-      activeTab.value = 'preview'
+    if (opts.silent)
+      return
     const missing = resolvedCards.value.filter(c => !c.imageUrl).length
     toast.add({
       title: t('toast.cardsLoaded'),
@@ -350,6 +361,16 @@ async function loadCards() {
     fetching.value = false
   }
 }
+
+// Auto-resolve images when the user opens Preview or Buy (lazy: no requests
+// while building on the Deck tab). Re-resolves only when the list changed since
+// the last load (resolvedDirty) or nothing is loaded yet.
+watch(activeTab, (tab) => {
+  if ((tab === 'preview' || tab === 'buy') && cardCount.value > 0
+    && (resolvedCards.value.length === 0 || resolvedDirty.value)) {
+    loadCards({ silent: true })
+  }
+})
 
 function setCommander(card: ResolvedCard) {
   const name = card.card?.name ?? card.entry.name
@@ -386,6 +407,62 @@ const cmLinks = computed(() => linksForResolved(
     ? resolvedCards.value
     : allEntries.value.map(e => ({ entry: e, card: null, imageUrl: null, backImageUrl: null, lang: 'en' })),
 ))
+
+// ---- Buy tab: per-card pricing rows + deck cost summary ----
+interface BuyRow {
+  name: string // localized display name
+  enName: string // English name (for the Cardmarket search)
+  quantity: number
+  unit: number | null // EUR per copy (null = unknown)
+  lineTotal: number | null
+  url: string
+  thumb: string | null
+}
+const buyRows = computed<BuyRow[]>(() => {
+  const isFr = locale.value === 'fr'
+  const rows: BuyRow[] = (resolvedCards.value.length
+    ? resolvedCards.value
+    : allEntries.value.map(e => ({ entry: e, card: null, imageUrl: null, backImageUrl: null, lang: 'en' } as ResolvedCard)))
+    .map((rc) => {
+      const enName = rc.card?.name ?? rc.entry.name
+      const eur = rc.priceEur ?? rc.card?.prices?.eur
+      const unit = eur ? Number.parseFloat(eur) : Number.NaN
+      const hasPrice = Number.isFinite(unit)
+      return {
+        name: displayName(rc.card, isFr) || rc.entry.name,
+        enName,
+        quantity: rc.entry.quantity,
+        unit: hasPrice ? unit : null,
+        lineTotal: hasPrice ? Math.round(unit * rc.entry.quantity * 100) / 100 : null,
+        url: searchUrl(enName),
+        thumb: rc.card?.image_uris?.small ?? rc.card?.card_faces?.[0]?.image_uris?.small ?? null,
+      }
+    })
+  // Priced cards first (most expensive on top), then unknown-price cards by name.
+  return rows.sort((a, b) => {
+    if (a.lineTotal == null && b.lineTotal == null)
+      return a.name.localeCompare(b.name)
+    if (a.lineTotal == null)
+      return 1
+    if (b.lineTotal == null)
+      return -1
+    return b.lineTotal - a.lineTotal
+  })
+})
+const buySummary = computed(() => {
+  const total = price.value.total
+  const priced = buyRows.value.filter(r => r.lineTotal != null)
+  const units = priced.reduce((s, r) => s + r.quantity, 0)
+  return {
+    total,
+    missing: price.value.missing,
+    avg: units ? Math.round((total / units) * 100) / 100 : 0,
+    priciest: priced[0] ?? null,
+  }
+})
+function fmtEur(n: number): string {
+  return `${n.toFixed(2)} €`
+}
 
 function openAllCardmarket() {
   // Browsers block all but the first popup from one gesture, so open the first
@@ -493,7 +570,7 @@ const tabsUi = {
             variant="subtle"
             size="sm"
             icon="i-lucide-refresh-cw"
-            @click="loadCards"
+            @click="loadCards()"
           >
             <span v-if="fetching">{{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
             <span v-else>{{ t('build.resolve') }}</span>
@@ -532,26 +609,32 @@ const tabsUi = {
 
     <!-- PREVIEW TAB -->
     <div v-show="activeTab === 'preview'">
+      <!-- Loading state: images resolve automatically on entering this tab. -->
       <div
-        v-if="resolvedCards.length === 0"
+        v-if="resolvedCards.length === 0 && fetching"
+        class="glass mx-auto flex max-w-md flex-col items-center rounded-[var(--radius-2xl)] py-16 text-center"
+      >
+        <UIcon
+          name="i-lucide-loader-circle"
+          class="mb-3 h-10 w-10 animate-spin text-(--accent-text)"
+        />
+        <p class="font-mono text-sm text-(--color-text-muted)">
+          {{ fetchProgress.loaded }} / {{ fetchProgress.total }}
+        </p>
+      </div>
+
+      <!-- Empty deck: nothing to resolve. -->
+      <div
+        v-else-if="resolvedCards.length === 0"
         class="glass mx-auto flex max-w-md flex-col items-center rounded-[var(--radius-2xl)] py-16 text-center"
       >
         <UIcon
           name="i-lucide-image-off"
           class="mb-3 h-12 w-12 text-(--color-text-muted)"
         />
-        <p class="mb-4 text-(--color-text-muted)">
+        <p class="text-(--color-text-muted)">
           {{ t('editor.noCards') }}
         </p>
-        <UButton
-          color="neutral"
-          variant="solid"
-          icon="i-lucide-images"
-          :loading="fetching"
-          @click="loadCards"
-        >
-          {{ t('editor.loadCards') }}
-        </UButton>
       </div>
 
       <div
@@ -616,23 +699,41 @@ const tabsUi = {
             </div>
           </div>
 
-          <!-- Type stats -->
+          <!-- Type stats — click a type to filter the grid below. -->
           <div
             v-if="stats.length"
             class="glass-solid rounded-[var(--radius-xl)] p-4"
           >
-            <h3 class="mb-3 font-mono text-[11px] uppercase tracking-[2px] text-(--color-text-muted)">
-              {{ t('stats.title') }}
-            </h3>
+            <div class="mb-3 flex items-center justify-between">
+              <h3 class="font-mono text-[11px] uppercase tracking-[2px] text-(--color-text-muted)">
+                {{ t('stats.title') }}
+              </h3>
+              <button
+                v-if="typeFilter"
+                type="button"
+                class="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-(--accent-text) hover:underline"
+                @click="typeFilter = null"
+              >
+                <UIcon name="i-lucide-x" class="h-3 w-3" />
+                {{ t('stats.clearFilter') }}
+              </button>
+            </div>
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div
+              <button
                 v-for="s in stats"
                 :key="s.key"
-                class="flex items-center gap-2 rounded-[var(--radius-md)] bg-(--color-surface-2)/50 px-3 py-2"
+                type="button"
+                class="flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-left ring-1 transition-all"
+                :class="typeFilter === s.key
+                  ? 'accent-soft-bg ring-(--accent-border)'
+                  : 'bg-(--color-surface-2)/50 ring-transparent hover:bg-(--color-surface-2)'"
+                :aria-pressed="typeFilter === s.key"
+                @click="toggleTypeFilter(s.key)"
               >
                 <UIcon
                   :name="s.icon"
-                  class="h-4 w-4 text-(--accent-text)"
+                  class="h-4 w-4 shrink-0"
+                  :class="typeFilter === s.key ? 'text-(--accent-text)' : 'text-(--color-text-muted)'"
                 />
                 <div class="min-w-0">
                   <div class="font-mono text-sm font-semibold text-(--color-text-high)">
@@ -642,7 +743,7 @@ const tabsUi = {
                     {{ t(`type.${s.key}`) }}
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -665,6 +766,23 @@ const tabsUi = {
 
           <!-- Grid -->
           <div>
+            <!-- Active filter banner -->
+            <div
+              v-if="typeFilter"
+              class="mb-3 flex items-center gap-2 font-mono text-xs text-(--color-text-muted)"
+            >
+              <UIcon name="i-lucide-filter" class="h-3.5 w-3.5 text-(--accent-text)" />
+              <span>
+                {{ filteredGridCards.length }} · {{ t(`type.${typeFilter}`) }}
+              </span>
+              <button
+                type="button"
+                class="text-(--accent-text) hover:underline"
+                @click="typeFilter = null"
+              >
+                {{ t('stats.clearFilter') }}
+              </button>
+            </div>
             <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
               <MtgCardPreview
                 v-for="(card, idx) in pagedCards"
@@ -726,28 +844,60 @@ const tabsUi = {
       v-show="activeTab === 'buy'"
       class="space-y-5"
     >
-      <div class="glass rounded-[var(--radius-xl)] p-5">
-        <div class="mb-4 flex items-center gap-2">
-          <div class="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] accent-soft-bg">
-            <UIcon
-              name="i-lucide-shopping-cart"
-              class="h-5 w-5 text-(--accent-text)"
-            />
+      <!-- Loading -->
+      <div
+        v-if="resolvedCards.length === 0 && fetching"
+        class="glass flex items-center justify-center gap-3 rounded-[var(--radius-xl)] py-12"
+      >
+        <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-(--accent-text)" />
+        <span class="font-mono text-sm text-(--color-text-muted)">{{ fetchProgress.loaded }} / {{ fetchProgress.total }}</span>
+      </div>
+
+      <template v-else>
+        <!-- Cost summary -->
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+              {{ t('buy.estTotal') }}
+            </div>
+            <div class="font-display text-2xl font-bold text-(--accent-text)">
+              {{ fmtEur(buySummary.total) }}
+            </div>
           </div>
-          <div>
-            <h3 class="font-display font-semibold text-(--color-text-high)">
-              {{ t('buy.title') }}
-            </h3>
-            <p class="font-mono text-xs text-(--color-text-muted)">
-              {{ cmLinks.length }} {{ t('buy.uniqueCards') }}
-            </p>
+          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+              {{ t('buy.avgPerCard') }}
+            </div>
+            <div class="font-display text-2xl font-bold text-(--color-text-high)">
+              {{ fmtEur(buySummary.avg) }}
+            </div>
+          </div>
+          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+              {{ t('buy.uniqueCards') }}
+            </div>
+            <div class="font-display text-2xl font-bold text-(--color-text-high)">
+              {{ buyRows.length }}
+            </div>
+          </div>
+          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+              {{ t('buy.noPrice') }}
+            </div>
+            <div
+              class="font-display text-2xl font-bold"
+              :class="buySummary.missing ? 'text-(--color-warning)' : 'text-(--color-text-high)'"
+            >
+              {{ buySummary.missing }}
+            </div>
           </div>
         </div>
 
+        <!-- Actions -->
         <div class="flex flex-wrap gap-2">
           <UButton
             icon="i-lucide-external-link"
-            color="neutral"
+            color="primary"
             variant="solid"
             @click="openAllCardmarket"
           >
@@ -764,40 +914,70 @@ const tabsUi = {
           <UButton
             icon="i-lucide-external-link"
             color="neutral"
-            variant="ghost"
+            variant="subtle"
             :to="wantsListImportUrl()"
             target="_blank"
           >
             {{ t('buy.openWants') }}
           </UButton>
         </div>
-      </div>
 
-      <div
-        v-if="cmLinks.length"
-        class="glass-solid overflow-hidden rounded-[var(--radius-xl)]"
-      >
+        <!-- Priced list -->
         <div
-          v-for="link in cmLinks"
-          :key="link.name"
-          class="flex items-center justify-between border-b border-(--color-border-subtle) px-4 py-2.5 transition-colors last:border-0 hover:bg-(--color-surface-2)/50"
+          v-if="buyRows.length"
+          class="glass-solid overflow-hidden rounded-[var(--radius-xl)]"
         >
-          <div class="flex min-w-0 items-center gap-2.5">
-            <span class="accent-soft-bg rounded-md px-2 py-0.5 font-mono text-xs text-(--accent-text)">{{ link.quantity }}×</span>
-            <span class="truncate text-sm text-(--color-text-mid)">{{ link.name }}</span>
+          <!-- header -->
+          <div class="flex items-center gap-3 border-b border-(--color-border-strong) bg-(--color-surface-2)/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+            <span class="w-7" />
+            <span class="flex-1">{{ t('buy.card') }}</span>
+            <span class="w-14 text-right">{{ t('buy.unit') }}</span>
+            <span class="w-10 text-center">{{ t('buy.qty') }}</span>
+            <span class="w-16 text-right">{{ t('buy.lineTotal') }}</span>
+            <span class="w-8" />
           </div>
-          <UButton
-            :to="link.url"
-            target="_blank"
-            icon="i-lucide-external-link"
-            color="neutral"
-            variant="ghost"
-            size="xs"
+          <div
+            v-for="row in buyRows"
+            :key="row.enName"
+            class="flex items-center gap-3 border-b border-(--color-border-subtle) px-4 py-2 transition-colors last:border-0 hover:bg-(--color-surface-2)/40"
           >
-            Cardmarket
-          </UButton>
+            <img
+              v-if="row.thumb"
+              :src="row.thumb"
+              :alt="row.name"
+              loading="lazy"
+              class="h-9 w-7 shrink-0 rounded object-cover ring-1 ring-black/30"
+            >
+            <span
+              v-else
+              class="h-9 w-7 shrink-0 rounded bg-(--color-surface-2)"
+            />
+            <span class="flex-1 truncate text-sm text-(--color-text-high)">{{ row.name }}</span>
+            <span
+              class="w-14 text-right font-mono text-xs"
+              :class="row.unit == null ? 'text-(--color-text-disabled)' : 'text-(--color-text-mid)'"
+            >{{ row.unit == null ? '—' : fmtEur(row.unit) }}</span>
+            <span class="w-10 text-center font-mono text-xs text-(--color-text-muted)">×{{ row.quantity }}</span>
+            <span
+              class="w-16 text-right font-mono text-sm font-semibold"
+              :class="row.lineTotal == null ? 'text-(--color-text-disabled)' : 'text-(--accent-text)'"
+            >{{ row.lineTotal == null ? '—' : fmtEur(row.lineTotal) }}</span>
+            <UButton
+              :to="row.url"
+              target="_blank"
+              icon="i-lucide-external-link"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              class="w-8 shrink-0"
+              :aria-label="`Cardmarket — ${row.name}`"
+            />
+          </div>
         </div>
-      </div>
+        <p class="px-1 font-mono text-[10px] text-(--color-text-muted)">
+          {{ t('buy.priceNote') }}
+        </p>
+      </template>
     </div>
 
     <!-- Import / Export decklist modal (the old text editor) -->
