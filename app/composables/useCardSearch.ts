@@ -175,5 +175,52 @@ export function useCardSearch() {
     }
   }
 
-  return { state, search, loadMore, autocomplete }
+  /**
+   * Load EDHREC "often played with" suggestions for a commander, resolved to
+   * Scryfall cards in the requested language, and display them as results.
+   */
+  async function suggest(commander: string, lang: 'fr' | 'en') {
+    if (!commander)
+      return
+    const tag = `suggest:${commander}`
+    lastQuery = tag
+    state.value.loading = true
+    state.value.error = null
+    try {
+      const { names } = await $fetch<{ names: string[] }>('/api/cards/suggestions', { params: { commander } })
+      if (lastQuery !== tag)
+        return
+      if (!names.length) {
+        state.value = { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
+        return
+      }
+      // Resolve the names to cards (current language) via one Scryfall query.
+      // Cap to Scryfall's friendly limit; keep EDHREC's relevance order client-side.
+      const top = names.slice(0, 40)
+      const q = `(${top.map(n => `!"${n.replace(/"/g, '')}"`).join(' or ')}) lang:${lang}`
+      const res = await $fetch<{ cards: ScryfallCard[] }>('/api/cards/search', {
+        params: { q, order: 'edhrec', dir: 'auto' },
+      })
+      if (lastQuery !== tag)
+        return
+      // Re-order results to match EDHREC ranking.
+      const rank = new Map(top.map((n, i) => [n.toLowerCase(), i]))
+      const cards = [...res.cards].sort(
+        (a, b) => (rank.get(a.name.toLowerCase()) ?? 999) - (rank.get(b.name.toLowerCase()) ?? 999),
+      )
+      state.value.cards = cards
+      state.value.total = cards.length
+      state.value.hasMore = false
+      state.value.page = 1
+    }
+    catch (err: unknown) {
+      state.value.error = err instanceof Error ? err.message : 'erreur'
+      state.value.cards = []
+    }
+    finally {
+      state.value.loading = false
+    }
+  }
+
+  return { state, search, loadMore, autocomplete, suggest }
 }

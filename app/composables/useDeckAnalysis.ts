@@ -8,6 +8,22 @@ export interface TypeStat {
   count: number
 }
 
+export interface ManaCurve {
+  /** Buckets by converted mana cost: index 0..6 = CMC 0..6, index 7 = 7+. */
+  buckets: number[]
+  max: number
+  avg: number
+  /** Number of non-land cards counted. */
+  spells: number
+}
+
+export interface PriceSummary {
+  /** Total EUR across resolved cards (×qty). */
+  total: number
+  /** Cards (×qty) that had no EUR price. */
+  missing: number
+}
+
 const TYPE_DEFS: Array<{ key: string, label: string, icon: string, match: RegExp }> = [
   { key: 'creature', label: 'Créatures', icon: 'i-lucide-paw-print', match: /creature|créature/i },
   { key: 'instant', label: 'Éphémères', icon: 'i-lucide-zap', match: /instant|éphémère|ephemere/i },
@@ -86,5 +102,45 @@ export function useDeckAnalysis() {
     return toManaColors(card.color_identity ?? card.colors)
   }
 
-  return { typeStats, detectCommanderIndex, commanderColors, typeLineOf }
+  /**
+   * Mana curve over NON-LAND cards (lands have no meaningful CMC for a curve).
+   * Buckets 0..6 then a 7+ bucket. Average is computed over the same set.
+   */
+  function manaCurve(cards: ResolvedCard[]): ManaCurve {
+    const buckets = [0, 0, 0, 0, 0, 0, 0, 0]
+    let cmcSum = 0
+    let spells = 0
+    for (const rc of cards) {
+      const tl = typeLineOf(rc.card).toLowerCase()
+      if (!rc.card || tl.includes('land') || tl.includes('terrain'))
+        continue
+      const cmc = Math.max(0, Math.round(rc.card.cmc ?? 0))
+      const idx = Math.min(cmc, 7)
+      buckets[idx] = (buckets[idx] ?? 0) + rc.entry.quantity
+      cmcSum += cmc * rc.entry.quantity
+      spells += rc.entry.quantity
+    }
+    return {
+      buckets,
+      max: Math.max(1, ...buckets),
+      avg: spells ? cmcSum / spells : 0,
+      spells,
+    }
+  }
+
+  /** Total EUR price of the resolved cards (×qty). */
+  function priceSummary(cards: ResolvedCard[]): PriceSummary {
+    let total = 0
+    let missing = 0
+    for (const rc of cards) {
+      const eur = rc.priceEur ?? rc.card?.prices?.eur
+      const n = eur ? Number.parseFloat(eur) : Number.NaN
+      if (Number.isFinite(n))
+        total += n * rc.entry.quantity
+      else missing += rc.entry.quantity
+    }
+    return { total: Math.round(total * 100) / 100, missing }
+  }
+
+  return { typeStats, detectCommanderIndex, commanderColors, typeLineOf, manaCurve, priceSummary }
 }

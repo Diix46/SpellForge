@@ -2,7 +2,7 @@
 import type { CardTypeFilter } from '~/composables/useCardSearch'
 import type { ManaColor } from '~/composables/useManaIdentity'
 import type { ScryfallCard } from '~/composables/useScryfall'
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { emptyFilters, SEARCH_THEMES, useCardSearch } from '~/composables/useCardSearch'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
@@ -12,6 +12,8 @@ const props = defineProps<{
   identity: ManaColor[] | null
   /** Names already in the deck (lowercased) to mark as added. */
   inDeck: Set<string>
+  /** Commander name — enables EDHREC suggestions when set. */
+  commanderName?: string
 }>()
 
 const emit = defineEmits<{
@@ -21,7 +23,15 @@ const emit = defineEmits<{
 
 const { t, isFr, locale } = useLocale()
 const { colorVar } = useManaIdentity()
-const { state, search, loadMore } = useCardSearch()
+const { state, search, loadMore, suggest } = useCardSearch()
+
+const suggestMode = ref(false)
+function showSuggestions() {
+  if (!props.commanderName)
+    return
+  suggestMode.value = true
+  suggest(props.commanderName, locale.value)
+}
 
 const filters = reactive(emptyFilters())
 
@@ -77,6 +87,7 @@ const hasActiveQuery = computed(() =>
 
 let debounce: ReturnType<typeof setTimeout> | null = null
 function runSearch() {
+  suggestMode.value = false
   if (!hasActiveQuery.value) {
     state.value.cards = []
     state.value.total = 0
@@ -170,6 +181,20 @@ const maxCmcModel = computed({
       </button>
     </div>
 
+    <!-- EDHREC suggestions (only when a commander is set) -->
+    <button
+      v-if="commanderName"
+      type="button"
+      class="mb-3 flex items-center justify-center gap-1.5 self-start rounded-full border px-3 py-1 text-xs transition-all"
+      :class="suggestMode
+        ? 'accent-border-c accent-soft-bg text-(--accent-text)'
+        : 'border-(--accent-border) text-(--accent-text) hover:bg-(--accent-soft)'"
+      @click="showSuggestions"
+    >
+      <UIcon name="i-lucide-wand-sparkles" class="h-3.5 w-3.5" />
+      {{ t('build.suggestions') }}
+    </button>
+
     <!-- Filters row -->
     <div class="mb-3 grid grid-cols-2 gap-2">
       <USelect
@@ -217,7 +242,7 @@ const maxCmcModel = computed({
 
     <!-- Results grid (scrollable) -->
     <div class="-mr-2 flex-1 overflow-y-auto pr-2">
-      <p v-if="!hasActiveQuery" class="py-10 text-center text-sm text-(--color-text-muted)">
+      <p v-if="!hasActiveQuery && !suggestMode && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">
         {{ t('build.searchHint') }}
       </p>
       <p v-else-if="!state.loading && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">

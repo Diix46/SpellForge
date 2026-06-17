@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ManaCurve, PriceSummary } from '~/composables/useDeckAnalysis'
 import type { ValidationIssue } from '~/composables/useDeckBuilder'
 import type { DeckEntry } from '~/composables/useDecklist'
 import { computed } from 'vue'
@@ -15,6 +16,8 @@ const props = defineProps<{
   /** name(lower) → color identity letters (for the colour distribution). */
   colorByName?: Map<string, string[]>
   identityLocked: boolean
+  curve?: ManaCurve
+  price?: PriceSummary
 }>()
 
 const emit = defineEmits<{
@@ -154,6 +157,46 @@ function issueText(issue: ValidationIssue): string {
           <span class="font-mono text-[9px] uppercase text-(--color-text-muted)">{{ c }}</span>
         </div>
       </div>
+    </div>
+
+    <!-- Mana curve (non-land spells) -->
+    <div v-if="curve && curve.spells > 0" class="mb-3">
+      <div class="mb-1 flex items-center justify-between font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+        <span>{{ t('build.curve') }}</span>
+        <span>{{ t('build.avgCmc') }} {{ curve.avg.toFixed(1) }}</span>
+      </div>
+      <div class="flex items-end gap-1">
+        <div
+          v-for="(n, i) in curve.buckets"
+          :key="i"
+          class="flex flex-1 flex-col items-center gap-1"
+        >
+          <span class="font-mono text-[10px] text-(--color-text-muted)">{{ n || '' }}</span>
+          <div class="flex h-12 w-full items-end overflow-hidden rounded bg-(--color-surface-2)/50">
+            <div
+              class="w-full rounded transition-all"
+              :style="{
+                height: `${(n / curve.max) * 100}%`,
+                background: 'var(--accent)',
+                minHeight: n ? '3px' : '0',
+              }"
+            />
+          </div>
+          <span class="font-mono text-[9px] text-(--color-text-muted)">{{ i === 7 ? '7+' : i }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total price -->
+    <div
+      v-if="price && price.total > 0"
+      class="mb-3 flex items-center justify-between rounded-[var(--radius-md)] bg-(--color-surface-2)/50 px-3 py-2"
+    >
+      <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">{{ t('build.totalPrice') }}</span>
+      <span class="font-mono text-sm font-semibold text-(--accent-text)">
+        {{ price.total.toFixed(2) }} €
+        <span v-if="price.missing" class="text-[10px] text-(--color-text-muted)">(+{{ price.missing }} ?)</span>
+      </span>
     </div>
 
     <!-- Validation -->

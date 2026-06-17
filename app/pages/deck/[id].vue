@@ -21,7 +21,7 @@ const { fetchCollection } = useScryfall()
 const { exportPdf } = usePdfExport()
 const { linksForResolved, wantsListText, wantsListImportUrl } = useCardmarket()
 const { identity, colorVar, accentStyle } = useManaIdentity()
-const { typeStats, detectCommanderIndex, commanderColors } = useDeckAnalysis()
+const { typeStats, detectCommanderIndex, commanderColors, manaCurve, priceSummary } = useDeckAnalysis()
 const { locale, t } = useLocale()
 const toast = useToast()
 
@@ -276,6 +276,8 @@ const gridCards = computed(() =>
 
 // ---- Stats ----
 const stats = computed(() => typeStats(resolvedCards.value))
+const curve = computed(() => manaCurve(resolvedCards.value))
+const price = computed(() => priceSummary(resolvedCards.value))
 
 // ---- Pagination ----
 const totalPages = computed(() => Math.max(1, Math.ceil(gridCards.value.length / PAGE_SIZE)))
@@ -475,6 +477,7 @@ const tabsUi = {
         <BuilderCardSearchPanel
           :identity="identityLocked ? builderIdentity : null"
           :in-deck="inDeckNames"
+          :commander-name="commander?.card?.name || builder.commanderName.value"
           @add="addSearchCard"
           @details="(c) => openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: c.image_uris?.normal ?? null, backImageUrl: null, lang: c.lang })"
         />
@@ -486,6 +489,8 @@ const tabsUi = {
           :category-by-name="categoryByName"
           :color-by-name="colorByName"
           :identity-locked="identityLocked"
+          :curve="curve"
+          :price="price"
           @set-qty="builderSetQty"
           @remove="builderRemove"
           @set-commander="builderSetCommander"
