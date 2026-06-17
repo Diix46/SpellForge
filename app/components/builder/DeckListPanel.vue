@@ -16,6 +16,8 @@ const props = defineProps<{
   categoryByName?: Map<string, string>
   /** name(lower) → color identity letters (for the colour distribution). */
   colorByName?: Map<string, string[]>
+  /** name(lower) → localized display name (FR printed name when resolved). */
+  displayNameByName?: Map<string, string>
   identityLocked: boolean
   curve?: ManaCurve
   price?: PriceSummary
@@ -27,6 +29,11 @@ const emit = defineEmits<{
   setCommander: [name: string]
   toggleLock: []
 }>()
+
+// Localized display name for an entry, falling back to its raw (English) name.
+function displayNameOf(name: string): string {
+  return props.displayNameByName?.get(name.trim().toLowerCase()) || name
+}
 
 const { t, isFr } = useLocale()
 const { colorVar, colorCode } = useManaIdentity()
@@ -248,7 +255,7 @@ function issueText(issue: ValidationIssue): string {
             </button>
           </div>
 
-          <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-mid)">{{ entry.name }}</span>
+          <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-mid)">{{ displayNameOf(entry.name) }}</span>
 
           <!-- actions -->
           <div class="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">

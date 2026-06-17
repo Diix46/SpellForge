@@ -2,7 +2,7 @@
 import type { CardTypeFilter, SortOrder } from '~/composables/useCardSearch'
 import type { ManaColor } from '~/composables/useMtg'
 import type { ScryfallCard } from '~/composables/useScryfall'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { emptyFilters, SEARCH_THEMES, useCardSearch } from '~/composables/useCardSearch'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
@@ -73,20 +73,34 @@ function toggleTheme(key: string) {
   runSearch()
 }
 
+function toggleCommanderOnly() {
+  filters.commanderOnly = !filters.commanderOnly
+  runSearch()
+}
+
 const hasActiveQuery = computed(() =>
   !!filters.text.trim() || filters.themes.length > 0 || !!filters.type
-  || !!filters.subtype.trim() || filters.maxCmc != null || filters.colors.length > 0,
+  || !!filters.subtype.trim() || filters.maxCmc != null || filters.colors.length > 0
+  || filters.commanderOnly,
 )
 
 let debounce: ReturnType<typeof setTimeout> | null = null
 function runSearch() {
   suggestMode.value = false
   if (!hasActiveQuery.value) {
-    state.value.cards = []
-    state.value.total = 0
+    // No explicit filters → show a sensible default (popular cards in the
+    // commander's identity) instead of an empty panel.
+    runDefaultSearch()
     return
   }
   search(filters, ctx.value)
+}
+
+// Default "browse" results so the panel is never empty: EDHREC-popular cards,
+// constrained to the commander's colour identity + commander-legal.
+function runDefaultSearch() {
+  suggestMode.value = false
+  search({ ...emptyFilters(), commanderOnly: filters.commanderOnly }, ctx.value)
 }
 
 // ---- Name autocomplete (Scryfall /autocomplete) ----
@@ -124,10 +138,20 @@ function debouncedSearch() {
 
 // Re-run when the commander identity or locale changes. Watch a stable string
 // key (not the freshly-allocated ctx object) so equal values don't re-trigger.
+// When no explicit filters are set, refresh the default browse results so they
+// follow the commander's identity / the site locale.
 const ctxKey = computed(() => `${ctx.value.identity?.join('') ?? ''}|${ctx.value.lang}`)
 watch(ctxKey, () => {
   if (hasActiveQuery.value)
     runSearch()
+  else if (!suggestMode.value)
+    runDefaultSearch()
+})
+
+// Show default browse results immediately on mount (don't make the user type).
+onMounted(() => {
+  if (!hasActiveQuery.value && !suggestMode.value)
+    runDefaultSearch()
 })
 
 function cardName(c: ScryfallCard): string {
@@ -256,19 +280,33 @@ const sortModel = computed({
       </button>
     </div>
 
-    <!-- EDHREC suggestions (only when a commander is set) -->
-    <button
-      v-if="commanderName"
-      type="button"
-      class="mb-3 flex items-center justify-center gap-1.5 self-start rounded-full border px-3 py-1 text-xs transition-all"
-      :class="suggestMode
-        ? 'accent-border-c accent-soft-bg text-(--accent-text)'
-        : 'border-(--accent-border) text-(--accent-text) hover:bg-(--accent-soft)'"
-      @click="showSuggestions"
-    >
-      <UIcon name="i-lucide-wand-sparkles" class="h-3.5 w-3.5" />
-      {{ t('build.suggestions') }}
-    </button>
+    <!-- EDHREC suggestions + commanders-only -->
+    <div class="mb-3 flex flex-wrap gap-2">
+      <button
+        v-if="commanderName"
+        type="button"
+        class="flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-all"
+        :class="suggestMode
+          ? 'accent-border-c accent-soft-bg text-(--accent-text)'
+          : 'border-(--accent-border) text-(--accent-text) hover:bg-(--accent-soft)'"
+        @click="showSuggestions"
+      >
+        <UIcon name="i-lucide-wand-sparkles" class="h-3.5 w-3.5" />
+        {{ t('build.suggestions') }}
+      </button>
+      <button
+        type="button"
+        class="flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-all"
+        :class="filters.commanderOnly
+          ? 'accent-border-c accent-soft-bg text-(--accent-text)'
+          : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:text-(--accent-text)'"
+        :aria-pressed="filters.commanderOnly"
+        @click="toggleCommanderOnly"
+      >
+        <UIcon name="i-lucide-crown" class="h-3.5 w-3.5" />
+        {{ t('build.commanderOnly') }}
+      </button>
+    </div>
 
     <!-- Filters row -->
     <div class="mb-3 grid grid-cols-2 gap-2">

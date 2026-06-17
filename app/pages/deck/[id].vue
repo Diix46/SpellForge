@@ -147,6 +147,16 @@ const identityByName = computed(() => {
   }
   return m
 })
+// name(lower) → localized display name (FR printed name when the site is FR).
+const displayNameByName = computed(() => {
+  const m = new Map<string, string>()
+  const isFr = locale.value === 'fr'
+  for (const rc of resolvedCards.value) {
+    if (rc.card)
+      m.set(rc.entry.name.trim().toLowerCase(), displayName(rc.card, isFr))
+  }
+  return m
+})
 
 // Commander identity lock: when on, out-of-identity cards can't be added.
 const identityLocked = ref(true)
@@ -615,6 +625,7 @@ const tabsUi = {
           :validation="validation"
           :category-by-name="categoryByName"
           :color-by-name="identityByName"
+          :display-name-by-name="displayNameByName"
           :identity-locked="identityLocked"
           :curve="curve"
           :price="price"
