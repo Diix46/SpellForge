@@ -110,12 +110,25 @@ CI (`.github/workflows/ci.yml`) runs the same on push/PR to `main` (Node 24, `np
 > **Windows note**: local `npm ci` can fail with `EPERM unlink …*.node` if a dev server / AV holds a
 > native binary. It's local-only; Linux CI is unaffected. Use `npm install` for local dev.
 
+## Backend (auth + cloud decks)
+
+- **DB**: Drizzle ORM + libSQL (`@libsql/client`), file at `.data/spellforge.db` (prebuilt
+  binaries — no native compile; Turso-ready via `DATABASE_URL`/`DATABASE_AUTH_TOKEN`).
+  Schema in `server/db/schema.ts` (`users`, `decks`). Migrations in `server/db/migrations`,
+  applied on startup by `server/plugins/migrate.ts`. `npm run db:generate` / `db:migrate`.
+- **Auth**: `nuxt-auth-utils` (scrypt password hash + sealed-cookie sessions).
+  Routes `server/api/auth/{register,login,logout}.post.ts`; client via `useAuth` (wraps
+  `useUserSession`) + `AuthModal.vue`. Session `user` shape asserted in `server/utils/appUser.ts`.
+- **Cloud decks**: `server/api/decks/*` (list/create/patch/delete, owner-checked via
+  `requireOwnedDeck`). `useDeckStore` is **cloud-aware** — signed-in = API source of truth (optimistic
+  local mirror), guest = localStorage. `plugins/deck-sync.client.ts` migrates guest decks on first
+  login and pulls the cloud set.
+- **Sharing**: `POST /api/decks/:id/share` toggles a public `shareId`; `GET /api/shared/:shareId`
+  is a no-auth read-only view.
+
 ## Roadmap (in progress, autonomous build)
 
-- **Auth + profiles + cloud decks + sharing** — adds a real backend: `nuxt-auth-utils` (cookie
-  sessions) + SQLite (better-sqlite3) + Drizzle. Decks become syncable; localStorage stays the
-  guest/offline fallback. Public share links.
 - **AI deck assistance** — server-side suggestions (complete the deck, balance the curve, propose
-  cuts) surfaced as **actions**, not a chat. Provider key via `.env` (never committed).
+  cuts) surfaced as **actions**, not a chat. `ANTHROPIC_API_KEY` via `.env` (never committed).
 - **Easier buying** — best-effort Cardmarket wants-list / pre-filled cart (true 1-click needs a
   partner API that isn't public).
