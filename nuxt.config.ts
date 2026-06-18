@@ -24,6 +24,15 @@ export default defineNuxtConfig({
     },
   },
 
+  // The app is dark-only by design. Force dark so Nuxt UI's component tokens
+  // (--ui-text, --ui-bg, …) resolve to dark-mode values — otherwise they default
+  // to light mode and every component renders dark text on our dark surfaces.
+  colorMode: {
+    preference: 'dark',
+    fallback: 'dark',
+    classSuffix: '',
+  },
+
   compatibilityDate: '2025-01-15',
 
   // Self-host fonts (no render-blocking @import, works offline).

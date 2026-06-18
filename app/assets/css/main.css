@@ -434,11 +434,10 @@ body {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
   }
-  .tilt,
-  .mote-canvas,
-  .aurora,
   .bob,
-  .fade-up {
+  .fade-up,
+  .stagger-item,
+  .lift {
     transform: none !important;
   }
 }
