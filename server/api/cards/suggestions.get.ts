@@ -10,40 +10,29 @@ interface EdhrecCommander {
   container?: { json_dict?: { cardlists?: Cardlist[] } }
 }
 
-// EDHREC slug: lowercase, strip accents/punct, spaces → hyphens.
+// EDHREC slug: lowercase, strip accents, DROP apostrophes entirely (EDHREC does
+// "Y'shtola, Night's Blessed" → "yshtola-nights-blessed", not "y-shtola-night-s"),
+// then turn any remaining non-alphanumerics into single hyphens.
 function slugify(name: string): string {
   return name
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '') // strip combining diacritics
     .toLowerCase()
+    .replace(/['’]/g, '') // apostrophes vanish, not become separators
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
 
-// Cached 24h per commander: EDHREC updates ~weekly, so day-stale is fine, and
-// it shields us from EDHREC while a user browses several commanders. The key is
-// the normalized slug (so accent/case variants of the same commander share an
-// entry). Empty results (unknown commander) are cached too — that's correct,
-// an unknown commander stays unknown for the window.
-export default defineCachedEventHandler(async (event): Promise<{ names: string[] }> => {
-  const query = getQuery(event)
-  const commander = typeof query.commander === 'string' ? query.commander.trim() : ''
-  if (!commander)
-    return { names: [] }
-
-  const slug = slugify(commander)
+// Fetch + parse EDHREC for a commander slug. THROWS on an empty result so the
+// cache layer never persists it — an empty list almost always means a transient
+// failure (CDN edge / wrong slug), and persisting it would hide a later success
+// for the whole cache window. Successful (non-empty) results ARE cached 24h.
+const fetchSuggestions = defineCachedFunction(async (slug: string): Promise<string[]> => {
   const url = `https://json.edhrec.com/pages/commanders/${slug}.json`
-
-  let data: EdhrecCommander
-  try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
-    if (!res.ok)
-      return { names: [] } // unknown commander on EDHREC → no suggestions
-    data = await res.json() as EdhrecCommander
-  }
-  catch {
-    return { names: [] }
-  }
+  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+  if (!res.ok)
+    throw new Error(`edhrec ${res.status}`)
+  const data = await res.json() as EdhrecCommander
 
   const lists = data.container?.json_dict?.cardlists ?? []
   // Prefer high-synergy + top cards; fall back to the rest.
@@ -69,13 +58,27 @@ export default defineCachedEventHandler(async (event): Promise<{ names: string[]
       break
   }
 
-  return { names }
+  if (!names.length)
+    throw new Error('edhrec empty') // don't cache empties
+  return names
 }, {
   maxAge: 86400,
   name: 'edhrec-suggestions',
-  getKey: (event) => {
-    const q = getQuery(event)
-    const commander = typeof q.commander === 'string' ? q.commander.trim() : ''
-    return slugify(commander)
-  },
+  getKey: (slug: string) => slug,
+})
+
+export default defineEventHandler(async (event): Promise<{ names: string[] }> => {
+  const query = getQuery(event)
+  const commander = typeof query.commander === 'string' ? query.commander.trim() : ''
+  if (!commander)
+    return { names: [] }
+  try {
+    return { names: await fetchSuggestions(slugify(commander)) }
+  }
+  catch (e) {
+    // eslint-disable-next-line no-console
+    console.log(`[suggestions] commander="${commander}" slug="${slugify(commander)}" FAILED:`, e instanceof Error ? e.message : e)
+    // Unknown commander or transient EDHREC failure → empty, NOT cached.
+    return { names: [] }
+  }
 })

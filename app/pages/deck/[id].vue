@@ -311,6 +311,11 @@ const commanderName = computed(() => {
     return commander.value?.entry.name ?? ''
   return displayName(c, locale.value === 'fr')
 })
+// Canonical English commander name — EDHREC only knows English names, so the
+// suggestions lookup must use this, never the localized display name.
+const commanderEnName = computed(() =>
+  commander.value?.card?.name ?? (builder.commanderName.value || commanderName.value),
+)
 const commanderType = computed(() => displayType(commander.value?.card ?? null, locale.value === 'fr'))
 
 // Theme colors: from commander if resolved, else from decklist heuristic, else neutral.
@@ -639,6 +644,7 @@ const tabsUi = {
           :identity="identityLocked ? builderIdentity : null"
           :in-deck="inDeckNames"
           :commander-name="commanderName || builder.commanderName.value"
+          :commander-en-name="commanderEnName"
           @add="addSearchCard"
           @details="openSearchDetail"
         />

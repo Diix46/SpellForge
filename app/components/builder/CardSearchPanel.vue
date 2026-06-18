@@ -13,8 +13,10 @@ const props = defineProps<{
   identity: ManaColor[] | null
   /** Names already in the deck (lowercased) to mark as added. */
   inDeck: Set<string>
-  /** Commander name — enables EDHREC suggestions when set. */
+  /** Commander name (localized) — enables EDHREC suggestions when set. */
   commanderName?: string
+  /** Canonical ENGLISH commander name — used for the EDHREC lookup. */
+  commanderEnName?: string
 }>()
 
 const emit = defineEmits<{
@@ -28,10 +30,13 @@ const { state, search, loadMore, suggest, autocomplete } = useCardSearch()
 
 const suggestMode = ref(false)
 function showSuggestions() {
-  if (!props.commanderName)
+  // EDHREC only knows English names → use the canonical EN name, not the
+  // localized display name (which would slug to an unknown EDHREC page).
+  const name = props.commanderEnName || props.commanderName
+  if (!name)
     return
   suggestMode.value = true
-  suggest(props.commanderName, locale.value)
+  suggest(name, locale.value)
 }
 
 const filters = reactive(emptyFilters())
