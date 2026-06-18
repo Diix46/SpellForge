@@ -27,8 +27,12 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
 
   // Self-host fonts (no render-blocking @import, works offline).
+  // Geist (+ Geist Mono) is the new primary type system (modern-SaaS redesign);
+  // Orbitron/Sora/JetBrains kept during the page-by-page migration.
   fonts: {
     families: [
+      { name: 'Geist', provider: 'google', weights: [400, 500, 600, 700] },
+      { name: 'Geist Mono', provider: 'google', weights: [400, 500] },
       { name: 'Orbitron', provider: 'google', weights: [600, 700, 800] },
       { name: 'Sora', provider: 'google', weights: [300, 400, 500, 600, 700] },
       { name: 'JetBrains Mono', provider: 'google', weights: [400, 500, 600] },

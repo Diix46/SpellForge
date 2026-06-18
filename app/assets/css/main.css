@@ -3,35 +3,40 @@
 
 @theme static {
   /* ============ FONTS (families resolved by @nuxt/fonts) ============ */
-  --font-display: 'Orbitron', 'Sora', ui-sans-serif, system-ui, sans-serif;
-  --font-sans: 'Sora', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+  /* Modern-SaaS redesign: Geist is the primary type system. --font-display now
+     also maps to Geist (heavier weights) — no more Orbitron gadget look. */
+  --font-display: 'Geist', 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Geist', 'Sora', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   /* ============ BACKGROUNDS / SURFACES ============ */
-  --color-bg-base: #07080c;
-  --color-bg-base-2: #0a0c12;
-  --color-surface-1: #0e1118;
-  --color-surface-2: #141926;
-  --color-surface-3: #1b2231;
+  /* Neutral-deep (Linear/Vercel) — near-achromatic, not blue-black. */
+  --color-bg-base: #0a0a0b;
+  --color-bg-base-2: #0e0e10;
+  --color-surface-1: #141416;
+  --color-surface-2: #1a1a1d;
+  --color-surface-3: #222226;
 
   /* ============ INK NEUTRAL RAMP (full 50–950) ============ */
-  --color-ink-50: #ebedf3;
-  --color-ink-100: #d5d9e3;
-  --color-ink-200: #aeb4c6;
-  --color-ink-300: #828aa3;
-  --color-ink-400: #5c6480;
-  --color-ink-500: #3d4459;
-  --color-ink-600: #2a3042;
-  --color-ink-700: #1b2231;
-  --color-ink-800: #141926;
-  --color-ink-900: #0a0c12;
-  --color-ink-950: #07080c;
+  /* Near-achromatic (Linear/Vercel) — only a whisper of cool so it reads as
+     "ink" not pure gray. Feeds Nuxt UI primary/neutral + the text ramp. */
+  --color-ink-50: #f4f4f5;
+  --color-ink-100: #e4e4e7;
+  --color-ink-200: #c8c8cd;
+  --color-ink-300: #9a9aa2;
+  --color-ink-400: #6e6e77;
+  --color-ink-500: #4b4b52;
+  --color-ink-600: #34343a;
+  --color-ink-700: #26262b;
+  --color-ink-800: #1a1a1d;
+  --color-ink-900: #121214;
+  --color-ink-950: #0a0a0b;
 
   /* ============ TEXT ============ */
-  --color-text-high: #f2f5fc;
-  --color-text-mid: #c2c9d6;
-  --color-text-muted: #8a93a6;
-  --color-text-disabled: #7b8499; /* raised for WCAG AA: reused for meaningful placeholder/empty-value text */
+  --color-text-high: #f4f4f5;
+  --color-text-mid: #c8c8cd;
+  --color-text-muted: #8e8e96;
+  --color-text-disabled: #76767e; /* WCAG AA on surface-1/2; placeholder/empty-value text */
   --color-text-on-neon: #06080d;
 
   /* ============ CYAN RAMP (primary) ============ */
@@ -83,16 +88,19 @@
   --accent-c: 168, 178, 196; /* colorless platinum */
 
   /* ============ BORDERS ============ */
+  /* Refined 3-tier hairlines (thin = premium). hairline is the new default. */
+  --color-border-hairline: rgba(255, 255, 255, 0.07);
   --color-border-subtle: rgba(255, 255, 255, 0.12);
-  --color-border-strong: rgba(255, 255, 255, 0.2);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
 
   /* ============ RADII ============ */
-  --radius-xs: 4px;
-  --radius-sm: 8px;
+  /* Slightly larger, softer SaaS corners. */
+  --radius-xs: 5px;
+  --radius-sm: 9px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --radius-xl: 22px;
-  --radius-2xl: 28px;
+  --radius-xl: 20px;
+  --radius-2xl: 26px;
   --radius-full: 9999px;
 
   /* ============ BLUR (glass) ============ */
@@ -101,9 +109,10 @@
   --blur-glass-lg: 24px;
 
   /* ============ ELEVATION + GLOW ============ */
-  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-elev-2: 0 8px 24px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
-  --shadow-elev-3: 0 24px 60px rgba(0, 0, 0, 0.65), 0 8px 20px rgba(0, 0, 0, 0.45);
+  /* Softer, more diffuse SaaS shadows + a top inset hairline for "lit" surfaces. */
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --shadow-elev-2: 0 4px 16px -2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-elev-3: 0 16px 48px -8px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
   --shadow-glow-cyan:
     0 0 0 1px rgba(34, 232, 255, 0.35), 0 0 18px rgba(34, 232, 255, 0.45), 0 0 48px rgba(34, 232, 255, 0.22);
   --shadow-glow-magenta:
@@ -139,21 +148,32 @@
 
   --accent: rgb(var(--accent-rgb));
   --accent-2: rgb(var(--accent-rgb-2));
-  --accent-soft: rgba(var(--accent-rgb), 0.18);
-  --accent-border: rgba(var(--accent-rgb), 0.45);
+  --accent-soft: rgba(var(--accent-rgb), 0.14);
+  --accent-border: rgba(var(--accent-rgb), 0.4);
   --accent-text: rgb(var(--accent-rgb));
-  --accent-glow:
-    0 0 0 1px rgba(var(--accent-rgb), 0.35), 0 0 18px rgba(var(--accent-rgb), 0.42),
-    0 0 48px rgba(var(--accent-rgb), 0.2);
-  --accent-glow-soft: 0 0 16px -4px rgba(var(--accent-rgb), 0.55);
+  /* Restrained glow (SaaS taste): a tight ring + a soft diffuse halo, no triple-stack neon. */
+  --accent-glow: 0 0 0 1px rgba(var(--accent-rgb), 0.3), 0 8px 30px -8px rgba(var(--accent-rgb), 0.45);
+  --accent-glow-soft: 0 0 18px -6px rgba(var(--accent-rgb), 0.5);
   --gradient-accent: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-rgb-2)) 100%);
   --gradient-accent-text: linear-gradient(92deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-rgb-2)) 100%);
+
+  /* ============ MOTION (modern-SaaS micro-interactions) ============ */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* enter */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* exit */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* hover lifts / playful pops */
+  --dur-fast: 0.15s;
+  --dur: 0.22s;
+  --dur-slow: 0.35s;
 }
 html,
 body {
-  background: var(--color-bg-base);
+  /* Subtle accent-driven ambience (re-themes with the deck); far calmer than the old cyan/magenta wash. */
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(var(--accent-rgb), 0.07), transparent 60%), var(--color-bg-base);
+  background-attachment: fixed;
   color: var(--color-text-mid);
   font-family: var(--font-sans);
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -182,29 +202,27 @@ body {
 
 /* ---------------- UTILITY CLASSES ---------------- */
 
-/* Real frosted glass — chrome ONLY (header, modals, console). */
+/* Real frosted glass — chrome ONLY (header, modals, console). Neutral now. */
 .glass {
-  background: rgba(20, 25, 38, 0.55);
-  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(140%);
-  backdrop-filter: blur(var(--blur-glass)) saturate(140%);
+  background: rgba(20, 20, 22, 0.6);
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(130%);
+  backdrop-filter: blur(var(--blur-glass)) saturate(130%);
   border: 1px solid var(--color-border-subtle);
   box-shadow:
     var(--shadow-elev-2),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .glass-strong {
-  background: rgba(20, 25, 38, 0.72);
-  -webkit-backdrop-filter: blur(var(--blur-glass-lg)) saturate(150%);
-  backdrop-filter: blur(var(--blur-glass-lg)) saturate(150%);
+  background: rgba(18, 18, 20, 0.78);
+  -webkit-backdrop-filter: blur(var(--blur-glass-lg)) saturate(140%);
+  backdrop-filter: blur(var(--blur-glass-lg)) saturate(140%);
   border: 1px solid var(--color-border-subtle);
 }
 /* Faux-glass for REPEATED items (deck tiles, preview cards, list rows). */
 .glass-solid {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 40%), var(--color-surface-1);
-  border: 1px solid var(--color-border-subtle);
-  box-shadow:
-    var(--shadow-elev-1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 40%), var(--color-surface-1);
+  border: 1px solid var(--color-border-hairline);
+  box-shadow: var(--shadow-elev-1);
 }
 
 /* Gradient text — DISPLAY/H2+ ONLY. Solid fallback first. Uses dynamic accent. */
@@ -421,7 +439,7 @@ body {
 
 /* Entrance: fade-up (with stagger via inline delay) */
 .fade-up {
-  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-up 0.5s var(--ease-out) both;
 }
 @keyframes fade-up {
   from {
@@ -432,6 +450,25 @@ body {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Staggered entrance for grids/lists — set --stagger-delay per item inline
+   (e.g. :style="{ '--stagger-delay': i * 45 + 'ms' }"). 30–50ms/item per the
+   ui-ux-pro-max animation guidance. */
+.stagger-item {
+  animation: fade-up 0.45s var(--ease-out) both;
+  animation-delay: var(--stagger-delay, 0ms);
+}
+
+/* Spring hover-lift for interactive cards. */
+.lift {
+  transition:
+    transform var(--dur-slow) var(--ease-spring),
+    border-color var(--dur) var(--ease-out),
+    background var(--dur) var(--ease-out);
+}
+.lift:hover {
+  transform: translateY(-4px);
 }
 
 /* ---------------- PAGE TRANSITION ---------------- */

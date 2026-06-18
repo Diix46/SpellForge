@@ -517,7 +517,7 @@ const oracleSegments = computed<Segment[]>(() => {
    Scoped + :deep beats the UButton neutral variant's own background. */
 :deep(.modal-close) {
   color: var(--color-text-high);
-  background: rgba(20, 25, 38, 0.85);
+  background: rgba(26, 26, 29, 0.85);
   box-shadow: inset 0 0 0 1px var(--color-border-strong);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);

@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spellforge — Redesign concept (Dashboard)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SPELLFORGE — Redesign concept v1 "Linear × Vercel × Raycast"
+   Direction: neutral-deep dark, ONE signature accent (violet-electric),
+   mana colors as contextual accents, bento layout, ⌘K palette,
+   spring micro-interactions, staggered entrances.
+   This is a STATIC MOCKUP — fake data, just to validate the direction.
+   ============================================================ */
+:root{
+  /* Neutral-deep surfaces (desaturated, not blue-black) */
+  --bg: #0a0a0b;
+  --bg-2: #0e0e10;
+  --surface: #141416;
+  --surface-2: #1a1a1d;
+  --surface-3: #222226;
+  --border: rgba(255,255,255,.07);
+  --border-2: rgba(255,255,255,.12);
+  --border-3: rgba(255,255,255,.18);
+
+  /* Text ramp */
+  --text-hi: #f4f4f5;
+  --text: #c8c8cd;
+  --text-mid: #8e8e96;
+  --text-dim: #5c5c63;
+
+  /* Signature accent — violet-electric (Linear-ish), calm but alive */
+  --accent: #7c6cff;
+  --accent-2: #9d8cff;
+  --accent-soft: rgba(124,108,255,.14);
+  --accent-border: rgba(124,108,255,.40);
+  --accent-glow: 0 0 0 1px rgba(124,108,255,.30), 0 8px 30px -8px rgba(124,108,255,.45);
+
+  /* Mana accents (contextual) */
+  --w:#e9e2c8; --u:#4fa8e8; --b:#9b87b4; --r:#e85844; --g:#38b883;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --radius-lg: 20px;
+  --ease: cubic-bezier(.22,1,.36,1);
+  --spring: cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(124,108,255,.10), transparent 60%),
+    radial-gradient(900px 500px at 0% 0%, rgba(79,168,232,.05), transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Geist', -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  letter-spacing:-0.01em;
+}
+::selection{background:var(--accent-soft);color:var(--text-hi)}
+
+/* ---------- App shell ---------- */
+.app{display:flex;min-height:100vh}
+
+/* Sidebar */
+.side{
+  width:248px;flex-shrink:0;border-right:1px solid var(--border);
+  padding:18px 14px;display:flex;flex-direction:column;gap:4px;
+  position:sticky;top:0;height:100vh;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:8px 8px 16px}
+.brand svg{flex-shrink:0}
+.brand b{font-weight:600;font-size:15px;color:var(--text-hi);letter-spacing:-.02em}
+.brand b span{color:var(--accent-2)}
+
+.kbar{
+  display:flex;align-items:center;gap:8px;margin:0 4px 14px;
+  padding:8px 10px;border:1px solid var(--border-2);border-radius:var(--radius-sm);
+  color:var(--text-mid);font-size:13px;cursor:pointer;background:var(--surface);
+  transition:border-color .2s var(--ease), background .2s var(--ease);
+}
+.kbar:hover{border-color:var(--border-3);background:var(--surface-2)}
+.kbar .kk{margin-left:auto;display:flex;gap:3px}
+.kbar kbd{
+  font-family:'Geist Mono',monospace;font-size:11px;color:var(--text);
+  background:var(--surface-3);border:1px solid var(--border-2);border-radius:5px;
+  padding:1px 5px;min-width:18px;text-align:center;
+}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);padding:12px 10px 6px;font-weight:500}
+.nav a{
+  display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:var(--radius-sm);
+  color:var(--text-mid);font-size:13.5px;text-decoration:none;font-weight:450;
+  transition:color .15s var(--ease), background .15s var(--ease);position:relative;
+}
+.nav a .ic{width:17px;height:17px;flex-shrink:0;opacity:.8}
+.nav a:hover{color:var(--text-hi);background:var(--surface)}
+.nav a.active{color:var(--text-hi);background:var(--surface-2)}
+.nav a.active::before{content:"";position:absolute;left:-14px;top:50%;transform:translateY(-50%);width:3px;height:18px;background:var(--accent);border-radius:0 3px 3px 0}
+.nav a .count{margin-left:auto;font-size:11px;font-family:'Geist Mono',monospace;color:var(--text-dim);background:var(--surface-2);padding:1px 7px;border-radius:20px}
+
+.side-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--border);}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--u));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#0a0a0b}
+.side-foot .who{font-size:13px;color:var(--text);font-weight:450}
+.side-foot .who small{display:block;color:var(--text-dim);font-size:11px}
+
+/* Main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{
+  height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+  padding:0 28px;gap:16px;position:sticky;top:0;background:rgba(10,10,11,.7);
+  backdrop-filter:blur(12px);z-index:10;
+}
+.crumb{font-size:13px;color:var(--text-mid)}
+.crumb b{color:var(--text-hi);font-weight:500}
+.topbar .seg{margin-left:auto;display:flex;background:var(--surface);border:1px solid var(--border-2);border-radius:8px;padding:2px}
+.topbar .seg button{font:inherit;font-size:12px;color:var(--text-mid);background:none;border:0;padding:5px 12px;border-radius:6px;cursor:pointer;transition:.15s var(--ease)}
+.topbar .seg button.on{background:var(--surface-3);color:var(--text-hi)}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1px solid var(--border-2);background:var(--surface);color:var(--text-mid);display:grid;place-items:center;cursor:pointer;transition:.15s var(--ease)}
+.icon-btn:hover{color:var(--text-hi);border-color:var(--border-3)}
+
+.content{padding:32px 28px 60px;max-width:1180px;width:100%;margin:0 auto}
+
+/* Page head */
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px;gap:20px}
+.page-head h1{font-size:30px;font-weight:600;color:var(--text-hi);margin:0 0 6px;letter-spacing:-.03em}
+.page-head p{margin:0;color:var(--text-mid);font-size:14px}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:13.5px;font-weight:500;
+  padding:9px 15px;border-radius:10px;cursor:pointer;border:1px solid transparent;transition:.18s var(--ease);
+}
+.btn .ic{width:16px;height:16px}
+.btn-primary{background:var(--accent);color:#0a0a0b;box-shadow:var(--accent-glow)}
+.btn-primary:hover{background:var(--accent-2);transform:translateY(-1px)}
+.btn-ghost{background:var(--surface);color:var(--text);border-color:var(--border-2)}
+.btn-ghost:hover{border-color:var(--border-3);color:var(--text-hi);background:var(--surface-2)}
+.head-actions{display:flex;gap:10px}
+
+/* Stat strip */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px}
+.stat{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:16px 18px;transition:.2s var(--ease)}
+.stat:hover{border-color:var(--border-2)}
+.stat .lab{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-dim);font-weight:500;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+.stat .lab .ic{width:14px;height:14px}
+.stat .val{font-size:26px;font-weight:600;color:var(--text-hi);font-family:'Geist Mono',monospace;letter-spacing:-.02em;display:flex;align-items:baseline;gap:7px}
+.stat .val small{font-size:12px;font-weight:500;color:var(--g);font-family:'Geist'}
+
+/* Section title */
+.sec{display:flex;align-items:center;justify-content:space-between;margin:30px 0 14px}
+.sec h2{font-size:15px;font-weight:600;color:var(--text-hi);margin:0;letter-spacing:-.01em}
+.sec a{font-size:12.5px;color:var(--text-mid);text-decoration:none;display:flex;align-items:center;gap:4px}
+.sec a:hover{color:var(--accent-2)}
+
+/* ---------- Bento featured row ---------- */
+.bento{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:26px}
+.feature{
+  border:1px solid var(--border-2);border-radius:var(--radius-lg);padding:24px;
+  background:
+    radial-gradient(420px 220px at 88% 0%, rgba(124,108,255,.16), transparent 62%),
+    var(--surface);
+  position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;min-height:218px;
+}
+.feature::after{content:"";position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 0H40M0 0V40' stroke='rgba(255,255,255,.025)' stroke-width='1'/%3E%3C/svg%3E");pointer-events:none}
+.feature .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--accent-2);background:var(--accent-soft);border:1px solid var(--accent-border);padding:4px 10px;border-radius:20px;width:fit-content;position:relative}
+.feature h3{font-size:23px;font-weight:600;color:var(--text-hi);margin:14px 0 6px;letter-spacing:-.02em;position:relative}
+.feature .meta{display:flex;gap:14px;color:var(--text-mid);font-size:13px;position:relative}
+.feature .meta b{color:var(--text);font-weight:500;font-family:'Geist Mono',monospace}
+.pips{display:flex;gap:5px;margin-top:14px;position:relative}
+.pip{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(255,255,255,.15);position:relative}
+.pip[data-c=w]{background:var(--w)}.pip[data-c=u]{background:var(--u)}.pip[data-c=b]{background:var(--b)}.pip[data-c=r]{background:var(--r)}.pip[data-c=g]{background:var(--g)}
+.feature .cta{position:relative;margin-top:18px;display:flex;gap:10px}
+
+.sidecards{display:flex;flex-direction:column;gap:16px}
+.minicard{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:16px 18px;flex:1;display:flex;flex-direction:column;justify-content:center;transition:.2s var(--ease)}
+.minicard:hover{border-color:var(--border-2)}
+.minicard .t{font-size:12px;color:var(--text-mid);margin-bottom:12px;font-weight:500;display:flex;align-items:center;gap:7px}
+.minicard .t .ic{width:15px;height:15px}
+/* mini mana-curve bars */
+.curve{display:flex;align-items:flex-end;gap:6px;height:46px}
+.curve i{flex:1;background:linear-gradient(to top,var(--accent),var(--accent-2));border-radius:3px 3px 0 0;opacity:.85;min-height:4px;transition:height .5s var(--spring)}
+.ai-row{display:flex;align-items:center;gap:10px;padding:7px 0;color:var(--text);font-size:13px}
+.ai-row .ic{width:15px;height:15px;color:var(--accent-2)}
+.ai-row:hover{color:var(--text-hi)}
+
+/* ---------- Deck grid ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(244px,1fr));gap:16px}
+.deck{
+  border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);
+  padding:18px;cursor:pointer;position:relative;overflow:hidden;
+  transition:transform .35s var(--spring), border-color .25s var(--ease), background .25s var(--ease);
+  opacity:0;transform:translateY(14px);
+}
+.deck.in{opacity:1;transform:none}
+.deck:hover{transform:translateY(-4px);border-color:var(--border-3);background:var(--surface-2)}
+.deck::before{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--dc,var(--accent)),transparent);opacity:0;transition:opacity .3s var(--ease)}
+.deck:hover::before{opacity:.9}
+.deck .top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.deck h4{font-size:15px;font-weight:600;color:var(--text-hi);margin:0;letter-spacing:-.01em;line-height:1.3}
+.deck .dots{color:var(--text-dim);font-size:18px;line-height:1;cursor:pointer;padding:2px 4px;border-radius:6px}
+.deck .dots:hover{color:var(--text);background:var(--surface-3)}
+.deck .sub{font-size:12px;color:var(--text-dim);margin-top:4px;font-family:'Geist Mono',monospace}
+.deck .pips{margin:16px 0}
+.deck .foot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.deck .ct{font-size:13px;color:var(--text);font-family:'Geist Mono',monospace}
+.deck .ct span{color:var(--text-dim)}
+.badge{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:3px 9px;border-radius:6px}
+.badge.edh{color:var(--accent-2);background:var(--accent-soft);border:1px solid var(--accent-border)}
+.badge.import{color:var(--u);background:rgba(79,168,232,.12);border:1px solid rgba(79,168,232,.35)}
+.deck .open{position:absolute;right:16px;bottom:54px;font-size:12px;color:var(--accent-2);opacity:0;transform:translateX(-6px);transition:.25s var(--ease);display:flex;align-items:center;gap:4px;font-weight:500}
+.deck:hover .open{opacity:1;transform:none}
+
+/* new-deck tile */
+.deck.new{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-style:dashed;border-color:var(--border-2);color:var(--text-mid);min-height:196px}
+.deck.new:hover{border-color:var(--accent-border);color:var(--accent-2);background:var(--accent-soft);transform:translateY(-4px)}
+.deck.new .plus{width:42px;height:42px;border-radius:12px;border:1px solid currentColor;display:grid;place-items:center;transition:.3s var(--spring)}
+.deck.new:hover .plus{transform:rotate(90deg) scale(1.05)}
+.deck.new b{font-size:13.5px;font-weight:500}
+
+/* ---------- ⌘K command palette ---------- */
+.scrim{position:fixed;inset:0;background:rgba(6,6,8,.55);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;padding-top:14vh;z-index:50;opacity:0;transition:opacity .2s var(--ease)}
+.scrim.show{display:flex;opacity:1}
+.palette{width:600px;max-width:92vw;background:var(--surface);border:1px solid var(--border-3);border-radius:16px;box-shadow:0 30px 80px -20px rgba(0,0,0,.7), var(--accent-glow);overflow:hidden;transform:translateY(-8px) scale(.98);transition:transform .25s var(--spring)}
+.scrim.show .palette{transform:none}
+.palette .pin{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)}
+.palette .pin .ic{width:18px;height:18px;color:var(--text-mid)}
+.palette .pin input{flex:1;background:none;border:0;outline:none;color:var(--text-hi);font:inherit;font-size:15.5px}
+.palette .pin input::placeholder{color:var(--text-dim)}
+.palette .pin kbd{font-family:'Geist Mono',monospace;font-size:11px;color:var(--text-mid);background:var(--surface-3);border:1px solid var(--border-2);border-radius:5px;padding:2px 6px}
+.palette .grp{padding:8px}
+.palette .grp .gl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-dim);padding:8px 10px 4px;font-weight:500}
+.pitem{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:9px;color:var(--text);font-size:13.5px;cursor:pointer}
+.pitem .ic{width:16px;height:16px;color:var(--text-mid)}
+.pitem .k{margin-left:auto;font-size:11px;color:var(--text-dim);font-family:'Geist Mono',monospace}
+.pitem.sel,.pitem:hover{background:var(--accent-soft);color:var(--text-hi)}
+.pitem.sel .ic,.pitem:hover .ic{color:var(--accent-2)}
+
+/* note banner */
+.note{margin:30px auto 0;max-width:1180px;padding:0 28px}
+.note .box{border:1px dashed var(--border-2);border-radius:12px;padding:14px 18px;color:var(--text-mid);font-size:12.5px;display:flex;gap:10px;align-items:center}
+.note .box b{color:var(--text)}
+
+@media(max-width:980px){.bento{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.side{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 40 40"><path d="M20 3 L34 20 L20 37 L6 20 Z" fill="#7c6cff" opacity=".3" transform="translate(1,1)"/><path d="M20 3 L20 37 L6 20 Z" fill="#9d8cff"/><path d="M20 3 L34 20 L20 37 Z" fill="#7c6cff"/></svg>
+      <b>Spell<span>forge</span></b>
+    </div>
+
+    <div class="kbar" onclick="openPal()">
+      <svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      Rechercher…
+      <span class="kk"><kbd>⌘</kbd><kbd>K</kbd></span>
+    </div>
+
+    <nav class="nav">
+      <a class="active" href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Mes decks<span class="count">7</span></a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>Explorer</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7h-9M14 17H5M17 17a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM7 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>Collection</a>
+      <div class="nav-label">Outils</div>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>Impression proxies</a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M3 12h3m12 0h3"/><circle cx="12" cy="12" r="3.2"/></svg>Assistant IA<span class="count" style="color:var(--accent-2);background:var(--accent-soft)">new</span></a>
+      <a href="#"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M21 21v-2a4 4 0 0 0-3-3.9"/></svg>Partagés</a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="avatar">VP</div>
+      <div class="who">Viktor<small>Pro · cloud sync</small></div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb"><b>Mes decks</b></span>
+      <div class="seg"><button class="on">Grille</button><button>Liste</button></div>
+      <button class="icon-btn" title="Trier"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"/></svg></button>
+      <button class="icon-btn" title="Notifications"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+    </div>
+
+    <div class="content">
+      <!-- page head -->
+      <div class="page-head">
+        <div>
+          <h1>Mes decks</h1>
+          <p>7 decks · 642 cartes · dernière sync il y a 2 min</p>
+        </div>
+        <div class="head-actions">
+          <button class="btn btn-ghost"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Importer</button>
+          <button class="btn btn-primary"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Nouveau deck</button>
+        </div>
+      </div>
+
+      <!-- stat strip -->
+      <div class="stats">
+        <div class="stat"><div class="lab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>Decks</div><div class="val">7</div></div>
+        <div class="stat"><div class="lab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>Cartes</div><div class="val">642</div></div>
+        <div class="stat"><div class="lab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Valeur estimée</div><div class="val">1 284<small>€</small></div></div>
+        <div class="stat"><div class="lab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Prêts à jouer</div><div class="val">4<small>+1</small></div></div>
+      </div>
+
+      <!-- bento featured -->
+      <div class="bento">
+        <div class="feature">
+          <span class="tag">● Récemment ouvert</span>
+          <div>
+            <h3>Atraxa, Superfriends</h3>
+            <div class="meta"><span><b>100</b> cartes</span><span><b>WUBG</b></span><span>maj il y a 2 min</span></div>
+            <div class="pips"><span class="pip" data-c="w"></span><span class="pip" data-c="u"></span><span class="pip" data-c="b"></span><span class="pip" data-c="g"></span></div>
+          </div>
+          <div class="cta">
+            <button class="btn btn-primary"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Continuer</button>
+            <button class="btn btn-ghost">Imprimer</button>
+          </div>
+        </div>
+        <div class="sidecards">
+          <div class="minicard">
+            <div class="t"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Courbe de mana — Atraxa</div>
+            <div class="curve" id="curve"></div>
+          </div>
+          <div class="minicard">
+            <div class="t"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1M3 12h3"/><circle cx="12" cy="12" r="3.2"/></svg>Suggestions IA</div>
+            <div class="ai-row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Compléter le deck (3 cartes)</div>
+            <div class="ai-row"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>Équilibrer la courbe</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- deck grid -->
+      <div class="sec">
+        <h2>Tous les decks</h2>
+        <a href="#">Voir tout <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+
+      <div class="grid" id="grid">
+        <!-- decks injected by JS for the stagger demo -->
+        <div class="deck new" id="newtile">
+          <div class="plus"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div>
+          <b>Nouveau deck</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="box"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-2)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span><b>Maquette de direction</b> — concept "Linear × Vercel × Raycast". Données fictives. Survole les decks (spring + barre néon), passe la souris sur la courbe, et appuie sur <b>⌘K / Ctrl K</b> pour la command palette.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ⌘K PALETTE ============ -->
+<div class="scrim" id="scrim" onclick="if(event.target===this)closePal()">
+  <div class="palette">
+    <div class="pin">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="palq" placeholder="Rechercher une carte, un deck, ou lancer une action…" autocomplete="off">
+      <kbd>esc</kbd>
+    </div>
+    <div class="grp" id="palres">
+      <div class="gl">Actions</div>
+      <div class="pitem sel"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Créer un nouveau deck<span class="k">⌘N</span></div>
+      <div class="pitem"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Importer depuis EDHREC</div>
+      <div class="pitem"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3m0 12v3M5.6 5.6l2.1 2.1M3 12h3"/><circle cx="12" cy="12" r="3.2"/></svg>Demander à l'IA de compléter</div>
+      <div class="gl">Aller à</div>
+      <div class="pitem"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/></svg>Atraxa, Superfriends<span class="k">deck</span></div>
+      <div class="pitem"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/></svg>Krenko Goblins<span class="k">deck</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---- deck data (fake) ----
+const DECKS=[
+  {n:"Atraxa, Superfriends",c:["w","u","b","g"],ct:100,tag:"edh",dc:"#7c6cff",sub:"Commander · WUBG"},
+  {n:"Krenko, Mob Boss",c:["r"],ct:99,tag:"import",dc:"#e85844",sub:"Commander · R"},
+  {n:"Yuriko Ninjas",c:["u","b"],ct:100,tag:"edh",dc:"#4fa8e8",sub:"Commander · UB"},
+  {n:"Selesnya Tokens",c:["w","g"],ct:60,tag:"edh",dc:"#38b883",sub:"Standard · WG"},
+  {n:"Mono-White Lifegain",c:["w"],ct:100,tag:"import",dc:"#e9e2c8",sub:"Commander · W"},
+  {n:"Dimir Control",c:["u","b"],ct:75,tag:"edh",dc:"#9b87b4",sub:"Modern · UB"},
+  {n:"Gruul Aggro",c:["r","g"],ct:60,tag:"import",dc:"#e85844",sub:"Pioneer · RG"},
+];
+const grid=document.getElementById('grid');
+const newtile=document.getElementById('newtile');
+DECKS.forEach(d=>{
+  const el=document.createElement('div');
+  el.className='deck';el.style.setProperty('--dc',d.dc);
+  el.innerHTML=`
+    <div class="top"><h4>${d.n}</h4><span class="dots">⋯</span></div>
+    <div class="sub">${d.sub}</div>
+    <div class="pips">${d.c.map(c=>`<span class="pip" data-c="${c}"></span>`).join('')}</div>
+    <span class="open">Ouvrir <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    <div class="foot"><span class="ct">${d.ct} <span>cartes</span></span><span class="badge ${d.tag}">${d.tag==='edh'?'EDH':'Import'}</span></div>`;
+  grid.insertBefore(el,newtile);
+});
+// staggered entrance (30-50ms/item per ui-ux-pro-max)
+const cards=[...document.querySelectorAll('.deck')];
+cards.forEach((c,i)=>setTimeout(()=>c.classList.add('in'),120+i*45));
+
+// mana curve bars animate in
+const curveData=[2,5,8,7,4,3,2];
+const curve=document.getElementById('curve');
+curve.innerHTML=curveData.map(()=>'<i style="height:4px"></i>').join('');
+setTimeout(()=>{[...curve.children].forEach((b,i)=>b.style.height=(curveData[i]/8*100)+'%')},300);
+
+// ---- ⌘K palette ----
+const scrim=document.getElementById('scrim');
+function openPal(){scrim.classList.add('show');setTimeout(()=>document.getElementById('palq').focus(),60)}
+function closePal(){scrim.classList.remove('show')}
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();scrim.classList.contains('show')?closePal():openPal()}
+  if(e.key==='Escape')closePal();
+});
+</script>
+</body>
+</html>
