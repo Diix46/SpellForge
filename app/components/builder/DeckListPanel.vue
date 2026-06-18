@@ -2,7 +2,7 @@
 import type { ManaCurve, PriceSummary } from '~/composables/useDeckAnalysis'
 import type { ValidationIssue } from '~/composables/useDeckBuilder'
 import type { DeckEntry } from '~/composables/useDecklist'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { CATEGORY_ORDER, categoryLabelKey, WUBRG } from '~/composables/useMtg'
@@ -18,6 +18,8 @@ const props = defineProps<{
   colorByName?: Map<string, string[]>
   /** name(lower) → localized display name (FR printed name when resolved). */
   displayNameByName?: Map<string, string>
+  /** name(lower) → { thumb, image, manaCost } for enriched rows + hover preview. */
+  cardMetaByName?: Map<string, { thumb: string | null, image: string | null, manaCost: string }>
   identityLocked: boolean
   curve?: ManaCurve
   price?: PriceSummary
@@ -33,6 +35,31 @@ const emit = defineEmits<{
 // Localized display name for an entry, falling back to its raw (English) name.
 function displayNameOf(name: string): string {
   return props.displayNameByName?.get(name.trim().toLowerCase()) || name
+}
+function metaOf(name: string) {
+  return props.cardMetaByName?.get(name.trim().toLowerCase())
+}
+// Mana cost → array of symbol tokens (without braces) for the row pips.
+function manaSymbols(name: string): string[] {
+  const cost = metaOf(name)?.manaCost ?? ''
+  return (cost.match(/\{[^}]+\}/g) ?? []).map(s => s.replace(/[{}]/g, ''))
+}
+
+// Shared hover preview (fixed-positioned so it escapes the scroll container).
+const preview = ref<{ src: string, x: number, y: number } | null>(null)
+function showPreview(name: string, e: MouseEvent) {
+  const img = metaOf(name)?.image
+  if (!img)
+    return
+  const row = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  // Place to the LEFT of the panel row; clamp vertically into the viewport.
+  const w = 240
+  const h = w * (88 / 63)
+  const y = Math.min(Math.max(8, row.top + row.height / 2 - h / 2), window.innerHeight - h - 8)
+  preview.value = { src: img, x: row.left - w - 12, y }
+}
+function hidePreview() {
+  preview.value = null
 }
 
 const { t, isFr } = useLocale()
@@ -232,22 +259,35 @@ function issueText(issue: ValidationIssue): string {
         <div
           v-for="entry in group.cards"
           :key="entry.name"
-          class="group flex items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/50"
+          class="group/row relative flex items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/60"
+          @mouseenter="showPreview(entry.name, $event)"
+          @mouseleave="hidePreview"
         >
-          <!-- qty -->
-          <div class="flex items-center gap-0.5">
+          <!-- thumbnail -->
+          <div class="h-9 w-7 shrink-0 overflow-hidden rounded-[3px] bg-(--color-surface-2) ring-1 ring-(--color-border-subtle)">
+            <img
+              v-if="metaOf(entry.name)?.thumb"
+              :src="metaOf(entry.name)!.thumb!"
+              :alt="displayNameOf(entry.name)"
+              loading="lazy"
+              class="h-full w-full object-cover"
+            >
+          </div>
+
+          <!-- qty (compact, becomes steppers on hover) -->
+          <div class="flex shrink-0 items-center">
             <button
               type="button"
-              class="grid h-5 w-5 place-items-center rounded text-(--color-text-muted) hover:bg-(--color-surface-3) hover:text-(--color-text-high)"
+              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) group-hover/row:opacity-100"
               aria-label="-"
               @click="emit('setQty', entry.name, entry.quantity - 1)"
             >
               <UIcon name="i-lucide-minus" class="h-3 w-3" />
             </button>
-            <span class="w-5 text-center font-mono text-xs text-(--color-text-high)">{{ entry.quantity }}</span>
+            <span class="w-4 text-center font-mono text-xs text-(--color-text-high)">{{ entry.quantity }}</span>
             <button
               type="button"
-              class="grid h-5 w-5 place-items-center rounded text-(--color-text-muted) hover:bg-(--color-surface-3) hover:text-(--color-text-high)"
+              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) group-hover/row:opacity-100"
               aria-label="+"
               @click="emit('setQty', entry.name, entry.quantity + 1)"
             >
@@ -255,14 +295,27 @@ function issueText(issue: ValidationIssue): string {
             </button>
           </div>
 
-          <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-mid)">{{ displayNameOf(entry.name) }}</span>
+          <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-high)">{{ displayNameOf(entry.name) }}</span>
 
-          <!-- actions -->
-          <div class="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <!-- mana cost pips -->
+          <span
+            v-if="manaSymbols(entry.name).length"
+            class="flex shrink-0 items-center gap-px transition-opacity group-hover/row:opacity-0"
+          >
+            <ManaSymbol
+              v-for="(s, i) in manaSymbols(entry.name)"
+              :key="i"
+              :sym="s"
+              :size="13"
+            />
+          </span>
+
+          <!-- actions (hover only, overlay the pips) -->
+          <div class="absolute right-1.5 flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
             <button
               v-if="group.key !== 'commander'"
               type="button"
-              class="grid h-5 w-5 place-items-center rounded text-(--color-text-muted) hover:text-(--accent-text)"
+              class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text)"
               :title="t('build.setCommander')"
               @click="emit('setCommander', entry.name)"
             >
@@ -270,7 +323,7 @@ function issueText(issue: ValidationIssue): string {
             </button>
             <button
               type="button"
-              class="grid h-5 w-5 place-items-center rounded text-(--color-text-muted) hover:text-(--color-error)"
+              class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error)"
               aria-label="remove"
               @click="emit('remove', entry.name)"
             >
@@ -280,5 +333,16 @@ function issueText(issue: ValidationIssue): string {
         </div>
       </div>
     </div>
+
+    <!-- Shared hover preview (teleported so the scroll container can't clip it). -->
+    <Teleport to="body">
+      <img
+        v-if="preview"
+        :src="preview.src"
+        alt=""
+        class="pointer-events-none fixed z-[var(--z-tooltip)] w-60 rounded-[var(--radius-lg)] shadow-[var(--shadow-elev-3)] ring-1 ring-(--color-border-strong)"
+        :style="{ left: `${preview.x}px`, top: `${preview.y}px` }"
+      >
+    </Teleport>
   </div>
 </template>

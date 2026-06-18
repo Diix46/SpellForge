@@ -157,6 +157,22 @@ const displayNameByName = computed(() => {
   }
   return m
 })
+// name(lower) → { thumbnail, large image, mana cost } for the enriched deck rows.
+const cardMetaByName = computed(() => {
+  const m = new Map<string, { thumb: string | null, image: string | null, manaCost: string }>()
+  for (const rc of resolvedCards.value) {
+    const c = rc.card
+    if (!c)
+      continue
+    const uris = c.image_uris ?? c.card_faces?.[0]?.image_uris
+    m.set(rc.entry.name.trim().toLowerCase(), {
+      thumb: uris?.small ?? uris?.normal ?? null,
+      image: rc.imageUrl ?? uris?.normal ?? null,
+      manaCost: c.mana_cost ?? c.card_faces?.[0]?.mana_cost ?? '',
+    })
+  }
+  return m
+})
 
 // Commander identity lock: when on, out-of-identity cards can't be added.
 const identityLocked = ref(true)
@@ -626,6 +642,7 @@ const tabsUi = {
           :category-by-name="categoryByName"
           :color-by-name="identityByName"
           :display-name-by-name="displayNameByName"
+          :card-meta-by-name="cardMetaByName"
           :identity-locked="identityLocked"
           :curve="curve"
           :price="price"
