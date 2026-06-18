@@ -95,10 +95,21 @@ export function useDeckStore() {
     const local = loadLocal()
     if (!local.length)
       return
+    // Track which decks actually persisted; only those may be dropped locally.
+    // A failed POST must NOT delete its local copy (that would lose the deck).
+    const remaining: Deck[] = []
     for (const d of local) {
-      await $fetch('/api/decks', { method: 'POST', body: { id: d.id, name: d.name, raw: d.raw, source: d.source } }).catch(() => {})
+      try {
+        await $fetch('/api/decks', { method: 'POST', body: { id: d.id, name: d.name, raw: d.raw, source: d.source } })
+      }
+      catch {
+        remaining.push(d) // keep locally so a later login can retry the migration
+      }
     }
-    localStorage.removeItem(STORAGE_KEY) // migrated — avoid re-importing
+    if (remaining.length)
+      persistLocal(remaining)
+    else
+      localStorage.removeItem(STORAGE_KEY)
     await syncFromCloud()
   }
 

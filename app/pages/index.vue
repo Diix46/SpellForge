@@ -40,12 +40,15 @@ const deleteName = ref('')
 // Uses a watcher (not onMounted) so it also fires when the query changes while
 // the dashboard is already mounted — Vue Router reuses the component otherwise.
 watch(() => route.query, (q) => {
-  if (q.new)
-    showNewDeck.value = true
-  else if (q.import)
-    showImport.value = true
-  if (q.new || q.import)
-    router.replace({ query: {} })
+  if (!q.new && !q.import)
+    return
+  // Exactly one modal at a time (a stray ?new&import or switching while one is
+  // open shouldn't stack them).
+  showNewDeck.value = !!q.new
+  showImport.value = !q.new && !!q.import
+  // Strip ONLY our action params, preserving any other query state.
+  const { new: _new, import: _import, ...rest } = q
+  router.replace({ query: rest })
 }, { immediate: true })
 
 const totalCardsAll = computed(() =>

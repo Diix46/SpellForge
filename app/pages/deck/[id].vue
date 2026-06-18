@@ -49,6 +49,10 @@ const settings = ref<Omit<PdfSettings, 'format'>>({
 
 const resolvedCards = ref<ResolvedCard[]>([])
 const fetching = ref(false)
+// Monotonic token: each loadCards() call claims the next value. A slower,
+// superseded resolve (e.g. deck A still in-flight when we switch to B) checks
+// its token before committing, so it can't clobber the current deck's cards.
+let loadToken = 0
 const fetchProgress = ref({ loaded: 0, total: 0 })
 const exporting = ref<PageFormat | null>(null)
 const exportProgress = ref({ loaded: 0, total: 0, phase: '' })
@@ -224,12 +228,26 @@ function builderRemove(name: string) {
   builderOp(() => builder.removeCard(name))
 }
 
+// Resolved cards indexed by lowercased name for O(1) lookups. Keyed by BOTH the
+// original entry name (what the user typed, possibly French) and the canonical
+// English card name, so a lookup by either resolves. Built once per resolve
+// instead of re-scanning resolvedCards on every entry (was O(n²)).
+const resolvedByName = computed(() => {
+  const map = new Map<string, ResolvedCard>()
+  for (const rc of resolvedCards.value) {
+    map.set(rc.entry.name.trim().toLowerCase(), rc)
+    if (rc.card?.name)
+      map.set(rc.card.name.trim().toLowerCase(), rc)
+  }
+  return map
+})
+function resolvedFor(name: string): ResolvedCard | undefined {
+  return resolvedByName.value.get(name.trim().toLowerCase())
+}
+
 // ---- AI assistance ----
 // English card names sent to the AI (prefers the resolved canonical name).
-const aiCardNames = computed(() => builder.entries.value.map((e) => {
-  const rc = resolvedCards.value.find(r => r.entry.name.trim().toLowerCase() === e.name.trim().toLowerCase())
-  return rc?.card?.name ?? e.name
-}))
+const aiCardNames = computed(() => builder.entries.value.map(e => resolvedFor(e.name)?.card?.name ?? e.name))
 // AI add-by-name: the model already respects the colour identity, so add directly.
 function aiAdd(name: string) {
   builderOp(() => builder.addCard(name))
@@ -239,9 +257,8 @@ function aiAdd(name: string) {
 // and the resolved-card override in sync so theme/featured/validation all agree.
 function chooseCommander(name: string) {
   builderOp(() => builder.setCommander(name))
-  const n = name.trim().toLowerCase()
-  const idx = resolvedCards.value.findIndex(rc => (rc.card?.name ?? rc.entry.name).trim().toLowerCase() === n)
-  commanderOverride.value = idx // -1 falls back to auto-detection until resolved
+  const rc = resolvedFor(name)
+  commanderOverride.value = rc ? resolvedCards.value.indexOf(rc) : -1 // -1 = auto-detect until resolved
   page.value = 1
 }
 
@@ -265,15 +282,50 @@ function openSearchDetail(c: ScryfallCard) {
 // Open the detail modal for a deck-list row (clicked by name). Uses the resolved
 // card when available, else a minimal entry so the modal still opens.
 function openDeckEntryDetail(name: string) {
-  const n = name.trim().toLowerCase()
-  const rc = resolvedCards.value.find(c => (c.card?.name ?? c.entry.name).trim().toLowerCase() === n)
+  const rc = resolvedFor(name)
   openDetail(rc ?? { entry: { quantity: 1, name }, card: null, imageUrl: null, backImageUrl: null, lang: lang.value })
+}
+
+// Debounced autosave. The pending write is bound to the deck that was being
+// edited (captured at schedule time), NOT to whatever deck the route points at
+// when the timer fires — otherwise switching A→B mid-debounce would save A's
+// last edits into B. `pendingSave` holds the captured id + content.
+let saveTimer: ReturnType<typeof setTimeout> | null = null
+let pendingSave: { id: string, raw: string, name: string } | null = null
+function flushSave() {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+  if (pendingSave) {
+    const { id, raw, name } = pendingSave
+    pendingSave = null
+    if (getDeck(id))
+      updateDeck(id, { raw, name })
+  }
+}
+function scheduleSave() {
+  const id = deckId.value
+  const raw = rawDecklist.value
+  const name = deckName.value
+  // initDeck assigns the loaded deck into these refs, which trips this watcher.
+  // Skip when nothing actually changed so opening a deck doesn't POST a no-op.
+  const current = getDeck(id)
+  if (current && current.raw === raw && current.name === name)
+    return
+  pendingSave = { id, raw, name }
+  if (saveTimer)
+    clearTimeout(saveTimer)
+  saveTimer = setTimeout(flushSave, 600)
 }
 
 // Init / re-init per deck. Vue Router REUSES this component when only the
 // :id param changes, so a watch (not onMounted) is required — otherwise
 // navigating deck A→B would leave A's state in place and autosave A into B.
 function initDeck(id: string) {
+  // Persist any edits to the deck we're leaving BEFORE we overwrite the refs
+  // below; otherwise a fast A→B switch drops A's last (still-debounced) changes.
+  flushSave()
   const d = getDeck(id)
   if (!d) {
     // Only redirect once the store has finished loading. For a signed-in user
@@ -308,26 +360,13 @@ function initDeck(id: string) {
 // finally materializes (or redirect if it truly doesn't exist).
 watch([deckId, storeReady], ([id]) => initDeck(id), { immediate: true })
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null
-function scheduleSave() {
-  if (saveTimer)
-    clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    if (!deck.value)
-      return
-    updateDeck(deckId.value, { raw: rawDecklist.value, name: deckName.value })
-  }, 600)
-}
+// Schedule a save whenever the user edits the name or list. Skips the
+// programmatic resets done by initDeck (those set pendingSave to the value we
+// just loaded, which flushSave then no-ops as an identical write — harmless).
 watch([rawDecklist, deckName], scheduleSave)
 
-// Flush any pending save and drop the timer when leaving the page.
-onBeforeUnmount(() => {
-  if (saveTimer) {
-    clearTimeout(saveTimer)
-    if (deck.value)
-      updateDeck(deckId.value, { raw: rawDecklist.value, name: deckName.value })
-  }
-})
+// Flush any pending save when leaving the page entirely.
+onBeforeUnmount(flushSave)
 
 const parsed = computed(() => rawDecklist.value.trim() ? parse(rawDecklist.value) : null)
 const allEntries = computed(() => parsed.value ? [...parsed.value.mainboard, ...parsed.value.sideboard] : [])
@@ -424,15 +463,25 @@ watch(filteredGridCards, () => {
 })
 
 async function loadCards(opts: { silent?: boolean } = {}) {
-  if (cardCount.value === 0 || fetching.value)
+  if (cardCount.value === 0)
     return
+  // Claim this resolve and snapshot the inputs. Don't bail when another resolve
+  // is running — supersede it: the older one's token is now stale and its result
+  // will be discarded below, so switching decks mid-resolve still loads the new one.
+  const token = ++loadToken
+  const entries = allEntries.value
+  const reqLang = lang.value
   fetching.value = true
   fetchProgress.value = { loaded: 0, total: cardCount.value }
   page.value = 1
   try {
-    resolvedCards.value = await fetchCollection(allEntries.value, lang.value, (p) => {
-      fetchProgress.value = p
+    const result = await fetchCollection(entries, reqLang, (p) => {
+      if (token === loadToken)
+        fetchProgress.value = p
     })
+    if (token !== loadToken)
+      return // superseded by a newer load (deck switched) — drop these cards
+    resolvedCards.value = result
     resolvedDirty.value = false
     if (opts.silent)
       return
@@ -447,10 +496,14 @@ async function loadCards(opts: { silent?: boolean } = {}) {
     })
   }
   catch (err: unknown) {
+    if (token !== loadToken)
+      return // a stale resolve failing must not surface an error for the new deck
     toast.add({ title: t('toast.loadError'), description: errMessage(err), color: 'error' })
   }
   finally {
-    fetching.value = false
+    // Only the current (winning) resolve may clear the in-flight flag.
+    if (token === loadToken)
+      fetching.value = false
   }
 }
 
@@ -589,8 +642,15 @@ function openAllCardmarket() {
   }
 }
 
+// Decklist entries with English names for Cardmarket (which matches by English
+// name only). Prefers the resolved canonical name; falls back to the typed name
+// when a card isn't resolved yet (e.g. a French entry the user hasn't loaded).
+const enEntries = computed(() =>
+  allEntries.value.map(e => ({ ...e, name: resolvedFor(e.name)?.card?.name ?? e.name })),
+)
+
 function copyWantsList() {
-  navigator.clipboard.writeText(wantsListText(allEntries.value))
+  navigator.clipboard.writeText(wantsListText(enEntries.value))
   toast.add({
     title: t('toast.listCopied'),
     description: t('toast.listCopiedDesc'),
@@ -603,7 +663,7 @@ function copyWantsList() {
 // clipboard, then open Cardmarket's wants-list import page — the user pastes once
 // and Cardmarket builds the buyable list (closest to 1-click without a partner API).
 function buyWholeDeck() {
-  navigator.clipboard.writeText(wantsListText(allEntries.value)).catch(() => {})
+  navigator.clipboard.writeText(wantsListText(enEntries.value)).catch(() => {})
   window.open(wantsListImportUrl(buyLang.value), '_blank')
   toast.add({
     title: t('buy.wantsCopiedTitle'),
