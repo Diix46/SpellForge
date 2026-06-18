@@ -220,19 +220,19 @@ export function useScryfall() {
       const byName = new Map<string, ScryfallCard>()
       try {
         const q = `(${chunk.map(n => `!"${n.replace(/"/g, '')}"`).join(' or ')}) lang:fr`
-        const url = `${SCRYFALL_BASE}/cards/search?q=${encodeURIComponent(q)}&order=released&dir=desc&unique=prints`
-        const res = await fetch(url)
-        if (res.ok) {
-          const data = await res.json()
-          for (const c of (data.data ?? []) as ScryfallCard[]) {
-            if (!hasRealImage(c))
-              continue
-            const key = c.name.toLowerCase()
-            const existing = byName.get(key)
-            // Prefer the highest-quality scan, matching searchFrenchByName.
-            if (!existing || (c.image_status === 'highres_scan' && existing.image_status !== 'highres_scan'))
-              byName.set(key, c)
-          }
+        // Cached Nitro search route (SWR) instead of a direct Scryfall hit — the
+        // FR by-name pre-pass is now instant on repeat opens.
+        const data = await $fetch<{ cards?: ScryfallCard[] }>('/api/cards/search', {
+          params: { q, order: 'released', dir: 'desc', unique: 'prints' },
+        })
+        for (const c of (data.cards ?? []) as ScryfallCard[]) {
+          if (!hasRealImage(c))
+            continue
+          const key = c.name.toLowerCase()
+          const existing = byName.get(key)
+          // Prefer the highest-quality scan, matching searchFrenchByName.
+          if (!existing || (c.image_status === 'highres_scan' && existing.image_status !== 'highres_scan'))
+            byName.set(key, c)
         }
       }
       catch {
@@ -301,14 +301,12 @@ export function useScryfall() {
       let requestError: string | null = null
 
       try {
-        const res = await fetch(`${SCRYFALL_BASE}/cards/collection`, {
+        // Our cached Nitro proxy (SWR) — repeat deck opens are instant instead
+        // of re-hitting Scryfall's slow collection endpoint every time.
+        const data = await $fetch<{ data?: ScryfallCard[] }>('/api/cards/collection', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifiers }),
+          body: { identifiers },
         })
-        if (!res.ok)
-          throw new Error(`Scryfall ${res.status}`)
-        const data = await res.json()
         foundCards = data.data ?? []
       }
       catch (err) {

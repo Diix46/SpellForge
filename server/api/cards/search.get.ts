@@ -73,12 +73,15 @@ export default defineCachedEventHandler(async (event): Promise<SearchResult> => 
   const page = typeof query.page === 'string' ? Math.max(1, Number.parseInt(query.page) || 1) : 1
   const order = typeof query.order === 'string' ? query.order : 'edhrec'
   const dir = typeof query.dir === 'string' ? query.dir : 'auto'
+  // `unique` defaults to 'cards' (de-duped pool for browsing); callers resolving
+  // a specific FR printing pass unique=prints. Whitelisted to keep the cache key safe.
+  const unique = query.unique === 'prints' ? 'prints' : 'cards'
 
   if (!q) {
     return { total: 0, hasMore: false, cards: [] }
   }
 
-  const url = `${SCRYFALL}?q=${encodeURIComponent(q)}&order=${encodeURIComponent(order)}&dir=${encodeURIComponent(dir)}&page=${page}&unique=cards`
+  const url = `${SCRYFALL}?q=${encodeURIComponent(q)}&order=${encodeURIComponent(order)}&dir=${encodeURIComponent(dir)}&page=${page}&unique=${unique}`
 
   const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
 
@@ -119,6 +122,7 @@ export default defineCachedEventHandler(async (event): Promise<SearchResult> => 
     const page = typeof q.page === 'string' ? Math.max(1, Number.parseInt(q.page) || 1) : 1
     const order = typeof q.order === 'string' ? q.order : 'edhrec'
     const dir = typeof q.dir === 'string' ? q.dir : 'auto'
-    return `${order}:${dir}:${page}:${text}`
+    const unique = q.unique === 'prints' ? 'prints' : 'cards'
+    return `${order}:${dir}:${unique}:${page}:${text}`
   },
 })
