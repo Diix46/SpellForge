@@ -622,7 +622,7 @@ const tabItems = computed(() => [
 const tabsUi = {
   list: 'glass-solid rounded-[var(--radius-lg)] p-1',
   indicator: 'accent-soft-bg rounded-[var(--radius-md)] shadow-[var(--accent-glow-soft)]',
-  trigger: 'data-[state=active]:text-(--accent-text) text-(--color-text-muted) font-medium',
+  trigger: 'data-[state=active]:text-(--accent-text) text-(--color-text-mid) font-medium',
 }
 </script>
 

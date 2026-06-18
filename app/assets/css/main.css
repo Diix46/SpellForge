@@ -36,7 +36,7 @@
   --color-text-high: #f4f4f5;
   --color-text-mid: #c8c8cd;
   --color-text-muted: #8e8e96;
-  --color-text-disabled: #76767e; /* WCAG AA on surface-1/2; placeholder/empty-value text */
+  --color-text-disabled: #8a8a92; /* WCAG AA on surface-1/2 (5.0:1+); meta/placeholder text */
   --color-text-on-neon: #06080d;
 
   /* ============ CYAN RAMP (primary) ============ */
@@ -424,6 +424,28 @@ body {
 }
 .accent-border-c {
   border-color: var(--accent-border);
+}
+
+/* ---------------- PRIMARY BUTTON = MANA ACCENT ----------------
+   Nuxt UI's `primary` maps to the neutral `ink` ramp, whose solid fill is a
+   mid-gray (ink-400) — dark button text on it fails WCAG AA (~3.7:1). Primary
+   CTAs should be the bright, dynamic mana accent anyway, so re-skin the solid
+   primary button to the accent gradient with guaranteed-dark legible text
+   (accent is always light → ~9:1). Variants (ghost/subtle/outline) untouched. */
+button.bg-primary,
+a.bg-primary {
+  background: var(--gradient-accent) !important;
+  color: var(--color-text-on-neon) !important;
+}
+button.bg-primary:hover,
+a.bg-primary:hover {
+  filter: brightness(1.08);
+}
+
+/* Inactive tab labels: Nuxt UI's default text-muted (~3.6:1 on our dark glass)
+   fails AA. Lift inactive triggers to text-mid; active stays accent-driven. */
+[role='tab'][data-state='inactive'] {
+  color: var(--color-text-mid) !important;
 }
 
 /* ---------------- REDUCED MOTION ---------------- */
