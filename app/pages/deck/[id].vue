@@ -222,6 +222,18 @@ function builderSetQty(name: string, qty: number) {
 function builderRemove(name: string) {
   builderOp(() => builder.removeCard(name))
 }
+
+// ---- AI assistance ----
+// English card names sent to the AI (prefers the resolved canonical name).
+const aiCardNames = computed(() => builder.entries.value.map((e) => {
+  const rc = resolvedCards.value.find(r => r.entry.name.trim().toLowerCase() === e.name.trim().toLowerCase())
+  return rc?.card?.name ?? e.name
+}))
+// AI add-by-name: the model already respects the colour identity, so add directly.
+function aiAdd(name: string) {
+  builderOp(() => builder.addCard(name))
+  toast.add({ title: t('toast.added'), description: name, color: 'success', icon: 'i-lucide-plus' })
+}
 // Single entry point for picking a commander: keep the builder's commander name
 // and the resolved-card override in sync so theme/featured/validation all agree.
 function chooseCommander(name: string) {
@@ -683,24 +695,34 @@ const tabsUi = {
           @add="addSearchCard"
           @details="openSearchDetail"
         />
-        <BuilderDeckListPanel
-          :entries="builder.entries.value"
-          :total="builder.totalCards.value"
-          :commander-name="commanderName || builder.commanderName.value"
-          :validation="validation"
-          :category-by-name="categoryByName"
-          :color-by-name="identityByName"
-          :display-name-by-name="displayNameByName"
-          :card-meta-by-name="cardMetaByName"
-          :identity-locked="identityLocked"
-          :curve="curve"
-          :price="price"
-          @set-qty="builderSetQty"
-          @remove="builderRemove"
-          @set-commander="chooseCommander"
-          @toggle-lock="identityLocked = !identityLocked"
-          @details="openDeckEntryDetail"
-        />
+        <div class="space-y-6">
+          <BuilderDeckListPanel
+            :entries="builder.entries.value"
+            :total="builder.totalCards.value"
+            :commander-name="commanderName || builder.commanderName.value"
+            :validation="validation"
+            :category-by-name="categoryByName"
+            :color-by-name="identityByName"
+            :display-name-by-name="displayNameByName"
+            :card-meta-by-name="cardMetaByName"
+            :identity-locked="identityLocked"
+            :curve="curve"
+            :price="price"
+            @set-qty="builderSetQty"
+            @remove="builderRemove"
+            @set-commander="chooseCommander"
+            @toggle-lock="identityLocked = !identityLocked"
+            @details="openDeckEntryDetail"
+          />
+          <BuilderAiAssistPanel
+            :commander="commanderEnName"
+            :identity="builderIdentity ?? undefined"
+            :cards="aiCardNames"
+            :in-deck="inDeckNames"
+            @add="aiAdd"
+            @remove="builderRemove"
+          />
+        </div>
       </div>
     </div>
 
