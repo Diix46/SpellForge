@@ -1,9 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: [
-    '@nuxt/ui',
-    '@nuxt/fonts',
-  ],
+  modules: ['@nuxt/ui', '@nuxt/fonts', 'nuxt-auth-utils'],
 
   // This is a client-side, localStorage-driven app (deck manager + proxy printer).
   // Disable SSR to avoid hydration mismatches from client-only persisted state.
