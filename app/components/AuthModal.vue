@@ -58,14 +58,13 @@ async function submit() {
     :title="mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')"
     :ui="{
       overlay: 'bg-ink-950/75 backdrop-blur-[8px]',
-      // The brand cyan drives every derived accent inside this modal.
       content: 'auth-modal w-[calc(100vw-2rem)] sm:max-w-[26rem]',
       header: 'sr-only',
       body: 'p-0 sm:p-0',
     }"
   >
     <template #body>
-      <!-- Animated cyan neon border wraps the whole panel -->
+      <!-- Animated accent neon border wraps the whole panel -->
       <div class="auth-ring relative overflow-hidden rounded-[var(--radius-2xl)]">
         <button
           type="button"
@@ -203,11 +202,11 @@ async function submit() {
 </template>
 
 <style scoped>
-/* Scope the whole modal to the brand cyan so every derived accent glows cyan. */
+/* The modal inherits the app accent (neutral platinum by default; the dynamic
+   mana accent if ever scoped). All glows/focus below derive from --accent-*. */
 .auth-ring {
-  --accent-rgb: 34, 232, 255;
-  --accent-rgb-2: 125, 238, 255;
-  background: radial-gradient(120% 80% at 50% -10%, rgba(34, 232, 255, 0.12), transparent 60%), var(--color-surface-1);
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgba(var(--accent-rgb), 0.1), transparent 60%), var(--color-surface-1);
 }
 
 /* Close button: subtle by default, cyan on hover, top-right over the header. */
@@ -229,14 +228,14 @@ async function submit() {
     box-shadow 0.2s ease;
 }
 .auth-close:hover {
-  color: #22e8ff;
-  background: rgba(34, 232, 255, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(34, 232, 255, 0.4);
+  color: var(--accent-text);
+  background: rgba(var(--accent-rgb), 0.12);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.4);
 }
 
 /* Header band: a touch lighter, with a hairline gradient seam at the bottom. */
 .auth-head {
-  background: linear-gradient(180deg, rgba(34, 232, 255, 0.06), transparent 90%);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.06), transparent 90%);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 .auth-head::after {
@@ -244,16 +243,22 @@ async function submit() {
   position: absolute;
   inset: auto 0 -1px 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(34, 232, 255, 0.7), rgba(125, 238, 255, 0.5), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--accent-rgb), 0.7),
+    rgba(var(--accent-rgb-2), 0.5),
+    transparent
+  );
 }
 
 /* Drifting mana motes in the header for atmosphere. */
 .mote {
   position: absolute;
   border-radius: var(--radius-full);
-  background: rgba(34, 232, 255, 0.55);
+  background: rgba(var(--accent-rgb), 0.55);
   filter: blur(1px);
-  box-shadow: 0 0 10px rgba(34, 232, 255, 0.6);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.6);
   pointer-events: none;
 }
 .mote-1 {
@@ -294,10 +299,10 @@ async function submit() {
   position: absolute;
   inset: 4px 50% 4px 4px;
   border-radius: calc(var(--radius-lg) - 4px);
-  background: rgba(34, 232, 255, 0.16);
+  background: rgba(var(--accent-rgb), 0.16);
   box-shadow:
-    inset 0 0 0 1px rgba(34, 232, 255, 0.45),
-    0 0 16px -4px rgba(34, 232, 255, 0.7);
+    inset 0 0 0 1px rgba(var(--accent-rgb), 0.45),
+    0 0 16px -4px rgba(var(--accent-rgb), 0.7);
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .seg-thumb--right {
@@ -315,7 +320,7 @@ async function submit() {
   transition: color 0.25s ease;
 }
 .seg-btn--on {
-  color: #22e8ff;
+  color: var(--accent-text);
 }
 .seg-btn--off {
   color: var(--color-text-muted);
@@ -360,14 +365,14 @@ async function submit() {
 }
 .field-input:focus {
   outline: none;
-  border-color: rgba(34, 232, 255, 0.6);
+  border-color: rgba(var(--accent-rgb), 0.6);
   background: var(--color-surface-3);
   box-shadow:
-    0 0 0 3px rgba(34, 232, 255, 0.15),
-    0 0 18px -6px rgba(34, 232, 255, 0.8);
+    0 0 0 3px rgba(var(--accent-rgb), 0.15),
+    0 0 18px -6px rgba(var(--accent-rgb), 0.8);
 }
 .field:focus-within .field-icon {
-  color: #22e8ff;
+  color: var(--accent-text);
 }
 .field-eye {
   position: absolute;
@@ -399,9 +404,9 @@ async function submit() {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.4px;
-  color: #06080d;
-  background: linear-gradient(135deg, #7deeff 0%, #22e8ff 55%, #06c7e6 100%);
-  box-shadow: 0 0 22px -6px rgba(34, 232, 255, 0.85);
+  color: var(--color-text-on-neon);
+  background: var(--gradient-accent);
+  box-shadow: 0 0 22px -8px rgba(var(--accent-rgb), 0.8);
   transition:
     transform 0.15s ease,
     box-shadow 0.2s ease,
@@ -409,7 +414,7 @@ async function submit() {
 }
 .cta:hover:not(:disabled) {
   filter: brightness(1.08);
-  box-shadow: 0 0 30px -4px rgba(34, 232, 255, 0.95);
+  box-shadow: 0 0 30px -4px rgba(var(--accent-rgb), 0.95);
 }
 .cta:active:not(:disabled) {
   transform: translateY(1px);
