@@ -97,6 +97,9 @@ function backImage(card: ScryfallCard, quality: 'normal' | 'large' | 'png' = 'la
 // Simple per-session cache keyed by `${set}/${number}/${lang}` and by name.
 const cardCache = new Map<string, ScryfallCard | null>()
 const frByNameCache = new Map<string, ScryfallCard | null>()
+// Names whose bulk FR lookup is currently in flight — prevents duplicate
+// network requests when bulkPrefetchFrench runs concurrently for the same cards.
+const frInFlight = new Set<string>()
 
 const FR_CONCURRENCY = 8
 // Names per bulk French search. Scryfall query strings are URL-length bound
@@ -194,12 +197,23 @@ export function useScryfall() {
   // single-name path, so correctness is identical — only the round-trip count
   // drops from O(N) to O(N/40).
   async function bulkPrefetchFrench(names: string[]): Promise<void> {
-    // Only names we haven't already resolved (or pre-resolved) this session.
+    // Only names not already resolved AND not already being fetched by a
+    // concurrent call (skip in-flight to avoid duplicate network requests).
     const pending = [...new Set(names.map(n => n.trim()).filter(Boolean))]
-      .filter(n => !frByNameCache.has(n.toLowerCase()))
+      .filter(n => !frByNameCache.has(n.toLowerCase()) && !frInFlight.has(n.toLowerCase()))
     if (!pending.length)
       return
+    for (const n of pending) frInFlight.add(n.toLowerCase())
 
+    try {
+      await runBulkChunks(pending)
+    }
+    finally {
+      for (const n of pending) frInFlight.delete(n.toLowerCase())
+    }
+  }
+
+  async function runBulkChunks(pending: string[]): Promise<void> {
     for (let i = 0; i < pending.length; i += FR_BULK_CHUNK) {
       const chunk = pending.slice(i, i + FR_BULK_CHUNK)
       // Group the chunk's best FR printing by lowercased name.

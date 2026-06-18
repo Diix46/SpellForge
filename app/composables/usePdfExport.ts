@@ -75,7 +75,8 @@ async function loadImageAsDataUrl(url: string): Promise<ImageData | null> {
     cacheImage(url, result)
     return result
   }
-  catch {
+  catch (err) {
+    console.warn(`[pdf] image load failed: ${url}`, err)
     cacheImage(url, null)
     return null
   }

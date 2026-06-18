@@ -130,12 +130,18 @@ export function useCardSearch() {
 
   let lastQuery = ''
   let lastOrder: SortOrder = 'edhrec'
+  // Monotonic request id: only the most recently STARTED request may write state.
+  // (Query-string identity can't disambiguate two in-flight requests for the
+  // same query, so a slow earlier response could overwrite a fast newer one.)
+  let seq = 0
 
   async function run(query: string, page = 1, append = false, order: SortOrder = 'edhrec') {
     if (!query) {
+      seq++ // invalidate any in-flight request
       state.value = { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
       return
     }
+    const reqId = ++seq
     lastQuery = query
     lastOrder = order
     state.value.loading = true
@@ -144,8 +150,8 @@ export function useCardSearch() {
       const res = await $fetch<{ total: number, hasMore: boolean, cards: ScryfallCard[] }>('/api/cards/search', {
         params: { q: query, page, order, dir: 'auto' },
       })
-      // Ignore out-of-order responses (a newer search superseded this one).
-      if (query !== lastQuery)
+      // Ignore out-of-order responses (a newer request superseded this one).
+      if (reqId !== seq)
         return
       state.value.total = res.total
       state.value.hasMore = res.hasMore
@@ -153,12 +159,15 @@ export function useCardSearch() {
       state.value.cards = append ? [...state.value.cards, ...res.cards] : res.cards
     }
     catch (err: unknown) {
+      if (reqId !== seq)
+        return
       state.value.error = err instanceof Error ? err.message : 'erreur'
       if (!append)
         state.value.cards = []
     }
     finally {
-      state.value.loading = false
+      if (reqId === seq)
+        state.value.loading = false
     }
   }
 
@@ -194,13 +203,15 @@ export function useCardSearch() {
   async function suggest(commander: string, lang: 'fr' | 'en') {
     if (!commander)
       return
-    const tag = `suggest:${commander}`
-    lastQuery = tag
+    // Share the monotonic seq gate with run(), so a search started afterwards
+    // invalidates this suggestion (and vice-versa) — no cross-clobber.
+    const reqId = ++seq
+    lastQuery = `suggest:${commander}`
     state.value.loading = true
     state.value.error = null
     try {
       const { names } = await $fetch<{ names: string[] }>('/api/cards/suggestions', { params: { commander } })
-      if (lastQuery !== tag)
+      if (reqId !== seq)
         return
       if (!names.length) {
         state.value = { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
@@ -213,7 +224,7 @@ export function useCardSearch() {
       const res = await $fetch<{ cards: ScryfallCard[] }>('/api/cards/search', {
         params: { q, order: 'edhrec', dir: 'auto' },
       })
-      if (lastQuery !== tag)
+      if (reqId !== seq)
         return
       // Re-order results to match EDHREC ranking.
       const rank = new Map(top.map((n, i) => [n.toLowerCase(), i]))
@@ -226,11 +237,14 @@ export function useCardSearch() {
       state.value.page = 1
     }
     catch (err: unknown) {
+      if (reqId !== seq)
+        return
       state.value.error = err instanceof Error ? err.message : 'erreur'
       state.value.cards = []
     }
     finally {
-      state.value.loading = false
+      if (reqId === seq)
+        state.value.loading = false
     }
   }
 

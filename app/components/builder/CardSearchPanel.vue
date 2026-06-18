@@ -147,9 +147,11 @@ function debouncedSearch() {
 // follow the commander's identity / the site locale.
 const ctxKey = computed(() => `${ctx.value.identity?.join('') ?? ''}|${ctx.value.lang}`)
 watch(ctxKey, () => {
-  if (hasActiveQuery.value)
+  if (suggestMode.value)
+    showSuggestions() // re-resolve suggestions in the new locale
+  else if (hasActiveQuery.value)
     runSearch()
-  else if (!suggestMode.value)
+  else
     runDefaultSearch()
 })
 

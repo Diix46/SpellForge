@@ -45,7 +45,7 @@ export function useDecklist() {
         if (suffix) {
           set = suffix[1]
           collectorNumber = suffix[2]
-          rest = rest.slice(0, suffix.index).trim()
+          rest = rest.slice(0, suffix.index ?? rest.length).trim()
         }
 
         const entry: DeckEntry = { quantity, name: rest, set, collectorNumber }

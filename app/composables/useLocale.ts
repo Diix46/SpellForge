@@ -1,12 +1,16 @@
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
+import { useState } from '#app'
 
 export type Locale = 'fr' | 'en'
 
 const STORAGE_KEY = 'mtg_locale'
 
-// Singleton reactive locale.
-const locale = ref<Locale>('fr')
-let initialized = false
+function loadLocale(): Locale {
+  if (import.meta.server)
+    return 'fr'
+  const saved = localStorage.getItem(STORAGE_KEY)
+  return saved === 'en' ? 'en' : 'fr'
+}
 
 const messages: Record<Locale, Record<string, string>> = {
   fr: {
@@ -398,12 +402,8 @@ const messages: Record<Locale, Record<string, string>> = {
 }
 
 export function useLocale() {
-  if (!initialized && import.meta.client) {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === 'fr' || saved === 'en')
-      locale.value = saved
-    initialized = true
-  }
+  // SSR-safe shared singleton; lazily hydrated from localStorage on the client.
+  const locale = useState<Locale>('locale', loadLocale)
 
   function setLocale(l: Locale) {
     locale.value = l

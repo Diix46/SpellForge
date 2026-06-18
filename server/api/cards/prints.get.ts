@@ -65,7 +65,8 @@ export default defineCachedEventHandler(async (event): Promise<{ prints: PrintOp
     data = await res.json()
   }
   catch (err) {
-    if (err && typeof err === 'object' && 'statusCode' in err)
+    // Re-throw an already-shaped H3/createError; wrap anything else.
+    if (err instanceof Error && 'statusCode' in err)
       throw err
     throw createError({ statusCode: 502, statusMessage: 'Scryfall fetch failed' })
   }

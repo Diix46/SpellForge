@@ -123,7 +123,8 @@ async function importEdhrecDeckpreview(hash: string): Promise<ImportResponse> {
 }
 
 export default defineEventHandler(async (event): Promise<ImportResponse> => {
-  const body = await readBody<ImportRequest>(event)
+  // readBody throws on a malformed/non-JSON body — treat that as a missing URL.
+  const body = await readBody<ImportRequest>(event).catch(() => null)
   const url = body?.url?.trim()
 
   if (!url) {

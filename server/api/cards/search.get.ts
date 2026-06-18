@@ -63,7 +63,7 @@ async function enrichFrenchPrices(cards: ScryCard[]): Promise<void> {
   for (const c of missing) {
     const eur = priceByName.get((c.name ?? '').toLowerCase())
     if (eur)
-      c.prices = { ...c.prices, eur }
+      c.prices = { ...(c.prices ?? {}), eur }
   }
 }
 
