@@ -16,7 +16,8 @@ import { useScryfall } from '~/composables/useScryfall'
 const route = useRoute()
 const deckId = computed(() => route.params.id as string)
 
-const { getDeck, updateDeck } = useDeckStore()
+const { getDeck, updateDeck, setShare } = useDeckStore()
+const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
 const { fetchCollection } = useScryfall()
 const { exportPdf } = usePdfExport()
@@ -67,6 +68,26 @@ function applyImportExport() {
 function copyDecklistText() {
   navigator.clipboard.writeText(rawDecklist.value)
   toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
+}
+
+// Enable public sharing for this (cloud) deck and copy the link to the clipboard.
+const sharing = ref(false)
+async function shareDeck() {
+  sharing.value = true
+  try {
+    const shareId = await setShare(deckId.value, true)
+    if (!shareId)
+      throw new Error('no share id')
+    const url = `${window.location.origin}/shared/${shareId}`
+    await navigator.clipboard.writeText(url)
+    toast.add({ title: t('share.copied'), description: url, color: 'success', icon: 'i-lucide-link' })
+  }
+  catch {
+    toast.add({ title: t('share.error'), color: 'error', icon: 'i-lucide-x' })
+  }
+  finally {
+    sharing.value = false
+  }
 }
 // Download the current decklist as a .txt file.
 function downloadDecklist() {
@@ -595,6 +616,20 @@ const tabsUi = {
           <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }} {{ t('editor.cardsWord') }}</span>
         </div>
       </div>
+
+      <!-- Share (cloud decks only) -->
+      <UButton
+        v-if="loggedIn"
+        icon="i-lucide-share-2"
+        color="neutral"
+        variant="subtle"
+        size="sm"
+        :loading="sharing"
+        class="shrink-0"
+        @click="shareDeck"
+      >
+        <span class="hidden sm:inline">{{ t('share.button') }}</span>
+      </UButton>
     </div>
 
     <!-- TABS -->
