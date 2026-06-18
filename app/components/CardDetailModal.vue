@@ -263,7 +263,7 @@ const oracleSegments = computed<Segment[]>(() => {
     :title="primaryName || 'Card'"
     :ui="{
       overlay: 'bg-ink-950/80 backdrop-blur-[6px]',
-      content: 'glass rounded-[var(--radius-2xl)] w-[80vw] sm:max-w-[80vw]',
+      content: 'glass rounded-[var(--radius-2xl)] w-[calc(100vw-1.5rem)] sm:max-w-[860px]',
       // Keep the header row (so the close button shows) but hide the duplicated
       // title text — the card name is already rendered as the <h2> in the body.
       header: 'absolute right-0 top-0 z-10 p-3 border-0',
@@ -277,15 +277,16 @@ const oracleSegments = computed<Segment[]>(() => {
     <template #body>
       <div
         v-if="card"
-        class="grid grid-cols-1 gap-6 p-1 sm:grid-cols-[minmax(0,_46%)_1fr]"
+        class="grid grid-cols-1 gap-6 p-1 sm:grid-cols-[300px_minmax(0,1fr)]"
       >
-        <!-- Image (hero: scales with the modal, capped to the viewport height) -->
+        <!-- Image: sized to the card's natural width so it fills its column
+             (no floating in an oversized panel = no "card-in-card" gaps). -->
         <div class="relative">
           <img
             v-if="displayImage"
             :src="displayImage"
             :alt="englishName"
-            class="mx-auto block max-h-[78vh] w-full rounded-[var(--radius-lg)] object-contain shadow-[var(--shadow-elev-3)]"
+            class="mx-auto block w-full max-w-[300px] rounded-[var(--radius-lg)] object-contain shadow-[var(--shadow-elev-3)]"
           >
           <div
             v-else

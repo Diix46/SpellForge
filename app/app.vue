@@ -54,20 +54,24 @@ const initials = computed(() => {
   return n.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
 })
 
-// Primary nav. `active` is a route-prefix test.
+// Primary nav — real destinations only (these get the active state).
+// "Importer" is an ACTION (opens the import modal), not a destination, so it's
+// rendered separately below and never shows an active fill.
 const nav = computed(() => [
-  { to: '/', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid', exact: true },
-  { to: '/?import=1', label: t('nav.import'), icon: 'i-lucide-download', exact: false, soft: true },
-])
-const tools = computed(() => [
-  { to: '/?print=1', label: t('nav.print'), icon: 'i-lucide-printer', soft: true },
-  { to: '/?ai=1', label: t('nav.ai'), icon: 'i-lucide-sparkles', soft: true, badge: 'IA' },
+  { to: '/', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
 ])
 
-function isActive(to: string, exact: boolean) {
-  if (exact)
-    return route.path === '/' && !route.query.import && !route.query.print && !route.query.ai
-  return route.path.startsWith(to.split('?')[0]!)
+// A nav link is active only when it's the current route (exact). The dashboard
+// link stays active on '/' even with a transient ?import/?new modal query.
+function isActive(to: string) {
+  if (to === '/')
+    return route.path === '/'
+  return route.path === to
+}
+
+function openImport() {
+  mobileNav.value = false
+  navigateTo('/?import=1')
 }
 </script>
 
@@ -96,27 +100,17 @@ function isActive(to: string, exact: boolean) {
             :key="item.to"
             :to="item.to"
             class="side-link"
-            :class="{ active: isActive(item.to, item.exact) }"
+            :class="{ active: isActive(item.to) }"
             @click="mobileNav = false"
           >
             <UIcon :name="item.icon" class="ic" />
             <span>{{ item.label }}</span>
           </NuxtLink>
 
-          <div class="side-label">
-            {{ t('nav.tools') }}
-          </div>
-          <NuxtLink
-            v-for="item in tools"
-            :key="item.to"
-            :to="item.to"
-            class="side-link"
-            @click="mobileNav = false"
-          >
-            <UIcon :name="item.icon" class="ic" />
-            <span>{{ item.label }}</span>
-            <span v-if="item.badge" class="link-badge">{{ item.badge }}</span>
-          </NuxtLink>
+          <button type="button" class="side-link" @click="openImport">
+            <UIcon name="i-lucide-download" class="ic" />
+            <span>{{ t('nav.import') }}</span>
+          </button>
         </nav>
 
         <div class="side-foot">
@@ -264,16 +258,28 @@ function isActive(to: string, exact: boolean) {
   display: flex;
   align-items: center;
   gap: 11px;
+  width: 100%;
   padding: 8px 10px;
+  border: 0;
   border-radius: var(--radius-sm);
   color: var(--color-text-muted);
+  font-family: inherit;
   font-size: 13.5px;
   font-weight: 450;
+  text-align: left;
   text-decoration: none;
+  background: transparent;
+  cursor: pointer;
   position: relative;
   transition:
     color var(--dur-fast) var(--ease-out),
     background var(--dur-fast) var(--ease-out);
+}
+/* Keyboard focus: a subtle inset accent ring instead of the heavy global
+   double-ring (which read as a stray outline on the active item). */
+.side-link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 .side-link .ic {
   width: 17px;
@@ -299,17 +305,6 @@ function isActive(to: string, exact: boolean) {
   height: 18px;
   background: var(--accent);
   border-radius: 0 3px 3px 0;
-}
-.link-badge {
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--accent-text);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
 }
 .side-foot {
   margin-top: auto;

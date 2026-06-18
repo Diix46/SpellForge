@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ManaColor } from '~/composables/useMtg'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
@@ -37,14 +37,16 @@ const deleteId = ref('')
 const deleteName = ref('')
 
 // Open the right modal when arriving via a sidebar/topbar query (?new / ?import).
-onMounted(() => {
-  if (route.query.new)
+// Uses a watcher (not onMounted) so it also fires when the query changes while
+// the dashboard is already mounted — Vue Router reuses the component otherwise.
+watch(() => route.query, (q) => {
+  if (q.new)
     showNewDeck.value = true
-  else if (route.query.import)
+  else if (q.import)
     showImport.value = true
-  if (route.query.new || route.query.import)
+  if (q.new || q.import)
     router.replace({ query: {} })
-})
+}, { immediate: true })
 
 const totalCardsAll = computed(() =>
   decks.value.reduce((sum, d) => {
