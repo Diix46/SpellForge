@@ -39,7 +39,7 @@ async function submit() {
   <UModal
     v-model:open="open"
     :title="mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')"
-    :ui="{ overlay: 'bg-ink-950/70 backdrop-blur-[6px]', content: 'glass neon-edge rounded-[var(--radius-2xl)] sm:max-w-md' }"
+    :ui="{ overlay: 'bg-ink-950/70 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)] sm:max-w-md' }"
   >
     <template #body>
       <form class="space-y-3" @submit.prevent="submit">

@@ -5,7 +5,13 @@ import type { ResolvedCard } from './useScryfall'
 // Cardmarket has no public cart API, so we use the universal product search URL,
 // plus a combined "open all" helper and a copy-paste wants list.
 
-const CM_BASE = 'https://www.cardmarket.com/en/Magic'
+// Cardmarket site language to URL segment. Card *matching* is always by English
+// name (most reliable), but the user can browse the marketplace in their language.
+export type BuyLang = 'fr' | 'en'
+const CM_LOCALE_SEG: Record<BuyLang, string> = { fr: 'fr', en: 'en' }
+function cmBase(lang: BuyLang): string {
+  return `https://www.cardmarket.com/${CM_LOCALE_SEG[lang]}/Magic`
+}
 
 /** Sum quantities by card name, preserving first-seen order. */
 function aggregate<T>(items: T[], nameOf: (item: T) => string, qtyOf: (item: T) => number): Array<[string, number]> {
@@ -18,15 +24,15 @@ function aggregate<T>(items: T[], nameOf: (item: T) => string, qtyOf: (item: T) 
 }
 
 export function useCardmarket() {
-  function searchUrl(cardName: string): string {
+  function searchUrl(cardName: string, lang: BuyLang = 'en'): string {
     const q = encodeURIComponent(cardName)
-    return `${CM_BASE}/Products/Search?searchString=${q}`
+    return `${cmBase(lang)}/Products/Search?searchString=${q}`
   }
 
   /** Build one search link per unique card (search by English name for reliable matching). */
-  function linksForResolved(cards: ResolvedCard[]): Array<{ name: string, quantity: number, url: string }> {
+  function linksForResolved(cards: ResolvedCard[], lang: BuyLang = 'en'): Array<{ name: string, quantity: number, url: string }> {
     return aggregate(cards, c => c.card?.name ?? c.entry.name, c => c.entry.quantity)
-      .map(([name, quantity]) => ({ name, quantity, url: searchUrl(name) }))
+      .map(([name, quantity]) => ({ name, quantity, url: searchUrl(name, lang) }))
   }
 
   /**
@@ -40,8 +46,8 @@ export function useCardmarket() {
   }
 
   /** Cardmarket wants-list import page (user pastes the wants list there). */
-  function wantsListImportUrl(): string {
-    return `${CM_BASE}/Wants`
+  function wantsListImportUrl(lang: BuyLang = 'en'): string {
+    return `${cmBase(lang)}/Wants`
   }
 
   return {

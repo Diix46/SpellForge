@@ -8,6 +8,8 @@ export default defineNuxtPlugin(() => {
 
   watch(loggedIn, async (isIn, was) => {
     if (isIn) {
+      // Block the deck-page guard until the cloud set has actually loaded.
+      store.ready.value = false
       await store.migrateLocalToCloud()
       await store.syncFromCloud()
     }

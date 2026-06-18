@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { BuyLang } from '~/composables/useCardmarket'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
@@ -16,7 +17,7 @@ import { useScryfall } from '~/composables/useScryfall'
 const route = useRoute()
 const deckId = computed(() => route.params.id as string)
 
-const { getDeck, updateDeck, setShare } = useDeckStore()
+const { getDeck, updateDeck, setShare, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
 const { fetchCollection } = useScryfall()
@@ -272,10 +273,14 @@ function openDeckEntryDetail(name: string) {
 // Init / re-init per deck. Vue Router REUSES this component when only the
 // :id param changes, so a watch (not onMounted) is required — otherwise
 // navigating deck A→B would leave A's state in place and autosave A into B.
-watch(deckId, (id) => {
+function initDeck(id: string) {
   const d = getDeck(id)
   if (!d) {
-    navigateTo('/')
+    // Only redirect once the store has finished loading. For a signed-in user
+    // arriving via direct navigation/refresh, the cloud decks load async — bailing
+    // before storeReady would bounce them home before their deck even arrives.
+    if (storeReady.value)
+      navigateTo('/')
     return
   }
   rawDecklist.value = d.raw
@@ -296,7 +301,12 @@ watch(deckId, (id) => {
 
       loadCards({ silent: true })
   })
-}, { immediate: true })
+}
+
+// React to both the route param and the store becoming ready: a direct
+// navigation fires before the cloud set arrives, so re-run init when the deck
+// finally materializes (or redirect if it truly doesn't exist).
+watch([deckId, storeReady], ([id]) => initDeck(id), { immediate: true })
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 function scheduleSave() {
@@ -493,10 +503,16 @@ async function doExport(format: PageFormat) {
   }
 }
 
+// Cardmarket marketplace language (which site locale to open links in). Cards
+// are always matched by English name; this only changes the shop's UI language.
+// Defaults to the site locale so a FR user lands on the FR marketplace.
+const buyLang = ref<BuyLang>(locale.value === 'fr' ? 'fr' : 'en')
+
 const cmLinks = computed(() => linksForResolved(
   resolvedCards.value.length
     ? resolvedCards.value
     : allEntries.value.map(e => ({ entry: e, card: null, imageUrl: null, backImageUrl: null, lang: 'en' })),
+  buyLang.value,
 ))
 
 // ---- Buy tab: per-card pricing rows + deck cost summary ----
@@ -525,7 +541,7 @@ const buyRows = computed<BuyRow[]>(() => {
         quantity: rc.entry.quantity,
         unit: hasPrice ? unit : null,
         lineTotal: hasPrice ? Math.round(unit * rc.entry.quantity * 100) / 100 : null,
-        url: searchUrl(enName),
+        url: searchUrl(enName, buyLang.value),
         thumb: rc.card?.image_uris?.small ?? rc.card?.card_faces?.[0]?.image_uris?.small ?? null,
       }
     })
@@ -588,7 +604,7 @@ function copyWantsList() {
 // and Cardmarket builds the buyable list (closest to 1-click without a partner API).
 function buyWholeDeck() {
   navigator.clipboard.writeText(wantsListText(allEntries.value)).catch(() => {})
-  window.open(wantsListImportUrl(), '_blank')
+  window.open(wantsListImportUrl(buyLang.value), '_blank')
   toast.add({
     title: t('buy.wantsCopiedTitle'),
     description: t('buy.wantsCopiedDesc'),
@@ -623,6 +639,7 @@ const tabsUi = {
         color="neutral"
         variant="ghost"
         to="/"
+        :aria-label="t('nav.backToDecks')"
         class="shrink-0"
       />
       <div class="min-w-0 flex-1">
@@ -936,6 +953,7 @@ const tabsUi = {
                 color="neutral"
                 variant="subtle"
                 size="sm"
+                :aria-label="t('preview.prevPage')"
                 :disabled="page === 1"
                 @click="page--"
               />
@@ -947,6 +965,7 @@ const tabsUi = {
                 color="neutral"
                 variant="subtle"
                 size="sm"
+                :aria-label="t('preview.nextPage')"
                 :disabled="page === totalPages"
                 @click="page++"
               />
@@ -1033,27 +1052,63 @@ const tabsUi = {
               <div class="font-display font-semibold text-(--color-text-high)">
                 {{ t('buy.wholeDeckTitle') }}
               </div>
-              <p class="mt-0.5 text-sm text-(--color-text-muted)">
+              <p class="mt-0.5 text-sm text-(--color-text-mid)">
                 {{ t('buy.wholeDeckHint') }}
               </p>
             </div>
-            <UButton
-              icon="i-lucide-shopping-cart"
-              color="primary"
-              variant="solid"
-              size="lg"
-              class="shrink-0 font-medium tracking-wide neon-ring"
-              @click="buyWholeDeck"
-            >
-              {{ t('buy.wholeDeck') }}
-            </UButton>
+            <div class="flex shrink-0 items-center gap-3">
+              <!-- Cardmarket marketplace language -->
+              <div
+                class="flex items-center overflow-hidden rounded-[var(--radius-md)] border border-(--color-border-strong)"
+                role="group"
+                :aria-label="t('buy.langLabel')"
+              >
+                <button
+                  v-for="opt in (['fr', 'en'] as const)"
+                  :key="opt"
+                  type="button"
+                  class="px-2.5 py-1.5 font-mono text-xs font-semibold uppercase transition-colors"
+                  :class="buyLang === opt
+                    ? 'accent-soft-bg text-(--accent-text)'
+                    : 'text-(--color-text-muted) hover:text-(--color-text-high)'"
+                  :aria-pressed="buyLang === opt"
+                  @click="buyLang = opt"
+                >
+                  {{ opt }}
+                </button>
+              </div>
+              <UButton
+                icon="i-lucide-shopping-cart"
+                color="primary"
+                variant="solid"
+                size="lg"
+                class="font-medium tracking-wide neon-ring"
+                @click="buyWholeDeck"
+              >
+                {{ t('buy.wholeDeck') }}
+              </UButton>
+            </div>
           </div>
           <!-- Secondary actions -->
           <div class="mt-3 flex flex-wrap gap-2 border-t border-(--color-border-subtle) pt-3">
-            <UButton icon="i-lucide-clipboard-copy" color="neutral" variant="ghost" size="sm" @click="copyWantsList">
+            <UButton
+              icon="i-lucide-clipboard-copy"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              class="bg-(--color-surface-2) text-(--color-text-high) ring-1 ring-(--color-border-strong) hover:bg-(--color-surface-3)"
+              @click="copyWantsList"
+            >
               {{ t('buy.copyWants') }}
             </UButton>
-            <UButton icon="i-lucide-external-link" color="neutral" variant="ghost" size="sm" @click="openAllCardmarket">
+            <UButton
+              icon="i-lucide-external-link"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              class="bg-(--color-surface-2) text-(--color-text-high) ring-1 ring-(--color-border-strong) hover:bg-(--color-surface-3)"
+              @click="openAllCardmarket"
+            >
               {{ t('buy.openCards') }}
             </UButton>
           </div>

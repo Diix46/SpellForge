@@ -261,7 +261,7 @@ const sortModel = computed({
             '--tw-ring-color': colorVar(pip),
           }"
           :aria-pressed="filters.colors.includes(pip)"
-          :aria-label="colorName(pip, isFr)"
+          :aria-label="`${colorCode(pip, isFr)} — ${colorName(pip, isFr)}`"
           :title="colorName(pip, isFr)"
           @click="toggleColor(pip)"
         >
@@ -407,7 +407,7 @@ const sortModel = computed({
           :key="card.id"
           class="group relative overflow-hidden rounded-[var(--radius-md)]"
         >
-          <button type="button" class="block w-full" @click="emit('details', card)">
+          <button type="button" class="block w-full" :aria-label="cardName(card)" @click="emit('details', card)">
             <img
               v-if="cardImage(card)"
               :src="cardImage(card)!"
@@ -435,6 +435,7 @@ const sortModel = computed({
               type="button"
               class="pointer-events-auto flex flex-1 items-center justify-center gap-1 rounded-[var(--radius-sm)] py-1 text-xs font-semibold text-(--color-bg-base)"
               :style="{ background: inDeck.has(card.name.toLowerCase()) ? 'var(--color-success)' : 'var(--accent)' }"
+              :aria-label="`${inDeck.has(card.name.toLowerCase()) ? t('build.inDeck') : t('build.add')} — ${cardName(card)}`"
               @click="emit('add', card)"
             >
               <UIcon :name="inDeck.has(card.name.toLowerCase()) ? 'i-lucide-check' : 'i-lucide-plus'" class="h-3.5 w-3.5" />

@@ -52,6 +52,12 @@ export function useDeckStore() {
   const { loggedIn } = useUserSession()
   // True once we're operating against the cloud (signed in). Guest = local only.
   const cloud = computed(() => loggedIn.value)
+  // Has the store finished its initial load? For guests this is immediate
+  // (localStorage is synchronous); for signed-in users it only flips true once
+  // the cloud decks have been fetched. Consumers (e.g. the deck page guard)
+  // must not conclude "deck not found" before this is true, or a direct
+  // navigation/refresh would redirect away before the cloud set arrives.
+  const ready = useState<boolean>('decks-ready', () => !loggedIn.value)
 
   function persist() {
     // Guests persist to localStorage; signed-in users' source of truth is the DB
@@ -61,16 +67,25 @@ export function useDeckStore() {
   }
 
   function refresh() {
-    if (!cloud.value)
+    if (!cloud.value) {
       decks.value = loadLocal()
+      ready.value = true
+    }
   }
 
   /** Pull the signed-in user's decks from the server (replaces the local set). */
   async function syncFromCloud() {
     if (!cloud.value)
       return
-    const { decks: rows } = await $fetch<{ decks: any[] }>('/api/decks')
-    decks.value = rows.map(fromRow)
+    try {
+      const { decks: rows } = await $fetch<{ decks: any[] }>('/api/decks')
+      decks.value = rows.map(fromRow)
+    }
+    finally {
+      // Mark ready even on failure so the UI doesn't hang on a spinner; a
+      // failed fetch leaves the (possibly empty) set and the guard proceeds.
+      ready.value = true
+    }
   }
 
   /** On first login, push any guest (localStorage) decks to the cloud once. */
@@ -142,6 +157,7 @@ export function useDeckStore() {
   return {
     decks,
     cloud,
+    ready,
     refresh,
     syncFromCloud,
     migrateLocalToCloud,

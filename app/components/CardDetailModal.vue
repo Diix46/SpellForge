@@ -261,7 +261,17 @@ const oracleSegments = computed<Segment[]>(() => {
   <UModal
     :open="open"
     :title="primaryName || 'Card'"
-    :ui="{ overlay: 'bg-ink-950/80 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)] w-[80vw] sm:max-w-[80vw]', header: 'sr-only' }"
+    :ui="{
+      overlay: 'bg-ink-950/80 backdrop-blur-[6px]',
+      content: 'glass rounded-[var(--radius-2xl)] w-[80vw] sm:max-w-[80vw]',
+      // Keep the header row (so the close button shows) but hide the duplicated
+      // title text — the card name is already rendered as the <h2> in the body.
+      header: 'absolute right-0 top-0 z-10 p-3 border-0',
+      title: 'sr-only',
+      // Visual styling is in scoped CSS ([data-slot=close]) to reliably beat the
+      // UButton variant's background (arbitrary utilities lose that cascade).
+      close: 'modal-close size-9',
+    }"
     @update:open="emit('update:open', $event)"
   >
     <template #body>
@@ -402,10 +412,9 @@ const oracleSegments = computed<Segment[]>(() => {
               <UButton
                 :to="cmUrl"
                 target="_blank"
-                color="neutral"
-                variant="subtle"
                 icon="i-lucide-shopping-cart"
                 size="sm"
+                class="border border-(--accent-border) bg-(--accent-soft) text-(--accent-text) hover:bg-[rgba(var(--accent-rgb),0.28)]"
               >
                 Cardmarket
               </UButton>
@@ -413,10 +422,9 @@ const oracleSegments = computed<Segment[]>(() => {
                 v-if="scryUrl"
                 :to="scryUrl"
                 target="_blank"
-                color="neutral"
-                variant="ghost"
                 icon="i-lucide-external-link"
                 size="sm"
+                class="border border-(--color-border-strong) bg-(--color-surface-2) text-(--color-text-high) hover:border-(--color-border-strong) hover:bg-(--color-surface-3)"
               >
                 Scryfall
               </UButton>
@@ -505,6 +513,20 @@ const oracleSegments = computed<Segment[]>(() => {
 </template>
 
 <style scoped>
+/* Close button: a dark frosted disc with a light glyph, top-right of the modal.
+   Scoped + :deep beats the UButton neutral variant's own background. */
+:deep(.modal-close) {
+  color: var(--color-text-high);
+  background: rgba(20, 25, 38, 0.85);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+:deep(.modal-close:hover) {
+  background: var(--color-surface-3);
+  color: var(--color-text-high);
+}
+
 .oracle :deep(.kw) {
   color: var(--accent-text);
   font-weight: 600;

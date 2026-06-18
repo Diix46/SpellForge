@@ -21,6 +21,10 @@ const { locale, t } = useLocale()
 const { el: tiltEl } = useTilt(6)
 const { el: spotEl } = useSpotlight()
 
+// Stable id so the clickable tile (role=button) can borrow the deck-name heading
+// as its accessible name — visible label === accessible name (no a11y mismatch).
+const titleId = useId()
+
 const cardCount = computed(() => {
   const { mainboard, sideboard } = parse(props.deck.raw)
   return totalCards(mainboard) + totalCards(sideboard)
@@ -64,7 +68,7 @@ const menuItems = computed(() => [
       ref="tiltEl"
       role="button"
       tabindex="0"
-      :aria-label="`${t('tile.open')} — ${deck.name}`"
+      :aria-labelledby="titleId"
       class="tilt relative h-full rounded-[var(--radius-xl)] p-5 focus-visible:outline-2 focus-visible:outline-(--accent-text)"
       @click="emit('open', deck.id)"
       @keydown.enter.prevent="emit('open', deck.id)"
@@ -73,9 +77,9 @@ const menuItems = computed(() => [
       <!-- header row -->
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0 flex-1">
-          <h3 class="truncate font-display text-base font-semibold text-(--color-text-high)">
+          <h2 :id="titleId" class="truncate font-display text-base font-semibold text-(--color-text-high)">
             {{ deck.name }}
-          </h3>
+          </h2>
           <p class="mt-1 font-mono text-xs text-(--color-text-muted)">
             {{ t('tile.updated') }} {{ formatDate(deck.updatedAt) }}
           </p>
@@ -90,6 +94,7 @@ const menuItems = computed(() => [
             color="neutral"
             variant="ghost"
             size="xs"
+            :aria-label="t('tile.menu')"
             class="opacity-60 transition-opacity group-hover:opacity-100"
             @click.stop
           />

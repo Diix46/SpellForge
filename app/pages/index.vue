@@ -219,9 +219,9 @@ const modalUi = {
           style="filter: drop-shadow(0 0 10px rgba(255,255,255,.2))"
         />
       </div>
-      <h3 class="font-display text-xl font-semibold text-(--color-text-high)">
+      <h2 class="font-display text-xl font-semibold text-(--color-text-high)">
         {{ t('dash.empty.title') }}
-      </h3>
+      </h2>
       <p class="mt-2 mb-7 max-w-sm text-(--color-text-muted)">
         {{ t('dash.empty.body') }}
       </p>

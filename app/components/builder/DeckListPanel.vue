@@ -316,8 +316,10 @@ function issueText(issue: ValidationIssue): string {
             />
           </span>
 
-          <!-- actions (hover only, overlay the pips) -->
-          <div class="absolute right-1.5 flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
+          <!-- actions (hover only, overlay the pips). A left-fading solid backing
+               masks the truncated card name beneath so the buttons never appear to
+               sit on top of text (no see-through "empiètement"). -->
+          <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-[var(--radius-sm)] pl-6 pr-1.5 opacity-0 transition-opacity bg-gradient-to-l from-(--color-surface-2) from-65% to-transparent group-hover/row:opacity-100">
             <button
               v-if="group.key !== 'commander'"
               type="button"
