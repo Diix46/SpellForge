@@ -30,6 +30,7 @@ const emit = defineEmits<{
   remove: [name: string]
   setCommander: [name: string]
   toggleLock: []
+  details: [name: string]
 }>()
 
 // Localized display name for an entry, falling back to its raw (English) name.
@@ -259,9 +260,14 @@ function issueText(issue: ValidationIssue): string {
         <div
           v-for="entry in group.cards"
           :key="entry.name"
-          class="group/row relative flex items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/60"
+          role="button"
+          tabindex="0"
+          class="group/row relative flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/60 focus-visible:outline-2 focus-visible:outline-(--accent-text)"
           @mouseenter="showPreview(entry.name, $event)"
           @mouseleave="hidePreview"
+          @click="emit('details', entry.name)"
+          @keydown.enter.prevent="emit('details', entry.name)"
+          @keydown.space.prevent="emit('details', entry.name)"
         >
           <!-- thumbnail -->
           <div class="h-9 w-7 shrink-0 overflow-hidden rounded-[3px] bg-(--color-surface-2) ring-1 ring-(--color-border-subtle)">
@@ -280,7 +286,7 @@ function issueText(issue: ValidationIssue): string {
               type="button"
               class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) group-hover/row:opacity-100"
               aria-label="-"
-              @click="emit('setQty', entry.name, entry.quantity - 1)"
+              @click.stop="emit('setQty', entry.name, entry.quantity - 1)"
             >
               <UIcon name="i-lucide-minus" class="h-3 w-3" />
             </button>
@@ -289,7 +295,7 @@ function issueText(issue: ValidationIssue): string {
               type="button"
               class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) group-hover/row:opacity-100"
               aria-label="+"
-              @click="emit('setQty', entry.name, entry.quantity + 1)"
+              @click.stop="emit('setQty', entry.name, entry.quantity + 1)"
             >
               <UIcon name="i-lucide-plus" class="h-3 w-3" />
             </button>
@@ -317,7 +323,7 @@ function issueText(issue: ValidationIssue): string {
               type="button"
               class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text)"
               :title="t('build.setCommander')"
-              @click="emit('setCommander', entry.name)"
+              @click.stop="emit('setCommander', entry.name)"
             >
               <UIcon name="i-lucide-crown" class="h-3 w-3" />
             </button>
@@ -325,7 +331,7 @@ function issueText(issue: ValidationIssue): string {
               type="button"
               class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error)"
               aria-label="remove"
-              @click="emit('remove', entry.name)"
+              @click.stop="emit('remove', entry.name)"
             >
               <UIcon name="i-lucide-trash-2" class="h-3 w-3" />
             </button>

@@ -228,6 +228,14 @@ function openSearchDetail(c: ScryfallCard) {
   openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: front, backImageUrl: back, lang: c.lang })
 }
 
+// Open the detail modal for a deck-list row (clicked by name). Uses the resolved
+// card when available, else a minimal entry so the modal still opens.
+function openDeckEntryDetail(name: string) {
+  const n = name.trim().toLowerCase()
+  const rc = resolvedCards.value.find(c => (c.card?.name ?? c.entry.name).trim().toLowerCase() === n)
+  openDetail(rc ?? { entry: { quantity: 1, name }, card: null, imageUrl: null, backImageUrl: null, lang: lang.value })
+}
+
 // Init / re-init per deck. Vue Router REUSES this component when only the
 // :id param changes, so a watch (not onMounted) is required — otherwise
 // navigating deck A→B would leave A's state in place and autosave A into B.
@@ -650,6 +658,7 @@ const tabsUi = {
           @remove="builderRemove"
           @set-commander="chooseCommander"
           @toggle-lock="identityLocked = !identityLocked"
+          @details="openDeckEntryDetail"
         />
       </div>
     </div>
