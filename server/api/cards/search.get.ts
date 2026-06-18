@@ -10,11 +10,61 @@
 
 const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
 const SCRYFALL = 'https://api.scryfall.com/cards/search'
+const SCRYFALL_COLLECTION = 'https://api.scryfall.com/cards/collection'
+
+interface ScryCard {
+  name?: string
+  lang?: string
+  prices?: { eur?: string | null }
+}
 
 interface SearchResult {
   total: number
   hasMore: boolean
   cards: unknown[]
+}
+
+/**
+ * FR printings almost never carry an EUR price on Scryfall, but the Cardmarket
+ * price is language-agnostic. So for a French result set, look up the EUR price
+ * of each card's default (usually English) printing via /cards/collection and
+ * patch it onto the FR cards. One extra request per ~75 missing-price cards.
+ */
+async function enrichFrenchPrices(cards: ScryCard[]): Promise<void> {
+  const missing = cards.filter(c => c.name && !c.prices?.eur)
+  if (!missing.length)
+    return
+  // Unique names (a search page rarely repeats, but be safe).
+  const names = [...new Set(missing.map(c => c.name!))]
+  const priceByName = new Map<string, string>()
+
+  for (let i = 0; i < names.length; i += 75) {
+    const identifiers = names.slice(i, i + 75).map(name => ({ name }))
+    try {
+      const res = await fetch(SCRYFALL_COLLECTION, {
+        method: 'POST',
+        headers: { 'User-Agent': UA, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ identifiers }),
+      })
+      if (!res.ok)
+        continue
+      const data = await res.json() as { data?: ScryCard[] }
+      for (const d of data.data ?? []) {
+        const eur = d.prices?.eur
+        if (d.name && eur)
+          priceByName.set(d.name.toLowerCase(), eur)
+      }
+    }
+    catch {
+      // Best-effort enrichment: a failure just leaves those prices blank.
+    }
+  }
+
+  for (const c of missing) {
+    const eur = priceByName.get((c.name ?? '').toLowerCase())
+    if (eur)
+      c.prices = { ...c.prices, eur }
+  }
 }
 
 export default defineCachedEventHandler(async (event): Promise<SearchResult> => {
@@ -42,11 +92,17 @@ export default defineCachedEventHandler(async (event): Promise<SearchResult> => 
     throw createError({ statusCode: 502, statusMessage: `Scryfall ${res.status}` })
   }
 
-  const data = await res.json() as { total_cards?: number, has_more?: boolean, data?: unknown[] }
+  const data = await res.json() as { total_cards?: number, has_more?: boolean, data?: ScryCard[] }
+  const cards = data.data ?? []
+
+  // French results: backfill missing EUR prices from the default printing.
+  if (/\blang:fr\b/.test(q))
+    await enrichFrenchPrices(cards)
+
   return {
     total: data.total_cards ?? 0,
     hasMore: data.has_more ?? false,
-    cards: data.data ?? [],
+    cards,
   }
 }, {
   maxAge: 60,
