@@ -583,6 +583,20 @@ function copyWantsList() {
   })
 }
 
+// One-step "buy the whole deck": copy the Cardmarket-formatted wants list to the
+// clipboard, then open Cardmarket's wants-list import page — the user pastes once
+// and Cardmarket builds the buyable list (closest to 1-click without a partner API).
+function buyWholeDeck() {
+  navigator.clipboard.writeText(wantsListText(allEntries.value)).catch(() => {})
+  window.open(wantsListImportUrl(), '_blank')
+  toast.add({
+    title: t('buy.wantsCopiedTitle'),
+    description: t('buy.wantsCopiedDesc'),
+    color: 'success',
+    icon: 'i-lucide-clipboard-check',
+  })
+}
+
 const tabItems = computed(() => [
   { label: t('tab.deck'), icon: 'i-lucide-hammer', value: 'deck' as const },
   { label: `${t('tab.preview')}${successCards.value.length ? ` (${successCards.value.length})` : ''}`, icon: 'i-lucide-eye', value: 'preview' as const },
@@ -1012,33 +1026,37 @@ const tabsUi = {
           </div>
         </div>
 
-        <!-- Actions -->
-        <div class="flex flex-wrap gap-2">
-          <UButton
-            icon="i-lucide-external-link"
-            color="primary"
-            variant="solid"
-            @click="openAllCardmarket"
-          >
-            {{ t('buy.openCards') }}
-          </UButton>
-          <UButton
-            icon="i-lucide-clipboard-copy"
-            color="neutral"
-            variant="subtle"
-            @click="copyWantsList"
-          >
-            {{ t('buy.copyWants') }}
-          </UButton>
-          <UButton
-            icon="i-lucide-external-link"
-            color="neutral"
-            variant="subtle"
-            :to="wantsListImportUrl()"
-            target="_blank"
-          >
-            {{ t('buy.openWants') }}
-          </UButton>
+        <!-- One-step buy the whole deck -->
+        <div class="glass rounded-[var(--radius-xl)] p-4">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0">
+              <div class="font-display font-semibold text-(--color-text-high)">
+                {{ t('buy.wholeDeckTitle') }}
+              </div>
+              <p class="mt-0.5 text-sm text-(--color-text-muted)">
+                {{ t('buy.wholeDeckHint') }}
+              </p>
+            </div>
+            <UButton
+              icon="i-lucide-shopping-cart"
+              color="primary"
+              variant="solid"
+              size="lg"
+              class="shrink-0 font-medium tracking-wide neon-ring"
+              @click="buyWholeDeck"
+            >
+              {{ t('buy.wholeDeck') }}
+            </UButton>
+          </div>
+          <!-- Secondary actions -->
+          <div class="mt-3 flex flex-wrap gap-2 border-t border-(--color-border-subtle) pt-3">
+            <UButton icon="i-lucide-clipboard-copy" color="neutral" variant="ghost" size="sm" @click="copyWantsList">
+              {{ t('buy.copyWants') }}
+            </UButton>
+            <UButton icon="i-lucide-external-link" color="neutral" variant="ghost" size="sm" @click="openAllCardmarket">
+              {{ t('buy.openCards') }}
+            </UButton>
+          </div>
         </div>
 
         <!-- Priced list -->
