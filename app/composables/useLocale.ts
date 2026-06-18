@@ -21,6 +21,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'nav.import': 'Importer',
     'nav.myDecks': 'Mes decks',
     'nav.search': 'Rechercher…',
+    'theme.toLight': 'Passer en thème clair',
+    'theme.toDark': 'Passer en thème sombre',
     // Command palette (⌘K)
     'cmd.placeholder': 'Rechercher une carte, un deck, ou lancer une action…',
     'cmd.empty': 'Aucun résultat.',
@@ -291,6 +293,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'nav.import': 'Import',
     'nav.myDecks': 'My decks',
     'nav.search': 'Search…',
+    'theme.toLight': 'Switch to light theme',
+    'theme.toDark': 'Switch to dark theme',
     'cmd.placeholder': 'Search a card, a deck, or run an action…',
     'cmd.empty': 'No results.',
     'cmd.grpActions': 'Actions',

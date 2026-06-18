@@ -256,8 +256,11 @@ const sortModel = computed({
           type="button"
           class="grid h-6 w-6 place-items-center rounded-full text-[9px] font-bold ring-2 transition-all"
           :style="{
+            // Selected: mana fill + dark ink label. Unselected: neutral readable
+            // label (the colored ring conveys the color) — pale mana hues as text
+            // are illegible, esp. in light mode.
             'background': filters.colors.includes(pip) ? colorVar(pip) : 'transparent',
-            'color': filters.colors.includes(pip) ? 'var(--color-bg-base)' : colorVar(pip),
+            'color': filters.colors.includes(pip) ? '#0a0a0b' : 'var(--color-text-mid)',
             '--tw-ring-color': colorVar(pip),
           }"
           :aria-pressed="filters.colors.includes(pip)"

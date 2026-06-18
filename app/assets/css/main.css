@@ -138,24 +138,33 @@
 
 /* ---------------- ROOT DEFAULTS ---------------- */
 :root {
-  color-scheme: dark;
-
-  /* DYNAMIC ACCENT — default is neutral platinum. The deck page overrides
-     --accent-rgb / --accent-rgb-2 inline based on the commander's mana identity.
-     Everything below is derived so a single override re-themes the whole scope. */
-  --accent-rgb: 168, 178, 196; /* neutral platinum */
+  /* DYNAMIC ACCENT — default is a neutral that reads in BOTH modes (dark uses a
+     light platinum, light mode darkens it below). The deck page overrides
+     --accent-rgb / --accent-rgb-2 inline based on the commander's mana identity. */
+  --accent-rgb: 168, 178, 196; /* neutral platinum (dark default) */
   --accent-rgb-2: 168, 178, 196; /* second hue for multicolor; same = solid */
+
+  /* --accent-on-light: a per-mode "ink" used wherever the accent would be TEXT
+     on a light surface (bright mana hues are illegible as text on white). Dark
+     mode leaves it equal to the accent; light mode points it at a dark ink. */
+  --accent-text: rgb(var(--accent-rgb));
 
   --accent: rgb(var(--accent-rgb));
   --accent-2: rgb(var(--accent-rgb-2));
   --accent-soft: rgba(var(--accent-rgb), 0.14);
   --accent-border: rgba(var(--accent-rgb), 0.4);
-  --accent-text: rgb(var(--accent-rgb));
-  /* Restrained glow (SaaS taste): a tight ring + a soft diffuse halo, no triple-stack neon. */
+  /* Restrained glow (SaaS taste): a tight ring + a soft diffuse halo. */
   --accent-glow: 0 0 0 1px rgba(var(--accent-rgb), 0.3), 0 8px 30px -8px rgba(var(--accent-rgb), 0.45);
   --accent-glow-soft: 0 0 18px -6px rgba(var(--accent-rgb), 0.5);
   --gradient-accent: linear-gradient(135deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-rgb-2)) 100%);
   --gradient-accent-text: linear-gradient(92deg, rgb(var(--accent-rgb)) 0%, rgb(var(--accent-rgb-2)) 100%);
+
+  /* Glass/texture tints — overridden per mode below so frosted surfaces invert. */
+  --glass-bg: rgba(20, 20, 22, 0.6);
+  --glass-bg-strong: rgba(18, 18, 20, 0.78);
+  --glass-highlight: rgba(255, 255, 255, 0.04);
+  --glass-solid-sheen: rgba(255, 255, 255, 0.03);
+  --texture-line: rgba(255, 255, 255, 0.03);
 
   /* ============ MOTION (modern-SaaS micro-interactions) ============ */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* enter */
@@ -164,6 +173,57 @@
   --dur-fast: 0.15s;
   --dur: 0.22s;
   --dur-slow: 0.35s;
+}
+
+/* ---------------- DARK (default) ---------------- */
+:root,
+.dark {
+  color-scheme: dark;
+}
+
+/* ---------------- LIGHT THEME OVERRIDES ----------------
+   Mode-variable tokens get a neutral light palette (zinc-ish, Vercel/Linear
+   light). Everything is derived from these, so the whole app re-themes. WCAG AA
+   verified for text on every surface. */
+.light {
+  color-scheme: light;
+
+  --color-bg-base: #fafafa;
+  --color-bg-base-2: #f4f4f5;
+  --color-surface-1: #ffffff;
+  --color-surface-2: #f4f4f5;
+  --color-surface-3: #e9e9ec;
+
+  /* NOTE: the ink ramp is intentionally NOT redefined here. Nuxt UI maps its own
+     --ui-text-* tokens onto the `ink` (neutral) ramp and selects the right shade
+     per mode itself, so the ramp must stay canonical (50 lightest … 950 darkest)
+     in both themes. Our own "light-text" needs use the --color-text-* tokens
+     (overridden below), never raw ink shades. */
+
+  --color-text-high: #101012;
+  --color-text-mid: #3f3f46;
+  --color-text-muted: #5f5f68;
+  --color-text-disabled: #6b6b73; /* AA on white/surface (4.8:1+) */
+
+  --color-border-hairline: rgba(0, 0, 0, 0.08);
+  --color-border-subtle: rgba(0, 0, 0, 0.12);
+  --color-border-strong: rgba(0, 0, 0, 0.2);
+
+  /* Accent reads as TEXT on a dark ink in light mode; the colored hue stays for
+     fills/pips/borders/glow but never as text-on-white. */
+  --accent-text: #3f3f46;
+
+  /* Softer, light-mode shadows (no inset white highlight). */
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-elev-2: 0 4px 16px -2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.07);
+  --shadow-elev-3: 0 16px 48px -8px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* Frosted glass inverts to a light frost; textures use dark hairlines. */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-bg-strong: rgba(255, 255, 255, 0.85);
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-solid-sheen: rgba(0, 0, 0, 0.015);
+  --texture-line: rgba(0, 0, 0, 0.04);
 }
 html,
 body {
@@ -177,10 +237,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — track-color tokens invert with the ink ramp per mode. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-ink-600) transparent;
+  scrollbar-color: var(--color-ink-500) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
@@ -190,37 +250,37 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: var(--color-ink-700);
+  background: var(--color-ink-600);
   border-radius: var(--radius-full);
   border: 2px solid transparent;
   background-clip: content-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--color-ink-500);
+  background: var(--color-ink-400);
   background-clip: content-box;
 }
 
 /* ---------------- UTILITY CLASSES ---------------- */
 
-/* Real frosted glass — chrome ONLY (header, modals, console). Neutral now. */
+/* Real frosted glass — chrome ONLY (header, modals, console). Tints invert per mode. */
 .glass {
-  background: rgba(20, 20, 22, 0.6);
+  background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(130%);
   backdrop-filter: blur(var(--blur-glass)) saturate(130%);
   border: 1px solid var(--color-border-subtle);
   box-shadow:
     var(--shadow-elev-2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    inset 0 1px 0 var(--glass-highlight);
 }
 .glass-strong {
-  background: rgba(18, 18, 20, 0.78);
+  background: var(--glass-bg-strong);
   -webkit-backdrop-filter: blur(var(--blur-glass-lg)) saturate(140%);
   backdrop-filter: blur(var(--blur-glass-lg)) saturate(140%);
   border: 1px solid var(--color-border-subtle);
 }
 /* Faux-glass for REPEATED items (deck tiles, preview cards, list rows). */
 .glass-solid {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 40%), var(--color-surface-1);
+  background: linear-gradient(180deg, var(--glass-solid-sheen), transparent 40%), var(--color-surface-1);
   border: 1px solid var(--color-border-hairline);
   box-shadow: var(--shadow-elev-1);
 }
@@ -237,8 +297,8 @@ body {
 /* Cyber grid texture */
 .grid-texture {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--texture-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--texture-line) 1px, transparent 1px);
   background-size: 44px 44px;
   -webkit-mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 70%);
   mask-image: radial-gradient(120% 80% at 50% 0%, #000 0%, transparent 70%);

@@ -24,11 +24,12 @@ export default defineNuxtConfig({
     },
   },
 
-  // The app is dark-only by design. Force dark so Nuxt UI's component tokens
-  // (--ui-text, --ui-bg, …) resolve to dark-mode values — otherwise they default
-  // to light mode and every component renders dark text on our dark surfaces.
+  // Light + dark both supported. Default follows the OS preference; the user can
+  // override it via the sidebar toggle (persisted by @nuxtjs/color-mode).
+  // classSuffix '' so the html class is `.light` / `.dark` (what Nuxt UI + our
+  // token overrides key on).
   colorMode: {
-    preference: 'dark',
+    preference: 'system',
     fallback: 'dark',
     classSuffix: '',
   },

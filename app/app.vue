@@ -19,7 +19,6 @@ const FAVICON = `data:image/svg+xml,${encodeURIComponent(
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-    { name: 'theme-color', content: '#0A0A0B' },
   ],
   link: [
     { rel: 'icon', type: 'image/svg+xml', href: FAVICON },
@@ -38,6 +37,18 @@ const route = useRoute()
 const { locale, setLocale, t } = useLocale()
 const { loggedIn, user, logout } = useAuth()
 const { show: openCmdK } = useCommandPalette()
+
+// Light/dark — `preference` is what the user picked (system | light | dark);
+// `value` is the resolved mode. The toggle flips between explicit light/dark.
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
+function toggleTheme() {
+  colorMode.preference = isDark.value ? 'light' : 'dark'
+}
+// Browser chrome (mobile address bar) follows the active theme.
+useHead({
+  meta: [{ name: 'theme-color', content: () => (isDark.value ? '#0a0a0b' : '#fafafa') }],
+})
 
 const showAuth = ref(false)
 const mobileNav = ref(false)
@@ -114,13 +125,29 @@ function openImport() {
         </nav>
 
         <div class="side-foot">
-          <div class="lang">
-            <button :class="{ on: locale === 'fr' }" aria-label="Français" @click="setLocale('fr')">
-              FR
-            </button>
-            <button :class="{ on: locale === 'en' }" aria-label="English" @click="setLocale('en')">
-              EN
-            </button>
+          <div class="side-prefs">
+            <div class="lang">
+              <button :class="{ on: locale === 'fr' }" aria-label="Français" @click="setLocale('fr')">
+                FR
+              </button>
+              <button :class="{ on: locale === 'en' }" aria-label="English" @click="setLocale('en')">
+                EN
+              </button>
+            </div>
+            <ClientOnly>
+              <button
+                type="button"
+                class="theme-toggle"
+                :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
+                :title="isDark ? t('theme.toLight') : t('theme.toDark')"
+                @click="toggleTheme"
+              >
+                <UIcon :name="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" class="h-4 w-4" />
+              </button>
+              <template #fallback>
+                <span class="theme-toggle" />
+              </template>
+            </ClientOnly>
           </div>
           <UDropdownMenu v-if="loggedIn" :items="userMenu">
             <button type="button" class="side-user">
@@ -313,14 +340,39 @@ function openImport() {
   gap: 10px;
   padding-top: 12px;
 }
+.side-prefs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
 .lang {
   display: flex;
-  align-self: flex-start;
-  margin-left: 4px;
   background: var(--color-surface-1);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-full);
   padding: 2px;
+}
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-1);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.theme-toggle:hover {
+  color: var(--color-text-high);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-2);
 }
 .lang button {
   font: inherit;
