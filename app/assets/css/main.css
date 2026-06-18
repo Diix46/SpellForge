@@ -332,27 +332,6 @@ body {
   opacity: 1;
 }
 
-/* Skeleton shimmer sweep */
-.skeleton {
-  position: relative;
-  overflow: hidden;
-  background: var(--color-surface-1);
-  border-radius: var(--radius-lg);
-}
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06) 40%, transparent 80%);
-  transform: translateX(-100%);
-  animation: skeleton-sweep 1.4s ease-in-out infinite;
-}
-@keyframes skeleton-sweep {
-  to {
-    transform: translateX(100%);
-  }
-}
-
 /* Animated accent ring (focal CTA — export / load buttons) */
 @property --angle {
   syntax: '<angle>';
@@ -474,10 +453,6 @@ body {
 /* ---------------- ACCENT HELPER CLASSES ---------------- */
 .accent-text {
   color: var(--accent-text);
-}
-.accent-fill {
-  background: var(--gradient-accent);
-  color: var(--color-text-on-neon);
 }
 .accent-soft-bg {
   background: var(--accent-soft);

@@ -75,9 +75,7 @@ export default defineEventHandler(async (event): Promise<{ names: string[] }> =>
   try {
     return { names: await fetchSuggestions(slugify(commander)) }
   }
-  catch (e) {
-    // eslint-disable-next-line no-console
-    console.log(`[suggestions] commander="${commander}" slug="${slugify(commander)}" FAILED:`, e instanceof Error ? e.message : e)
+  catch {
     // Unknown commander or transient EDHREC failure → empty, NOT cached.
     return { names: [] }
   }
