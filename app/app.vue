@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 // Mana Prism favicon as an inline SVG data URI (matches AppLogo).
 const FAVICON = `data:image/svg+xml,${encodeURIComponent(
@@ -34,6 +34,13 @@ useSeoMeta({
 })
 
 const { locale, setLocale, t } = useLocale()
+const { loggedIn, user, logout } = useAuth()
+
+const showAuth = ref(false)
+const userMenu = computed(() => [[
+  { label: user.value?.displayName ?? t('auth.account'), type: 'label' as const },
+  { label: t('auth.logout'), icon: 'i-lucide-log-out', onSelect: () => logout() },
+]])
 
 const scrolled = ref(false)
 function onScroll() {
@@ -101,6 +108,28 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
               </button>
             </div>
 
+            <!-- Auth: login button (guest) or user menu (logged in) -->
+            <UDropdownMenu v-if="loggedIn" :items="userMenu">
+              <UButton
+                icon="i-lucide-user-round"
+                color="neutral"
+                variant="ghost"
+                class="text-(--color-text-mid) hover:text-(--color-text-high)"
+              >
+                <span class="hidden max-w-[10ch] truncate sm:inline">{{ user?.displayName }}</span>
+              </UButton>
+            </UDropdownMenu>
+            <UButton
+              v-else
+              icon="i-lucide-log-in"
+              color="neutral"
+              variant="ghost"
+              class="text-(--color-text-mid) hover:text-(--color-text-high)"
+              @click="showAuth = true"
+            >
+              <span class="hidden sm:inline">{{ t('auth.login') }}</span>
+            </UButton>
+
             <UButton
               icon="i-lucide-plus"
               color="neutral"
@@ -113,6 +142,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
           </div>
         </div>
       </header>
+
+      <AuthModal v-model:open="showAuth" />
 
       <!-- MAIN -->
       <main class="mx-auto w-full max-w-[1400px] flex-1 px-6 py-10 md:px-8">
