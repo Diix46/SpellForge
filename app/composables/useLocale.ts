@@ -123,10 +123,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'editor.cardsWord': 'cartes',
     'editor.noCards': 'Aucune carte chargée.',
     // Commander / stats
-    'commander.label': 'Commander',
+    'commander.label': 'Commandant',
     'commander.identity': 'identité',
     'commander.details': 'Détails',
-    'commander.set': 'Définir comme commander',
+    'commander.set': 'Définir comme commandant',
     'stats.title': 'Composition',
     'stats.clearFilter': 'Tout afficher',
     'type.creature': 'Créatures',

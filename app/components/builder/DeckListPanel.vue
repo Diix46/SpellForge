@@ -23,6 +23,15 @@ const props = defineProps<{
   identityLocked: boolean
   curve?: ManaCurve
   price?: PriceSummary
+  /** Resolved commander image (when available) for the feature card. */
+  commanderImage?: string | null
+  /** Localized commander type line for the feature card. */
+  commanderType?: string
+  /** Commander colour identity (WUBRG letters) for the feature card pips. */
+  commanderColors?: string[]
+  /** Commander's English (raw decklist) name — used to dedupe it out of the
+   *  grouped list, which is keyed by raw entry names (commanderName is localized). */
+  commanderRawName?: string
 }>()
 
 const emit = defineEmits<{
@@ -31,7 +40,11 @@ const emit = defineEmits<{
   setCommander: [name: string]
   toggleLock: []
   details: [name: string]
+  showCommander: []
 }>()
+
+// Show the feature card only once the commander is actually known (named).
+const hasCommander = computed(() => !!props.commanderName.trim())
 
 // Localized display name for an entry, falling back to its raw (English) name.
 function displayNameOf(name: string): string {
@@ -92,14 +105,19 @@ function barCount(c: string): number {
 }
 
 function categoryOf(entry: DeckEntry): string {
-  if (entry.name.trim().toLowerCase() === props.commanderName.trim().toLowerCase())
-    return 'commander'
   return props.categoryByName?.get(entry.name.trim().toLowerCase()) ?? 'other'
 }
 
 const groups = computed(() => {
+  // Entries are keyed by raw (English) names; match the commander on its raw name
+  // (commanderName is localized and wouldn't match). Fall back to commanderName.
+  const cmdr = (props.commanderRawName || props.commanderName).trim().toLowerCase()
   const map = new Map<string, DeckEntry[]>()
   for (const e of props.entries) {
+    // The commander is shown in its own feature card above — skip it here so it
+    // isn't listed twice.
+    if (cmdr && e.name.trim().toLowerCase() === cmdr)
+      continue
     const cat = categoryOf(e)
     if (!map.has(cat))
       map.set(cat, [])
@@ -138,6 +156,53 @@ function issueText(issue: ValidationIssue): string {
         {{ total }} / 100
       </span>
     </div>
+
+    <!-- Commander feature: same treatment as the Preview tab, so the commander
+         is immediately identifiable instead of lost among the créatures. -->
+    <button
+      v-if="hasCommander"
+      type="button"
+      class="group/cmd accent-border-c mb-3 flex w-full items-center gap-3 rounded-[var(--radius-lg)] accent-soft-bg p-2.5 text-left ring-1 transition-colors hover:bg-[rgba(var(--accent-rgb),0.18)]"
+      @click="emit('showCommander')"
+    >
+      <div
+        v-if="commanderImage"
+        class="h-16 w-[46px] shrink-0 overflow-hidden rounded-[var(--radius-sm)] ring-1 ring-(--accent-border)"
+        :style="{ boxShadow: 'var(--accent-glow-soft)' }"
+      >
+        <img
+          :src="commanderImage"
+          :alt="displayNameOf(commanderName)"
+          class="h-full w-full object-cover object-top"
+        >
+      </div>
+      <div
+        v-else
+        class="grid h-16 w-[46px] shrink-0 place-items-center rounded-[var(--radius-sm)] bg-(--color-surface-2) ring-1 ring-(--accent-border)"
+      >
+        <UIcon name="i-lucide-crown" class="h-5 w-5 text-(--accent-text)" />
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="mb-0.5 flex items-center gap-1 font-mono text-[10px] uppercase tracking-[2px] text-(--accent-text)">
+          <UIcon name="i-lucide-crown" class="h-3 w-3" />
+          {{ t('commander.label') }}
+        </div>
+        <div class="truncate text-sm font-semibold text-(--color-text-high)">
+          {{ displayNameOf(commanderName) }}
+        </div>
+        <div v-if="commanderType" class="truncate text-xs text-(--color-text-muted)">
+          {{ commanderType }}
+        </div>
+        <div v-if="commanderColors && commanderColors.length" class="mt-1 flex items-center gap-1">
+          <span
+            v-for="c in commanderColors"
+            :key="c"
+            class="h-2.5 w-2.5 rounded-full ring-1 ring-white/10"
+            :style="{ background: colorVar(c as 'w') }"
+          />
+        </div>
+      </div>
+    </button>
 
     <!-- Identity lock toggle -->
     <button
@@ -250,8 +315,7 @@ function issueText(issue: ValidationIssue): string {
     <div v-else class="-mr-2 flex-1 space-y-3 overflow-y-auto pr-2">
       <div v-for="group in groups" :key="group.key">
         <div class="mb-1 flex items-center justify-between border-b border-(--color-border-subtle) pb-1">
-          <span class="font-mono text-[10px] uppercase tracking-wider" :class="group.key === 'commander' ? 'text-(--accent-text)' : 'text-(--color-text-muted)'">
-            <UIcon v-if="group.key === 'commander'" name="i-lucide-crown" class="mr-1 inline h-3 w-3" />
+          <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
             {{ group.label }}
           </span>
           <span class="font-mono text-[10px] text-(--color-text-muted)">{{ group.count }}</span>
@@ -321,7 +385,6 @@ function issueText(issue: ValidationIssue): string {
                sit on top of text (no see-through "empiètement"). -->
           <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-[var(--radius-sm)] pl-6 pr-1.5 opacity-0 transition-opacity bg-gradient-to-l from-(--color-surface-2) from-65% to-transparent group-hover/row:opacity-100">
             <button
-              v-if="group.key !== 'commander'"
               type="button"
               class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text)"
               :title="t('build.setCommander')"

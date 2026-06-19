@@ -791,6 +791,10 @@ const tabsUi = {
             :entries="builder.entries.value"
             :total="builder.totalCards.value"
             :commander-name="commanderName || builder.commanderName.value"
+            :commander-raw-name="commanderEnName"
+            :commander-image="commander?.imageUrl ?? null"
+            :commander-type="commanderType"
+            :commander-colors="themeColors"
             :validation="validation"
             :category-by-name="categoryByName"
             :color-by-name="identityByName"
@@ -804,6 +808,7 @@ const tabsUi = {
             @set-commander="chooseCommander"
             @toggle-lock="identityLocked = !identityLocked"
             @details="openDeckEntryDetail"
+            @show-commander="commander && openDetail(commander)"
           />
           <BuilderAiAssistPanel
             :commander="commanderEnName"
