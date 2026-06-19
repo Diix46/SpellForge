@@ -313,7 +313,12 @@ const oracleSegments = computed<Segment[]>(() => {
 
         <!-- Info -->
         <div class="min-w-0">
-          <div class="mb-3 flex items-start justify-between gap-3">
+          <!-- pr-12 on this row only: reserve space for the modal's absolute
+               close button (top-right) so the mana cost never sits under it.
+               Applies in both layouts — the info column's top-right corner is
+               under the close button on mobile (full width) and desktop (right
+               column) alike. -->
+          <div class="mb-3 flex items-start justify-between gap-3 pr-12">
             <div class="min-w-0">
               <h2 class="font-display text-xl font-bold text-(--color-text-high)">
                 {{ primaryName }}
