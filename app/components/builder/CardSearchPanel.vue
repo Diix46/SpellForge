@@ -246,7 +246,9 @@ const sortModel = computed({
       </ul>
     </div>
 
-    <!-- Color pips -->
+    <!-- Color pips: real mana symbols. Selected = full pip + accent ring + glow;
+         unselected = dimmed & desaturated (still readable by colour). Hover lifts
+         and lights up in the pip's own colour. -->
     <div class="mb-3 flex items-center gap-2">
       <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">{{ t('build.colors') }}</span>
       <div class="flex gap-1.5">
@@ -254,21 +256,15 @@ const sortModel = computed({
           v-for="pip in WUBRG"
           :key="pip"
           type="button"
-          class="grid h-6 w-6 place-items-center rounded-full text-[9px] font-bold ring-2 transition-all"
-          :style="{
-            // Selected: mana fill + dark ink label. Unselected: neutral readable
-            // label (the colored ring conveys the color) — pale mana hues as text
-            // are illegible, esp. in light mode.
-            'background': filters.colors.includes(pip) ? colorVar(pip) : 'transparent',
-            'color': filters.colors.includes(pip) ? '#0a0a0b' : 'var(--color-text-mid)',
-            '--tw-ring-color': colorVar(pip),
-          }"
+          class="mana-toggle"
+          :class="{ 'is-active': filters.colors.includes(pip) }"
+          :style="{ '--pip': colorVar(pip) }"
           :aria-pressed="filters.colors.includes(pip)"
           :aria-label="`${colorCode(pip, isFr)} — ${colorName(pip, isFr)}`"
           :title="colorName(pip, isFr)"
           @click="toggleColor(pip)"
         >
-          {{ colorCode(pip, isFr) }}
+          <ManaSymbol :sym="pip" :size="22" />
         </button>
       </div>
     </div>
@@ -279,10 +275,10 @@ const sortModel = computed({
         v-for="theme in SEARCH_THEMES"
         :key="theme.key"
         type="button"
-        class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all"
+        class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all hover:-translate-y-px"
         :class="filters.themes.includes(theme.key)
           ? 'accent-border-c accent-soft-bg text-(--accent-text)'
-          : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--color-border-strong)'"
+          : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:bg-(--color-surface-2) hover:text-(--color-text-high)'"
         @click="toggleTheme(theme.key)"
       >
         <UIcon :name="theme.icon" class="h-3.5 w-3.5" />
@@ -408,7 +404,7 @@ const sortModel = computed({
         <div
           v-for="card in state.cards"
           :key="card.id"
-          class="group relative overflow-hidden rounded-[var(--radius-md)]"
+          class="group relative overflow-hidden rounded-[var(--radius-md)] ring-1 ring-transparent transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-elev-3)] hover:ring-(--accent-border)"
         >
           <button type="button" class="block w-full" :aria-label="cardName(card)" @click="emit('details', card)">
             <img
@@ -461,3 +457,60 @@ const sortModel = computed({
     </div>
   </div>
 </template>
+
+<style scoped>
+/* WUBRG colour toggles built on real mana pips. --pip = the colour's CSS var. */
+.mana-toggle {
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  padding: 2px;
+  transition:
+    transform var(--dur) var(--ease-spring),
+    box-shadow var(--dur) var(--ease-out),
+    opacity var(--dur) var(--ease-out);
+  /* Unselected: present but muted so the selected ones pop. The colour still
+     reads through, just desaturated and dimmed. */
+  opacity: 0.5;
+  filter: saturate(0.55);
+}
+.mana-toggle:hover {
+  transform: translateY(-2px) scale(1.12);
+  opacity: 1;
+  filter: none;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.15),
+    0 6px 16px -4px var(--pip);
+}
+.mana-toggle:focus-visible {
+  outline: none;
+  opacity: 1;
+  filter: none;
+  box-shadow:
+    0 0 0 2px var(--color-bg-base),
+    0 0 0 4px var(--pip);
+}
+.mana-toggle.is-active {
+  opacity: 1;
+  filter: none;
+  /* Ring in the pip's own colour + a soft glow so the active set is obvious. */
+  box-shadow:
+    0 0 0 2px var(--color-bg-base),
+    0 0 0 4px var(--pip),
+    0 0 14px -3px var(--pip);
+}
+.mana-toggle.is-active:hover {
+  transform: translateY(-2px) scale(1.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mana-toggle,
+  .mana-toggle:hover,
+  .mana-toggle.is-active:hover {
+    transition:
+      box-shadow var(--dur) var(--ease-out),
+      opacity var(--dur) var(--ease-out);
+    transform: none;
+  }
+}
+</style>

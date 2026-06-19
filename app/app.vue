@@ -313,10 +313,17 @@ function openImport() {
   height: 17px;
   flex-shrink: 0;
   opacity: 0.85;
+  transition:
+    transform var(--dur) var(--ease-spring),
+    opacity var(--dur-fast) var(--ease-out);
 }
 .side-link:hover {
   color: var(--color-text-high);
   background: var(--color-surface-1);
+}
+.side-link:hover .ic {
+  opacity: 1;
+  transform: translateX(1px) scale(1.08);
 }
 .side-link.active {
   color: var(--color-text-high);

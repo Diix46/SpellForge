@@ -424,6 +424,54 @@ body {
   transform: translateY(-4px);
 }
 
+/* ---------------- INTERACTIVE HOVER AFFORDANCES ----------------
+   Discreet, consistent micro-interactions so everything clickable feels alive.
+   Kept subtle (small scale / colour shift) and built on the motion tokens.
+   Scoped to plain elements; Nuxt UI components manage their own hover states
+   and are left untouched (we only smooth their transitions). */
+
+/* Smooth colour/opacity transitions on any interactive element that doesn't
+   already declare its own transition inline. Cheap, never moves layout. */
+:where(button, a, [role='button'], summary, label[for]):not(.lift) {
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur) var(--ease-spring);
+}
+
+/* Bare icon buttons (no background utility) get a gentle pop + accent tint. */
+@media (hover: hover) {
+  button:where(:not([class*='bg-']):not(.lift):not([data-slot])):hover :where(svg, .iconify) {
+    transform: scale(1.12);
+  }
+  button :where(svg, .iconify) {
+    transition: transform var(--dur) var(--ease-spring);
+  }
+
+  /* Text links (not styled as buttons) warm toward the accent on hover. */
+  a:where(:not([class*='bg-']):not([class*='rounded']):not([role='button'])):hover {
+    color: var(--accent-text);
+  }
+}
+
+/* Honour reduced-motion: keep colour feedback, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .lift:hover {
+    transform: none;
+  }
+}
+
 /* ---------------- PAGE TRANSITION ---------------- */
 .cine-enter-active,
 .cine-leave-active {
