@@ -270,7 +270,9 @@ const oracleSegments = computed<Segment[]>(() => {
       title: 'sr-only',
       // Visual styling is in scoped CSS ([data-slot=close]) to reliably beat the
       // UButton variant's background (arbitrary utilities lose that cascade).
-      close: 'modal-close size-9',
+      // justify-center centers the X glyph horizontally (UButton defaults to
+      // justify:normal, which left-biases a lone icon by ~2px).
+      close: 'modal-close size-9 justify-center',
     }"
     @update:open="emit('update:open', $event)"
   >
