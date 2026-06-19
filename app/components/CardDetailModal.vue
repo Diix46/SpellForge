@@ -313,18 +313,18 @@ const oracleSegments = computed<Segment[]>(() => {
 
         <!-- Info -->
         <div class="min-w-0">
-          <!-- Mana cost is pinned to the modal's top-right and vertically
-               centered on the close button. It uses the SAME vertical band as
-               the modal header (top-0 + h-[--ui-header-height] + items-center),
-               so its center lines up with the close button's exactly — both
-               derive from one token, with no magic offset to drift between the
-               header and body coordinate systems. right-[3.75rem] (60px) clears
-               the close button's disc; pr-14 keeps the title off both. -->
+          <!-- Mana cost is pinned to the modal's top-right, in a box that mirrors
+               the close button's exactly. Both share this content box as their
+               positioning context and both use top-4 (the close button's own CSS
+               top is 16px) + a size-9/h-9 box + items-center, so the pip's center
+               lands on the button's center — no magic offset, no header coupling.
+               right-14 (56px) clears the button's disc; pr-14 keeps the title off
+               both. !flex overrides ManaCost's own inline-flex so h-9 applies. -->
           <ManaCost
             v-if="manaCost"
             :cost="manaCost"
             :size="24"
-            class="absolute right-[3.75rem] top-0 z-10 flex h-[var(--ui-header-height)] items-center"
+            class="absolute right-14 top-4 z-10 !flex h-9 items-center"
           />
           <div class="mb-3 pr-14">
             <h2 class="font-display text-xl font-bold text-(--color-text-high)">
