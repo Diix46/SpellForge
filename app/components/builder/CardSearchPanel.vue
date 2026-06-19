@@ -62,7 +62,25 @@ const typeModel = computed({
   },
 })
 
-function toggleColor(c: ManaColor) {
+// Spawn a colour ripple from the click point inside a mana pip — a quick juicy
+// burst that animates out via CSS then removes itself. Skipped under reduced motion.
+function spawnRipple(e: MouseEvent) {
+  const host = e.currentTarget as HTMLElement
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    return
+  const r = host.getBoundingClientRect()
+  const ripple = document.createElement('span')
+  ripple.className = 'mana-ripple'
+  const size = Math.max(r.width, r.height) * 2.4
+  ripple.style.width = ripple.style.height = `${size}px`
+  ripple.style.left = `${e.clientX - r.left - size / 2}px`
+  ripple.style.top = `${e.clientY - r.top - size / 2}px`
+  host.appendChild(ripple)
+  ripple.addEventListener('animationend', () => ripple.remove(), { once: true })
+}
+
+function toggleColor(c: ManaColor, e: MouseEvent) {
+  spawnRipple(e)
   const i = filters.colors.indexOf(c)
   if (i >= 0)
     filters.colors.splice(i, 1)
@@ -262,7 +280,7 @@ const sortModel = computed({
           :aria-pressed="filters.colors.includes(pip)"
           :aria-label="`${colorCode(pip, isFr)} — ${colorName(pip, isFr)}`"
           :title="colorName(pip, isFr)"
-          @click="toggleColor(pip)"
+          @click="toggleColor(pip, $event)"
         >
           <ManaSymbol :sym="pip" :size="22" />
         </button>
@@ -404,7 +422,8 @@ const sortModel = computed({
         <div
           v-for="card in state.cards"
           :key="card.id"
-          class="group relative overflow-hidden rounded-[var(--radius-md)] ring-1 ring-transparent transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[var(--shadow-elev-3)] hover:ring-(--accent-border)"
+          v-tilt="{ max: 12, scale: 1.06 }"
+          class="group relative overflow-hidden rounded-[var(--radius-md)]"
         >
           <button type="button" class="block w-full" :aria-label="cardName(card)" @click="emit('details', card)">
             <img
@@ -461,6 +480,8 @@ const sortModel = computed({
 <style scoped>
 /* WUBRG colour toggles built on real mana pips. --pip = the colour's CSS var. */
 .mana-toggle {
+  position: relative;
+  overflow: hidden; /* clip the click ripple to the pip */
   display: grid;
   place-items: center;
   border-radius: 9999px;
@@ -475,12 +496,16 @@ const sortModel = computed({
   filter: saturate(0.55);
 }
 .mana-toggle:hover {
-  transform: translateY(-2px) scale(1.12);
+  transform: translateY(-2px) scale(1.15);
   opacity: 1;
   filter: none;
   box-shadow:
     0 0 0 2px rgba(0, 0, 0, 0.15),
-    0 6px 16px -4px var(--pip);
+    0 8px 18px -4px var(--pip);
+}
+.mana-toggle:active {
+  transform: scale(0.92); /* satisfying press */
+  transition-duration: 0.06s;
 }
 .mana-toggle:focus-visible {
   outline: none;
@@ -493,24 +518,76 @@ const sortModel = computed({
 .mana-toggle.is-active {
   opacity: 1;
   filter: none;
-  /* Ring in the pip's own colour + a soft glow so the active set is obvious. */
+  /* Ring in the pip's own colour + a glow that gently breathes. */
+  animation:
+    pip-pop 0.42s var(--ease-spring),
+    pip-pulse 2.4s ease-in-out 0.42s infinite;
   box-shadow:
     0 0 0 2px var(--color-bg-base),
     0 0 0 4px var(--pip),
     0 0 14px -3px var(--pip);
 }
 .mana-toggle.is-active:hover {
-  transform: translateY(-2px) scale(1.12);
+  transform: translateY(-2px) scale(1.15);
+}
+
+/* Pop in with a spring overshoot the moment a colour becomes selected. */
+@keyframes pip-pop {
+  0% {
+    transform: scale(0.8);
+  }
+  55% {
+    transform: scale(1.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* Slow breathing halo while selected, in the pip's own colour. */
+@keyframes pip-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--color-bg-base),
+      0 0 0 4px var(--pip),
+      0 0 12px -4px var(--pip);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--color-bg-base),
+      0 0 0 4px var(--pip),
+      0 0 22px 0 var(--pip);
+  }
+}
+
+/* Click ripple (spawned in JS), bursting from the click point in pip colour. */
+.mana-toggle :deep(.mana-ripple) {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--pip) 0%, transparent 70%);
+  opacity: 0.6;
+  transform: scale(0);
+  pointer-events: none;
+  animation: mana-ripple 0.5s var(--ease-out) forwards;
+}
+@keyframes mana-ripple {
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mana-toggle,
   .mana-toggle:hover,
+  .mana-toggle:active,
+  .mana-toggle.is-active,
   .mana-toggle.is-active:hover {
     transition:
       box-shadow var(--dur) var(--ease-out),
       opacity var(--dur) var(--ease-out);
     transform: none;
+    animation: none;
   }
 }
 </style>

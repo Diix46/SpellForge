@@ -424,6 +424,77 @@ body {
   transform: translateY(-4px);
 }
 
+/* ---------------- 3D TILT CARDS (v-tilt) ----------------
+   The v-tilt directive feeds pointer-driven vars (--tilt-rx/ry/scale and the
+   --tilt-mx/my highlight position). Transform is GPU-only; on pointer-leave the
+   directive resets the vars and the spring transition eases the card back. */
+.tilt-card {
+  --tilt-rx: 0deg;
+  --tilt-ry: 0deg;
+  --tilt-scale: 1;
+  transform: perspective(700px) rotateX(var(--tilt-rx)) rotateY(var(--tilt-ry)) scale(var(--tilt-scale));
+  transform-style: preserve-3d;
+  transition:
+    transform var(--dur-slow) var(--ease-spring),
+    box-shadow var(--dur) var(--ease-out);
+  will-change: transform;
+}
+.tilt-card.is-tilting {
+  /* While actively tracking, follow the pointer instantly (no lag), and cast a
+     deeper, accent-tinted shadow so the lift reads as real depth. */
+  transition: box-shadow var(--dur) var(--ease-out);
+  box-shadow:
+    0 18px 40px -12px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(var(--accent-rgb), 0.35),
+    0 0 26px -6px rgba(var(--accent-rgb), 0.4);
+  z-index: 2;
+}
+
+/* Holographic sheen that tracks the cursor. A bright radial highlight plus a
+   colour-shifting conic band, both masked to the card, revealed while tilting. */
+.tilt-glare {
+  position: relative;
+}
+.tilt-glare::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease-out);
+  background:
+    radial-gradient(
+      circle at var(--tilt-mx, 50%) var(--tilt-my, 50%),
+      rgba(255, 255, 255, 0.45),
+      rgba(255, 255, 255, 0.12) 28%,
+      transparent 55%
+    ),
+    conic-gradient(
+      from 210deg at var(--tilt-mx, 50%) var(--tilt-my, 50%),
+      rgba(255, 0, 128, 0.25),
+      rgba(0, 200, 255, 0.22),
+      rgba(120, 255, 120, 0.22),
+      rgba(255, 220, 0, 0.22),
+      rgba(255, 0, 128, 0.25)
+    );
+  mix-blend-mode: soft-light;
+  z-index: 3;
+}
+.tilt-glare.is-tilting::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card {
+    transform: none !important;
+    transition: none;
+  }
+  .tilt-glare::after {
+    display: none;
+  }
+}
+
 /* ---------------- INTERACTIVE HOVER AFFORDANCES ----------------
    Discreet, consistent micro-interactions so everything clickable feels alive.
    Kept subtle (small scale / colour shift) and built on the motion tokens.
@@ -455,6 +526,20 @@ body {
   a:where(:not([class*='bg-']):not([class*='rounded']):not([role='button'])):hover {
     color: var(--accent-text);
   }
+
+  /* Accent/primary CTAs lift a touch on hover so they feel clickable. */
+  button.bg-primary:hover,
+  a.bg-primary:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* Satisfying press: tactile scale-down on the main accent buttons (works on
+   touch too, so kept outside the hover media query). */
+button.bg-primary:active,
+a.bg-primary:active {
+  transform: scale(0.96);
+  transition-duration: 0.06s;
 }
 
 /* Honour reduced-motion: keep colour feedback, drop the movement. */
