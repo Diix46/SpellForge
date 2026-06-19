@@ -141,7 +141,9 @@ export function useScryfall() {
     collectorNumber: string,
     lang: string,
   ): Promise<ScryfallCard | null> {
-    const key = `${set}/${collectorNumber}/${lang}`
+    // Lowercase set in the key so it matches the keys bulkPrefetchLocalized()
+    // writes (both must agree or the pre-warm is wasted and we re-fetch per card).
+    const key = `${set.toLowerCase()}/${collectorNumber}/${lang}`
     if (cardCache.has(key))
       return cardCache.get(key)!
     try {
@@ -251,6 +253,41 @@ export function useScryfall() {
     }
   }
 
+  // Bulk-prefetch the EXACT FR printing of many cards in ONE grouped search,
+  // pre-filling cardCache so resolveFrench()'s per-card fetchLocalized() step 1
+  // becomes a cache hit. This kills the localized N+1 (one ~400ms request per
+  // card on first open) — the whole batch now costs a single request.
+  async function bulkPrefetchLocalized(
+    printings: Array<{ set: string, number: string }>,
+  ): Promise<void> {
+    // Only printings not already in cardCache (skip what we already know).
+    const items = printings
+      .map(p => ({ set: p.set.toLowerCase(), number: p.number, lang: 'fr' }))
+      .filter(p => p.set && p.number && !cardCache.has(`${p.set}/${p.number}/${p.lang}`))
+    if (!items.length)
+      return
+    // De-dupe by key.
+    const uniq = new Map<string, { set: string, number: string, lang: string }>()
+    for (const it of items) uniq.set(`${it.set}/${it.number}/${it.lang}`, it)
+
+    let map: Record<string, ScryfallCard> = {}
+    try {
+      const data = await $fetch<{ cards?: Record<string, ScryfallCard> }>('/api/cards/localized-batch', {
+        method: 'POST',
+        body: { items: [...uniq.values()] },
+      })
+      map = data.cards ?? {}
+    }
+    catch {
+      // Batch failed: leave cardCache untouched so the per-card path retries.
+      return
+    }
+    // Fill cardCache for every requested key — a hit, or a cached null so the
+    // per-card fetchLocalized() short-circuits without another request.
+    for (const key of uniq.keys())
+      cardCache.set(key, map[key] ?? null)
+  }
+
   // Resolve the best French version of a matched card with a REAL image, or null
   // if no usable French printing exists (caller keeps the matched card).
   // When `pinned` is true the user chose a specific printing, so we ONLY try the
@@ -317,12 +354,38 @@ export function useScryfall() {
       // FR mode: warm the by-name cache for the whole batch in one search per
       // ~40 names, so the per-card resolveFrench() fallback hits cache instead
       // of firing a /cards/search per card (the main N+1 latency source).
-      if (lang === 'fr' && !requestError)
+      if (lang === 'fr' && !requestError) {
         await bulkPrefetchFrench(batch.map(e => e.name))
 
+        // Then warm the EXACT-FR-printing cache in ONE grouped request for every
+        // card that would otherwise fire a per-card fetchLocalized() — i.e. the
+        // localized N+1. This must mirror resolveFrench()'s control flow exactly:
+        //   - pinned (entry has set+number): always goes straight to fetchLocalized,
+        //     ignoring the by-name cache → always pre-warm it.
+        //   - non-pinned: tries the by-name cache first, only falling to
+        //     fetchLocalized if that missed → pre-warm only those.
+        const needLocalized: Array<{ set: string, number: string }> = []
+        for (const entry of batch) {
+          const match = findMatch(foundCards, entry)
+          if (!match || !match.set || !match.collector_number)
+            continue
+          if (match.lang === 'fr' && hasRealImage(match))
+            continue // already FR with image — no lookup needed
+          const isPinned = !!(entry.set && entry.collectorNumber)
+          if (!isPinned) {
+            const byName = frByNameCache.get(match.name.toLowerCase())
+            if (byName && hasRealImage(byName))
+              continue // by-name pass covered it — resolveFrench uses that
+          }
+          needLocalized.push({ set: match.set, number: match.collector_number })
+        }
+        await bulkPrefetchLocalized(needLocalized)
+      }
+
       // Resolve each entry of the batch concurrently (bounded pool). FR
-      // resolution may still do the exact-printing lookup per card, but the
-      // expensive by-name search is now pre-warmed. Results stay in batch order.
+      // resolution may still do the exact-printing lookup per card, but both the
+      // by-name search and the exact-printing lookups are now pre-warmed in two
+      // grouped requests. Results stay in batch order.
       const resolved = await mapPool(batch, FR_CONCURRENCY, async (entry): Promise<ResolvedCard> => {
         if (requestError) {
           return { entry, card: null, imageUrl: null, backImageUrl: null, lang, error: `Erreur réseau: ${requestError}` }
