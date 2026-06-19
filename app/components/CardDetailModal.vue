@@ -313,29 +313,29 @@ const oracleSegments = computed<Segment[]>(() => {
 
         <!-- Info -->
         <div class="min-w-0">
-          <!-- pr-12 on this row only: reserve space for the modal's absolute
-               close button (top-right) so the mana cost never sits under it.
-               Applies in both layouts — the info column's top-right corner is
-               under the close button on mobile (full width) and desktop (right
-               column) alike. -->
-          <div class="mb-3 flex items-start justify-between gap-3 pr-12">
-            <div class="min-w-0">
-              <h2 class="font-display text-xl font-bold text-(--color-text-high)">
-                {{ primaryName }}
-              </h2>
-              <p
-                v-if="subName"
-                class="font-mono text-xs text-(--color-text-muted)"
-              >
-                {{ subName }}
-              </p>
-            </div>
-            <ManaCost
-              v-if="manaCost"
-              :cost="manaCost"
-              :size="24"
-              class="shrink-0"
-            />
+          <!-- Mana cost is pinned to the modal's top-right and vertically
+               centered on the close button. It uses the SAME vertical band as
+               the modal header (top-0 + h-[--ui-header-height] + items-center),
+               so its center lines up with the close button's exactly — both
+               derive from one token, with no magic offset to drift between the
+               header and body coordinate systems. right-[3.75rem] (60px) clears
+               the close button's disc; pr-14 keeps the title off both. -->
+          <ManaCost
+            v-if="manaCost"
+            :cost="manaCost"
+            :size="24"
+            class="absolute right-[3.75rem] top-0 z-10 flex h-[var(--ui-header-height)] items-center"
+          />
+          <div class="mb-3 pr-14">
+            <h2 class="font-display text-xl font-bold text-(--color-text-high)">
+              {{ primaryName }}
+            </h2>
+            <p
+              v-if="subName"
+              class="font-mono text-xs text-(--color-text-muted)"
+            >
+              {{ subName }}
+            </p>
           </div>
 
           <div class="mb-3 flex flex-wrap items-center gap-2">
