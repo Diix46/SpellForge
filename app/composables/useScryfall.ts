@@ -68,7 +68,6 @@ export interface FetchProgress {
   total: number
 }
 
-const SCRYFALL_BASE = 'https://api.scryfall.com'
 const BATCH_SIZE = 75
 const DELAY_MS = 100
 
@@ -133,7 +132,10 @@ function hasRealImage(card: ScryfallCard | null): boolean {
 }
 
 export function useScryfall() {
-  // Try the exact printing in the requested language.
+  // Try the exact printing in the requested language. Goes through our cached
+  // Nitro route (/api/cards/localized) instead of hitting api.scryfall.com from
+  // the browser, so a given printing is fetched once and then served instantly
+  // (and the result is shared across users + survives server restarts).
   async function fetchLocalized(
     set: string,
     collectorNumber: string,
@@ -143,8 +145,10 @@ export function useScryfall() {
     if (cardCache.has(key))
       return cardCache.get(key)!
     try {
-      const res = await fetch(`${SCRYFALL_BASE}/cards/${set.toLowerCase()}/${collectorNumber}/${lang}`)
-      const card = res.ok ? await res.json() : null
+      const data = await $fetch<{ card: ScryfallCard | null }>('/api/cards/localized', {
+        params: { set: set.toLowerCase(), number: collectorNumber, lang },
+      })
+      const card = data.card ?? null
       cardCache.set(key, card)
       return card
     }
@@ -156,26 +160,23 @@ export function useScryfall() {
 
   // Fallback: search for ANY French printing of a card by exact name.
   // Many printings (promos, Mystery Booster, etc.) have no FR version, but
-  // another printing of the same card usually does.
+  // another printing of the same card usually does. Routed through the cached
+  // /api/cards/search proxy (same SWR cache the bulk pre-pass warms).
   async function searchFrenchByName(name: string): Promise<ScryfallCard | null> {
     const cacheName = name.toLowerCase()
     if (frByNameCache.has(cacheName))
       return frByNameCache.get(cacheName)!
     try {
-      const q = `!"${name}" lang:fr`
-      const url = `${SCRYFALL_BASE}/cards/search?q=${encodeURIComponent(q)}&order=released&dir=desc&unique=prints`
-      const res = await fetch(url)
-      if (!res.ok) {
-        frByNameCache.set(cacheName, null)
-        return null
-      }
-      const data = await res.json()
+      const q = `!"${name.replace(/"/g, '')}" lang:fr`
+      const data = await $fetch<{ cards?: ScryfallCard[] }>('/api/cards/search', {
+        params: { q, order: 'released', dir: 'desc', unique: 'prints' },
+      })
       const target = name.toLowerCase()
 
       // Only printings that have an actual image (no "not available" placeholders),
       // and whose full name matches exactly (avoids split/adventure cards like
       // "Emeritus of Conflict // Lightning Bolt" matching "Lightning Bolt").
-      const realImages: ScryfallCard[] = (data.data ?? [])
+      const realImages: ScryfallCard[] = (data.cards ?? [])
         .filter((c: ScryfallCard) => hasRealImage(c) && c.name.toLowerCase() === target)
 
       // Prefer the highest-quality scan available.

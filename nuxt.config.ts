@@ -34,6 +34,24 @@ export default defineNuxtConfig({
     classSuffix: '',
   },
 
+  // Persist the Nitro route cache (defineCachedEventHandler) to disk instead of
+  // the default in-memory store. The cached Scryfall/EDHREC proxies hold data
+  // that's stable for hours-to-days (a card's printings/images never change),
+  // but an in-memory cache is wiped on every server restart — so every deploy
+  // made the first deck-open slow again. A filesystem-backed cache survives
+  // restarts (and is shared across all users), so the slow Scryfall cold-fetch
+  // is paid once, ever, per key — not once per process lifetime.
+  nitro: {
+    storage: {
+      cache: { driver: 'fs', base: './.data/cache' },
+    },
+    // Dev uses a separate storage layer; mount the same fs driver there so the
+    // cache persists across `nuxt dev` restarts too (matches prod behaviour).
+    devStorage: {
+      cache: { driver: 'fs', base: './.data/cache' },
+    },
+  },
+
   compatibilityDate: '2025-01-15',
 
   // Self-host fonts (no render-blocking @import, works offline).
