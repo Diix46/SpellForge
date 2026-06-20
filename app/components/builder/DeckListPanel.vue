@@ -69,14 +69,32 @@ function showPreview(name: string, e: MouseEvent) {
   if (!img)
     return
   const row = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  // Place to the LEFT of the panel row; clamp vertically into the viewport.
-  const w = 240
+  // Place to the LEFT of the panel row; clamp vertically into the viewport. If
+  // there isn't room on the left (narrow viewport), flip to the right.
+  const w = 260
   const h = w * (88 / 63)
+  const gap = 14
+  const left = row.left - w - gap
+  const x = left >= 8 ? left : row.right + gap
   const y = Math.min(Math.max(8, row.top + row.height / 2 - h / 2), window.innerHeight - h - 8)
-  preview.value = { src: img, x: row.left - w - 12, y }
+  preview.value = { src: img, x, y }
 }
 function hidePreview() {
   preview.value = null
+}
+// The commander's image comes from a prop (not cardMetaByName), so it gets its
+// own hover-preview trigger reusing the same floating card.
+function showCommanderPreview(e: MouseEvent) {
+  if (!props.commanderImage)
+    return
+  const row = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const w = 260
+  const h = w * (88 / 63)
+  const gap = 14
+  const left = row.left - w - gap
+  const x = left >= 8 ? left : row.right + gap
+  const y = Math.min(Math.max(8, row.top + row.height / 2 - h / 2), window.innerHeight - h - 8)
+  preview.value = { src: props.commanderImage, x, y }
 }
 
 const { t, isFr } = useLocale()
@@ -167,16 +185,18 @@ function issueText(issue: ValidationIssue): string {
       type="button"
       class="group/cmd accent-border-c mb-3 flex w-full items-center gap-3 rounded-[var(--radius-lg)] accent-soft-bg p-2.5 text-left ring-1 transition-colors hover:bg-[rgba(var(--accent-rgb),0.18)]"
       @click="emit('showCommander')"
+      @mouseenter="showCommanderPreview"
+      @mouseleave="hidePreview"
     >
       <div
         v-if="commanderImage"
-        class="h-16 w-[46px] shrink-0 overflow-hidden rounded-[var(--radius-sm)] ring-1 ring-(--accent-border)"
+        class="h-16 w-[46px] shrink-0 overflow-hidden rounded-[var(--radius-sm)] ring-1 ring-(--accent-border) transition-all group-hover/cmd:ring-2"
         :style="{ boxShadow: 'var(--accent-glow-soft)' }"
       >
         <img
           :src="commanderImage"
           :alt="displayNameOf(commanderName)"
-          class="h-full w-full object-cover object-top transition-transform duration-300 ease-out group-hover/cmd:scale-[1.18] motion-reduce:transition-none motion-reduce:group-hover/cmd:scale-100"
+          class="h-full w-full object-cover object-top transition-[filter] group-hover/cmd:brightness-110"
         >
       </div>
       <div
@@ -336,14 +356,16 @@ function issueText(issue: ValidationIssue): string {
           @keydown.enter.prevent="emit('details', entry.name)"
           @keydown.space.prevent="emit('details', entry.name)"
         >
-          <!-- thumbnail: zooms on row hover; shimmers while the card resolves -->
-          <div class="h-9 w-7 shrink-0 overflow-hidden rounded-[3px] bg-(--color-surface-2) ring-1 ring-(--color-border-subtle)">
+          <!-- thumbnail: brightens + accent ring on hover; the big card pops up as
+               a floating preview (teleported, below) so it isn't clipped by scroll.
+               Shimmers while the card resolves. -->
+          <div class="h-9 w-7 shrink-0 overflow-hidden rounded-[3px] bg-(--color-surface-2) ring-1 ring-(--color-border-subtle) transition-all group-hover/row:ring-(--accent-border) group-hover/row:ring-2">
             <img
               v-if="metaOf(entry.name)?.thumb"
               :src="metaOf(entry.name)!.thumb!"
               :alt="displayNameOf(entry.name)"
               loading="lazy"
-              class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover/row:scale-[1.18] motion-reduce:transition-none motion-reduce:group-hover/row:scale-100"
+              class="h-full w-full object-cover transition-[filter] group-hover/row:brightness-110"
             >
             <div v-else-if="resolving" class="skeleton h-full w-full" />
           </div>
@@ -417,15 +439,18 @@ function issueText(issue: ValidationIssue): string {
       </div>
     </div>
 
-    <!-- Shared hover preview (teleported so the scroll container can't clip it). -->
+    <!-- Shared hover preview: a big floating card that pops up beside the row
+         (teleported to body so the scroll container can't clip it). -->
     <Teleport to="body">
-      <img
-        v-if="preview"
-        :src="preview.src"
-        alt=""
-        class="pointer-events-none fixed z-[var(--z-tooltip)] w-60 rounded-[var(--radius-lg)] shadow-[var(--shadow-elev-3)] ring-1 ring-(--color-border-strong)"
-        :style="{ left: `${preview.x}px`, top: `${preview.y}px` }"
-      >
+      <Transition name="cardpop">
+        <img
+          v-if="preview"
+          :src="preview.src"
+          alt=""
+          class="card-preview pointer-events-none fixed z-[var(--z-tooltip)] w-[260px] rounded-[var(--radius-xl)] ring-1 ring-(--accent-border)"
+          :style="{ left: `${preview.x}px`, top: `${preview.y}px` }"
+        >
+      </Transition>
     </Teleport>
   </div>
 </template>

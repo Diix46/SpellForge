@@ -424,6 +424,46 @@ body {
   transform: translateY(-4px);
 }
 
+/* ---------------- FLOATING CARD PREVIEW ----------------
+   Big card that pops up beside a deck-list row on hover. Teleported to <body>,
+   so these live globally (scoped styles wouldn't reach it). */
+.card-preview {
+  transform-origin: center;
+  box-shadow:
+    0 24px 60px -16px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(var(--accent-rgb), 0.4),
+    0 0 40px -8px rgba(var(--accent-rgb), 0.45);
+}
+/* Pop + fade entrance with a spring overshoot; quick clean exit. */
+.cardpop-enter-active {
+  transition:
+    opacity 0.16s var(--ease-out),
+    transform 0.26s var(--ease-spring);
+}
+.cardpop-leave-active {
+  transition:
+    opacity 0.12s var(--ease-in),
+    transform 0.12s var(--ease-in);
+}
+.cardpop-enter-from {
+  opacity: 0;
+  transform: scale(0.82) translateY(6px);
+}
+.cardpop-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cardpop-enter-active,
+  .cardpop-leave-active {
+    transition: opacity 0.12s linear;
+  }
+  .cardpop-enter-from,
+  .cardpop-leave-to {
+    transform: none;
+  }
+}
+
 /* ---------------- SKELETON SHIMMER ----------------
    Loading placeholder for content that resolves late (thumbnails, pips). A soft
    surface base with a highlight sweeping across. Reduced-motion → static base. */
