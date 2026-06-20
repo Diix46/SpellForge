@@ -424,6 +424,40 @@ body {
   transform: translateY(-4px);
 }
 
+/* ---------------- SKELETON SHIMMER ----------------
+   Loading placeholder for content that resolves late (thumbnails, pips). A soft
+   surface base with a highlight sweeping across. Reduced-motion → static base. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-2);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--accent-rgb), 0.12) 40%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(var(--accent-rgb), 0.12) 60%,
+    transparent
+  );
+  animation: skeleton-sweep 1.3s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    display: none;
+  }
+}
+
 /* ---------------- 3D TILT CARDS (v-tilt) ----------------
    The v-tilt directive feeds pointer-driven vars (--tilt-rx/ry/scale and the
    --tilt-mx/my highlight position). Transform is GPU-only; on pointer-leave the

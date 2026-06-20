@@ -32,6 +32,9 @@ const props = defineProps<{
   /** Commander's English (raw decklist) name — used to dedupe it out of the
    *  grouped list, which is keyed by raw entry names (commanderName is localized). */
   commanderRawName?: string
+  /** True while card images/prices are still being resolved in the background —
+   *  drives shimmer placeholders on the not-yet-ready thumbnails + pips. */
+  resolving?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -173,7 +176,7 @@ function issueText(issue: ValidationIssue): string {
         <img
           :src="commanderImage"
           :alt="displayNameOf(commanderName)"
-          class="h-full w-full object-cover object-top"
+          class="h-full w-full object-cover object-top transition-transform duration-300 ease-out group-hover/cmd:scale-[1.18] motion-reduce:transition-none motion-reduce:group-hover/cmd:scale-100"
         >
       </div>
       <div
@@ -333,15 +336,16 @@ function issueText(issue: ValidationIssue): string {
           @keydown.enter.prevent="emit('details', entry.name)"
           @keydown.space.prevent="emit('details', entry.name)"
         >
-          <!-- thumbnail -->
+          <!-- thumbnail: zooms on row hover; shimmers while the card resolves -->
           <div class="h-9 w-7 shrink-0 overflow-hidden rounded-[3px] bg-(--color-surface-2) ring-1 ring-(--color-border-subtle)">
             <img
               v-if="metaOf(entry.name)?.thumb"
               :src="metaOf(entry.name)!.thumb!"
               :alt="displayNameOf(entry.name)"
               loading="lazy"
-              class="h-full w-full object-cover"
+              class="h-full w-full object-cover transition-transform duration-300 ease-out group-hover/row:scale-[1.18] motion-reduce:transition-none motion-reduce:group-hover/row:scale-100"
             >
+            <div v-else-if="resolving" class="skeleton h-full w-full" />
           </div>
 
           <!-- qty (compact, becomes steppers on hover) -->
@@ -367,7 +371,7 @@ function issueText(issue: ValidationIssue): string {
 
           <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-high)">{{ displayNameOf(entry.name) }}</span>
 
-          <!-- mana cost pips -->
+          <!-- mana cost pips (shimmer placeholders while the card resolves) -->
           <span
             v-if="manaSymbols(entry.name).length"
             class="flex shrink-0 items-center gap-px transition-opacity group-hover/row:opacity-0"
@@ -378,6 +382,14 @@ function issueText(issue: ValidationIssue): string {
               :sym="s"
               :size="13"
             />
+          </span>
+          <span
+            v-else-if="resolving"
+            class="flex shrink-0 items-center gap-px transition-opacity group-hover/row:opacity-0"
+            aria-hidden="true"
+          >
+            <span class="skeleton h-[13px] w-[13px] rounded-full" />
+            <span class="skeleton h-[13px] w-[13px] rounded-full" />
           </span>
 
           <!-- actions (hover only, overlay the pips). A left-fading solid backing

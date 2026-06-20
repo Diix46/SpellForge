@@ -795,6 +795,7 @@ const tabsUi = {
             :commander-image="commander?.imageUrl ?? null"
             :commander-type="commanderType"
             :commander-colors="themeColors"
+            :resolving="fetching && cardMetaByName.size === 0"
             :validation="validation"
             :category-by-name="categoryByName"
             :color-by-name="identityByName"
