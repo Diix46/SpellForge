@@ -62,39 +62,42 @@ function manaSymbols(name: string): string[] {
   return (cost.match(/\{[^}]+\}/g) ?? []).map(s => s.replace(/[{}]/g, ''))
 }
 
-// Shared hover preview (fixed-positioned so it escapes the scroll container).
-const preview = ref<{ src: string, x: number, y: number } | null>(null)
+// Shared hover preview: a BIG floating card, fixed-positioned so it escapes the
+// scroll container. Size is height-driven (~70% of the viewport) so it's large
+// and impressive, clamped to the room available on the left of the row.
+const CARD_RATIO = 88 / 63
+const preview = ref<{ src: string, x: number, y: number, w: number, h: number } | null>(null)
+function positionPreview(src: string, anchor: HTMLElement) {
+  const row = anchor.getBoundingClientRect()
+  const gap = 16
+  // Target a tall card; cap height to the viewport and width to the space left
+  // of the panel (fall back to the right side if the left is too narrow).
+  let h = Math.min(window.innerHeight * 0.7, 620)
+  let w = h / CARD_RATIO
+  const roomLeft = row.left - gap * 2
+  const roomRight = window.innerWidth - row.right - gap * 2
+  const room = Math.max(roomLeft, roomRight)
+  if (w > room) {
+    w = Math.max(200, room) // never go absurdly small
+    h = w * CARD_RATIO
+  }
+  // Prefer the left side; flip right when the left doesn't fit.
+  const x = roomLeft >= w ? row.left - w - gap : row.right + gap
+  const y = Math.min(Math.max(8, row.top + row.height / 2 - h / 2), window.innerHeight - h - 8)
+  preview.value = { src, x, y, w, h }
+}
 function showPreview(name: string, e: MouseEvent) {
   const img = metaOf(name)?.image
-  if (!img)
-    return
-  const row = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  // Place to the LEFT of the panel row; clamp vertically into the viewport. If
-  // there isn't room on the left (narrow viewport), flip to the right.
-  const w = 260
-  const h = w * (88 / 63)
-  const gap = 14
-  const left = row.left - w - gap
-  const x = left >= 8 ? left : row.right + gap
-  const y = Math.min(Math.max(8, row.top + row.height / 2 - h / 2), window.innerHeight - h - 8)
-  preview.value = { src: img, x, y }
+  if (img)
+    positionPreview(img, e.currentTarget as HTMLElement)
 }
 function hidePreview() {
   preview.value = null
 }
-// The commander's image comes from a prop (not cardMetaByName), so it gets its
-// own hover-preview trigger reusing the same floating card.
+// The commander's image comes from a prop (not cardMetaByName); reuse the float.
 function showCommanderPreview(e: MouseEvent) {
-  if (!props.commanderImage)
-    return
-  const row = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  const w = 260
-  const h = w * (88 / 63)
-  const gap = 14
-  const left = row.left - w - gap
-  const x = left >= 8 ? left : row.right + gap
-  const y = Math.min(Math.max(8, row.top + row.height / 2 - h / 2), window.innerHeight - h - 8)
-  preview.value = { src: props.commanderImage, x, y }
+  if (props.commanderImage)
+    positionPreview(props.commanderImage, e.currentTarget as HTMLElement)
 }
 
 const { t, isFr } = useLocale()
@@ -447,8 +450,8 @@ function issueText(issue: ValidationIssue): string {
           v-if="preview"
           :src="preview.src"
           alt=""
-          class="card-preview pointer-events-none fixed z-[var(--z-tooltip)] w-[260px] rounded-[var(--radius-xl)] ring-1 ring-(--accent-border)"
-          :style="{ left: `${preview.x}px`, top: `${preview.y}px` }"
+          class="card-preview pointer-events-none fixed z-[var(--z-tooltip)] rounded-[var(--radius-xl)] ring-1 ring-(--accent-border)"
+          :style="{ left: `${preview.x}px`, top: `${preview.y}px`, width: `${preview.w}px`, height: `${preview.h}px` }"
         >
       </Transition>
     </Teleport>
