@@ -53,6 +53,11 @@ useHead({
 const showAuth = ref(false)
 const mobileNav = ref(false)
 
+// A page can request a viewport-locked shell (no page scroll; the page fills the
+// area below the top bar and manages its own internal scroll). The deck page
+// uses this so the whole workspace + footer fit on one screen.
+const appFullscreen = useState('app-fullscreen', () => false)
+
 const userMenu = computed(() => [[
   { label: user.value?.displayName ?? t('auth.account'), type: 'label' as const },
   { label: t('auth.logout'), icon: 'i-lucide-log-out', onSelect: () => logout() },
@@ -92,7 +97,7 @@ function openImport() {
 
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
-    <div class="app-shell" :style="{ zIndex: 'var(--z-content)' }">
+    <div class="app-shell" :class="{ 'app-shell--fullscreen': appFullscreen }" :style="{ zIndex: 'var(--z-content)' }">
       <!-- ============ HEADER (single top bar) ============ -->
       <header class="topbar">
         <div class="topbar-inner">
@@ -223,6 +228,38 @@ function openImport() {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+}
+/* Viewport-locked mode (deck page): the whole shell is exactly one screen — the
+   page fills the space below the top bar and scrolls internally, the footer
+   stays pinned at the bottom, and there's no page scroll. */
+.app-shell--fullscreen {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-shell--fullscreen .content {
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 16px;
+}
+.app-shell--fullscreen .foot {
+  flex-shrink: 0;
+}
+.app-shell--fullscreen .foot-inner {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+/* On small screens the deck workspace stacks and needs natural page flow — don't
+   trap it in a locked viewport. */
+@media (max-width: 1023px) {
+  .app-shell--fullscreen {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  .app-shell--fullscreen .content {
+    overflow: visible;
+  }
 }
 
 /* ---------- Header (single top bar) ---------- */

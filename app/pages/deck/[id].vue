@@ -3,7 +3,7 @@ import type { BuyLang } from '~/composables/useCardmarket'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDeckBuilder, validateCommander } from '~/composables/useDeckBuilder'
@@ -33,6 +33,12 @@ const deck = computed(() => getDeck(deckId.value))
 useSeoMeta({
   title: () => deck.value ? `${deck.value.name}` : 'Deck',
 })
+
+// Lock the app shell to one viewport on the deck page: the workspace fills the
+// space and scrolls internally, the footer stays pinned — no page scroll.
+const appFullscreen = useState('app-fullscreen', () => false)
+onMounted(() => (appFullscreen.value = true))
+onBeforeUnmount(() => (appFullscreen.value = false))
 
 const rawDecklist = ref('')
 const deckName = ref('')
@@ -784,8 +790,10 @@ const tabsUi = {
     class="deck-page fade-up"
     :style="themeStyle"
   >
-    <!-- HEADER -->
-    <div class="mb-6 flex items-center gap-3">
+    <!-- UNIFIED TOOLBAR — back · title + pips · tabs · actions, all on one row
+         so the deck workspace AND the footer fit within one screen. Wraps on
+         narrow viewports. -->
+    <div class="deck-toolbar mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
       <UButton
         icon="i-lucide-arrow-left"
         color="neutral"
@@ -794,81 +802,71 @@ const tabsUi = {
         :aria-label="t('nav.backToDecks')"
         class="shrink-0"
       />
-      <div class="min-w-0 flex-1">
+      <div class="flex min-w-[180px] flex-1 items-center gap-2.5">
         <input
           v-model="deckName"
           name="deck-name"
           aria-label="Nom du deck"
-          class="w-full truncate bg-transparent font-display text-2xl font-bold text-(--color-text-high) caret-(--accent) focus:outline-none md:text-3xl"
+          class="min-w-0 flex-1 truncate bg-transparent font-display text-xl font-bold text-(--color-text-high) caret-(--accent) focus:outline-none"
         >
-        <div class="mt-1 flex items-center gap-1.5">
+        <div class="flex shrink-0 items-center gap-1">
           <span
             v-for="c in themeColors"
             :key="c"
             class="h-2.5 w-2.5 rounded-full"
             :style="{ background: colorVar(c), boxShadow: `0 0 6px ${colorVar(c)}` }"
           />
-          <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }} {{ t('editor.cardsWord') }}</span>
+          <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }}</span>
         </div>
       </div>
 
-      <!-- Share (cloud decks only) -->
-      <UButton
-        v-if="loggedIn"
-        icon="i-lucide-share-2"
-        color="neutral"
-        variant="subtle"
-        size="sm"
-        :loading="sharing"
+      <UTabs
+        v-model="activeTab"
+        :items="tabItems"
+        :content="false"
+        :ui="tabsUi"
         class="shrink-0"
-        @click="shareDeck"
-      >
-        <span class="hidden sm:inline">{{ t('share.button') }}</span>
-      </UButton>
-    </div>
+      />
 
-    <!-- TABS -->
-    <UTabs
-      v-model="activeTab"
-      :items="tabItems"
-      :content="false"
-      :ui="tabsUi"
-      class="mb-6 max-w-md"
-    />
+      <div class="flex shrink-0 items-center gap-2">
+        <UButton
+          icon="i-lucide-clipboard-list"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+          @click="openImportExport"
+        >
+          <span class="hidden sm:inline">{{ t('build.importExport') }}</span>
+        </UButton>
+        <UButton
+          v-if="successCards.length === 0 || resolvedDirty"
+          :loading="fetching"
+          :disabled="cardCount === 0 || fetching"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+          icon="i-lucide-refresh-cw"
+          @click="loadCards()"
+        >
+          <span v-if="fetching">{{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
+          <span v-else class="hidden sm:inline">{{ t('build.resolve') }}</span>
+        </UButton>
+        <UButton
+          v-if="loggedIn"
+          icon="i-lucide-share-2"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+          :loading="sharing"
+          @click="shareDeck"
+        >
+          <span class="hidden sm:inline">{{ t('share.button') }}</span>
+        </UButton>
+      </div>
+    </div>
 
     <!-- DECK TAB (unified build + edit) -->
     <div v-show="activeTab === 'deck'" class="deck-tab">
-      <!-- toolbar -->
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
-          <UButton
-            icon="i-lucide-clipboard-list"
-            color="neutral"
-            variant="subtle"
-            size="sm"
-            @click="openImportExport"
-          >
-            {{ t('build.importExport') }}
-          </UButton>
-          <UButton
-            v-if="successCards.length === 0 || resolvedDirty"
-            :loading="fetching"
-            :disabled="cardCount === 0 || fetching"
-            color="neutral"
-            variant="subtle"
-            size="sm"
-            icon="i-lucide-refresh-cw"
-            @click="loadCards()"
-          >
-            <span v-if="fetching">{{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
-            <span v-else>{{ t('build.resolve') }}</span>
-          </UButton>
-        </div>
-
-        <!-- The Coach lives in a floating widget (bottom-right); its launcher pill
-             is always present there, so no toolbar trigger is needed here. -->
-      </div>
-
       <!-- Workspace: deck list is the hero (wide, left); card search is the
            compact companion (right). The row fills the remaining viewport height
            and each side scrolls on its own only if its content truly overflows —
@@ -1455,19 +1453,16 @@ const tabsUi = {
 </template>
 
 <style scoped>
-/* The deck page fills the height the app shell gives it (the area below the
-   single top bar). Header + tabs + toolbar are fixed-height; the deck workspace
-   flexes to fill the rest. Result: no page scroll — each column scrolls on its
-   own, and only when its content genuinely overflows. */
+/* The app shell runs in viewport-locked mode on this page (.app-shell--fullscreen),
+   so .content is a bounded, non-scrolling box. The deck page fills it; the single
+   toolbar row is fixed-height and the workspace flexes to take the rest. Result:
+   the whole page + the footer fit on one screen — no page scroll; each workspace
+   column scrolls internally only on genuine overflow. */
 .deck-page {
   display: flex;
   flex-direction: column;
-  /* Definite height = viewport minus the fixed top bar (56) and the .content
-     vertical padding (24 top + 48 bottom). Only the FIXED chrome is subtracted;
-     the variable deck header/tabs/toolbar live inside this column and the
-     workspace flexes around them — so this stays correct even if they wrap. */
-  height: calc(100dvh - 128px);
-  min-height: 460px;
+  height: 100%;
+  min-height: 0;
 }
 .deck-tab {
   flex: 1;
