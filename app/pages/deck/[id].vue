@@ -246,13 +246,9 @@ function resolvedFor(name: string): ResolvedCard | undefined {
 }
 
 // ---- AI assistance ----
-// English card names sent to the AI (prefers the resolved canonical name).
+// English card names (prefers the resolved canonical name) — sent to the Coach
+// as deck context so its Scryfall/EDHREC tools resolve them.
 const aiCardNames = computed(() => builder.entries.value.map(e => resolvedFor(e.name)?.card?.name ?? e.name))
-// AI add-by-name: the model already respects the colour identity, so add directly.
-function aiAdd(name: string) {
-  builderOp(() => builder.addCard(name))
-  toast.add({ title: t('toast.added'), description: name, color: 'success', icon: 'i-lucide-plus' })
-}
 // Single entry point for picking a commander: keep the builder's commander name
 // and the resolved-card override in sync so theme/featured/validation all agree.
 function chooseCommander(name: string) {
@@ -461,6 +457,22 @@ const aiStats = computed(() => {
     colors,
     priceTotal: price.value.total,
   }
+})
+
+// Compact, plain-text deck summary handed to the conversational Coach as context
+// (so it knows the deck without a callback into the app). English card names so
+// the agent's Scryfall/EDHREC tools resolve them.
+const coachContext = computed(() => {
+  const s = aiStats.value
+  const id = (builderIdentity.value ?? []).join('').toUpperCase() || 'incolore'
+  const lines = [
+    `Voici le deck Commander du joueur (format EDH).`,
+    `Commandant: ${commanderEnName.value || 'non défini'} — identité couleur: ${id}.`,
+    `${s.cardCount} cartes, CMC moyen ${s.avgCmc.toFixed(1)}, prix total ~${s.priceTotal.toFixed(0)}€.`,
+    `Courbe de mana (CMC 0..6,7+): ${s.curve.join(', ')}.`,
+    `Décklist (noms anglais): ${aiCardNames.value.join(', ') || '(vide)'}.`,
+  ]
+  return lines.join('\n')
 })
 
 // ---- Interactive composition filter (click a type stat to filter the grid) ----
@@ -835,14 +847,9 @@ const tabsUi = {
             @details="openDeckEntryDetail"
             @show-commander="commander && openDetail(commander)"
           />
-          <BuilderAiAssistPanel
-            :commander="commanderEnName"
-            :identity="builderIdentity ?? undefined"
-            :cards="aiCardNames"
-            :stats="aiStats"
-            :in-deck="inDeckNames"
-            @add="aiAdd"
-            @remove="builderRemove"
+          <BuilderCoachChat
+            :deck-context="coachContext"
+            :ready="aiCardNames.length > 0"
           />
         </div>
       </div>

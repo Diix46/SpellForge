@@ -23,6 +23,7 @@ export default antfu(
       'node_modules/**',
       'public/**',
       'mtg-proxy-printer/**', // stale leftover folder (locked by VS Code)
+      'agent-coach/**', // separate Eve agent sub-project with its own toolchain
       'package-lock.json',
     ],
   },
