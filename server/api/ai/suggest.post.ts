@@ -154,6 +154,8 @@ function legalInCommander(card: ScryCard): boolean {
 }
 
 export default defineEventHandler(async (event) => {
+  await requireAppUser(event)
+
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey)
     throw createError({ statusCode: 503, statusMessage: 'AI non configurée (ANTHROPIC_API_KEY absente)' })
@@ -225,12 +227,16 @@ export default defineEventHandler(async (event) => {
       else
         addDropped++
     }
-    // De-dupe by canonical name (the model can repeat).
+    // De-dupe by canonical name (the model can repeat). Repeated names are
+    // counted as dropped too, so `dropped.add` reflects the full gap between
+    // what the model proposed and what the UI shows.
     const seen = new Set<string>()
     add = add.filter((s) => {
       const k = s.name.toLowerCase()
-      if (seen.has(k))
+      if (seen.has(k)) {
+        addDropped++
         return false
+      }
       seen.add(k)
       return true
     })

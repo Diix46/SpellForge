@@ -28,8 +28,20 @@ export function useCoach() {
   const streaming = ref(false)
   const error = ref('')
   let continuationToken = ''
+  // Lets the consumer abort an in-flight stream (e.g. when the Coach panel is
+  // closed) so the fetch/reader is released instead of draining in the
+  // background until the Eve session ends.
+  let controller: AbortController | null = null
+
+  /** Cancel any in-flight stream without surfacing an error. */
+  function stop() {
+    controller?.abort()
+    controller = null
+    streaming.value = false
+  }
 
   function reset() {
+    stop()
     messages.value = []
     error.value = ''
     continuationToken = ''
@@ -48,11 +60,16 @@ export function useCoach() {
     const assistant = ref<CoachMessage>({ role: 'assistant', text: '', tools: [], pending: true })
     messages.value.push(assistant.value)
     streaming.value = true
+    controller = new AbortController()
+    const signal = controller.signal
 
-    // Only the first turn carries the deck context preamble.
+    // Only the first turn carries the deck context preamble. The deck data is
+    // user-controlled (deck/card names), so fence it in an explicit data block
+    // the agent is told (in instructions.md) to treat as data, never as
+    // instructions — defuses prompt-injection via a crafted deck/card name.
     const isFirst = !continuationToken
     const message = isFirst && deckContext
-      ? `${deckContext}\n\n---\n\nQuestion du joueur: ${userText}`
+      ? `<deck_data>\n${deckContext}\n</deck_data>\n\nQuestion du joueur: ${userText}`
       : userText
 
     try {
@@ -64,9 +81,15 @@ export function useCoach() {
         continuationToken = tok
       if (!sessionId)
         throw new Error('no session id')
-      await consumeStream(sessionId, assistant)
+      await consumeStream(sessionId, assistant, signal)
     }
     catch (e: any) {
+      // A deliberate stop() (panel closed / reset) isn't an error.
+      if (signal.aborted) {
+        if (!assistant.value.text)
+          messages.value = messages.value.filter(m => m !== assistant.value)
+        return
+      }
       error.value = e?.data?.statusMessage || e?.statusMessage || e?.message || 'Coach indisponible'
       // Drop the empty pending bubble on hard failure.
       if (!assistant.value.text)
@@ -75,11 +98,12 @@ export function useCoach() {
     finally {
       assistant.value.pending = false
       streaming.value = false
+      controller = null
     }
   }
 
-  async function consumeStream(sessionId: string, assistant: { value: CoachMessage }) {
-    const res = await fetch(`/api/coach/stream/${encodeURIComponent(sessionId)}`)
+  async function consumeStream(sessionId: string, assistant: { value: CoachMessage }, signal: AbortSignal) {
+    const res = await fetch(`/api/coach/stream/${encodeURIComponent(sessionId)}`, { signal })
     if (!res.ok || !res.body)
       throw new Error(`stream ${res.status}`)
     const reader = res.body.getReader()
@@ -87,26 +111,39 @@ export function useCoach() {
     let buf = ''
     const seenTools = new Set<string>()
 
-    while (true) {
-      const { value, done } = await reader.read()
-      if (done)
-        break
-      buf += decoder.decode(value, { stream: true })
-      const lines = buf.split('\n')
-      buf = lines.pop() ?? '' // keep the partial last line
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed)
-          continue
-        let ev: any
-        try {
-          ev = JSON.parse(trimmed)
-        }
-        catch {
-          continue
-        }
-        handleEvent(ev, assistant, seenTools)
+    function flush(line: string) {
+      const trimmed = line.trim()
+      if (!trimmed)
+        return
+      let ev: any
+      try {
+        ev = JSON.parse(trimmed)
       }
+      catch {
+        return
+      }
+      handleEvent(ev, assistant, seenTools)
+    }
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read()
+        if (done)
+          break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? '' // keep the partial last line
+        for (const line of lines)
+          flush(line)
+      }
+      // The last NDJSON event may arrive without a trailing newline — don't
+      // drop it (it's often the final message.completed).
+      flush(buf)
+    }
+    finally {
+      // Release the reader (and the underlying connection) on completion,
+      // error, or abort.
+      reader.cancel().catch(() => {})
     }
   }
 
@@ -151,5 +188,5 @@ export function useCoach() {
     }
   }
 
-  return { messages, streaming, error, send, reset }
+  return { messages, streaming, error, send, reset, stop }
 }

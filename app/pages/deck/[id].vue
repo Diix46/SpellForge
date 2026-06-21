@@ -358,6 +358,7 @@ function initDeck(id: string) {
   page.value = 1
   resolvedDirty.value = false
   activeTab.value = 'deck'
+  coachOpen.value = false // reset modal state on deck switch (also detaches Esc)
   builder.load()
   // Resolve images/prices in the background so the Deck tab shows stats, prices
   // and the commander right away (cheap on repeat: server cache + bulk FR).
@@ -539,9 +540,12 @@ async function loadCards(opts: { silent?: boolean } = {}) {
           fetchProgress.value = p
       },
       // Instant first paint: show default-image thumbnails as soon as the
-      // collection call returns, before the slower FR art resolves.
+      // collection call returns, before the slower FR art resolves. The token
+      // check alone guards against deck-switch races; we deliberately repaint
+      // even when cards are already shown so a same-deck re-resolve (after an
+      // edit) refreshes the thumbnails instead of leaving stale art.
       (preliminary) => {
-        if (token === loadToken && resolvedCards.value.length === 0)
+        if (token === loadToken)
           resolvedCards.value = preliminary
       },
     )

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useCoach } from '~/composables/useCoach'
 import { useLocale } from '~/composables/useLocale'
 
@@ -16,7 +16,11 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const { t } = useLocale()
-const { messages, streaming, error, send, reset } = useCoach()
+const { messages, streaming, error, send, reset, stop } = useCoach()
+
+// The panel lives behind a v-if in the slide-over, so closing it unmounts this
+// component — cancel any in-flight stream so it doesn't drain in the background.
+onBeforeUnmount(stop)
 
 const input = ref('')
 const scroller = ref<HTMLElement | null>(null)

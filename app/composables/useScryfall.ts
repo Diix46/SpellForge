@@ -340,6 +340,10 @@ export function useScryfall() {
     onPartial?: (cards: ResolvedCard[]) => void,
   ): Promise<ResolvedCard[]> {
     const results: ResolvedCard[] = []
+    // Cumulative instant-paint set, grown one batch at a time. The consumer
+    // REPLACES its list with each emission (resolvedCards = preliminary), so we
+    // must emit the full set-so-far, not just the current batch — otherwise
+    // earlier batches would vanish from the grid between emissions.
     const partial: ResolvedCard[] = []
     let processed = 0
 

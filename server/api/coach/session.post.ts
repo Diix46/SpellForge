@@ -6,13 +6,35 @@ import process from 'node:process'
 // the stream to (see ./stream/[id].get.ts).
 
 const EVE_URL = process.env.EVE_COACH_URL || 'http://127.0.0.1:3100'
+const UPSTREAM_TIMEOUT_MS = 30_000
+
+// The Eve service is internal/trusted. Reject any EVE_COACH_URL that isn't a
+// loopback address so a tampered env var can't turn this route into an open
+// proxy (SSRF) that forwards the user's deck to an arbitrary host.
+function assertLoopback(url: string) {
+  let host = ''
+  try {
+    host = new URL(url).hostname
+  }
+  catch {
+    throw createError({ statusCode: 500, statusMessage: 'EVE_COACH_URL invalide' })
+  }
+  if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1')
+    throw createError({ statusCode: 500, statusMessage: 'EVE_COACH_URL doit être en loopback' })
+}
 
 export default defineEventHandler(async (event) => {
+  await requireAppUser(event)
+  assertLoopback(EVE_URL)
+
   const body = await readBody<{ message?: string, continuationToken?: string }>(event).catch(() => null)
   const message = body?.message?.trim()
   if (!message)
     throw createError({ statusCode: 400, statusMessage: 'message requis' })
 
+  // Abort a hung upstream so it can't pin a server connection forever.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS)
   let res: Response
   try {
     res = await fetch(`${EVE_URL}/eve/v1/session`, {
@@ -20,17 +42,21 @@ export default defineEventHandler(async (event) => {
       headers: { 'content-type': 'application/json' },
       // continuationToken keeps a multi-turn conversation on the same session.
       body: JSON.stringify({ message, continuationToken: body?.continuationToken }),
+      signal: controller.signal,
     })
   }
   catch {
     throw createError({ statusCode: 503, statusMessage: 'Coach IA indisponible (service hors-ligne)' })
+  }
+  finally {
+    clearTimeout(timer)
   }
   if (!res.ok) {
     const txt = await res.text().catch(() => '')
     throw createError({ statusCode: 502, statusMessage: `Coach ${res.status}: ${txt.slice(0, 160)}` })
   }
 
-  const data = await res.json() as { sessionId?: string, continuationToken?: string }
+  const data = await res.json().catch(() => ({})) as { sessionId?: string, continuationToken?: string }
   return {
     sessionId: data.sessionId ?? res.headers.get('x-eve-session-id') ?? '',
     continuationToken: data.continuationToken ?? '',
