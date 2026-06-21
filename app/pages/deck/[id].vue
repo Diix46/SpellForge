@@ -439,6 +439,30 @@ const stats = computed(() => typeStats(resolvedCards.value))
 const curve = computed(() => manaCurve(resolvedCards.value))
 const price = computed(() => priceSummary(resolvedCards.value))
 
+// Structured, already-computed deck context fed to the AI so it reasons over
+// real numbers instead of recalling them (the model never recounts).
+const aiStats = computed(() => {
+  const colors: Record<string, number> = {}
+  for (const rc of resolvedCards.value) {
+    const id = rc.card?.color_identity ?? []
+    if (!id.length) {
+      colors.c = (colors.c ?? 0) + rc.entry.quantity
+    }
+    else {
+      for (const c of id)
+        colors[c.toLowerCase()] = (colors[c.toLowerCase()] ?? 0) + rc.entry.quantity
+    }
+  }
+  return {
+    cardCount: cardCount.value,
+    avgCmc: curve.value.avg,
+    curve: curve.value.buckets,
+    types: Object.fromEntries(stats.value.map(s => [s.key, s.count])),
+    colors,
+    priceTotal: price.value.total,
+  }
+})
+
 // ---- Interactive composition filter (click a type stat to filter the grid) ----
 const typeFilter = ref<CategoryKey | null>(null)
 function toggleTypeFilter(key: CategoryKey) {
@@ -815,6 +839,7 @@ const tabsUi = {
             :commander="commanderEnName"
             :identity="builderIdentity ?? undefined"
             :cards="aiCardNames"
+            :stats="aiStats"
             :in-deck="inDeckNames"
             @add="aiAdd"
             @remove="builderRemove"

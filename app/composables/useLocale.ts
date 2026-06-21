@@ -73,6 +73,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'ai.add': 'Ajouter',
     'ai.remove': 'Retirer',
     'ai.inDeck': 'Déjà dans le deck',
+    'ai.dropped': '{n} suggestion(s) écartée(s) (hors-couleur, illégale ou introuvable)',
     // Dashboard
     'dash.title': 'Mes Decks',
     'dash.subtitle': 'Gérez vos decklists, importez depuis EDHREC, imprimez des proxies impeccables.',
@@ -319,6 +320,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'ai.add': 'Add',
     'ai.remove': 'Remove',
     'ai.inDeck': 'Already in deck',
+    'ai.dropped': '{n} suggestion(s) dropped (off-colour, illegal or not found)',
     'dash.title': 'My Decks',
     'dash.subtitle': 'Manage your decklists, import from EDHREC, print flawless proxies.',
     'dash.decks': 'decks',

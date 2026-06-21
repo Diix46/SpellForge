@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiAction } from '~/composables/useAiSuggest'
+import type { AiAction, AiStats } from '~/composables/useAiSuggest'
 import { useAiSuggest } from '~/composables/useAiSuggest'
 import { useLocale } from '~/composables/useLocale'
 
@@ -7,6 +7,8 @@ const props = defineProps<{
   commander?: string
   identity?: string[]
   cards: string[]
+  /** Computed deck stats fed to the model (it reasons over them, never recounts). */
+  stats?: AiStats
   /** Names already in the deck (lowercased) — to show Added state. */
   inDeck: Set<string>
 }>()
@@ -27,8 +29,10 @@ const ACTIONS: { key: AiAction, icon: string }[] = [
 ]
 
 function trigger(action: AiAction) {
-  run(action, { commander: props.commander, identity: props.identity, cards: props.cards })
+  run(action, { commander: props.commander, identity: props.identity, cards: props.cards, stats: props.stats })
 }
+// Total suggestions the server dropped (hallucinated / off-colour / illegal).
+const droppedTotal = computed(() => (result.value?.dropped?.add ?? 0) + (result.value?.dropped?.cut ?? 0))
 function has(name: string) {
   return props.inDeck.has(name.trim().toLowerCase())
 }
@@ -135,6 +139,16 @@ function has(name: string) {
           </li>
         </ul>
       </div>
+
+      <!-- Honesty footer: suggestions the server dropped (off-colour / illegal /
+           not a real card, or a cut not in the deck) never reach the lists above. -->
+      <p
+        v-if="droppedTotal > 0"
+        class="flex items-center gap-1.5 border-t border-(--color-border-subtle) pt-2 font-mono text-[10px] text-(--color-text-muted)"
+      >
+        <UIcon name="i-lucide-shield-check" class="h-3 w-3 text-(--accent-text)" />
+        {{ t('ai.dropped').replace('{n}', String(droppedTotal)) }}
+      </p>
     </div>
   </div>
 </template>

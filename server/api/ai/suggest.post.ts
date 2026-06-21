@@ -1,13 +1,27 @@
 import process from 'node:process'
 
 // AI deck-assistance — returns structured, actionable suggestions (NOT a chat).
-// Body: { action, commander, identity, cards: string[], format? }
-// Reply: { add: {name, reason}[], cut: {name, reason}[], note }
 //
-// Calls Anthropic's Messages API server-side (key from .env). Forces a single
-// tool call so the model must return our exact JSON shape.
+// The model REASONS over the deck's real, computed data (curve, types, colours,
+// price, role counts, EDHREC ground-truth names) — it does not recall stats. Any
+// card name it returns is then VALIDATED server-side before reaching the client:
+//   - adds must resolve to a real Scryfall card, be within the commander's colour
+//     identity, and be legal in Commander;
+//   - cuts must already be in the submitted decklist.
+// Anything that fails is dropped and counted, so the UI never shows a card the
+// player can't actually add (no more "Carte introuvable" from AI).
 
 type Action = 'complete' | 'cut' | 'curve' | 'theme'
+
+interface DeckStats {
+  cardCount?: number
+  avgCmc?: number
+  curve?: number[] // buckets 0..6 then 7+
+  types?: Record<string, number> // e.g. { creature: 30, land: 37, ... }
+  colors?: Record<string, number> // WUBRG + c counts
+  priceTotal?: number
+  roles?: Record<string, number> // ramp/draw/removal/wipes/... (computed client-side)
+}
 
 interface SuggestBody {
   action?: Action
@@ -15,15 +29,19 @@ interface SuggestBody {
   identity?: string[]
   cards?: string[]
   format?: string
+  stats?: DeckStats
+  edhrec?: string[] // EDHREC top/synergy names (community ground truth)
 }
 
 const MODEL = 'claude-sonnet-4-6'
+const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
+const SCRYFALL_COLLECTION = 'https://api.scryfall.com/cards/collection'
 
 const ACTION_BRIEF: Record<Action, string> = {
-  complete: 'Suggest up to 10 cards to ADD that improve this deck (ramp, draw, removal, synergy, wincons it lacks). Do not suggest cards already in the list.',
-  cut: 'Suggest up to 10 cards to CUT — the weakest/most off-theme cards already in the deck — with a short reason each. Only cut cards present in the list.',
-  curve: 'Analyse the mana curve and suggest specific ADDs (cheaper interaction/ramp) and CUTs (overcosted redundancies) to smooth it. Be concrete with real card names.',
-  theme: 'Identify the deck\'s strongest theme/strategy and suggest up to 10 ADDs that double down on it, plus any clearly off-theme CUTs.',
+  complete: 'Suggest up to 10 cards to ADD that improve this deck (fill the weakest roles: ramp, draw, removal, interaction, synergy, or a missing wincon). Do not suggest cards already in the list.',
+  cut: 'Suggest up to 10 cards to CUT — the weakest / most off-plan cards ALREADY in the deck — each with a short plan-relative reason. Only cut cards present in the list.',
+  curve: 'The mana curve is provided. Suggest concrete ADDs (cheaper interaction/ramp where the low end is thin) and CUTs (overcosted redundancies where the top is heavy) to smooth it. Use real card names.',
+  theme: 'Identify the deck\'s strongest theme/strategy from its cards and stats, and suggest up to 10 ADDs that double down on it, plus any clearly off-theme CUTs.',
 }
 
 const TOOL = {
@@ -47,6 +65,94 @@ const TOOL = {
   },
 }
 
+interface Suggestion { name: string, reason: string }
+
+// ---- Prompt construction ----------------------------------------------------
+
+function statsBlock(stats?: DeckStats): string {
+  if (!stats)
+    return ''
+  const lines: string[] = ['Deck stats (computed — trust these, do not recount):']
+  if (stats.cardCount != null)
+    lines.push(`- Cards: ${stats.cardCount}`)
+  if (stats.avgCmc != null)
+    lines.push(`- Average CMC: ${stats.avgCmc.toFixed(2)}`)
+  if (stats.curve?.length)
+    lines.push(`- Mana curve (CMC 0,1,2,3,4,5,6,7+): ${stats.curve.join(', ')}`)
+  if (stats.types && Object.keys(stats.types).length)
+    lines.push(`- Types: ${Object.entries(stats.types).map(([k, v]) => `${k} ${v}`).join(', ')}`)
+  if (stats.colors && Object.keys(stats.colors).length)
+    lines.push(`- Colour spread: ${Object.entries(stats.colors).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(', ')}`)
+  if (stats.roles && Object.keys(stats.roles).length)
+    lines.push(`- Role counts: ${Object.entries(stats.roles).map(([k, v]) => `${k} ${v}`).join(', ')}`)
+  if (stats.priceTotal != null)
+    lines.push(`- Total price: ${stats.priceTotal.toFixed(2)} EUR`)
+  return lines.join('\n')
+}
+
+function buildPrompt(body: SuggestBody, action: Action): string {
+  const commander = (body.commander || '').trim()
+  const identity = Array.isArray(body.identity) ? body.identity.join('').toUpperCase() : ''
+  const cards = Array.isArray(body.cards) ? body.cards.slice(0, 200) : []
+  const format = body.format || 'Commander (EDH)'
+  const edhrec = Array.isArray(body.edhrec) ? body.edhrec.slice(0, 40) : []
+
+  return [
+    `You are a top-tier Magic: The Gathering deckbuilding assistant for the ${format} format.`,
+    commander ? `Commander: ${commander} (colour identity: ${identity || 'unknown'}).` : `Colour identity: ${identity || 'unknown'}.`,
+    statsBlock(body.stats),
+    edhrec.length ? `Cards commonly played with this commander (EDHREC, real names — prefer these for ADDs): ${edhrec.join(', ')}.` : '',
+    `Current decklist (${cards.length} cards):`,
+    cards.map(c => `- ${c}`).join('\n') || '(empty)',
+    '',
+    ACTION_BRIEF[action],
+    'Rules: only suggest cards legal in this format and strictly within the commander colour identity. Use exact English card names. Keep each reason under 15 words and tie it to THIS deck\'s plan. Call the deck_suggestions tool with your answer.',
+  ].filter(Boolean).join('\n')
+}
+
+// ---- Server-side validation gate -------------------------------------------
+
+interface ScryCard { name?: string, color_identity?: string[], legalities?: Record<string, string> }
+
+/** Resolve names to real Scryfall cards (cached collection route, in chunks). */
+async function resolveCards(event: any, names: string[]): Promise<Map<string, ScryCard>> {
+  const byName = new Map<string, ScryCard>()
+  const unique = [...new Set(names.map(n => n.trim()).filter(Boolean))]
+  for (let i = 0; i < unique.length; i += 75) {
+    const identifiers = unique.slice(i, i + 75).map(name => ({ name }))
+    try {
+      // Hit Scryfall directly here (server→server); same UA as the cached route.
+      const res = await fetch(SCRYFALL_COLLECTION, {
+        method: 'POST',
+        headers: { 'User-Agent': UA, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ identifiers }),
+      })
+      if (!res.ok)
+        continue
+      const data = await res.json() as { data?: ScryCard[] }
+      for (const c of data.data ?? []) {
+        if (c.name)
+          byName.set(c.name.toLowerCase(), c)
+      }
+    }
+    catch {
+      // Best-effort: a failed chunk just means those names stay unvalidated → dropped.
+    }
+  }
+  return byName
+}
+
+/** A card is in-identity when every colour of its identity is in the allowed set. */
+function inIdentity(card: ScryCard, allowed: Set<string>): boolean {
+  const id = card.color_identity ?? []
+  return id.every(c => allowed.has(c.toLowerCase()))
+}
+function legalInCommander(card: ScryCard): boolean {
+  // Be permissive if Scryfall didn't return legalities; only drop on explicit non-legal.
+  const l = card.legalities?.commander
+  return l !== 'not_legal' && l !== 'banned'
+}
+
 export default defineEventHandler(async (event) => {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey)
@@ -55,22 +161,13 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<SuggestBody>(event).catch(() => null)
   const action: Action = (body?.action && body.action in ACTION_BRIEF) ? body.action : 'complete'
   const commander = (body?.commander || '').trim()
-  const identity = Array.isArray(body?.identity) ? body!.identity.join('').toUpperCase() : ''
+  const identity = Array.isArray(body?.identity) ? body!.identity : []
   const cards = Array.isArray(body?.cards) ? body!.cards.slice(0, 200) : []
-  const format = body?.format || 'Commander (EDH)'
 
   if (!cards.length && !commander)
     throw createError({ statusCode: 400, statusMessage: 'Deck vide' })
 
-  const prompt = [
-    `You are a top-tier Magic: The Gathering deckbuilding assistant for the ${format} format.`,
-    commander ? `Commander: ${commander} (colour identity: ${identity || 'unknown'}).` : `Colour identity: ${identity || 'unknown'}.`,
-    `Current decklist (${cards.length} cards):`,
-    cards.map(c => `- ${c}`).join('\n') || '(empty)',
-    '',
-    ACTION_BRIEF[action],
-    'Rules: only suggest cards legal in this format and within the commander colour identity. Use exact English card names. Keep each reason under 15 words. Call the deck_suggestions tool with your answer.',
-  ].join('\n')
+  const prompt = buildPrompt(body ?? {}, action)
 
   let data: any
   try {
@@ -102,6 +199,48 @@ export default defineEventHandler(async (event) => {
   }
 
   const toolUse = (data.content ?? []).find((c: any) => c.type === 'tool_use')
-  const result = toolUse?.input ?? { add: [], cut: [], note: '' }
-  return { action, ...result }
+  const raw = toolUse?.input ?? { add: [], cut: [], note: '' }
+  const rawAdd: Suggestion[] = Array.isArray(raw.add) ? raw.add : []
+  const rawCut: Suggestion[] = Array.isArray(raw.cut) ? raw.cut : []
+
+  // ---- Gate CUTs: must be a card already in the decklist (verbatim, ci) ----
+  const inDeck = new Set(cards.map(c => c.trim().toLowerCase()))
+  const cut = rawCut.filter(s => inDeck.has(s.name.trim().toLowerCase()))
+  const cutDropped = rawCut.length - cut.length
+
+  // ---- Gate ADDs: must resolve, be in-identity, and Commander-legal ----
+  const allowed = new Set(identity.map(c => c.toLowerCase()))
+  let add: Suggestion[] = []
+  let addDropped = 0
+  if (rawAdd.length) {
+    const resolved = await resolveCards(event, rawAdd.map(s => s.name))
+    for (const s of rawAdd) {
+      const card = resolved.get(s.name.trim().toLowerCase())
+      const ok = card
+        && (allowed.size === 0 || inIdentity(card, allowed))
+        && legalInCommander(card)
+        && !inDeck.has(s.name.trim().toLowerCase())
+      if (ok)
+        add.push({ name: card!.name ?? s.name, reason: s.reason })
+      else
+        addDropped++
+    }
+    // De-dupe by canonical name (the model can repeat).
+    const seen = new Set<string>()
+    add = add.filter((s) => {
+      const k = s.name.toLowerCase()
+      if (seen.has(k))
+        return false
+      seen.add(k)
+      return true
+    })
+  }
+
+  return {
+    action,
+    add,
+    cut,
+    note: typeof raw.note === 'string' ? raw.note : '',
+    dropped: { add: addDropped, cut: cutDropped },
+  }
 })
