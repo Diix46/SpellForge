@@ -3,6 +3,7 @@ import type { ManaCurve, PriceSummary } from '~/composables/useDeckAnalysis'
 import type { ValidationIssue } from '~/composables/useDeckBuilder'
 import type { DeckEntry } from '~/composables/useDecklist'
 import { computed, ref } from 'vue'
+import { useCardDnd } from '~/composables/useCardDnd'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { CATEGORY_ORDER, categoryLabelKey, WUBRG } from '~/composables/useMtg'
@@ -44,7 +45,34 @@ const emit = defineEmits<{
   toggleLock: []
   details: [name: string]
   showCommander: []
+  /** A search card was dropped onto the deck → add it. */
+  dropAdd: [name: string]
 }>()
+
+const { dragging, startDrag, endDrag, readDrop } = useCardDnd()
+
+// Drop zone: dragging a SEARCH card here adds it. Highlight only while a search
+// card is in flight (not when dragging deck rows out).
+const dropActive = ref(false)
+const canDropHere = computed(() => dragging.value === 'search')
+function onDragOver(e: DragEvent) {
+  if (!canDropHere.value)
+    return
+  e.preventDefault()
+  if (e.dataTransfer)
+    e.dataTransfer.dropEffect = 'move'
+  dropActive.value = true
+}
+function onDragLeave(e: DragEvent) {
+  if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node))
+    dropActive.value = false
+}
+function onDrop(e: DragEvent) {
+  dropActive.value = false
+  const payload = readDrop(e)
+  if (payload?.source === 'search' && payload.name)
+    emit('dropAdd', payload.name)
+}
 
 // Show the feature card only once the commander is actually known (named).
 const hasCommander = computed(() => !!props.commanderName.trim())
@@ -172,7 +200,19 @@ function issueText(issue: ValidationIssue): string {
 </script>
 
 <template>
-  <div class="glass-solid flex h-full flex-col rounded-[var(--radius-xl)] p-4">
+  <div
+    class="glass-solid relative flex h-full flex-col rounded-[var(--radius-xl)] p-4"
+    :class="{ 'dnd-drop-active': dropActive }"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
+  >
+    <!-- Drop-to-add hint (only while a search card is dragged over) -->
+    <div v-if="dropActive" class="dnd-hint">
+      <UIcon name="i-lucide-plus" class="h-5 w-5" />
+      {{ t('build.dropToAdd') }}
+    </div>
+
     <!-- Header: title + counter -->
     <div class="mb-3 flex items-center justify-between">
       <h3 class="font-mono text-[11px] uppercase tracking-[2px] text-(--color-text-muted)">
@@ -366,7 +406,10 @@ function issueText(issue: ValidationIssue): string {
             :key="entry.name"
             role="button"
             tabindex="0"
-            class="group/row relative flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/60 focus-visible:outline-2 focus-visible:outline-(--accent-text)"
+            draggable="true"
+            class="dnd-row group/row relative flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/60 focus-visible:outline-2 focus-visible:outline-(--accent-text)"
+            @dragstart="startDrag($event, { source: 'deck', name: entry.name }); hidePreview()"
+            @dragend="endDrag"
             @mouseenter="showPreview(entry.name, $event)"
             @mouseleave="hidePreview"
             @click="emit('details', entry.name)"
@@ -474,6 +517,37 @@ function issueText(issue: ValidationIssue): string {
 </template>
 
 <style scoped>
+/* ---- Drag & drop ---- */
+.dnd-row {
+  cursor: grab;
+}
+.dnd-row:active {
+  cursor: grabbing;
+}
+/* The panel becomes a drop target when a search card is dragged here (to add). */
+.dnd-drop-active {
+  outline: 2px dashed var(--accent);
+  outline-offset: -4px;
+}
+.dnd-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--accent) 14%, var(--color-bg-base) 70%);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
 /* Category groups flow as a responsive grid: as many columns as the (now wide)
    panel allows, wrapping to new rows and scrolling VERTICALLY only on real
    overflow. Grid (not CSS multicol) so we never get a horizontal scrollbar. */

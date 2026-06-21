@@ -3,6 +3,7 @@ import type { CardTypeFilter, SortOrder } from '~/composables/useCardSearch'
 import type { ManaColor } from '~/composables/useMtg'
 import type { ScryfallCard } from '~/composables/useScryfall'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useCardDnd } from '~/composables/useCardDnd'
 import { emptyFilters, SEARCH_THEMES, useCardSearch } from '~/composables/useCardSearch'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
@@ -23,9 +24,36 @@ const emit = defineEmits<{
   add: [card: ScryfallCard]
   remove: [card: ScryfallCard]
   details: [card: ScryfallCard]
+  /** A deck card was dropped onto the search panel → remove it from the deck. */
+  dropRemove: [name: string]
 }>()
 
 const { t, isFr, locale } = useLocale()
+const { dragging, startDrag, endDrag, readDrop } = useCardDnd()
+
+// Drop zone: dragging a DECK card here removes it. Highlight only while a deck
+// card is in flight (not when dragging our own search cards out).
+const dropActive = ref(false)
+const canDropHere = computed(() => dragging.value === 'deck')
+function onDragOver(e: DragEvent) {
+  if (!canDropHere.value)
+    return
+  e.preventDefault()
+  if (e.dataTransfer)
+    e.dataTransfer.dropEffect = 'move'
+  dropActive.value = true
+}
+function onDragLeave(e: DragEvent) {
+  // Ignore leaves into child elements; only clear when leaving the panel itself.
+  if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node))
+    dropActive.value = false
+}
+function onDrop(e: DragEvent) {
+  dropActive.value = false
+  const payload = readDrop(e)
+  if (payload?.source === 'deck' && payload.name)
+    emit('dropRemove', payload.name)
+}
 const { colorVar, colorName, colorCode } = useManaIdentity()
 const { state, search, loadMore, suggest, autocomplete } = useCardSearch()
 
@@ -223,7 +251,19 @@ const sortModel = computed({
 </script>
 
 <template>
-  <div class="glass-solid flex h-full flex-col rounded-[var(--radius-xl)] p-4">
+  <div
+    class="glass-solid relative flex h-full flex-col rounded-[var(--radius-xl)] p-4"
+    :class="{ 'dnd-drop-active': dropActive }"
+    @dragover="onDragOver"
+    @dragleave="onDragLeave"
+    @drop="onDrop"
+  >
+    <!-- Drop-to-remove hint (only while a deck card is dragged over) -->
+    <div v-if="dropActive" class="dnd-hint">
+      <UIcon name="i-lucide-trash-2" class="h-5 w-5" />
+      {{ t('build.dropToRemove') }}
+    </div>
+
     <h3 class="mb-3 font-mono text-[11px] uppercase tracking-[2px] text-(--color-text-muted)">
       {{ t('build.searchTitle') }}
     </h3>
@@ -424,7 +464,10 @@ const sortModel = computed({
           v-for="card in state.cards"
           :key="card.id"
           v-tilt="{ max: 12, scale: 1.06 }"
-          class="group relative overflow-hidden rounded-[var(--radius-md)]"
+          class="dnd-draggable group relative overflow-hidden rounded-[var(--radius-md)]"
+          draggable="true"
+          @dragstart="startDrag($event, { source: 'search', name: card.name })"
+          @dragend="endDrag"
         >
           <button type="button" class="block w-full" :aria-label="cardName(card)" @click="emit('details', card)">
             <img
@@ -488,6 +531,37 @@ const sortModel = computed({
 </template>
 
 <style scoped>
+/* ---- Drag & drop ---- */
+.dnd-draggable {
+  cursor: grab;
+}
+.dnd-draggable:active {
+  cursor: grabbing;
+}
+/* The panel becomes a drop target when a deck card is dragged here (to remove). */
+.dnd-drop-active {
+  outline: 2px dashed var(--color-error);
+  outline-offset: -4px;
+}
+.dnd-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--color-error) 14%, var(--color-bg-base) 70%);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  color: var(--color-error);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
 /* Add / remove toggle on a search result. Default = accent (add). In deck =
    green check; hovering the in-deck button turns it red and swaps to an ✕ so a
    click clearly removes the card. */

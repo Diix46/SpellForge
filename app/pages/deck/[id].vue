@@ -248,6 +248,28 @@ function builderRemove(name: string) {
   builderOp(() => builder.removeCard(name))
 }
 
+// ---- Drag & drop between the search grid and the deck list ----
+// Drop a SEARCH card onto the deck → add it (by canonical English name). If the
+// dragged card resolves to a known Scryfall card that's out of identity, reuse
+// the identity gate; otherwise add by name.
+function onDropAdd(name: string) {
+  // eslint-disable-next-line ts/no-use-before-define
+  const card = resolvedByName.value.get(name.trim().toLowerCase())?.card
+  if (card) {
+    addSearchCard(card)
+    return
+  }
+  if (inDeckNames.value.has(name.trim().toLowerCase()))
+    return
+  builderOp(() => builder.addCard(name))
+  toast.add({ title: t('toast.added'), description: name, color: 'success', icon: 'i-lucide-plus' })
+}
+// Drop a DECK card onto the search panel → remove it.
+function onDropRemove(name: string) {
+  builderOp(() => builder.removeCard(name))
+  toast.add({ title: t('toast.removed'), description: name, color: 'neutral', icon: 'i-lucide-minus' })
+}
+
 // Resolved cards indexed by lowercased name for O(1) lookups. Keyed by BOTH the
 // original entry name (what the user typed, possibly French) and the canonical
 // English card name, so a lookup by either resolves. Built once per resolve
@@ -876,6 +898,7 @@ const tabsUi = {
             @toggle-lock="identityLocked = !identityLocked"
             @details="openDeckEntryDetail"
             @show-commander="commander && openDetail(commander)"
+            @drop-add="onDropAdd"
           />
         </div>
         <div class="ws-col">
@@ -887,6 +910,7 @@ const tabsUi = {
             @add="addSearchCard"
             @remove="removeSearchCard"
             @details="openSearchDetail"
+            @drop-remove="onDropRemove"
           />
         </div>
       </div>
