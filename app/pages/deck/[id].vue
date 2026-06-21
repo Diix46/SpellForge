@@ -59,6 +59,21 @@ const exportProgress = ref({ loaded: 0, total: 0, phase: '' })
 
 const activeTab = ref<'deck' | 'preview' | 'buy'>('deck')
 
+// Coach IA slide-over open state. Esc closes it (bound only while open).
+const coachOpen = ref(false)
+function onCoachEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape')
+    coachOpen.value = false
+}
+watch(coachOpen, (open) => {
+  if (import.meta.client)
+    open ? window.addEventListener('keydown', onCoachEsc) : window.removeEventListener('keydown', onCoachEsc)
+})
+onBeforeUnmount(() => {
+  if (import.meta.client)
+    window.removeEventListener('keydown', onCoachEsc)
+})
+
 // Import/Export modal (the old raw-text editor lives here now).
 const showImportExport = ref(false)
 const importExportText = ref('')
@@ -220,6 +235,11 @@ function addSearchCard(card: ScryfallCard) {
   }
   builderOp(() => builder.addScryfallCard(card))
   toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
+}
+// Remove a card from the deck via the search grid's green-check toggle.
+function removeSearchCard(card: ScryfallCard) {
+  builderOp(() => builder.removeCard(card.name))
+  toast.add({ title: t('toast.removed'), description: card.name, color: 'neutral', icon: 'i-lucide-minus' })
 }
 function builderSetQty(name: string, qty: number) {
   builderOp(() => builder.setQuantity(name, qty))
@@ -511,10 +531,20 @@ async function loadCards(opts: { silent?: boolean } = {}) {
   fetchProgress.value = { loaded: 0, total: cardCount.value }
   page.value = 1
   try {
-    const result = await fetchCollection(entries, reqLang, (p) => {
-      if (token === loadToken)
-        fetchProgress.value = p
-    })
+    const result = await fetchCollection(
+      entries,
+      reqLang,
+      (p) => {
+        if (token === loadToken)
+          fetchProgress.value = p
+      },
+      // Instant first paint: show default-image thumbnails as soon as the
+      // collection call returns, before the slower FR art resolves.
+      (preliminary) => {
+        if (token === loadToken && resolvedCards.value.length === 0)
+          resolvedCards.value = preliminary
+      },
+    )
     if (token !== loadToken)
       return // superseded by a newer load (deck switched) — drop these cards
     resolvedCards.value = result
@@ -808,6 +838,17 @@ const tabsUi = {
             <span v-else>{{ t('build.resolve') }}</span>
           </UButton>
         </div>
+
+        <!-- Coach IA: always-visible trigger; opens a side panel (slide-over) so
+             the chat is reachable without being pushed below the deck list. -->
+        <button
+          type="button"
+          class="accent-border-c accent-soft-bg flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium text-(--accent-text) transition-all hover:-translate-y-px hover:bg-[rgba(var(--accent-rgb),0.2)]"
+          @click="coachOpen = true"
+        >
+          <span class="leading-none">✦</span>
+          {{ t('coach.open') }}
+        </button>
       </div>
 
       <div
@@ -820,6 +861,7 @@ const tabsUi = {
           :commander-name="commanderName || builder.commanderName.value"
           :commander-en-name="commanderEnName"
           @add="addSearchCard"
+          @remove="removeSearchCard"
           @details="openSearchDetail"
         />
         <div class="space-y-6">
@@ -847,12 +889,29 @@ const tabsUi = {
             @details="openDeckEntryDetail"
             @show-commander="commander && openDetail(commander)"
           />
-          <BuilderCoachChat
-            :deck-context="coachContext"
-            :ready="aiCardNames.length > 0"
-          />
         </div>
       </div>
+
+      <!-- Coach IA — slide-over panel (teleported, never clipped, doesn't steal
+           the deck list's height). Opened by the toolbar button or ⌘K. -->
+      <Teleport to="body">
+        <Transition name="coach-slide">
+          <div
+            v-if="coachOpen"
+            class="fixed inset-0 z-[var(--z-modal)] flex justify-end"
+          >
+            <div class="coach-scrim absolute inset-0" @click="coachOpen = false" />
+            <div class="relative z-10 flex h-full w-full max-w-[440px] flex-col p-3">
+              <BuilderCoachChat
+                :deck-context="coachContext"
+                :ready="aiCardNames.length > 0"
+                class="h-full !max-h-none"
+                @close="coachOpen = false"
+              />
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
     </div>
 
     <!-- PREVIEW TAB -->

@@ -464,6 +464,41 @@ body {
   }
 }
 
+/* ---------------- COACH SLIDE-OVER ----------------
+   Right-side panel for the AI Coach (teleported). Scrim dims the page; the panel
+   slides in from the right. */
+.coach-scrim {
+  background: rgba(10, 10, 11, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.coach-slide-enter-active,
+.coach-slide-leave-active {
+  transition: opacity var(--dur) var(--ease-out);
+}
+.coach-slide-enter-active > .relative,
+.coach-slide-leave-active > .relative {
+  transition: transform var(--dur-slow) var(--ease-spring);
+}
+.coach-slide-enter-from,
+.coach-slide-leave-to {
+  opacity: 0;
+}
+.coach-slide-enter-from > .relative,
+.coach-slide-leave-to > .relative {
+  transform: translateX(24px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .coach-slide-enter-active > .relative,
+  .coach-slide-leave-active > .relative {
+    transition: none;
+  }
+  .coach-slide-enter-from > .relative,
+  .coach-slide-leave-to > .relative {
+    transform: none;
+  }
+}
+
 /* ---------------- SKELETON SHIMMER ----------------
    Loading placeholder for content that resolves late (thumbnails, pips). A soft
    surface base with a highlight sweeping across. Reduced-motion → static base. */

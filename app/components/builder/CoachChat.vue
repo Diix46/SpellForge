@@ -13,6 +13,7 @@ const props = defineProps<{
   /** Whether the deck has enough to coach on yet. */
   ready: boolean
 }>()
+const emit = defineEmits<{ close: [] }>()
 
 const { t } = useLocale()
 const { messages, streaming, error, send, reset } = useCoach()
@@ -51,14 +52,24 @@ watch(() => messages.value.map(m => m.text).join('|'), async () => {
         <span class="text-sm leading-none">✦</span>
         {{ t('coach.title') }}
       </div>
-      <button
-        v-if="messages.length"
-        type="button"
-        class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted) transition-colors hover:text-(--color-text-high)"
-        @click="reset"
-      >
-        {{ t('coach.reset') }}
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          v-if="messages.length"
+          type="button"
+          class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted) transition-colors hover:text-(--color-text-high)"
+          @click="reset"
+        >
+          {{ t('coach.reset') }}
+        </button>
+        <button
+          type="button"
+          class="grid h-7 w-7 place-items-center rounded-full text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
+          :aria-label="t('coach.close')"
+          @click="emit('close')"
+        >
+          <UIcon name="i-lucide-x" class="h-4 w-4" />
+        </button>
+      </div>
     </div>
 
     <!-- Empty state: intro + starter prompts -->
@@ -88,7 +99,7 @@ watch(() => messages.value.map(m => m.text).join('|'), async () => {
     <div
       v-else
       ref="scroller"
-      class="-mr-2 max-h-[60vh] flex-1 space-y-3 overflow-y-auto pr-2"
+      class="-mr-2 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2"
     >
       <div
         v-for="(m, i) in messages"

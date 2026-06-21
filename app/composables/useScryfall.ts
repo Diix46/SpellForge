@@ -316,12 +316,31 @@ export function useScryfall() {
     return null
   }
 
+  // Build a quick ResolvedCard from a matched (default/EN) Scryfall card — used
+  // for the instant first paint before FR art is resolved.
+  function quickResolved(entry: DeckEntry, match: ScryfallCard | null, lang: string): ResolvedCard {
+    if (!match)
+      return { entry, card: null, imageUrl: null, backImageUrl: null, lang, error: `Carte introuvable: ${entry.name}` }
+    return {
+      entry,
+      card: match,
+      imageUrl: frontImage(match),
+      backImageUrl: isDoubleFaced(match) ? backImage(match) : null,
+      lang: match.lang,
+      priceEur: match.prices?.eur ?? null,
+    }
+  }
+
   async function fetchCollection(
     entries: DeckEntry[],
     lang: 'en' | 'fr',
     onProgress?: (p: FetchProgress) => void,
+    // Fires with a fast, default-image resolution per batch BEFORE the (slower)
+    // FR art enrichment, so the UI can show thumbnails immediately.
+    onPartial?: (cards: ResolvedCard[]) => void,
   ): Promise<ResolvedCard[]> {
     const results: ResolvedCard[] = []
+    const partial: ResolvedCard[] = []
     let processed = 0
 
     // Process in batches of BATCH_SIZE using the /cards/collection endpoint.
@@ -349,6 +368,15 @@ export function useScryfall() {
       }
       catch (err) {
         requestError = err instanceof Error ? err.message : 'erreur réseau'
+      }
+
+      // Instant first paint: emit this batch resolved to its default (usually EN)
+      // printing right away, so deck-list thumbnails appear without waiting for
+      // the slower FR art resolution below. The final return upgrades to FR.
+      if (onPartial && !requestError) {
+        for (const entry of batch)
+          partial.push(quickResolved(entry, findMatch(foundCards, entry), lang))
+        onPartial([...partial])
       }
 
       // FR mode: warm the by-name cache for the whole batch in one search per

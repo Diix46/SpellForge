@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 
 // Mana Prism favicon as an inline SVG data URI (matches AppLogo). Neutral bg now.
@@ -53,6 +53,18 @@ useHead({
 const showAuth = ref(false)
 const mobileNav = ref(false)
 
+// Desktop sidebar collapse — lets the user reclaim horizontal space. Persisted
+// in localStorage so the choice sticks across reloads.
+const sidebarCollapsed = useState('sidebar-collapsed', () => false)
+onMounted(() => {
+  sidebarCollapsed.value = localStorage.getItem('sidebar-collapsed') === '1'
+})
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  if (import.meta.client)
+    localStorage.setItem('sidebar-collapsed', sidebarCollapsed.value ? '1' : '0')
+}
+
 const userMenu = computed(() => [[
   { label: user.value?.displayName ?? t('auth.account'), type: 'label' as const },
   { label: t('auth.logout'), icon: 'i-lucide-log-out', onSelect: () => logout() },
@@ -92,12 +104,23 @@ function openImport() {
 
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
-    <div class="app-shell" :style="{ zIndex: 'var(--z-content)' }">
+    <div class="app-shell" :class="{ 'side-collapsed': sidebarCollapsed }" :style="{ zIndex: 'var(--z-content)' }">
       <!-- ============ SIDEBAR ============ -->
-      <aside class="side" :class="{ open: mobileNav }">
-        <NuxtLink to="/" class="side-brand" @click="mobileNav = false">
-          <AppLogo />
-        </NuxtLink>
+      <aside class="side" :class="{ open: mobileNav, collapsed: sidebarCollapsed }">
+        <div class="side-top">
+          <NuxtLink to="/" class="side-brand" @click="mobileNav = false">
+            <AppLogo />
+          </NuxtLink>
+          <button
+            type="button"
+            class="side-collapse-btn"
+            :aria-label="t('nav.collapse')"
+            :title="t('nav.collapse')"
+            @click="toggleSidebar"
+          >
+            <UIcon name="i-lucide-panel-left-close" class="h-4 w-4" />
+          </button>
+        </div>
 
         <button type="button" class="side-search" @click="openCmdK(); mobileNav = false">
           <UIcon name="i-lucide-search" class="h-[15px] w-[15px]" />
@@ -171,6 +194,17 @@ function openImport() {
           <button type="button" class="burger" :aria-label="t('nav.search')" @click="mobileNav = !mobileNav">
             <UIcon name="i-lucide-menu" class="h-5 w-5" />
           </button>
+          <!-- Desktop: re-open the sidebar when it's collapsed. -->
+          <button
+            v-if="sidebarCollapsed"
+            type="button"
+            class="topbar-expand"
+            :aria-label="t('nav.expand')"
+            :title="t('nav.expand')"
+            @click="toggleSidebar"
+          >
+            <UIcon name="i-lucide-panel-left-open" class="h-5 w-5" />
+          </button>
           <span class="crumb">{{ t('nav.decks') }}</span>
 
           <div class="topbar-right">
@@ -227,10 +261,62 @@ function openImport() {
   top: 0;
   height: 100vh;
   background: var(--color-bg-base-2);
+  transition:
+    width var(--dur-slow) var(--ease-out),
+    padding var(--dur-slow) var(--ease-out),
+    opacity var(--dur) var(--ease-out);
+}
+/* Collapsed (desktop): the sidebar slides away to give the content full width. */
+.side.collapsed {
+  width: 0;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-right-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.side-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .side-brand {
   display: block;
   padding: 8px 8px 14px;
+}
+.side-collapse-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.side-collapse-btn:hover {
+  color: var(--color-text-high);
+  background: var(--color-surface-2);
+}
+.topbar-expand {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-mid);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.topbar-expand:hover {
+  color: var(--color-text-high);
+  background: var(--color-surface-2);
 }
 .side-search {
   display: flex;
@@ -588,6 +674,18 @@ function openImport() {
   .burger {
     display: grid;
     place-items: center;
+  }
+  /* On mobile the sidebar is a slide-in drawer; the desktop collapse/expand
+     affordance doesn't apply, so neutralise it and hide its buttons. */
+  .side.collapsed {
+    width: 248px;
+    padding: 16px 12px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .side-collapse-btn,
+  .topbar-expand {
+    display: none;
   }
   .top-search span.kk {
     display: none;

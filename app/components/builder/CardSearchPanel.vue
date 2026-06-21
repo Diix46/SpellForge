@@ -21,6 +21,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   add: [card: ScryfallCard]
+  remove: [card: ScryfallCard]
   details: [card: ScryfallCard]
 }>()
 
@@ -447,16 +448,25 @@ const sortModel = computed({
             class="pointer-events-none absolute left-1 top-1 rounded bg-black/70 px-1 py-0.5 font-mono text-[9px] text-white"
           >{{ priceLabel(card) }}</span>
 
-          <!-- add overlay -->
+          <!-- add / remove overlay: toggles. In deck → green check, turns into a
+               red "remove" on hover so a second click takes it out of the deck. -->
           <div class="pointer-events-none absolute inset-x-0 bottom-0 flex gap-1 p-1 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               type="button"
-              class="pointer-events-auto flex flex-1 items-center justify-center gap-1 rounded-[var(--radius-sm)] py-1 text-xs font-semibold text-(--color-bg-base)"
-              :style="{ background: inDeck.has(card.name.toLowerCase()) ? 'var(--color-success)' : 'var(--accent)' }"
-              :aria-label="`${inDeck.has(card.name.toLowerCase()) ? t('build.inDeck') : t('build.add')} — ${cardName(card)}`"
-              @click="emit('add', card)"
+              class="add-toggle pointer-events-auto flex flex-1 items-center justify-center gap-1 rounded-[var(--radius-sm)] py-1 text-xs font-semibold text-(--color-bg-base)"
+              :class="{ 'is-in-deck': inDeck.has(card.name.toLowerCase()) }"
+              :aria-label="`${inDeck.has(card.name.toLowerCase()) ? t('build.removeFromDeck') : t('build.add')} — ${cardName(card)}`"
+              @click="inDeck.has(card.name.toLowerCase()) ? emit('remove', card) : emit('add', card)"
             >
-              <UIcon :name="inDeck.has(card.name.toLowerCase()) ? 'i-lucide-check' : 'i-lucide-plus'" class="h-3.5 w-3.5" />
+              <UIcon
+                v-if="!inDeck.has(card.name.toLowerCase())"
+                name="i-lucide-plus"
+                class="h-3.5 w-3.5"
+              />
+              <template v-else>
+                <UIcon name="i-lucide-check" class="check-icon h-3.5 w-3.5" />
+                <UIcon name="i-lucide-x" class="remove-icon h-3.5 w-3.5" />
+              </template>
             </button>
           </div>
         </div>
@@ -478,6 +488,31 @@ const sortModel = computed({
 </template>
 
 <style scoped>
+/* Add / remove toggle on a search result. Default = accent (add). In deck =
+   green check; hovering the in-deck button turns it red and swaps to an ✕ so a
+   click clearly removes the card. */
+.add-toggle {
+  background: var(--accent);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.add-toggle.is-in-deck {
+  background: var(--color-success);
+}
+.add-toggle .remove-icon {
+  display: none;
+}
+@media (hover: hover) {
+  .add-toggle.is-in-deck:hover {
+    background: var(--color-error);
+  }
+  .add-toggle.is-in-deck:hover .check-icon {
+    display: none;
+  }
+  .add-toggle.is-in-deck:hover .remove-icon {
+    display: inline-block;
+  }
+}
+
 /* WUBRG colour toggles built on real mana pips. --pip = the colour's CSS var. */
 .mana-toggle {
   position: relative;

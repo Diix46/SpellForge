@@ -21,6 +21,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'nav.import': 'Importer',
     'nav.myDecks': 'Mes decks',
     'nav.search': 'Rechercher…',
+    'nav.collapse': 'Réduire le menu',
+    'nav.expand': 'Afficher le menu',
     'theme.toLight': 'Passer en thème clair',
     'theme.toDark': 'Passer en thème sombre',
     // Command palette (⌘K)
@@ -76,6 +78,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'ai.dropped': '{n} suggestion(s) écartée(s) (hors-couleur, illégale ou introuvable)',
     // Coach (conversational AI)
     'coach.title': 'Coach IA',
+    'coach.open': 'Coach IA',
+    'coach.close': 'Fermer le coach',
     'coach.intro': 'Discute avec ton deck. Diagnostic, coupes, recherche par intention — chaque carte citée est réelle et vérifiée.',
     'coach.reset': 'Nouveau',
     'coach.needDeck': 'Ajoute des cartes pour que le coach puisse analyser le deck.',
@@ -165,6 +169,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'toast.listCopied': 'Liste copiée',
     'toast.listCopiedDesc': 'Collez-la dans votre liste d\'envies Cardmarket.',
     'toast.added': 'Ajoutée au deck',
+    'toast.removed': 'Retirée du deck',
     'toast.outOfIdentity': 'Hors de l\'identité du commandant',
     // Builder
     'tab.deck': 'Deck',
@@ -202,6 +207,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'build.loadMore': 'Charger plus',
     'build.add': 'Ajouter',
     'build.inDeck': 'Dans le deck',
+    'build.removeFromDeck': 'Retirer du deck',
     'build.deckTitle': 'Le deck',
     'build.setCommander': 'Définir commandant',
     'build.empty': 'Deck vide — ajoutez des cartes depuis la recherche.',
@@ -284,6 +290,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'nav.import': 'Import',
     'nav.myDecks': 'My decks',
     'nav.search': 'Search…',
+    'nav.collapse': 'Collapse menu',
+    'nav.expand': 'Show menu',
     'theme.toLight': 'Switch to light theme',
     'theme.toDark': 'Switch to dark theme',
     'cmd.placeholder': 'Search a card, a deck, or run an action…',
@@ -335,6 +343,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'ai.dropped': '{n} suggestion(s) dropped (off-colour, illegal or not found)',
     // Coach (conversational AI)
     'coach.title': 'AI Coach',
+    'coach.open': 'AI Coach',
+    'coach.close': 'Close coach',
     'coach.intro': 'Chat with your deck. Diagnosis, cuts, find-by-intent — every card it names is real and verified.',
     'coach.reset': 'New',
     'coach.needDeck': 'Add cards so the coach can analyse the deck.',
@@ -418,6 +428,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'toast.listCopied': 'List copied',
     'toast.listCopiedDesc': 'Paste it into your Cardmarket wants list.',
     'toast.added': 'Added to deck',
+    'toast.removed': 'Removed from deck',
     'toast.outOfIdentity': 'Outside the commander\'s identity',
     // Builder
     'tab.deck': 'Deck',
@@ -455,6 +466,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'build.loadMore': 'Load more',
     'build.add': 'Add',
     'build.inDeck': 'In deck',
+    'build.removeFromDeck': 'Remove from deck',
     'build.deckTitle': 'The deck',
     'build.setCommander': 'Set as commander',
     'build.empty': 'Empty deck — add cards from the search.',
