@@ -759,7 +759,7 @@ const tabsUi = {
 <template>
   <div
     v-if="deck"
-    class="fade-up"
+    class="deck-page fade-up"
     :style="themeStyle"
   >
     <!-- HEADER -->
@@ -815,7 +815,7 @@ const tabsUi = {
     />
 
     <!-- DECK TAB (unified build + edit) -->
-    <div v-show="activeTab === 'deck'">
+    <div v-show="activeTab === 'deck'" class="deck-tab">
       <!-- toolbar -->
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
@@ -855,20 +855,12 @@ const tabsUi = {
         </button>
       </div>
 
-      <div
-        class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(340px,420px)]"
-        style="min-height: 70vh"
-      >
-        <BuilderCardSearchPanel
-          :identity="identityLocked ? builderIdentity : null"
-          :in-deck="inDeckNames"
-          :commander-name="commanderName || builder.commanderName.value"
-          :commander-en-name="commanderEnName"
-          @add="addSearchCard"
-          @remove="removeSearchCard"
-          @details="openSearchDetail"
-        />
-        <div class="space-y-6">
+      <!-- Workspace: deck list is the hero (wide, left); card search is the
+           compact companion (right). The row fills the remaining viewport height
+           and each side scrolls on its own only if its content truly overflows —
+           no page scroll, no scrollbar reserved for a few stray pixels. -->
+      <div class="deck-workspace grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(320px,380px)]">
+        <div class="ws-col">
           <BuilderDeckListPanel
             :entries="builder.entries.value"
             :total="builder.totalCards.value"
@@ -892,6 +884,17 @@ const tabsUi = {
             @toggle-lock="identityLocked = !identityLocked"
             @details="openDeckEntryDetail"
             @show-commander="commander && openDetail(commander)"
+          />
+        </div>
+        <div class="ws-col">
+          <BuilderCardSearchPanel
+            :identity="identityLocked ? builderIdentity : null"
+            :in-deck="inDeckNames"
+            :commander-name="commanderName || builder.commanderName.value"
+            :commander-en-name="commanderEnName"
+            @add="addSearchCard"
+            @remove="removeSearchCard"
+            @details="openSearchDetail"
           />
         </div>
       </div>
@@ -1422,3 +1425,57 @@ const tabsUi = {
     />
   </div>
 </template>
+
+<style scoped>
+/* The deck page fills the height the app shell gives it (the area below the
+   single top bar). Header + tabs + toolbar are fixed-height; the deck workspace
+   flexes to fill the rest. Result: no page scroll — each column scrolls on its
+   own, and only when its content genuinely overflows. */
+.deck-page {
+  display: flex;
+  flex-direction: column;
+  /* Definite height = viewport minus the fixed top bar (56) and the .content
+     vertical padding (28 top + 56 bottom). Only the FIXED chrome is subtracted;
+     the variable deck header/tabs/toolbar live inside this column and the
+     workspace flexes around them — so this stays correct even if they wrap. */
+  height: calc(100dvh - 140px);
+  min-height: 460px;
+}
+.deck-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.deck-workspace {
+  flex: 1;
+  min-height: 0;
+  /* a sensible floor so very short viewports still show a usable area */
+  --ws-min: 460px;
+}
+.ws-col {
+  min-height: 0;
+  height: 100%;
+}
+/* The panels inside are h-full with their own internal overflow, so a column
+   only shows a scrollbar when its content genuinely exceeds the height. */
+.ws-col > :deep(*) {
+  height: 100%;
+}
+
+@media (max-width: 1023px) {
+  /* Stacked on small screens: let the page flow naturally instead of trapping
+     two scroll regions in a short viewport. */
+  .deck-page,
+  .deck-tab {
+    display: block;
+  }
+  .deck-workspace {
+    min-height: 0;
+  }
+  .ws-col,
+  .ws-col > :deep(*) {
+    height: auto;
+  }
+}
+</style>
