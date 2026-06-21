@@ -464,37 +464,104 @@ body {
   }
 }
 
-/* ---------------- COACH SLIDE-OVER ----------------
-   Right-side panel for the AI Coach (teleported). Scrim dims the page; the panel
-   slides in from the right. */
-.coach-scrim {
-  background: rgba(10, 10, 11, 0.55);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+/* ---------------- COACH FLOATING WIDGET ----------------
+   A chat widget anchored bottom-right (teleported to body). It overlays the page
+   WITHOUT a scrim, so the deck stays fully visible and interactive while you
+   chat. Minimised to a pill; expands to a panel. The conversation persists in
+   useState + localStorage, independent of this DOM. */
+.coach-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  pointer-events: none; /* let the wrapper pass clicks through; children re-enable */
 }
-.coach-slide-enter-active,
-.coach-slide-leave-active {
-  transition: opacity var(--dur) var(--ease-out);
+.coach-fab > * {
+  pointer-events: auto;
 }
-.coach-slide-enter-active > .relative,
-.coach-slide-leave-active > .relative {
-  transition: transform var(--dur-slow) var(--ease-spring);
+.coach-panel {
+  width: min(390px, calc(100vw - 32px));
+  height: min(580px, calc(100dvh - 120px));
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-elev-3);
 }
-.coach-slide-enter-from,
-.coach-slide-leave-to {
+.coach-panel > * {
+  flex: 1;
+  min-height: 0;
+}
+/* The minimised launcher pill. */
+.coach-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 18px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--accent-border);
+  background: var(--gradient-accent);
+  color: var(--color-text-on-neon);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-elev-2), var(--accent-glow-soft);
+  transition:
+    transform var(--dur) var(--ease-spring),
+    box-shadow var(--dur) var(--ease-out);
+}
+.coach-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elev-3), var(--accent-glow);
+}
+.coach-pill:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* open/close: scale+fade from the bottom-right corner (its trigger source) */
+.coach-pop-enter-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur-slow) var(--ease-spring);
+}
+.coach-pop-leave-active {
+  transition:
+    opacity var(--dur-fast) var(--ease-in),
+    transform var(--dur) var(--ease-in);
+}
+.coach-pop-enter-from,
+.coach-pop-leave-to {
   opacity: 0;
+  transform: translateY(12px) scale(0.96);
+  transform-origin: bottom right;
 }
-.coach-slide-enter-from > .relative,
-.coach-slide-leave-to > .relative {
-  transform: translateX(24px);
+.coach-pill-enter-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-spring);
+}
+.coach-pill-leave-active {
+  transition: opacity var(--dur-fast) var(--ease-in);
+}
+.coach-pill-enter-from,
+.coach-pill-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
 }
 @media (prefers-reduced-motion: reduce) {
-  .coach-slide-enter-active > .relative,
-  .coach-slide-leave-active > .relative {
-    transition: none;
+  .coach-pop-enter-active,
+  .coach-pop-leave-active,
+  .coach-pill-enter-active,
+  .coach-pill-leave-active {
+    transition: opacity var(--dur-fast) var(--ease-out);
   }
-  .coach-slide-enter-from > .relative,
-  .coach-slide-leave-to > .relative {
+  .coach-pop-enter-from,
+  .coach-pop-leave-to,
+  .coach-pill-enter-from,
+  .coach-pill-leave-to {
     transform: none;
   }
 }

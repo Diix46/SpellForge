@@ -70,10 +70,11 @@ watch(() => messages.value.map(m => m.text).join('|'), async () => {
         <button
           type="button"
           class="grid h-7 w-7 place-items-center rounded-full text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
-          :aria-label="t('coach.close')"
+          :aria-label="t('coach.minimize')"
+          :title="t('coach.minimize')"
           @click="emit('close')"
         >
-          <UIcon name="i-lucide-x" class="h-4 w-4" />
+          <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />
         </button>
       </div>
     </div>

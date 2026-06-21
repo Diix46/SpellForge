@@ -843,16 +843,8 @@ const tabsUi = {
           </UButton>
         </div>
 
-        <!-- Coach IA: always-visible trigger; opens a side panel (slide-over) so
-             the chat is reachable without being pushed below the deck list. -->
-        <button
-          type="button"
-          class="accent-border-c accent-soft-bg flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium text-(--accent-text) transition-all hover:-translate-y-px hover:bg-[rgba(var(--accent-rgb),0.2)]"
-          @click="coachOpen = true"
-        >
-          <span class="leading-none">✦</span>
-          {{ t('coach.open') }}
-        </button>
+        <!-- The Coach lives in a floating widget (bottom-right); its launcher pill
+             is always present there, so no toolbar trigger is needed here. -->
       </div>
 
       <!-- Workspace: deck list is the hero (wide, left); card search is the
@@ -899,25 +891,37 @@ const tabsUi = {
         </div>
       </div>
 
-      <!-- Coach IA — slide-over panel (teleported, never clipped, doesn't steal
-           the deck list's height). Opened by the toolbar button or ⌘K. -->
+      <!-- Coach IA — floating chat widget (teleported to body so it overlays the
+           workspace without blocking it). Minimised to a pill by default; the
+           deck stays fully visible and interactive while you chat. The
+           conversation lives in useState + localStorage, so it persists across
+           minimise, tab switches, and reloads. -->
       <Teleport to="body">
-        <Transition name="coach-slide">
-          <div
-            v-if="coachOpen"
-            class="fixed inset-0 z-[var(--z-modal)] flex justify-end"
-          >
-            <div class="coach-scrim absolute inset-0" @click="coachOpen = false" />
-            <div class="relative z-10 flex h-full w-full max-w-[440px] flex-col p-3">
+        <div class="coach-fab">
+          <!-- Panel stays mounted (v-show) so minimising never interrupts an
+               in-flight reply or loses scroll position; only its visibility
+               toggles. -->
+          <Transition name="coach-pop">
+            <div v-show="coachOpen" class="coach-panel">
               <BuilderCoachChat
                 :deck-context="coachContext"
                 :ready="aiCardNames.length > 0"
-                class="h-full !max-h-none"
                 @close="coachOpen = false"
               />
             </div>
-          </div>
-        </Transition>
+          </Transition>
+          <Transition name="coach-pill">
+            <button
+              v-if="!coachOpen"
+              type="button"
+              class="coach-pill"
+              @click="coachOpen = true"
+            >
+              <span class="leading-none">✦</span>
+              {{ t('coach.open') }}
+            </button>
+          </Transition>
+        </div>
       </Teleport>
     </div>
 
