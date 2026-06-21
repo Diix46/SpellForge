@@ -490,8 +490,8 @@ function issueText(issue: ValidationIssue): string {
   overflow-x: hidden;
 }
 .deck-cols-inner {
-  column-width: 176px;
-  column-gap: 16px;
+  column-width: 248px;
+  column-gap: 18px;
 }
 .deck-group {
   break-inside: avoid;

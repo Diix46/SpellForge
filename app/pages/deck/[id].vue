@@ -1435,10 +1435,10 @@ const tabsUi = {
   display: flex;
   flex-direction: column;
   /* Definite height = viewport minus the fixed top bar (56) and the .content
-     vertical padding (28 top + 56 bottom). Only the FIXED chrome is subtracted;
+     vertical padding (24 top + 48 bottom). Only the FIXED chrome is subtracted;
      the variable deck header/tabs/toolbar live inside this column and the
      workspace flexes around them — so this stays correct even if they wrap. */
-  height: calc(100dvh - 140px);
+  height: calc(100dvh - 128px);
   min-height: 460px;
 }
 .deck-tab {

@@ -461,9 +461,9 @@ function openImport() {
 .content {
   flex: 1;
   width: 100%;
-  max-width: 1480px;
+  max-width: 1720px;
   margin: 0 auto;
-  padding: 28px 28px 56px;
+  padding: 24px 16px 48px;
 }
 
 /* ---------- Footer ---------- */
@@ -471,12 +471,12 @@ function openImport() {
   border-top: 1px solid var(--color-border-hairline);
 }
 .foot-inner {
-  max-width: 1480px;
+  max-width: 1720px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 22px 28px;
+  padding: 22px 16px;
   font-size: 13px;
   color: var(--color-text-muted);
 }
