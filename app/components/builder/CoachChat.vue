@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useCoach } from '~/composables/useCoach'
 import { useLocale } from '~/composables/useLocale'
+import { useMarkdown } from '~/composables/useMarkdown'
 
 // Conversational AI deck Coach (backed by the Eve agent service). Lives in the
 // deck side column; speaks in chat, grounds every card it names in real data
@@ -17,6 +18,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const { t } = useLocale()
 const { messages, streaming, error, send, reset, stop } = useCoach()
+const { render: renderMarkdown } = useMarkdown()
 
 // The panel lives behind a v-if in the slide-over, so closing it unmounts this
 // component — cancel any in-flight stream so it doesn't drain in the background.
@@ -128,8 +130,16 @@ watch(() => messages.value.map(m => m.text).join('|'), async () => {
               {{ tl }}
             </span>
           </div>
-          <!-- text (markdown-ish: we render as preserved-whitespace text) -->
-          <p class="whitespace-pre-wrap leading-relaxed">
+          <!-- assistant replies render as sanitized Markdown (tables, lists,
+               bold…); user messages stay plain text (never render their input
+               as HTML). -->
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <div
+            v-if="m.role === 'assistant' && m.text"
+            class="coach-md leading-relaxed"
+            v-html="renderMarkdown(m.text)"
+          />
+          <p v-else-if="m.text" class="whitespace-pre-wrap leading-relaxed">
             {{ m.text }}
           </p>
           <!-- streaming shimmer when the bubble is still empty -->
@@ -174,6 +184,101 @@ watch(() => messages.value.map(m => m.text).join('|'), async () => {
 </template>
 
 <style scoped>
+/* Markdown rendered inside an assistant bubble — compact, chat-sized rhythm. */
+.coach-md :deep(p) {
+  margin: 0 0 0.5rem;
+}
+.coach-md :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.coach-md :deep(h1),
+.coach-md :deep(h2),
+.coach-md :deep(h3),
+.coach-md :deep(h4) {
+  margin: 0.75rem 0 0.35rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text-high);
+}
+.coach-md :deep(h1) {
+  font-size: 1rem;
+}
+.coach-md :deep(h2) {
+  font-size: 0.95rem;
+}
+.coach-md :deep(h3),
+.coach-md :deep(h4) {
+  font-size: 0.875rem;
+}
+.coach-md :deep(strong) {
+  font-weight: 600;
+  color: var(--color-text-high);
+}
+.coach-md :deep(ul),
+.coach-md :deep(ol) {
+  margin: 0 0 0.5rem;
+  padding-left: 1.15rem;
+}
+.coach-md :deep(li) {
+  margin: 0.15rem 0;
+}
+.coach-md :deep(li::marker) {
+  color: var(--color-text-muted);
+}
+.coach-md :deep(a) {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.coach-md :deep(code) {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  background: var(--color-surface-3);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.coach-md :deep(pre) {
+  margin: 0 0 0.5rem;
+  padding: 0.6rem 0.7rem;
+  overflow-x: auto;
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+.coach-md :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+.coach-md :deep(blockquote) {
+  margin: 0 0 0.5rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid var(--accent-border);
+  color: var(--color-text-mid);
+}
+.coach-md :deep(hr) {
+  margin: 0.75rem 0;
+  border: 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.coach-md :deep(table) {
+  width: 100%;
+  margin: 0 0 0.5rem;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.coach-md :deep(th),
+.coach-md :deep(td) {
+  border: 1px solid var(--color-border-subtle);
+  padding: 4px 7px;
+  text-align: left;
+  vertical-align: top;
+}
+.coach-md :deep(th) {
+  background: var(--color-surface-2);
+  font-weight: 600;
+  color: var(--color-text-high);
+}
+
 .coach-dot {
   width: 5px;
   height: 5px;

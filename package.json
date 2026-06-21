@@ -21,8 +21,10 @@
     "@iconify-json/simple-icons": "^1.2.86",
     "@libsql/client": "^0.17.4",
     "@nuxt/ui": "^4.8.2",
+    "dompurify": "^3.4.11",
     "drizzle-orm": "^0.45.2",
     "jspdf": "^2.5.2",
+    "marked": "^17.0.6",
     "nuxt": "^4.4.8",
     "nuxt-auth-utils": "^0.5.29",
     "tailwindcss": "^4.3.1"
