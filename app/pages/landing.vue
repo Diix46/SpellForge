@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
 import { useScrollReveal } from '~/composables/useScrollReveal'
@@ -20,6 +20,14 @@ useSeoMeta({
 
 const root = ref<HTMLElement | null>(null)
 useScrollReveal(() => root.value)
+
+// Marquee: split the ·-list into discrete feature words, repeated 3× so the
+// ribbon always fills any viewport width and loops seamlessly (each of the two
+// tracks holds the full triple-repeat; translating one track-width is invisible).
+const marqueeWords = computed(() => {
+  const words = t('landing.marquee').split('·').map(w => w.trim()).filter(Boolean)
+  return [...words, ...words, ...words]
+})
 
 const FEATURES = [
   { icon: 'i-lucide-wand-sparkles', key: 'f1', glow: '79,168,232' },
@@ -122,8 +130,14 @@ function resetTilt(e: PointerEvent) {
     <!-- ============ Marquee ============ -->
     <div class="marquee" aria-hidden="true">
       <div class="marquee-track">
-        <span>{{ t('landing.marquee') }}</span>
-        <span>{{ t('landing.marquee') }}</span>
+        <span v-for="(w, i) in marqueeWords" :key="`a${i}`" class="mq-item">
+          <span class="mq-dot" />{{ w }}
+        </span>
+      </div>
+      <div class="marquee-track" aria-hidden="true">
+        <span v-for="(w, i) in marqueeWords" :key="`b${i}`" class="mq-item">
+          <span class="mq-dot" />{{ w }}
+        </span>
       </div>
     </div>
 
@@ -213,8 +227,13 @@ function resetTilt(e: PointerEvent) {
 
     <!-- ============ Footer ============ -->
     <footer class="lp-foot">
-      <AppLogo :wordmark="false" :size="20" />
-      <span>{{ t('landing.trust') }}</span>
+      <div class="lp-foot-brand">
+        <AppLogo :wordmark="false" :size="20" />
+        <span class="lp-foot-name">Spellforge</span>
+      </div>
+      <p class="lp-foot-copy">
+        {{ t('landing.copyright') }}
+      </p>
     </footer>
   </div>
 </template>
@@ -495,29 +514,48 @@ function resetTilt(e: PointerEvent) {
   position: relative;
   z-index: 2;
   overflow: hidden;
-  padding: 16px 0;
+  display: flex;
+  width: 100%;
+  padding: 14px 0;
   border-top: 1px solid var(--color-border-subtle);
   border-bottom: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.015);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  background: linear-gradient(90deg, rgba(var(--lp-a), 0.04), rgba(var(--lp-b), 0.04)), rgba(255, 255, 255, 0.02);
+  /* Soft fade only at the very edges so the ribbon reads as full-width. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
 }
+/* Two identical tracks scroll as one: as track A exits left, track B (flush
+   after it) arrives — seamless at any viewport width. Each is its own content
+   width and translates exactly -100% of itself. */
 .marquee-track {
+  flex-shrink: 0;
   display: flex;
-  gap: 48px;
+  align-items: center;
   width: max-content;
-  animation: scrollX 32s linear infinite;
+  animation: scrollX 38s linear infinite;
 }
-.marquee-track span {
+.mq-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 14px;
   font-family: var(--font-mono);
   font-size: 13px;
-  letter-spacing: 0.04em;
-  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
   white-space: nowrap;
+  color: var(--color-text-mid);
+}
+.mq-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, rgb(var(--lp-a)), rgb(var(--lp-b)));
+  box-shadow: 0 0 8px 0 rgba(var(--lp-a), 0.7);
 }
 @keyframes scrollX {
   to {
-    transform: translateX(-50%);
+    transform: translateX(-100%);
   }
 }
 
@@ -726,13 +764,30 @@ function resetTilt(e: PointerEvent) {
   position: relative;
   z-index: 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 36px 24px 48px;
+  gap: 10px;
+  padding: 40px 24px 52px;
   border-top: 1px solid var(--color-border-subtle);
-  font-family: var(--font-mono);
+  text-align: center;
+}
+.lp-foot-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.lp-foot-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-high);
+}
+.lp-foot-copy {
+  margin: 0;
+  max-width: 460px;
   font-size: 12px;
+  line-height: 1.5;
   color: var(--color-text-muted);
 }
 
