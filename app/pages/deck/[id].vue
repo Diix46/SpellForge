@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
-import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDeckBuilder, validateCommander } from '~/composables/useDeckBuilder'
 import { useDeckBuy } from '~/composables/useDeckBuy'
+import { useDeckExport } from '~/composables/useDeckExport'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { classifyType, displayName, displayType, englishTypeLine } from '~/composables/useMtg'
-import { usePdfExport } from '~/composables/usePdfExport'
 import { useScryfall } from '~/composables/useScryfall'
 
 const route = useRoute()
@@ -21,7 +20,6 @@ const { getDeck, updateDeck, setShare, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
 const { fetchCollection } = useScryfall()
-const { exportPdf } = usePdfExport()
 const { identity, colorVar, accentStyle } = useManaIdentity()
 const { typeStats, detectCommanderIndex, commanderColors, manaCurve, priceSummary } = useDeckAnalysis()
 const { locale, t } = useLocale()
@@ -44,14 +42,6 @@ const deckName = ref('')
 // Card language follows the site locale (FR site → FR card images, EN → EN).
 const lang = computed<'en' | 'fr'>(() => locale.value)
 
-const settings = ref<Omit<PdfSettings, 'format'>>({
-  orientation: 'portrait',
-  marginMm: 8,
-  gapMm: 1,
-  cutGuides: true,
-  includeBack: false,
-})
-
 const resolvedCards = ref<ResolvedCard[]>([])
 const fetching = ref(false)
 // Monotonic token: each loadCards() call claims the next value. A slower,
@@ -59,8 +49,6 @@ const fetching = ref(false)
 // its token before committing, so it can't clobber the current deck's cards.
 let loadToken = 0
 const fetchProgress = ref({ loaded: 0, total: 0 })
-const exporting = ref<PageFormat | null>(null)
-const exportProgress = ref({ loaded: 0, total: 0, phase: '' })
 
 // Preview & Buy are terminal actions (print / purchase), not peer destinations,
 // so they open as overlays from the Deck workspace rather than as tabs. Their
@@ -673,29 +661,14 @@ async function onSetPrinting(payload: { name: string, set: string, collectorNumb
   await loadCards({ silent: true })
 }
 
-async function doExport(format: PageFormat) {
-  if (successCards.value.length === 0) {
-    toast.add({ title: t('toast.loadFirst'), color: 'warning', icon: 'i-lucide-alert-triangle' })
-    return
-  }
-  exporting.value = format
-  exportProgress.value = { loaded: 0, total: 0, phase: 'loading' }
-  try {
-    const fullSettings: PdfSettings = { ...settings.value, format }
-    const safeName = (deckName.value || 'deck').replace(/[^a-z0-9]+/gi, '_').toLowerCase()
-    const filename = `${safeName}_${format.toUpperCase()}_${lang.value}.pdf`
-    await exportPdf(resolvedCards.value, fullSettings, filename, (p) => {
-      exportProgress.value = { loaded: p.loaded, total: p.total, phase: p.phase }
-    })
-    toast.add({ title: t('toast.pdfDone'), description: filename, color: 'success', icon: 'i-lucide-file-down' })
-  }
-  catch (err: unknown) {
-    toast.add({ title: t('toast.exportFailed'), description: errMessage(err), color: 'error', icon: 'i-lucide-x' })
-  }
-  finally {
-    exporting.value = null
-  }
-}
+// PDF proxy export (settings, progress, action, page estimate). See useDeckExport.
+const {
+  settings,
+  exporting,
+  exportProgress,
+  printPageEstimate,
+  doExport,
+} = useDeckExport({ resolvedCards, successCards, deckName, lang })
 
 // Buy / checkout (per-card pricing, cost summary, Cardmarket links). See useDeckBuy.
 const {
@@ -707,10 +680,6 @@ const {
   copyWantsList,
   buyWholeDeck,
 } = useDeckBuy({ resolvedCards, allEntries, price, resolvedFor, locale: lang })
-
-// Print-readiness hint for the Preview overlay: a 100-card EDH deck at 9 cards
-// per A4 page → ~N pages. Uses the resolved (printable) cards.
-const printPageEstimate = computed(() => Math.max(1, Math.ceil(successCards.value.length / 9)))
 </script>
 
 <template>
