@@ -13,7 +13,7 @@ const { locale, t } = useLocale()
 const { parse, totalCards } = useDecklist()
 const { fetchCollection } = useScryfall()
 const { typeStats, detectCommanderIndex, commanderColors } = useDeckAnalysis()
-const { colorVar, accentStyle } = useManaIdentity()
+const { colorVar } = useManaIdentity()
 
 const deck = ref<{ name: string, raw: string, source?: string | null } | null>(null)
 const notFound = ref(false)
@@ -31,8 +31,7 @@ const commander = computed(() => {
   const i = detectCommanderIndex(resolved.value)
   return i >= 0 ? resolved.value[i] : null
 })
-const themeColors = computed(() => commander.value?.card ? commanderColors(commander.value.card) : [])
-const themeStyle = computed(() => accentStyle(themeColors.value))
+const { themeColors, themeStyle } = useDeckTheme(() => commander.value?.card ? commanderColors(commander.value.card) : [])
 // Read-only: never the commander, just all cards.
 const gridCards = computed(() => resolved.value.filter(c => c.imageUrl))
 

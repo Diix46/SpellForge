@@ -20,7 +20,7 @@ const { getDeck, updateDeck, setShare, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
 const { fetchCollection } = useScryfall()
-const { identity, colorVar, accentStyle } = useManaIdentity()
+const { identity, colorVar } = useManaIdentity()
 const { typeStats, detectCommanderIndex, commanderColors, manaCurve, priceSummary } = useDeckAnalysis()
 const { locale, t } = useLocale()
 const toast = useToast()
@@ -425,12 +425,9 @@ const commanderEnName = computed(() =>
 const commanderType = computed(() => displayType(commander.value?.card ?? null, locale.value === 'fr'))
 
 // Theme colors: from commander if resolved, else from decklist heuristic, else neutral.
-const themeColors = computed(() => {
-  if (commander.value?.card)
-    return commanderColors(commander.value.card)
-  return identity(rawDecklist.value)
-})
-const themeStyle = computed(() => accentStyle(themeColors.value))
+const { themeColors, themeStyle } = useDeckTheme(() =>
+  commander.value?.card ? commanderColors(commander.value.card) : identity(rawDecklist.value),
+)
 
 // Drive the app-wide theme (background aurora + accents) from this deck's colours.
 const appTheme = useAppTheme()

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ManaColor } from '~/composables/useMtg'
 import { computed, ref, watch } from 'vue'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
@@ -16,7 +15,7 @@ const route = useRoute()
 const router = useRouter()
 const { decks, createDeck, deleteDeck, duplicateDeck, updateDeck } = useDeckStore()
 const { parse, totalCards } = useDecklist()
-const { identity, colorVar, accentStyle } = useManaIdentity()
+const { identity, colorVar } = useManaIdentity()
 const toast = useToast()
 
 // Modals
@@ -81,10 +80,11 @@ const featured = computed(() => {
     return null
   return [...decks.value].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null
 })
-const featuredColors = computed<ManaColor[]>(() => featured.value ? identity(featured.value.raw) : [])
 const featuredCount = computed(() => featured.value ? deckCardCount(featured.value.raw) : 0)
 // The featured bento glows in the featured deck's mana identity (or neutral).
-const featuredAccent = computed(() => accentStyle(featuredColors.value))
+const { themeColors: featuredColors, themeStyle: featuredAccent } = useDeckTheme(() =>
+  featured.value ? identity(featured.value.raw) : [],
+)
 
 // Other decks (grid below the bento) — everything except the featured one.
 const restDecks = computed(() =>
