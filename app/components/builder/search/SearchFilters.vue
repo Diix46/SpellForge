@@ -137,11 +137,22 @@ async function refreshAutocomplete(text: string) {
   acItems.value = names.slice(0, 8)
   showAc.value = acItems.value.length > 0
 }
-function onTextInput() {
-  emit('textInput')
+function scheduleAutocomplete() {
   if (acDebounce)
     clearTimeout(acDebounce)
   acDebounce = setTimeout(refreshAutocomplete, 200, filters.value.text)
+}
+function onTextInput(value: string) {
+  filters.value.text = value
+  emit('textInput')
+  scheduleAutocomplete()
+}
+// Subtype edits re-run the search and (matching the original) also drive the
+// name-autocomplete popup off the current free text.
+function onSubtypeInput(value: string) {
+  filters.value.subtype = value
+  emit('textInput')
+  scheduleAutocomplete()
 }
 function pickSuggestion(name: string) {
   filters.value.text = name
@@ -160,13 +171,13 @@ function hideAcSoon() {
     <!-- Free text + name autocomplete -->
     <div class="relative mb-3">
       <UInput
-        v-model="filters.text"
+        :model-value="filters.text"
         name="card-search"
         :placeholder="t('build.searchPlaceholder')"
         icon="i-lucide-search"
         autocomplete="off"
         class="w-full"
-        @update:model-value="onTextInput"
+        @update:model-value="onTextInput(String($event))"
         @focus="showAc = acItems.length > 0"
         @keydown.escape="showAc = false"
         @blur="hideAcSoon"
@@ -263,10 +274,10 @@ function hideAcSoon() {
         :items="TYPE_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
       />
       <UInput
-        v-model="filters.subtype"
+        :model-value="filters.subtype"
         name="subtype"
         :placeholder="t('build.subtype')"
-        @update:model-value="onTextInput"
+        @update:model-value="onSubtypeInput(String($event))"
       />
     </div>
 
