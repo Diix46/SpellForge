@@ -1,32 +1,76 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-// The hero's living backdrop: a pulsing mana aurora + a constellation of floating
-// MTG-card silhouettes (each tinted to a WUBRG colour) that drift on their own and
-// parallax toward the pointer. Pure CSS/transform — no canvas, no deps. Honors
-// prefers-reduced-motion (drops the parallax + slows everything to a calm idle).
+// Shape returned by /api/landing/cards (kept in sync with the server route).
+interface LandingCard { name: string, art: string, colors: string[] }
 
-interface FloatCard {
-  color: string
-  glow: string
+// The hero's living backdrop: a pulsing mana aurora + a constellation of floating
+// MTG cards that drift on their own and parallax toward the pointer. Each slot
+// fills with REAL random card art from Scryfall (different every visit); until
+// that resolves — or if it fails — a colour-tinted silhouette shows, so the hero
+// is never broken. Pure CSS/transform, no deps. Honors prefers-reduced-motion.
+
+interface FloatSlot {
+  glow: string // fallback glow RGB (overridden by the card's colour once loaded)
   x: number // % position
   y: number
   rot: number // base rotation deg
   depth: number // parallax factor (0 far → 1 near)
   scale: number
   delay: number
+  art?: string // real card art_crop (filled after fetch)
+  name?: string
 }
 
-// Hand-placed so the composition reads as a fanned spread around the headline,
-// not a random scatter. Colours follow the WUBRG identity for brand resonance.
-const CARDS: FloatCard[] = [
-  { color: 'var(--color-mana-u)', glow: '79,168,232', x: 12, y: 22, rot: -14, depth: 0.9, scale: 1.05, delay: 0 },
-  { color: 'var(--color-mana-r)', glow: '232,88,68', x: 80, y: 16, rot: 12, depth: 1, scale: 1.1, delay: 0.6 },
-  { color: 'var(--color-mana-g)', glow: '56,184,131', x: 86, y: 64, rot: 8, depth: 0.7, scale: 0.92, delay: 1.2 },
-  { color: 'var(--color-mana-w)', glow: '233,226,200', x: 6, y: 66, rot: 10, depth: 0.6, scale: 0.88, delay: 1.8 },
-  { color: 'var(--color-mana-b)', glow: '140,134,160', x: 22, y: 78, rot: -8, depth: 0.45, scale: 0.8, delay: 2.4 },
-  { color: 'var(--color-mana-u)', glow: '79,168,232', x: 68, y: 80, rot: -10, depth: 0.55, scale: 0.85, delay: 3 },
-]
+// Glow RGB per WUBRG letter (mirrors --color-mana-* / the brand accents) so the
+// card's halo matches its real colours once the art loads.
+const COLOR_GLOW: Record<string, string> = {
+  w: '233,226,200',
+  u: '79,168,232',
+  b: '140,134,160',
+  r: '232,88,68',
+  g: '56,184,131',
+}
+function glowFor(colors: string[]): string {
+  const c = colors.find(x => COLOR_GLOW[x])
+  return c ? COLOR_GLOW[c]! : '168,178,196' // multicolour/colourless → platinum
+}
+
+// Hand-placed layout so the composition reads as a fanned spread around the
+// headline, not a random scatter. Art is slotted in on fetch; glow is a sensible
+// per-slot default until then.
+const CARDS = ref<FloatSlot[]>([
+  { glow: '79,168,232', x: 12, y: 22, rot: -14, depth: 0.9, scale: 1.05, delay: 0 },
+  { glow: '232,88,68', x: 80, y: 16, rot: 12, depth: 1, scale: 1.1, delay: 0.6 },
+  { glow: '56,184,131', x: 86, y: 64, rot: 8, depth: 0.7, scale: 0.92, delay: 1.2 },
+  { glow: '233,226,200', x: 6, y: 66, rot: 10, depth: 0.6, scale: 0.88, delay: 1.8 },
+  { glow: '140,134,160', x: 22, y: 78, rot: -8, depth: 0.45, scale: 0.8, delay: 2.4 },
+  { glow: '79,168,232', x: 68, y: 80, rot: -10, depth: 0.55, scale: 0.85, delay: 3 },
+])
+
+// Fetch the random-art pool and slot a fresh pick into each card on every visit.
+// Best-effort: a failure just leaves the silhouettes, so the hero never breaks.
+async function loadArt() {
+  try {
+    // Cache-bust per load so the browser never reuses a stale pool — we want the
+    // hero to change every visit. (The server still caches upstream Scryfall.)
+    const { cards } = await $fetch<{ cards: LandingCard[] }>('/api/landing/cards', {
+      query: { _: Date.now() },
+    })
+    if (!cards?.length)
+      return
+    const pool = [...cards]
+    CARDS.value = CARDS.value.map((slot) => {
+      if (!pool.length)
+        return slot
+      const pick = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]!
+      return { ...slot, art: pick.art, name: pick.name, glow: glowFor(pick.colors) }
+    })
+  }
+  catch {
+    // keep the silhouettes
+  }
+}
 
 const root = ref<HTMLElement | null>(null)
 const px = ref(0) // pointer offset, -1..1
@@ -53,6 +97,7 @@ onMounted(() => {
   reduce = import.meta.client && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (!reduce && import.meta.client)
     window.addEventListener('pointermove', onPointer, { passive: true })
+  loadArt()
 })
 onBeforeUnmount(() => {
   if (import.meta.client)
@@ -61,7 +106,7 @@ onBeforeUnmount(() => {
 })
 
 // Parallax translate for a card given its depth.
-function cardStyle(c: FloatCard) {
+function cardStyle(c: FloatSlot) {
   const tx = -px.value * 26 * c.depth
   const ty = -py.value * 26 * c.depth
   return {
@@ -73,7 +118,6 @@ function cardStyle(c: FloatCard) {
     '--glow': c.glow,
     '--scale': c.scale,
     'animationDelay': `${c.delay}s`,
-    'color': c.color,
   }
 }
 </script>
@@ -88,18 +132,30 @@ function cardStyle(c: FloatCard) {
     <!-- Dotted grid that fades toward the edges -->
     <div class="grid-overlay" />
 
-    <!-- Floating card silhouettes -->
+    <!-- Floating cards: real Scryfall art when loaded, glow silhouette as fallback -->
     <div
       v-for="(c, i) in CARDS"
       :key="i"
       class="float-card"
+      :class="{ 'has-art': !!c.art }"
       :style="cardStyle(c)"
     >
       <div class="fc-inner">
-        <span class="fc-gem" />
-        <span class="fc-art" />
-        <span class="fc-line" />
-        <span class="fc-line short" />
+        <img
+          v-if="c.art"
+          :src="c.art"
+          :alt="c.name"
+          loading="eager"
+          decoding="async"
+          class="fc-photo"
+        >
+        <template v-else>
+          <span class="fc-gem" />
+          <span class="fc-art" />
+          <span class="fc-line" />
+          <span class="fc-line short" />
+        </template>
+        <span class="fc-sheen" />
       </div>
     </div>
 
@@ -217,6 +273,39 @@ function cardStyle(c: FloatCard) {
   flex-direction: column;
   gap: 7%;
   overflow: hidden;
+}
+/* Real art fills the whole card face (no skeleton padding). */
+.has-art .fc-inner {
+  padding: 0;
+}
+.fc-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Fade in once decoded — feels intentional, not a pop-in. */
+  animation: artIn 0.7s var(--ease-out, ease) both;
+}
+@keyframes artIn {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* Glossy sheen + colour wash over the art for a premium, on-brand look. */
+.fc-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(160deg, rgba(var(--glow), 0.18), transparent 45%),
+    linear-gradient(0deg, rgba(10, 10, 11, 0.5), transparent 55%),
+    linear-gradient(115deg, transparent 40%, rgba(255, 255, 255, 0.1) 50%, transparent 60%);
 }
 .fc-gem {
   width: 18%;
