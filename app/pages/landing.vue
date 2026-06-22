@@ -116,10 +116,6 @@ function resetTilt(e: PointerEvent) {
             {{ t('landing.ctaSecondary') }}
           </button>
         </div>
-
-        <p class="hero-trust" data-reveal>
-          {{ t('landing.trust') }}
-        </p>
       </div>
 
       <div class="scroll-hint" aria-hidden="true">
@@ -260,6 +256,10 @@ function resetTilt(e: PointerEvent) {
   --color-border-subtle: rgba(255, 255, 255, 0.08);
   --color-border-strong: rgba(255, 255, 255, 0.16);
   position: relative;
+  /* Flex column so the footer is pushed to the bottom of the viewport even when
+     the content is short — no "footer floating mid-page" gap. */
+  display: flex;
+  flex-direction: column;
   min-height: 100dvh;
   background: var(--color-bg-base);
   color: var(--color-text-high);
@@ -479,13 +479,6 @@ function resetTilt(e: PointerEvent) {
 .cta-ghost:hover {
   border-color: rgba(var(--lp-a), 0.6);
   background: rgba(var(--lp-a), 0.08);
-}
-.hero-trust {
-  margin-top: 30px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  letter-spacing: 0.04em;
-  color: var(--color-text-disabled);
 }
 .scroll-hint {
   position: absolute;
@@ -763,6 +756,7 @@ function resetTilt(e: PointerEvent) {
 .lp-foot {
   position: relative;
   z-index: 2;
+  margin-top: auto; /* pin to the viewport bottom when content is short */
   display: flex;
   flex-direction: column;
   align-items: center;

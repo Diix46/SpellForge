@@ -300,7 +300,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.trust': 'Données & images via Scryfall · Imports EDHREC',
     'landing.copyright': 'Spellforge — outil non officiel pour fans. Magic: The Gathering est © Wizards of the Coast.',
     // Marquee feature words (·-separated; split + repeated into a seamless ribbon).
-    'landing.marquee': 'Decks illimités·Coach IA·Proxies FR/EN·A4 & A3·Import EDHREC·Prix Cardmarket·Identité couleur·Courbe de mana·Recherche instantanée·Glisser-déposer',
+    'landing.marquee': 'Coach IA·Proxies FR/EN·Import EDHREC·Prix Cardmarket·Decks illimités',
     'landing.featuresKicker': 'Tout pour jouer plus vite',
     'landing.featuresTitle': 'De l\'idée à la table',
     'landing.f1Title': 'Coach IA',
@@ -599,7 +599,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.trust': 'Data & images via Scryfall · EDHREC imports',
     'landing.copyright': 'Spellforge — unofficial fan tool. Magic: The Gathering is © Wizards of the Coast.',
     // Marquee feature words (·-separated; split + repeated into a seamless ribbon).
-    'landing.marquee': 'Unlimited decks·AI Coach·EN/FR proxies·A4 & A3·EDHREC import·Cardmarket pricing·Colour identity·Mana curve·Instant search·Drag & drop',
+    'landing.marquee': 'AI Coach·EN/FR proxies·EDHREC import·Cardmarket pricing·Unlimited decks',
     'landing.featuresKicker': 'Everything to play faster',
     'landing.featuresTitle': 'From idea to the table',
     'landing.f1Title': 'AI Coach',
