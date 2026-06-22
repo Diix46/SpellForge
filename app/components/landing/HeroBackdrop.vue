@@ -45,27 +45,54 @@ function glowFor(colors: string[]): string {
 // slotted in on fetch; glow is a sensible per-slot default until then. Glow
 // values cycle WUBRG so the pre-art silhouettes already look varied.
 const G = ['79,168,232', '232,88,68', '56,184,131', '233,226,200', '140,134,160', '168,85,247']
-const RAW_SLOTS: Array<[x: number, y: number, rot: number, depth: number, scale: number, opacity: number, blur: number]> = [
-  // --- Foreground (sharp, large, opaque) — the heroes of the composition ---
+// Hand-placed "hero" cards (sharp, large, opaque) + a denser mid layer — these
+// carry the composition around the headline.
+const HERO_SLOTS: Array<[x: number, y: number, rot: number, depth: number, scale: number, opacity: number, blur: number]> = [
+  // Foreground
   [10, 20, -14, 1.0, 1.15, 1, 0],
   [82, 14, 12, 1.0, 1.2, 1, 0],
-  [86, 62, 9, 0.85, 1.0, 0.96, 0],
-  [7, 64, 11, 0.8, 0.98, 0.96, 0],
-  // --- Mid layer (medium, slight fade) ---
-  [21, 78, -9, 0.6, 0.82, 0.85, 0.5],
-  [70, 80, -11, 0.62, 0.86, 0.85, 0.5],
-  [2, 40, -6, 0.55, 0.74, 0.7, 1],
-  [94, 38, 7, 0.55, 0.78, 0.7, 1],
-  [33, 10, -5, 0.5, 0.7, 0.72, 1],
-  [62, 8, 6, 0.5, 0.72, 0.72, 1],
-  // --- Background (small, faded, blurred — fills gaps, overlaps) ---
-  [16, 48, 16, 0.32, 0.56, 0.42, 2.5],
-  [88, 86, -14, 0.34, 0.6, 0.42, 2.5],
-  [44, 90, 4, 0.3, 0.54, 0.4, 3],
-  [58, 92, -6, 0.3, 0.52, 0.4, 3],
-  [38, 30, -18, 0.26, 0.46, 0.3, 3.5],
-  [76, 50, 14, 0.26, 0.48, 0.3, 3.5],
+  [86, 62, 9, 0.85, 1.02, 0.97, 0],
+  [7, 64, 11, 0.8, 1.0, 0.97, 0],
+  [50, 4, -4, 0.9, 1.05, 0.95, 0],
+  // Mid layer
+  [21, 80, -9, 0.6, 0.84, 0.88, 0.6],
+  [70, 82, -11, 0.62, 0.88, 0.88, 0.6],
+  [1, 42, -6, 0.55, 0.78, 0.78, 1],
+  [95, 40, 7, 0.55, 0.8, 0.78, 1],
+  [31, 10, -5, 0.5, 0.72, 0.78, 1],
+  [64, 8, 6, 0.5, 0.74, 0.78, 1],
+  [42, 92, 4, 0.5, 0.78, 0.8, 0.8],
 ]
+// A generated BACK CARPET: many small, faded, blurred cards scattered across the
+// whole canvas so the dark background is almost entirely covered. Deterministic
+// pseudo-scatter (no Math.random at eval → stable SSR/hydration); the centre band
+// (y 34–60) is thinned so the headline stays readable.
+const BACK_SLOTS: Array<[x: number, y: number, rot: number, depth: number, scale: number, opacity: number, blur: number]> = []
+{
+  const COLS = 7
+  const ROWS = 4
+  let k = 0
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      k++
+      // jittered grid position (deterministic) across the full canvas
+      const jx = ((k * 37) % 11) - 5
+      const jy = ((k * 53) % 11) - 5
+      const x = Math.round((c + 0.5) * (100 / COLS) + jx)
+      const y = Math.round((r + 0.5) * (100 / ROWS) + jy)
+      // thin out the central headline band
+      if (y > 32 && y < 62 && x > 24 && x < 76)
+        continue
+      const rot = ((k * 47) % 36) - 18
+      const depth = 0.14 + ((k * 7) % 10) / 100 // 0.14–0.23 (far)
+      const scale = 0.4 + ((k * 13) % 16) / 100 // 0.40–0.55 (small)
+      const opacity = 0.22 + ((k * 11) % 14) / 100 // 0.22–0.35 (faded)
+      const blur = 3 + ((k * 5) % 3) // 3–5px (soft)
+      BACK_SLOTS.push([x, y, rot, depth, scale, opacity, blur])
+    }
+  }
+}
+const RAW_SLOTS = [...BACK_SLOTS, ...HERO_SLOTS] // back first → hero paints on top
 const CARDS = ref<FloatSlot[]>(
   RAW_SLOTS.map(([x, y, rot, depth, scale, opacity, blur], i) => ({
     glow: G[i % G.length]!,
@@ -76,7 +103,7 @@ const CARDS = ref<FloatSlot[]>(
     scale,
     opacity,
     blur,
-    delay: (i % 6) * 0.5, // stagger the idle bob so they don't pulse in unison
+    delay: (i % 7) * 0.45, // stagger the idle bob so they don't pulse in unison
   })),
 )
 

@@ -28,7 +28,7 @@ export interface LandingCard {
 // `order=edhrec` surfaces the most-played cards across Magic's whole history —
 // the staples with the most beloved art — and a random page keeps it fresh.
 const QUERY = 'is:hires game:paper -is:digital -is:ub -t:token -t:emblem -t:basic -is:funny -layout:art_series (rarity:rare or rarity:mythic)'
-const POOL_SIZE = 24
+const POOL_SIZE = 40
 
 function art(c: ScryCard): string | null {
   return c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop ?? null

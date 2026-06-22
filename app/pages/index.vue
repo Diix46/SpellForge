@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAuth } from '~/composables/useAuth'
 import { useDashboardModals } from '~/composables/useDashboardModals'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 
 const { t, formatShortDate } = useLocale()
+// "/" is the landing for guests and the dashboard for members — same URL.
+const { loggedIn } = useAuth()
 
 useSeoMeta({
-  title: () => t('dash.title'),
-  description: 'Gérez vos decklists Magic: The Gathering, imprimez vos proxies en FR/EN.',
+  title: () => (loggedIn.value ? t('dash.title') : 'Spellforge — Deck manager & proxy printer'),
+  description: () => (loggedIn.value ? 'Gérez vos decklists Magic: The Gathering, imprimez vos proxies en FR/EN.' : t('landing.subtitle')),
 })
 
 const route = useRoute()
@@ -56,7 +59,11 @@ const restDecks = computed(() =>
 </script>
 
 <template>
-  <div class="fade-up dash">
+  <!-- Signed-out visitors get the marketing landing; members get the dashboard.
+       Same URL ("/") — no redirect, no /landing. -->
+  <LandingPage v-if="!loggedIn" />
+
+  <div v-else class="fade-up dash">
     <!-- PAGE HEAD -->
     <header class="dash-head">
       <div class="min-w-0">

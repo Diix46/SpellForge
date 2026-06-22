@@ -4,29 +4,24 @@ import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
 import { useScrollReveal } from '~/composables/useScrollReveal'
 
-// Public marketing landing for guests (the only full-content page behind the auth
-// wall that signed-out users may see). Brings its own minimal header — the app
-// shell chrome is hidden for guests. CTAs open the shared AuthModal.
-
-definePageMeta({ name: 'landing' })
+// Marketing landing shown on "/" to signed-out visitors (the dashboard renders
+// instead once logged in). Brings its own minimal header — the app shell chrome
+// is hidden for guests. CTAs open the shared AuthModal.
 
 const { t, locale, setLocale } = useLocale()
 const { show: openAuth } = useAuthOverlay()
 
-useSeoMeta({
-  title: 'Spellforge — Deck manager & proxy printer',
-  description: () => t('landing.subtitle'),
-})
-
 const root = ref<HTMLElement | null>(null)
 useScrollReveal(() => root.value)
 
-// Marquee: split the ·-list into discrete feature words, repeated 3× so the
-// ribbon always fills any viewport width and loops seamlessly (each of the two
-// tracks holds the full triple-repeat; translating one track-width is invisible).
-const marqueeWords = computed(() => {
+// Marquee: each feature word becomes a bordered "chip" (icon + label). Icons map
+// by position to the 5 features. Repeated 3× so the ribbon fills any width and
+// loops seamlessly (each of the two tracks holds the full triple-repeat).
+const MQ_ICONS = ['i-lucide-wand-sparkles', 'i-lucide-printer', 'i-lucide-link', 'i-lucide-euro', 'i-lucide-layers']
+const marqueeItems = computed(() => {
   const words = t('landing.marquee').split('·').map(w => w.trim()).filter(Boolean)
-  return [...words, ...words, ...words]
+  const base = words.map((label, i) => ({ label, icon: MQ_ICONS[i % MQ_ICONS.length]! }))
+  return [...base, ...base, ...base]
 })
 
 const FEATURES = [
@@ -123,16 +118,18 @@ function resetTilt(e: PointerEvent) {
       </div>
     </section>
 
-    <!-- ============ Marquee ============ -->
+    <!-- ============ Marquee: scrolling feature chips ============ -->
     <div class="marquee" aria-hidden="true">
       <div class="marquee-track">
-        <span v-for="(w, i) in marqueeWords" :key="`a${i}`" class="mq-item">
-          <span class="mq-dot" />{{ w }}
+        <span v-for="(it, i) in marqueeItems" :key="`a${i}`" class="mq-chip">
+          <UIcon :name="it.icon" class="mq-ic" />
+          {{ it.label }}
         </span>
       </div>
       <div class="marquee-track" aria-hidden="true">
-        <span v-for="(w, i) in marqueeWords" :key="`b${i}`" class="mq-item">
-          <span class="mq-dot" />{{ w }}
+        <span v-for="(it, i) in marqueeItems" :key="`b${i}`" class="mq-chip">
+          <UIcon :name="it.icon" class="mq-ic" />
+          {{ it.label }}
         </span>
       </div>
     </div>
@@ -502,50 +499,52 @@ function resetTilt(e: PointerEvent) {
   }
 }
 
-/* ---------- Marquee ---------- */
+/* ---------- Marquee: scrolling feature chips ---------- */
 .marquee {
   position: relative;
   z-index: 2;
   overflow: hidden;
   display: flex;
   width: 100%;
-  padding: 11px 0;
+  padding: 18px 0;
   border-top: 1px solid var(--color-border-subtle);
   border-bottom: 1px solid var(--color-border-subtle);
-  /* No tint — a discreet ticker, not a loud banner. */
-  /* Gentle fade at the edges so the ribbon glides in/out. */
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  background: rgba(255, 255, 255, 0.015);
+  /* Gentle fade at the edges so chips glide in/out instead of cutting off. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
 }
 /* Two identical tracks scroll as one: as track A exits left, track B (flush
    after it) arrives — seamless at any viewport width. Each is its own content
-   width and translates exactly -100% of itself. Slow + subtle. */
+   width and translates exactly -100% of itself. */
 .marquee-track {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  gap: 14px;
+  padding-right: 14px; /* keep the gap rhythm across the A→B seam */
   width: max-content;
-  animation: scrollX 55s linear infinite;
+  animation: scrollX 60s linear infinite;
 }
-.mq-item {
+/* Each feature is a bordered glass chip with an accent icon. */
+.mq-chip {
   display: inline-flex;
   align-items: center;
-  gap: 22px;
-  padding-right: 22px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  gap: 9px;
+  padding: 8px 16px;
   white-space: nowrap;
-  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-mid);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
 }
-.mq-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgb(var(--lp-a));
-  opacity: 0.6;
+.mq-ic {
+  width: 16px;
+  height: 16px;
+  color: rgb(var(--lp-a));
 }
 @keyframes scrollX {
   to {
