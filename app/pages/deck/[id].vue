@@ -636,106 +636,24 @@ const {
     class="deck-page fade-up"
     :style="themeStyle"
   >
-    <!-- UNIFIED TOOLBAR — back · title + pips · tabs · actions, all on one row
-         so the deck workspace AND the footer fit within one screen. Wraps on
-         narrow viewports. -->
-    <div class="deck-toolbar mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-      <UButton
-        icon="i-lucide-arrow-left"
-        color="neutral"
-        variant="ghost"
-        to="/"
-        :aria-label="t('nav.backToDecks')"
-        class="shrink-0"
-      />
-      <div class="flex min-w-[180px] flex-1 items-center gap-2.5">
-        <input
-          v-model="deckName"
-          name="deck-name"
-          aria-label="Nom du deck"
-          class="min-w-0 flex-1 truncate bg-transparent font-display text-xl font-bold text-(--color-text-high) caret-(--accent) focus:outline-none"
-        >
-        <div class="flex shrink-0 items-center gap-1">
-          <span
-            v-for="c in themeColors"
-            :key="c"
-            class="h-2.5 w-2.5 rounded-full"
-            :style="{ background: colorVar(c), boxShadow: `0 0 6px ${colorVar(c)}` }"
-          />
-          <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }}</span>
-        </div>
-        <!-- Est. cost chip: glance the price while building; click to open Buy. -->
-        <button
-          v-if="price.total > 0"
-          type="button"
-          class="shrink-0 rounded-full bg-(--color-surface-2) px-2.5 py-1 font-mono text-xs font-semibold text-(--accent-text) ring-1 ring-(--color-border-subtle) transition-colors hover:bg-(--color-surface-3)"
-          :title="t('buy.estTotal')"
-          @click="buyOpen = true"
-        >
-          ~{{ price.total.toFixed(0) }} €
-        </button>
-      </div>
-
-      <div class="flex shrink-0 items-center gap-2">
-        <UButton
-          icon="i-lucide-clipboard-list"
-          color="neutral"
-          variant="subtle"
-          size="sm"
-          @click="openImportExport"
-        >
-          <span class="hidden lg:inline">{{ t('build.importExport') }}</span>
-        </UButton>
-        <UButton
-          v-if="successCards.length === 0 || resolvedDirty"
-          :loading="fetching"
-          :disabled="cardCount === 0 || fetching"
-          color="neutral"
-          variant="subtle"
-          size="sm"
-          icon="i-lucide-refresh-cw"
-          @click="loadCards()"
-        >
-          <span v-if="fetching">{{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
-          <span v-else class="hidden lg:inline">{{ t('build.resolve') }}</span>
-        </UButton>
-        <UButton
-          v-if="loggedIn"
-          icon="i-lucide-share-2"
-          color="neutral"
-          variant="subtle"
-          size="sm"
-          :loading="sharing"
-          @click="shareDeck"
-        >
-          <span class="hidden lg:inline">{{ t('share.button') }}</span>
-        </UButton>
-
-        <!-- Terminal actions: review & print (Aperçu), buy (Acheter). Separated
-             from the build/utility actions by a hairline. -->
-        <span class="mx-0.5 h-6 w-px bg-(--color-border-subtle)" aria-hidden="true" />
-        <UButton
-          icon="i-lucide-eye"
-          color="neutral"
-          variant="subtle"
-          size="sm"
-          :disabled="cardCount === 0"
-          @click="previewOpen = true"
-        >
-          <span class="hidden sm:inline">{{ t('tab.preview') }}</span>
-        </UButton>
-        <UButton
-          icon="i-lucide-shopping-cart"
-          color="primary"
-          variant="solid"
-          size="sm"
-          :disabled="cardCount === 0"
-          @click="buyOpen = true"
-        >
-          <span class="hidden sm:inline">{{ t('tab.buy') }}</span>
-        </UButton>
-      </div>
-    </div>
+    <!-- UNIFIED TOOLBAR — back · title + pips + cost · actions (see DeckToolbar). -->
+    <BuilderDeckToolbar
+      v-model:deck-name="deckName"
+      :theme-colors="themeColors"
+      :card-count="cardCount"
+      :price-total="price.total"
+      :logged-in="loggedIn"
+      :sharing="sharing"
+      :fetching="fetching"
+      :fetch-progress="fetchProgress"
+      :show-resolve="successCards.length === 0 || resolvedDirty"
+      :color-var="colorVar"
+      @open-import-export="openImportExport"
+      @resolve="loadCards()"
+      @share="shareDeck"
+      @open-preview="previewOpen = true"
+      @open-buy="buyOpen = true"
+    />
 
     <!-- DECK WORKSPACE (the one primary surface; Preview/Buy are overlays) -->
     <div class="deck-tab">
