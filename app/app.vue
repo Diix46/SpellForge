@@ -50,8 +50,16 @@ useHead({
   meta: [{ name: 'theme-color', content: () => (isDark.value ? '#0a0a0b' : '#fafafa') }],
 })
 
-const showAuth = ref(false)
+// Auth modal is driven by shared overlay state so the (chrome-less) landing page
+// can open it too. `showAuth` is the v-model the AuthModal binds to.
+const { open: showAuth, show: openAuth } = useAuthOverlay()
 const mobileNav = ref(false)
+
+// The app chrome (top bar + footer) is for signed-in members only. Guests get
+// the full-bleed marketing landing, which brings its own minimal header. The
+// auth wall (middleware) keeps guests on /landing, but gate on both so a brief
+// pre-redirect frame never flashes the app shell.
+const showChrome = computed(() => loggedIn.value && route.path !== '/landing')
 
 // A page can request a viewport-locked shell (no page scroll; the page fills the
 // area below the top bar and manages its own internal scroll). The deck page
@@ -97,9 +105,9 @@ function openImport() {
 
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
-    <div class="app-shell" :class="{ 'app-shell--fullscreen': appFullscreen }" :style="{ zIndex: 'var(--z-content)' }">
-      <!-- ============ HEADER (single top bar) ============ -->
-      <header class="topbar">
+    <div class="app-shell" :class="{ 'app-shell--fullscreen': appFullscreen, 'app-shell--bare': !showChrome }" :style="{ zIndex: 'var(--z-content)' }">
+      <!-- ============ HEADER (single top bar) — members only ============ -->
+      <header v-if="showChrome" class="topbar">
         <div class="topbar-inner">
           <!-- Left: brand + primary nav -->
           <NuxtLink to="/" class="brand" @click="mobileNav = false">
@@ -165,7 +173,7 @@ function openImport() {
                 <span class="who">{{ user?.displayName }}</span>
               </button>
             </UDropdownMenu>
-            <button v-else type="button" class="acct guest" @click="showAuth = true">
+            <button v-else type="button" class="acct guest" @click="openAuth('login')">
               <UIcon name="i-lucide-log-in" class="h-4 w-4" />
               <span class="who">{{ t('auth.login') }}</span>
             </button>
@@ -202,7 +210,7 @@ function openImport() {
         <NuxtPage />
       </main>
 
-      <footer class="foot">
+      <footer v-if="showChrome" class="foot">
         <div class="foot-inner">
           <div class="foot-brand">
             <AppLogo :wordmark="false" :size="20" />
@@ -227,6 +235,12 @@ function openImport() {
 .app-shell {
   display: flex;
   flex-direction: column;
+  min-height: 100dvh;
+}
+/* Chrome-less mode (landing for guests): the page IS the whole viewport — no top
+   bar / footer, the content area carries everything full-bleed. */
+.app-shell--bare .content {
+  flex: 1;
   min-height: 100dvh;
 }
 /* Viewport-locked mode (deck page): the whole shell is exactly one screen — the

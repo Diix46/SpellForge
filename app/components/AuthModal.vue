@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
 
 const open = defineModel<boolean>('open', { required: true })
 
 const { t } = useLocale()
 const { login, register } = useAuth()
+const { mode: requestedMode } = useAuthOverlay()
 const toast = useToast()
 
 const mode = ref<'login' | 'register'>('login')
@@ -22,7 +24,11 @@ const tabItems = computed(() => [
 ])
 
 watch(open, (isOpen) => {
-  if (!isOpen) {
+  if (isOpen) {
+    // Land on the tab the trigger asked for (landing "Sign up" → register).
+    mode.value = requestedMode.value
+  }
+  else {
     error.value = ''
     form.password = ''
     showPassword.value = false
