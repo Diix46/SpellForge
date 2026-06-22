@@ -15,6 +15,7 @@ import { usePdfExport } from '~/composables/usePdfExport'
 import { useScryfall } from '~/composables/useScryfall'
 
 const route = useRoute()
+const router = useRouter()
 const deckId = computed(() => route.params.id as string)
 
 const { getDeck, updateDeck, setShare, ready: storeReady } = useDeckStore()
@@ -63,7 +64,34 @@ const fetchProgress = ref({ loaded: 0, total: 0 })
 const exporting = ref<PageFormat | null>(null)
 const exportProgress = ref({ loaded: 0, total: 0, phase: '' })
 
-const activeTab = ref<'deck' | 'preview' | 'buy'>('deck')
+// Preview & Buy are terminal actions (print / purchase), not peer destinations,
+// so they open as overlays from the Deck workspace rather than as tabs. Their
+// open state mirrors to the route query (?preview / ?buy) so a finished deck's
+// view/buy state is shareable.
+const previewOpen = ref(false)
+const buyOpen = ref(false)
+// Esc closes whichever terminal overlay is open (a div's @keydown.esc won't fire
+// unless focused, so bind at the window while one is open).
+function onOverlayEsc(e: KeyboardEvent) {
+  if (e.key !== 'Escape')
+    return
+  if (previewOpen.value)
+    previewOpen.value = false
+  else if (buyOpen.value)
+    buyOpen.value = false
+}
+watch([previewOpen, buyOpen], ([p, b]) => {
+  if (!import.meta.client)
+    return
+  if (p || b)
+    window.addEventListener('keydown', onOverlayEsc)
+  else
+    window.removeEventListener('keydown', onOverlayEsc)
+})
+onBeforeUnmount(() => {
+  if (import.meta.client)
+    window.removeEventListener('keydown', onOverlayEsc)
+})
 
 // Coach IA slide-over open state. Esc closes it (bound only while open).
 const coachOpen = ref(false)
@@ -385,7 +413,11 @@ function initDeck(id: string) {
   commanderOverride.value = -1
   page.value = 1
   resolvedDirty.value = false
-  activeTab.value = 'deck'
+  // Reset overlays on deck (re)init, then honour a deep-link (?preview / ?buy)
+  // so a shared link or refresh opens the right overlay even when the store
+  // becomes ready after mount (which re-runs this).
+  previewOpen.value = route.query.preview != null
+  buyOpen.value = route.query.buy != null
   coachOpen.value = false // reset modal state on deck switch (also detaches Esc)
   builder.load()
   // Resolve images/prices in the background so the Deck tab shows stats, prices
@@ -606,13 +638,26 @@ async function loadCards(opts: { silent?: boolean } = {}) {
 }
 
 // Auto-resolve images when the user opens Preview or Buy (lazy: no requests
-// while building on the Deck tab). Re-resolves only when the list changed since
-// the last load (resolvedDirty) or nothing is loaded yet.
-watch(activeTab, (tab) => {
-  if ((tab === 'preview' || tab === 'buy') && cardCount.value > 0
+// while building). Re-resolves only when the list changed since the last load
+// (resolvedDirty) or nothing is loaded yet.
+watch([previewOpen, buyOpen], ([p, b]) => {
+  if ((p || b) && cardCount.value > 0
     && (resolvedCards.value.length === 0 || resolvedDirty.value)) {
     loadCards({ silent: true })
   }
+})
+
+// Deep-link: keep ?preview / ?buy in sync with the overlays so a finished deck's
+// view/buy state is shareable. Only one overlay at a time.
+watch([previewOpen, buyOpen], ([p, b]) => {
+  const q = { ...route.query }
+  delete q.preview
+  delete q.buy
+  if (p)
+    q.preview = '1'
+  else if (b)
+    q.buy = '1'
+  router.replace({ query: q })
 })
 
 function setCommander(card: ResolvedCard) {
@@ -771,17 +816,9 @@ function buyWholeDeck() {
   })
 }
 
-const tabItems = computed(() => [
-  { label: t('tab.deck'), icon: 'i-lucide-hammer', value: 'deck' as const },
-  { label: `${t('tab.preview')}${successCards.value.length ? ` (${successCards.value.length})` : ''}`, icon: 'i-lucide-eye', value: 'preview' as const },
-  { label: t('tab.buy'), icon: 'i-lucide-shopping-cart', value: 'buy' as const },
-])
-
-const tabsUi = {
-  list: 'glass-solid rounded-[var(--radius-lg)] p-1',
-  indicator: 'accent-soft-bg rounded-[var(--radius-md)] shadow-[var(--accent-glow-soft)]',
-  trigger: 'data-[state=active]:text-(--accent-text) text-(--color-text-mid) font-medium',
-}
+// Print-readiness hint for the Preview overlay: a 100-card EDH deck at 9 cards
+// per A4 page → ~N pages. Uses the resolved (printable) cards.
+const printPageEstimate = computed(() => Math.max(1, Math.ceil(successCards.value.length / 9)))
 </script>
 
 <template>
@@ -818,15 +855,17 @@ const tabsUi = {
           />
           <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }}</span>
         </div>
+        <!-- Est. cost chip: glance the price while building; click to open Buy. -->
+        <button
+          v-if="price.total > 0"
+          type="button"
+          class="shrink-0 rounded-full bg-(--color-surface-2) px-2.5 py-1 font-mono text-xs font-semibold text-(--accent-text) ring-1 ring-(--color-border-subtle) transition-colors hover:bg-(--color-surface-3)"
+          :title="t('buy.estTotal')"
+          @click="buyOpen = true"
+        >
+          ~{{ price.total.toFixed(0) }} €
+        </button>
       </div>
-
-      <UTabs
-        v-model="activeTab"
-        :items="tabItems"
-        :content="false"
-        :ui="tabsUi"
-        class="shrink-0"
-      />
 
       <div class="flex shrink-0 items-center gap-2">
         <UButton
@@ -836,7 +875,7 @@ const tabsUi = {
           size="sm"
           @click="openImportExport"
         >
-          <span class="hidden sm:inline">{{ t('build.importExport') }}</span>
+          <span class="hidden lg:inline">{{ t('build.importExport') }}</span>
         </UButton>
         <UButton
           v-if="successCards.length === 0 || resolvedDirty"
@@ -849,7 +888,7 @@ const tabsUi = {
           @click="loadCards()"
         >
           <span v-if="fetching">{{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
-          <span v-else class="hidden sm:inline">{{ t('build.resolve') }}</span>
+          <span v-else class="hidden lg:inline">{{ t('build.resolve') }}</span>
         </UButton>
         <UButton
           v-if="loggedIn"
@@ -860,13 +899,37 @@ const tabsUi = {
           :loading="sharing"
           @click="shareDeck"
         >
-          <span class="hidden sm:inline">{{ t('share.button') }}</span>
+          <span class="hidden lg:inline">{{ t('share.button') }}</span>
+        </UButton>
+
+        <!-- Terminal actions: review & print (Aperçu), buy (Acheter). Separated
+             from the build/utility actions by a hairline. -->
+        <span class="mx-0.5 h-6 w-px bg-(--color-border-subtle)" aria-hidden="true" />
+        <UButton
+          icon="i-lucide-eye"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+          :disabled="cardCount === 0"
+          @click="previewOpen = true"
+        >
+          <span class="hidden sm:inline">{{ t('tab.preview') }}</span>
+        </UButton>
+        <UButton
+          icon="i-lucide-shopping-cart"
+          color="primary"
+          variant="solid"
+          size="sm"
+          :disabled="cardCount === 0"
+          @click="buyOpen = true"
+        >
+          <span class="hidden sm:inline">{{ t('tab.buy') }}</span>
         </UButton>
       </div>
     </div>
 
-    <!-- DECK TAB (unified build + edit) -->
-    <div v-show="activeTab === 'deck'" class="deck-tab">
+    <!-- DECK WORKSPACE (the one primary surface; Preview/Buy are overlays) -->
+    <div class="deck-tab">
       <!-- Workspace: deck list is the hero (wide, left); card search is the
            compact companion (right). The row fills the remaining viewport height
            and each side scrolls on its own only if its content truly overflows —
@@ -947,420 +1010,473 @@ const tabsUi = {
       </Teleport>
     </div>
 
-    <!-- PREVIEW TAB -->
-    <div v-show="activeTab === 'preview'">
-      <!-- Loading state: images resolve automatically on entering this tab. -->
-      <div
-        v-if="resolvedCards.length === 0 && fetching"
-        class="glass mx-auto flex max-w-md flex-col items-center rounded-[var(--radius-2xl)] py-16 text-center"
-      >
-        <UIcon
-          name="i-lucide-loader-circle"
-          class="mb-3 h-10 w-10 animate-spin text-(--accent-text)"
-        />
-        <p class="font-mono text-sm text-(--color-text-muted)">
-          {{ fetchProgress.loaded }} / {{ fetchProgress.total }}
-        </p>
-      </div>
-
-      <!-- Empty deck: nothing to resolve. -->
-      <div
-        v-else-if="resolvedCards.length === 0"
-        class="glass mx-auto flex max-w-md flex-col items-center rounded-[var(--radius-2xl)] py-16 text-center"
-      >
-        <UIcon
-          name="i-lucide-image-off"
-          class="mb-3 h-12 w-12 text-(--color-text-muted)"
-        />
-        <p class="text-(--color-text-muted)">
-          {{ t('editor.noCards') }}
-        </p>
-      </div>
-
-      <div
-        v-else
-        class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]"
-      >
-        <!-- LEFT: commander + stats + grid -->
-        <div class="order-2 space-y-6 lg:order-1">
-          <!-- Commander feature -->
-          <div
-            v-if="commander"
-            class="glass relative overflow-hidden rounded-[var(--radius-xl)] p-5"
-          >
-            <div class="flex flex-col gap-4 sm:flex-row">
-              <button
-                class="holo-sheen relative w-32 shrink-0 self-center overflow-hidden rounded-[var(--radius-lg)] ring-2 ring-(--accent-border) sm:self-start"
-                :style="{ boxShadow: 'var(--accent-glow-soft)' }"
-                @click="openDetail(commander)"
-              >
-                <img
-                  :src="commander.imageUrl!"
-                  :alt="commander.card?.name"
-                  class="block w-full"
-                >
-              </button>
-              <div class="min-w-0 flex-1">
-                <div class="mb-1 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[2px] text-(--accent-text)">
-                  <UIcon
-                    name="i-lucide-crown"
-                    class="h-3.5 w-3.5"
-                  />
-                  {{ t('commander.label') }}
-                </div>
-                <h3 class="font-display text-lg font-bold text-(--color-text-high)">
-                  {{ commanderName }}
-                </h3>
-                <p class="mt-0.5 text-sm text-(--color-text-muted)">
-                  {{ commanderType }}
-                </p>
-                <div class="mt-3 flex items-center gap-1.5">
-                  <span
-                    v-for="c in themeColors"
-                    :key="c"
-                    class="h-3 w-3 rounded-full ring-1 ring-white/10"
-                    :style="{ background: colorVar(c), boxShadow: `0 0 8px ${colorVar(c)}` }"
-                  />
-                  <span class="ml-1 font-mono text-xs text-(--color-text-muted)">
-                    {{ t('commander.identity') }} {{ themeColors.length ? themeColors.join('').toUpperCase() : t('tile.colorless') }}
-                  </span>
-                </div>
-                <UButton
-                  class="mt-3"
-                  size="xs"
-                  color="neutral"
-                  variant="subtle"
-                  icon="i-lucide-search"
-                  @click="openDetail(commander)"
-                >
-                  {{ t('commander.details') }}
-                </UButton>
+    <!-- PREVIEW & PRINT — right slide-over (review the deck visually + export a
+         print-ready PDF). A terminal action launched from the toolbar, not a tab. -->
+    <Teleport to="body">
+      <Transition name="ovl-slide">
+        <div v-if="previewOpen" class="ovl-root" @keydown.esc="previewOpen = false">
+          <div class="ovl-scrim" @click="previewOpen = false" />
+          <section class="ovl-panel ovl-panel--wide" role="dialog" aria-modal="true" :aria-label="t('tab.preview')">
+            <header class="ovl-head">
+              <div class="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[2px] text-(--accent-text)">
+                <UIcon name="i-lucide-eye" class="h-4 w-4" />
+                {{ t('tab.preview') }}
               </div>
-            </div>
-          </div>
-
-          <!-- Type stats — click a type to filter the grid below. -->
-          <div
-            v-if="stats.length"
-            class="glass-solid rounded-[var(--radius-xl)] p-4"
-          >
-            <div class="mb-3 flex items-center justify-between">
-              <h3 class="font-mono text-[11px] uppercase tracking-[2px] text-(--color-text-muted)">
-                {{ t('stats.title') }}
-              </h3>
               <button
-                v-if="typeFilter"
                 type="button"
-                class="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-(--accent-text) hover:underline"
-                @click="typeFilter = null"
+                class="grid h-8 w-8 place-items-center rounded-full text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
+                :aria-label="t('modal.cancel')"
+                @click="previewOpen = false"
               >
-                <UIcon name="i-lucide-x" class="h-3 w-3" />
-                {{ t('stats.clearFilter') }}
+                <UIcon name="i-lucide-x" class="h-4.5 w-4.5" />
               </button>
-            </div>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <button
-                v-for="s in stats"
-                :key="s.key"
-                type="button"
-                class="flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-left ring-1 transition-all"
-                :class="typeFilter === s.key
-                  ? 'accent-soft-bg ring-(--accent-border)'
-                  : 'bg-(--color-surface-2)/50 ring-transparent hover:bg-(--color-surface-2)'"
-                :aria-pressed="typeFilter === s.key"
-                @click="toggleTypeFilter(s.key)"
+            </header>
+            <div class="ovl-body">
+              <!-- Loading state: images resolve automatically on opening. -->
+              <div
+                v-if="resolvedCards.length === 0 && fetching"
+                class="glass mx-auto flex max-w-md flex-col items-center rounded-[var(--radius-2xl)] py-16 text-center"
               >
                 <UIcon
-                  :name="s.icon"
-                  class="h-4 w-4 shrink-0"
-                  :class="typeFilter === s.key ? 'text-(--accent-text)' : 'text-(--color-text-muted)'"
+                  name="i-lucide-loader-circle"
+                  class="mb-3 h-10 w-10 animate-spin text-(--accent-text)"
                 />
-                <div class="min-w-0">
-                  <div class="font-mono text-sm font-semibold text-(--color-text-high)">
-                    {{ s.count }}
+                <p class="font-mono text-sm text-(--color-text-muted)">
+                  {{ fetchProgress.loaded }} / {{ fetchProgress.total }}
+                </p>
+              </div>
+
+              <!-- Empty deck: nothing to resolve. -->
+              <div
+                v-else-if="resolvedCards.length === 0"
+                class="glass mx-auto flex max-w-md flex-col items-center rounded-[var(--radius-2xl)] py-16 text-center"
+              >
+                <UIcon
+                  name="i-lucide-image-off"
+                  class="mb-3 h-12 w-12 text-(--color-text-muted)"
+                />
+                <p class="text-(--color-text-muted)">
+                  {{ t('editor.noCards') }}
+                </p>
+              </div>
+
+              <div
+                v-else
+                class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]"
+              >
+                <!-- LEFT: commander + stats + grid -->
+                <div class="order-2 space-y-6 lg:order-1">
+                  <!-- Commander feature -->
+                  <div
+                    v-if="commander"
+                    class="glass relative overflow-hidden rounded-[var(--radius-xl)] p-5"
+                  >
+                    <div class="flex flex-col gap-4 sm:flex-row">
+                      <button
+                        class="holo-sheen relative w-32 shrink-0 self-center overflow-hidden rounded-[var(--radius-lg)] ring-2 ring-(--accent-border) sm:self-start"
+                        :style="{ boxShadow: 'var(--accent-glow-soft)' }"
+                        @click="openDetail(commander)"
+                      >
+                        <img
+                          :src="commander.imageUrl!"
+                          :alt="commander.card?.name"
+                          class="block w-full"
+                        >
+                      </button>
+                      <div class="min-w-0 flex-1">
+                        <div class="mb-1 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[2px] text-(--accent-text)">
+                          <UIcon
+                            name="i-lucide-crown"
+                            class="h-3.5 w-3.5"
+                          />
+                          {{ t('commander.label') }}
+                        </div>
+                        <h3 class="font-display text-lg font-bold text-(--color-text-high)">
+                          {{ commanderName }}
+                        </h3>
+                        <p class="mt-0.5 text-sm text-(--color-text-muted)">
+                          {{ commanderType }}
+                        </p>
+                        <div class="mt-3 flex items-center gap-1.5">
+                          <span
+                            v-for="c in themeColors"
+                            :key="c"
+                            class="h-3 w-3 rounded-full ring-1 ring-white/10"
+                            :style="{ background: colorVar(c), boxShadow: `0 0 8px ${colorVar(c)}` }"
+                          />
+                          <span class="ml-1 font-mono text-xs text-(--color-text-muted)">
+                            {{ t('commander.identity') }} {{ themeColors.length ? themeColors.join('').toUpperCase() : t('tile.colorless') }}
+                          </span>
+                        </div>
+                        <UButton
+                          class="mt-3"
+                          size="xs"
+                          color="neutral"
+                          variant="subtle"
+                          icon="i-lucide-search"
+                          @click="openDetail(commander)"
+                        >
+                          {{ t('commander.details') }}
+                        </UButton>
+                      </div>
+                    </div>
                   </div>
-                  <div class="truncate text-[10px] text-(--color-text-muted)">
-                    {{ t(`type.${s.key}`) }}
+
+                  <!-- Type stats — click a type to filter the grid below. -->
+                  <div
+                    v-if="stats.length"
+                    class="glass-solid rounded-[var(--radius-xl)] p-4"
+                  >
+                    <div class="mb-3 flex items-center justify-between">
+                      <h3 class="font-mono text-[11px] uppercase tracking-[2px] text-(--color-text-muted)">
+                        {{ t('stats.title') }}
+                      </h3>
+                      <button
+                        v-if="typeFilter"
+                        type="button"
+                        class="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-(--accent-text) hover:underline"
+                        @click="typeFilter = null"
+                      >
+                        <UIcon name="i-lucide-x" class="h-3 w-3" />
+                        {{ t('stats.clearFilter') }}
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <button
+                        v-for="s in stats"
+                        :key="s.key"
+                        type="button"
+                        class="flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-left ring-1 transition-all"
+                        :class="typeFilter === s.key
+                          ? 'accent-soft-bg ring-(--accent-border)'
+                          : 'bg-(--color-surface-2)/50 ring-transparent hover:bg-(--color-surface-2)'"
+                        :aria-pressed="typeFilter === s.key"
+                        @click="toggleTypeFilter(s.key)"
+                      >
+                        <UIcon
+                          :name="s.icon"
+                          class="h-4 w-4 shrink-0"
+                          :class="typeFilter === s.key ? 'text-(--accent-text)' : 'text-(--color-text-muted)'"
+                        />
+                        <div class="min-w-0">
+                          <div class="font-mono text-sm font-semibold text-(--color-text-high)">
+                            {{ s.count }}
+                          </div>
+                          <div class="truncate text-[10px] text-(--color-text-muted)">
+                            {{ t(`type.${s.key}`) }}
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Errors -->
+                  <div
+                    v-if="errorCards.length"
+                    class="rounded-[var(--radius-lg)] border border-(--color-warning)/40 bg-(--color-warning)/10 p-3 text-sm"
+                  >
+                    <div class="mb-1 flex items-center gap-2 font-medium text-(--color-warning)">
+                      <UIcon
+                        name="i-lucide-alert-triangle"
+                        class="h-4 w-4"
+                      />
+                      {{ errorCards.length }} {{ t('errors.notFound') }}
+                    </div>
+                    <p class="text-xs text-(--color-text-muted)">
+                      {{ errorCards.map(c => c.entry.name).join(', ') }}
+                    </p>
+                  </div>
+
+                  <!-- Grid -->
+                  <div>
+                    <!-- Active filter banner -->
+                    <div
+                      v-if="typeFilter"
+                      class="mb-3 flex items-center gap-2 font-mono text-xs text-(--color-text-muted)"
+                    >
+                      <UIcon name="i-lucide-filter" class="h-3.5 w-3.5 text-(--accent-text)" />
+                      <span>
+                        {{ filteredGridCards.length }} · {{ t(`type.${typeFilter}`) }}
+                      </span>
+                      <button
+                        type="button"
+                        class="text-(--accent-text) hover:underline"
+                        @click="typeFilter = null"
+                      >
+                        {{ t('stats.clearFilter') }}
+                      </button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+                      <MtgCardPreview
+                        v-for="(card, idx) in pagedCards"
+                        :key="card.card?.id ?? card.entry.name"
+                        :card="card"
+                        :index="idx"
+                        @details="openDetail"
+                      />
+                    </div>
+
+                    <!-- Pagination -->
+                    <div
+                      v-if="totalPages > 1"
+                      class="mt-6 flex items-center justify-center gap-2"
+                    >
+                      <UButton
+                        icon="i-lucide-chevron-left"
+                        color="neutral"
+                        variant="subtle"
+                        size="sm"
+                        :aria-label="t('preview.prevPage')"
+                        :disabled="page === 1"
+                        @click="page--"
+                      />
+                      <span class="font-mono text-sm text-(--color-text-mid)">
+                        <span class="text-(--accent-text)">{{ page }}</span> / {{ totalPages }}
+                      </span>
+                      <UButton
+                        icon="i-lucide-chevron-right"
+                        color="neutral"
+                        variant="subtle"
+                        size="sm"
+                        :aria-label="t('preview.nextPage')"
+                        :disabled="page === totalPages"
+                        @click="page++"
+                      />
+                    </div>
                   </div>
                 </div>
-              </button>
-            </div>
-          </div>
 
-          <!-- Errors -->
-          <div
-            v-if="errorCards.length"
-            class="rounded-[var(--radius-lg)] border border-(--color-warning)/40 bg-(--color-warning)/10 p-3 text-sm"
-          >
-            <div class="mb-1 flex items-center gap-2 font-medium text-(--color-warning)">
-              <UIcon
-                name="i-lucide-alert-triangle"
-                class="h-4 w-4"
-              />
-              {{ errorCards.length }} {{ t('errors.notFound') }}
+                <!-- RIGHT: export console -->
+                <div class="order-1 lg:order-2">
+                  <div class="lg:sticky lg:top-4">
+                    <ExportConsole
+                      v-model:settings="settings"
+                      :cards="resolvedCards"
+                      :unique-count="successCards.length"
+                      :fr-count="frCount"
+                      :lang="lang"
+                      :exporting="exporting"
+                      :export-progress="exportProgress"
+                      @export="doExport"
+                    />
+                    <!-- Print-readiness hint: demystifies the export before download. -->
+                    <p
+                      v-if="successCards.length"
+                      class="mt-2 text-center font-mono text-[10px] text-(--color-text-muted)"
+                    >
+                      {{ successCards.length }} {{ t('editor.cardsWord') }} · ~{{ printPageEstimate }} {{ t('preview.pages') }} · {{ t('preview.readyToPrint') }}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p class="text-xs text-(--color-text-muted)">
-              {{ errorCards.map(c => c.entry.name).join(', ') }}
-            </p>
-          </div>
+          </section>
+        </div>
+      </Transition>
+    </Teleport>
 
-          <!-- Grid -->
-          <div>
-            <!-- Active filter banner -->
-            <div
-              v-if="typeFilter"
-              class="mb-3 flex items-center gap-2 font-mono text-xs text-(--color-text-muted)"
-            >
-              <UIcon name="i-lucide-filter" class="h-3.5 w-3.5 text-(--accent-text)" />
-              <span>
-                {{ filteredGridCards.length }} · {{ t(`type.${typeFilter}`) }}
-              </span>
+    <!-- BUY — centered modal (cost summary + per-card list + checkout CTA). A
+         terminal transaction launched from the toolbar, not a tab. -->
+    <Teleport to="body">
+      <Transition name="ovl-fade">
+        <div v-if="buyOpen" class="ovl-root ovl-root--center" @keydown.esc="buyOpen = false">
+          <div class="ovl-scrim" @click="buyOpen = false" />
+          <section class="ovl-modal" role="dialog" aria-modal="true" :aria-label="t('tab.buy')">
+            <header class="ovl-head">
+              <div class="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[2px] text-(--accent-text)">
+                <UIcon name="i-lucide-shopping-cart" class="h-4 w-4" />
+                {{ t('tab.buy') }}
+              </div>
               <button
                 type="button"
-                class="text-(--accent-text) hover:underline"
-                @click="typeFilter = null"
+                class="grid h-8 w-8 place-items-center rounded-full text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
+                :aria-label="t('modal.cancel')"
+                @click="buyOpen = false"
               >
-                {{ t('stats.clearFilter') }}
+                <UIcon name="i-lucide-x" class="h-4.5 w-4.5" />
               </button>
-            </div>
-            <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
-              <MtgCardPreview
-                v-for="(card, idx) in pagedCards"
-                :key="card.card?.id ?? card.entry.name"
-                :card="card"
-                :index="idx"
-                @details="openDetail"
-              />
-            </div>
-
-            <!-- Pagination -->
-            <div
-              v-if="totalPages > 1"
-              class="mt-6 flex items-center justify-center gap-2"
-            >
-              <UButton
-                icon="i-lucide-chevron-left"
-                color="neutral"
-                variant="subtle"
-                size="sm"
-                :aria-label="t('preview.prevPage')"
-                :disabled="page === 1"
-                @click="page--"
-              />
-              <span class="font-mono text-sm text-(--color-text-mid)">
-                <span class="text-(--accent-text)">{{ page }}</span> / {{ totalPages }}
-              </span>
-              <UButton
-                icon="i-lucide-chevron-right"
-                color="neutral"
-                variant="subtle"
-                size="sm"
-                :aria-label="t('preview.nextPage')"
-                :disabled="page === totalPages"
-                @click="page++"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT: export console -->
-        <div class="order-1 lg:order-2">
-          <div class="lg:sticky lg:top-24">
-            <ExportConsole
-              v-model:settings="settings"
-              :cards="resolvedCards"
-              :unique-count="successCards.length"
-              :fr-count="frCount"
-              :lang="lang"
-              :exporting="exporting"
-              :export-progress="exportProgress"
-              @export="doExport"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BUY TAB -->
-    <div
-      v-show="activeTab === 'buy'"
-      class="space-y-5"
-    >
-      <!-- Loading -->
-      <div
-        v-if="resolvedCards.length === 0 && fetching"
-        class="glass flex items-center justify-center gap-3 rounded-[var(--radius-xl)] py-12"
-      >
-        <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-(--accent-text)" />
-        <span class="font-mono text-sm text-(--color-text-muted)">{{ fetchProgress.loaded }} / {{ fetchProgress.total }}</span>
-      </div>
-
-      <template v-else>
-        <!-- Cost summary -->
-        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
-            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-              {{ t('buy.estTotal') }}
-            </div>
-            <div class="font-display text-2xl font-bold text-(--accent-text)">
-              {{ fmtEur(buySummary.total) }}
-            </div>
-          </div>
-          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
-            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-              {{ t('buy.avgPerCard') }}
-            </div>
-            <div class="font-display text-2xl font-bold text-(--color-text-high)">
-              {{ fmtEur(buySummary.avg) }}
-            </div>
-          </div>
-          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
-            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-              {{ t('buy.uniqueCards') }}
-            </div>
-            <div class="font-display text-2xl font-bold text-(--color-text-high)">
-              {{ buyRows.length }}
-            </div>
-          </div>
-          <div class="glass-solid rounded-[var(--radius-xl)] p-4">
-            <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-              {{ t('buy.noPrice') }}
-            </div>
-            <div
-              class="font-display text-2xl font-bold"
-              :class="buySummary.missing ? 'text-(--color-warning)' : 'text-(--color-text-high)'"
-            >
-              {{ buySummary.missing }}
-            </div>
-          </div>
-        </div>
-
-        <!-- One-step buy the whole deck -->
-        <div class="glass rounded-[var(--radius-xl)] p-4">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div class="min-w-0">
-              <div class="font-display font-semibold text-(--color-text-high)">
-                {{ t('buy.wholeDeckTitle') }}
-              </div>
-              <p class="mt-0.5 text-sm text-(--color-text-mid)">
-                {{ t('buy.wholeDeckHint') }}
-              </p>
-            </div>
-            <div class="flex shrink-0 items-center gap-3">
-              <!-- Cardmarket marketplace language -->
+            </header>
+            <div class="ovl-body space-y-5">
+              <!-- Loading -->
               <div
-                class="flex items-center overflow-hidden rounded-[var(--radius-md)] border border-(--color-border-strong)"
-                role="group"
-                :aria-label="t('buy.langLabel')"
+                v-if="resolvedCards.length === 0 && fetching"
+                class="glass flex items-center justify-center gap-3 rounded-[var(--radius-xl)] py-12"
               >
-                <button
-                  v-for="opt in (['fr', 'en'] as const)"
-                  :key="opt"
-                  type="button"
-                  class="px-2.5 py-1.5 font-mono text-xs font-semibold uppercase transition-colors"
-                  :class="buyLang === opt
-                    ? 'accent-soft-bg text-(--accent-text)'
-                    : 'text-(--color-text-muted) hover:text-(--color-text-high)'"
-                  :aria-pressed="buyLang === opt"
-                  @click="buyLang = opt"
-                >
-                  {{ opt }}
-                </button>
+                <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin text-(--accent-text)" />
+                <span class="font-mono text-sm text-(--color-text-muted)">{{ fetchProgress.loaded }} / {{ fetchProgress.total }}</span>
               </div>
-              <UButton
-                icon="i-lucide-shopping-cart"
-                color="primary"
-                variant="solid"
-                size="lg"
-                class="font-medium tracking-wide neon-ring"
-                @click="buyWholeDeck"
-              >
-                {{ t('buy.wholeDeck') }}
-              </UButton>
-            </div>
-          </div>
-          <!-- Secondary actions -->
-          <div class="mt-3 flex flex-wrap gap-2 border-t border-(--color-border-subtle) pt-3">
-            <UButton
-              icon="i-lucide-clipboard-copy"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              class="bg-(--color-surface-2) text-(--color-text-high) ring-1 ring-(--color-border-strong) hover:bg-(--color-surface-3)"
-              @click="copyWantsList"
-            >
-              {{ t('buy.copyWants') }}
-            </UButton>
-            <UButton
-              icon="i-lucide-external-link"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              class="bg-(--color-surface-2) text-(--color-text-high) ring-1 ring-(--color-border-strong) hover:bg-(--color-surface-3)"
-              @click="openAllCardmarket"
-            >
-              {{ t('buy.openCards') }}
-            </UButton>
-          </div>
-        </div>
 
-        <!-- Priced list -->
-        <div
-          v-if="buyRows.length"
-          class="glass-solid overflow-hidden rounded-[var(--radius-xl)]"
-        >
-          <!-- header -->
-          <div class="flex items-center gap-3 border-b border-(--color-border-strong) bg-(--color-surface-2)/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-            <span class="w-7" />
-            <span class="flex-1">{{ t('buy.card') }}</span>
-            <span class="w-14 text-right">{{ t('buy.unit') }}</span>
-            <span class="w-10 text-center">{{ t('buy.qty') }}</span>
-            <span class="w-16 text-right">{{ t('buy.lineTotal') }}</span>
-            <span class="w-8" />
-          </div>
-          <div
-            v-for="row in buyRows"
-            :key="row.enName"
-            class="flex items-center gap-3 border-b border-(--color-border-subtle) px-4 py-2 transition-colors last:border-0 hover:bg-(--color-surface-2)/40"
-          >
-            <img
-              v-if="row.thumb"
-              :src="row.thumb"
-              :alt="row.name"
-              loading="lazy"
-              class="h-9 w-7 shrink-0 rounded object-cover ring-1 ring-black/30"
-            >
-            <span
-              v-else
-              class="h-9 w-7 shrink-0 rounded bg-(--color-surface-2)"
-            />
-            <span class="flex-1 truncate text-sm text-(--color-text-high)">{{ row.name }}</span>
-            <span
-              class="w-14 text-right font-mono text-xs"
-              :class="row.unit == null ? 'text-(--color-text-disabled)' : 'text-(--color-text-mid)'"
-            >{{ row.unit == null ? '—' : fmtEur(row.unit) }}</span>
-            <span class="w-10 text-center font-mono text-xs text-(--color-text-muted)">×{{ row.quantity }}</span>
-            <span
-              class="w-16 text-right font-mono text-sm font-semibold"
-              :class="row.lineTotal == null ? 'text-(--color-text-disabled)' : 'text-(--accent-text)'"
-            >{{ row.lineTotal == null ? '—' : fmtEur(row.lineTotal) }}</span>
-            <UButton
-              :to="row.url"
-              target="_blank"
-              icon="i-lucide-external-link"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              class="w-8 shrink-0"
-              :aria-label="`Cardmarket — ${row.name}`"
-            />
-          </div>
+              <template v-else>
+                <!-- Cost summary -->
+                <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+                    <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+                      {{ t('buy.estTotal') }}
+                    </div>
+                    <div class="font-display text-2xl font-bold text-(--accent-text)">
+                      {{ fmtEur(buySummary.total) }}
+                    </div>
+                  </div>
+                  <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+                    <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+                      {{ t('buy.avgPerCard') }}
+                    </div>
+                    <div class="font-display text-2xl font-bold text-(--color-text-high)">
+                      {{ fmtEur(buySummary.avg) }}
+                    </div>
+                  </div>
+                  <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+                    <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+                      {{ t('buy.uniqueCards') }}
+                    </div>
+                    <div class="font-display text-2xl font-bold text-(--color-text-high)">
+                      {{ buyRows.length }}
+                    </div>
+                  </div>
+                  <div class="glass-solid rounded-[var(--radius-xl)] p-4">
+                    <div class="mb-1 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+                      {{ t('buy.noPrice') }}
+                    </div>
+                    <div
+                      class="font-display text-2xl font-bold"
+                      :class="buySummary.missing ? 'text-(--color-warning)' : 'text-(--color-text-high)'"
+                    >
+                      {{ buySummary.missing }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- One-step buy the whole deck -->
+                <div class="glass rounded-[var(--radius-xl)] p-4">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                      <div class="font-display font-semibold text-(--color-text-high)">
+                        {{ t('buy.wholeDeckTitle') }}
+                      </div>
+                      <p class="mt-0.5 text-sm text-(--color-text-mid)">
+                        {{ t('buy.wholeDeckHint') }}
+                      </p>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-3">
+                      <!-- Cardmarket marketplace language -->
+                      <div
+                        class="flex items-center overflow-hidden rounded-[var(--radius-md)] border border-(--color-border-strong)"
+                        role="group"
+                        :aria-label="t('buy.langLabel')"
+                      >
+                        <button
+                          v-for="opt in (['fr', 'en'] as const)"
+                          :key="opt"
+                          type="button"
+                          class="px-2.5 py-1.5 font-mono text-xs font-semibold uppercase transition-colors"
+                          :class="buyLang === opt
+                            ? 'accent-soft-bg text-(--accent-text)'
+                            : 'text-(--color-text-muted) hover:text-(--color-text-high)'"
+                          :aria-pressed="buyLang === opt"
+                          @click="buyLang = opt"
+                        >
+                          {{ opt }}
+                        </button>
+                      </div>
+                      <UButton
+                        icon="i-lucide-shopping-cart"
+                        color="primary"
+                        variant="solid"
+                        size="lg"
+                        class="font-medium tracking-wide neon-ring"
+                        @click="buyWholeDeck"
+                      >
+                        {{ t('buy.wholeDeck') }}
+                      </UButton>
+                    </div>
+                  </div>
+                  <!-- Secondary actions -->
+                  <div class="mt-3 flex flex-wrap gap-2 border-t border-(--color-border-subtle) pt-3">
+                    <UButton
+                      icon="i-lucide-clipboard-copy"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      class="bg-(--color-surface-2) text-(--color-text-high) ring-1 ring-(--color-border-strong) hover:bg-(--color-surface-3)"
+                      @click="copyWantsList"
+                    >
+                      {{ t('buy.copyWants') }}
+                    </UButton>
+                    <UButton
+                      icon="i-lucide-external-link"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      class="bg-(--color-surface-2) text-(--color-text-high) ring-1 ring-(--color-border-strong) hover:bg-(--color-surface-3)"
+                      @click="openAllCardmarket"
+                    >
+                      {{ t('buy.openCards') }}
+                    </UButton>
+                  </div>
+                </div>
+
+                <!-- Priced list -->
+                <div
+                  v-if="buyRows.length"
+                  class="glass-solid overflow-hidden rounded-[var(--radius-xl)]"
+                >
+                  <!-- header -->
+                  <div class="flex items-center gap-3 border-b border-(--color-border-strong) bg-(--color-surface-2)/60 px-4 py-2.5 font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+                    <span class="w-7" />
+                    <span class="flex-1">{{ t('buy.card') }}</span>
+                    <span class="w-14 text-right">{{ t('buy.unit') }}</span>
+                    <span class="w-10 text-center">{{ t('buy.qty') }}</span>
+                    <span class="w-16 text-right">{{ t('buy.lineTotal') }}</span>
+                    <span class="w-8" />
+                  </div>
+                  <div
+                    v-for="row in buyRows"
+                    :key="row.enName"
+                    class="flex items-center gap-3 border-b border-(--color-border-subtle) px-4 py-2 transition-colors last:border-0 hover:bg-(--color-surface-2)/40"
+                  >
+                    <img
+                      v-if="row.thumb"
+                      :src="row.thumb"
+                      :alt="row.name"
+                      loading="lazy"
+                      class="h-9 w-7 shrink-0 rounded object-cover ring-1 ring-black/30"
+                    >
+                    <span
+                      v-else
+                      class="h-9 w-7 shrink-0 rounded bg-(--color-surface-2)"
+                    />
+                    <span class="flex-1 truncate text-sm text-(--color-text-high)">{{ row.name }}</span>
+                    <span
+                      class="w-14 text-right font-mono text-xs"
+                      :class="row.unit == null ? 'text-(--color-text-disabled)' : 'text-(--color-text-mid)'"
+                      :title="row.unit == null ? t('buy.notListed') : undefined"
+                    >{{ row.unit == null ? '—' : fmtEur(row.unit) }}</span>
+                    <span class="w-10 text-center font-mono text-xs text-(--color-text-muted)">×{{ row.quantity }}</span>
+                    <span
+                      class="w-16 text-right font-mono text-sm font-semibold"
+                      :class="row.lineTotal == null ? 'text-(--color-text-disabled)' : 'text-(--accent-text)'"
+                    >{{ row.lineTotal == null ? '—' : fmtEur(row.lineTotal) }}</span>
+                    <UButton
+                      :to="row.url"
+                      target="_blank"
+                      icon="i-lucide-external-link"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      class="w-8 shrink-0"
+                      :aria-label="`Cardmarket — ${row.name}`"
+                    />
+                  </div>
+                </div>
+                <p class="px-1 font-mono text-[10px] text-(--color-text-muted)">
+                  {{ t('buy.priceNote') }}
+                </p>
+              </template>
+            </div>
+          </section>
         </div>
-        <p class="px-1 font-mono text-[10px] text-(--color-text-muted)">
-          {{ t('buy.priceNote') }}
-        </p>
-      </template>
-    </div>
+      </Transition>
+    </Teleport>
 
     <!-- Import / Export decklist modal (the old text editor) -->
     <UModal

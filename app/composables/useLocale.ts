@@ -137,6 +137,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'tab.buy': 'Acheter',
     'preview.prevPage': 'Page précédente',
     'preview.nextPage': 'Page suivante',
+    'preview.pages': 'pages',
+    'preview.readyToPrint': 'prêt à imprimer',
     // Editor
     'editor.cardsWord': 'cartes',
     'editor.noCards': 'Aucune carte chargée.',
@@ -274,6 +276,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'buy.unit': 'Unité',
     'buy.qty': 'Qté',
     'buy.lineTotal': 'Total',
+    'buy.notListed': 'Non listé sur Cardmarket',
     'buy.priceNote': 'Prix indicatifs Cardmarket (EUR) via Scryfall — peuvent varier.',
     // Rarity
     'rarity.common': 'Commune',
@@ -402,6 +405,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'tab.buy': 'Buy',
     'preview.prevPage': 'Previous page',
     'preview.nextPage': 'Next page',
+    'preview.pages': 'pages',
+    'preview.readyToPrint': 'ready to print',
     'editor.cardsWord': 'cards',
     'editor.noCards': 'No cards loaded.',
     'commander.label': 'Commander',
@@ -534,6 +539,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'buy.unit': 'Unit',
     'buy.qty': 'Qty',
     'buy.lineTotal': 'Total',
+    'buy.notListed': 'Not listed on Cardmarket',
     'buy.priceNote': 'Indicative Cardmarket prices (EUR) via Scryfall — may vary.',
     'rarity.common': 'Common',
     'rarity.uncommon': 'Uncommon',
