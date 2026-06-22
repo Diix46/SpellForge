@@ -14,17 +14,12 @@ defineProps<{
   priceTotal: number
   loggedIn: boolean
   sharing: boolean
-  fetching: boolean
-  fetchProgress: { loaded: number, total: number }
-  /** Show the manual Resolve button (nothing loaded yet, or list went stale). */
-  showResolve: boolean
   colorVar: (c: ManaColor) => string
 }>()
 
 const emit = defineEmits<{
   'update:deckName': [value: string]
   'openImportExport': []
-  'resolve': []
   'share': []
   'openPreview': []
   'openBuy': []
@@ -62,16 +57,15 @@ const { t } = useLocale()
         />
         <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }}</span>
       </div>
-      <!-- Est. cost chip: glance the price while building; click to open Buy. -->
-      <button
+      <!-- Est. cost: a glanceable readout of the deck total while building.
+           Not a button — purchasing is the single "Acheter" action below. -->
+      <span
         v-if="priceTotal > 0"
-        type="button"
-        class="shrink-0 rounded-full bg-(--color-surface-2) px-2.5 py-1 font-mono text-xs font-semibold text-(--accent-text) ring-1 ring-(--color-border-subtle) transition-colors hover:bg-(--color-surface-3)"
+        class="shrink-0 rounded-full bg-(--color-surface-2) px-2.5 py-1 font-mono text-xs font-semibold text-(--accent-text) ring-1 ring-(--color-border-subtle)"
         :title="t('buy.estTotal')"
-        @click="emit('openBuy')"
       >
         ~{{ priceTotal.toFixed(0) }} €
-      </button>
+      </span>
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
@@ -83,19 +77,6 @@ const { t } = useLocale()
         @click="emit('openImportExport')"
       >
         <span class="hidden lg:inline">{{ t('build.importExport') }}</span>
-      </UButton>
-      <UButton
-        v-if="showResolve"
-        :loading="fetching"
-        :disabled="cardCount === 0 || fetching"
-        color="neutral"
-        variant="subtle"
-        size="sm"
-        icon="i-lucide-refresh-cw"
-        @click="emit('resolve')"
-      >
-        <span v-if="fetching">{{ fetchProgress.loaded }}/{{ fetchProgress.total }}</span>
-        <span v-else class="hidden lg:inline">{{ t('build.resolve') }}</span>
       </UButton>
       <UButton
         v-if="loggedIn"
