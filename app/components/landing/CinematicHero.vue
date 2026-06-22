@@ -1,22 +1,61 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import type { ComponentPublicInstance } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
 
-// Cinematic full-bleed gallery hero: a real MTG artwork fills the screen, slowly
-// Ken-Burns zooms, and crossfades to the next every few seconds. The whole hero's
-// accent (title gradient, CTA glow, progress) reacts to the current card's colour.
-// A discreet gallery credit (card name + artist) sits bottom-left. Pure
-// CSS/transforms; honours prefers-reduced-motion (no zoom, no auto-advance).
+// Interactive full-screen "card tide" hero: dozens of real Magic cards dumped
+// across the viewport in messy overlap, with a translucent glass panel floating
+// in a carved-out reading pocket at center. The pile is ALIVE — it breathes (pure
+// CSS), reacts to the cursor (repulsion + depth parallax), lets you pick a card up
+// into a readable close-up (auto-cycles when idle), and lets you grab & fling
+// cards with light inertia. The hero accent reacts to the focused card's mana.
+//
+// Architecture (from a judged design study): hybrid-zones spine.
+//  - Two layers per card: outer .card carries the JS physics transform; inner
+//    .card-inner carries the pure-CSS breathe keyframe — they never collide.
+//  - State (S[]) is plain, NON-reactive: mutating 50 nodes/frame through Vue
+//    reactivity would thrash. Only ready/focused/accent are refs.
+//  - ONE reference-counted rAF: it runs only while something is happening
+//    (pointer active, a card thrown/picked). Idle = no rAF; CSS keeps it alive.
+//  - Per frame: read inputs once, then one write pass; dirty-skip at-rest cards;
+//    integer-quantised transform strings; will-change only on active cards.
 
-interface LandingCard { name: string, art: string, artist: string, colors: string[] }
+interface LandingCard { name: string, art: string, image: string, artist: string, colors: string[] }
+
+type Role = 'pile' | 'picked' | 'dragging' | 'thrown'
+
+interface Node {
+  card: LandingCard
+  layer: 0 | 1 | 2
+  // resting pose (px / deg), computed once at layout
+  homeX: number
+  homeY: number
+  homeRot: number
+  baseScale: number
+  z: number
+  // current animated values
+  cx: number
+  cy: number
+  crot: number
+  cscale: number
+  // throw velocity
+  vx: number
+  vy: number
+  // repulsion offset (eased separately from the spring)
+  px: number
+  py: number
+  tpx: number // repulsion target x
+  tpy: number // repulsion target y
+  role: Role
+  lastT: string // last written transform string (dirty-skip)
+  active: boolean // will-change toggle
+}
 
 const { t, locale, setLocale } = useLocale()
 const { show: openAuth } = useAuthOverlay()
 
-const ROTATE_MS = 6500
-
-// Accent RGB per WUBRG (mirrors the brand mana colours); colourless → warm gold.
+// Accent RGB per WUBRG (brand mana colours); multicolour/colourless → warm gold.
 const COLOR_RGB: Record<string, string> = {
   w: '233,205,120',
   u: '79,168,232',
@@ -26,83 +65,761 @@ const COLOR_RGB: Record<string, string> = {
 }
 function accentFor(colors: string[]): string {
   const c = colors.find(x => COLOR_RGB[x])
-  return c ? COLOR_RGB[c]! : '210,180,120' // multicolour/colourless → gold
+  return c ? COLOR_RGB[c]! : '210,180,120'
 }
 
-const cards = ref<LandingCard[]>([])
-const index = ref(0)
+// ---- Reactive (UI-only) state ----
 const ready = ref(false)
-let timer: ReturnType<typeof setInterval> | null = null
+const focused = ref<LandingCard | null>(null)
+const accent = computed(() => (focused.value ? accentFor(focused.value.colors) : '210,180,120'))
+
+// Rendered once by v-for; never mutated per-frame.
+const cards = ref<LandingCard[]>([])
+
+// Template refs (cached to plain locals in onMounted for the hot path). The ref
+// KEYS must not collide with the plain engine locals below, hence the *Ref suffix.
+const sectionRef = useTemplateRef<HTMLElement>('sectionRef')
+const pileRef = useTemplateRef<HTMLElement>('pileRef')
+
+// ---- Plain (non-reactive) engine state ----
+let S: Node[] = []
+const els: (HTMLElement | null)[] = []
+const inners: (HTMLElement | null)[] = []
+let sectionEl: HTMLElement | null = null
+let pileEl: HTMLElement | null = null
+
+let pointerInside = false
 let reduce = false
+let raf = 0
+let reasons = 0
+let last = 0
+let mx = 0
+let my = 0
+let cx0 = 0 // viewport centre
+let cy0 = 0
+let needsMove = false
+let cw = 180 // card width px
+let ch = 252 // card height px
+let gridCols = 6 // grid columns (solved to cover the viewport)
+let gridRows = 6 // grid rows
 
-const current = computed(() => cards.value[index.value] ?? null)
-const accent = computed(() => (current.value ? accentFor(current.value.colors) : '210,180,120'))
+let pickedId = -1
+let dragId = -1
+let grabDX = 0
+let grabDY = 0
+let dwellTimer: ReturnType<typeof setTimeout> | null = null
+let pickHold: ReturnType<typeof setTimeout> | null = null
+let dealTimer: ReturnType<typeof setInterval> | null = null
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+let lastInputAt = 0
+let io: IntersectionObserver | null = null
+let visible = true
+// ring buffer of recent drag samples for throw velocity
+const ring: Array<{ x: number, y: number, t: number }> = []
 
-function go(i: number) {
-  if (!cards.value.length)
-    return
-  index.value = (i + cards.value.length) % cards.value.length
+// Physics constants
+const K_POS = 0.12
+const DAMP = 0.86
+const K_ROT = 0.1
+const REP_R = 190 // repulsion radius px
+const REP_R2 = REP_R * REP_R
+const PUSH = 64 // max repulsion offset px
+const FRICTION = 0.93
+const MAX_THROW = 32 // px/frame clamp
+const ROTATE_DEAL_MS = 4200
+const PICK_HOLD_MS = 2600
+const DWELL_MS = 120
+
+// ---------- helpers ----------
+function rand(a: number, b: number): number {
+  return a + Math.random() * (b - a)
 }
-function next() {
-  go(index.value + 1)
+// Solve a grid that ALWAYS covers the whole viewport with a dense overlapping
+// pile, while keeping the card COUNT under a perf cap. We grow the card size
+// until cols*rows fits the cap — so a huge/ultrawide screen gets fewer, bigger
+// cards but is still fully tiled (no bald gaps). Returns the grid + card width.
+const OVERLAP = 0.64 // cell pitch as a fraction of the card (lower = more overlap)
+const OVERSCAN = 1.18 // grid extends 9% past each edge so cards bleed off-screen
+function solveGrid(vw: number, vh: number) {
+  const cap = vw <= 720 ? 30 : vw <= 1100 ? 64 : 132
+  const minW = vw <= 720 ? Math.max(108, vw * 0.28) : 150
+  const maxW = vw <= 720 ? 200 : 300
+  let cw = minW
+  let cols = 2
+  let rows = 2
+  // grow the card (→ bigger pitch → fewer cells) until under the cap
+  for (let guard = 0; guard < 40; guard++) {
+    const pitchX = cw * OVERLAP
+    const pitchY = cw * 1.4 * OVERLAP
+    cols = Math.max(2, Math.ceil((vw * OVERSCAN) / pitchX))
+    rows = Math.max(2, Math.ceil((vh * OVERSCAN) / pitchY))
+    if (cols * rows <= cap || cw >= maxW)
+      break
+    cw = Math.min(maxW, cw * 1.08)
+  }
+  return { cols, rows, cw: Math.min(maxW, cw), count: cols * rows }
 }
 
-function startRotation() {
-  if (reduce || timer || cards.value.length < 2)
-    return
-  timer = setInterval(next, ROTATE_MS)
-}
-function stopRotation() {
-  if (timer) {
-    clearInterval(timer)
-    timer = null
+type VueRef = Element | ComponentPublicInstance | null
+function setElRef(i: number) {
+  return (e: VueRef) => {
+    els[i] = (e as HTMLElement) ?? null
   }
 }
-// Manual pick resets the timer so the chosen card lingers a full beat.
-function pick(i: number) {
-  go(i)
-  stopRotation()
-  startRotation()
+function setInnerRef(i: number) {
+  return (e: VueRef) => {
+    inners[i] = (e as HTMLElement) ?? null
+  }
 }
 
-async function load() {
+// Reference-counted rAF: start only on 0→1, stop only on 1→0.
+function requestLoop() {
+  if (reduce)
+    return
+  if (reasons++ === 0) {
+    last = performance.now()
+    raf = requestAnimationFrame(tick)
+  }
+}
+function releaseLoop() {
+  if (reasons > 0 && --reasons === 0 && raf) {
+    cancelAnimationFrame(raf)
+    raf = 0
+  }
+}
+
+// ---------- layout / scatter ----------
+function layout() {
+  if (!import.meta.client)
+    return
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  cx0 = vw / 2
+  cy0 = vh / 2
+  if (pileEl) {
+    pileEl.style.setProperty('--cw', `${cw}px`)
+    pileEl.style.setProperty('--ch', `${ch}px`)
+  }
+
+  const n = S.length
+  // The grid (solved at mount/resize) ALWAYS spans the full viewport with overscan
+  // so the pile covers everything — cells smaller than the card → heavy overlap.
+  const cols = gridCols
+  const spanX = vw * OVERSCAN
+  const spanY = vh * OVERSCAN
+  const offX = -vw * (OVERSCAN - 1) / 2
+  const offY = -vh * (OVERSCAN - 1) / 2
+  const pitchX = spanX / cols
+  const pitchY = spanY / gridRows
+
+  // keep-out ellipse (the carved reading pocket the glass panel sits in)
+  const isMobile = vw <= 720
+  const rx = isMobile ? vw * 0.46 : Math.min(360, vw * 0.26)
+  const ry = isMobile ? vh * 0.24 : Math.min(230, vh * 0.27)
+
+  for (let i = 0; i < n; i++) {
+    const node = S[i]!
+    const gc = i % cols
+    const gr = Math.floor(i / cols)
+    // cell centre + jitter so the grid dissolves into a messy dump (kept under
+    // half a pitch so coverage stays gap-free even with overlap)
+    let x = offX + (gc + 0.5) * pitchX + rand(-0.46, 0.46) * pitchX
+    let y = offY + (gr + 0.5) * pitchY + rand(-0.46, 0.46) * pitchY
+    // diagonal "drift current" so the pile reads as flowing, not uniform noise
+    x += Math.sin((gr + gc) * 0.6) * 6
+
+    // push out of the reading pocket (carves the clean centre)
+    const ndx = (x - cx0) / rx
+    const ndy = (y - cy0) / ry
+    const er = Math.hypot(ndx, ndy)
+    if (er < 1) {
+      const ang = Math.atan2(y - cy0, x - cx0)
+      const margin = rand(12, 30)
+      x = cx0 + Math.cos(ang) * (rx + margin)
+      y = cy0 + Math.sin(ang) * (ry + margin)
+    }
+
+    // depth from distance-to-centre blended with randomness
+    const maxDist = Math.hypot(vw, vh) / 2
+    const dist = Math.hypot(x - cx0, y - cy0) / maxDist
+    const depth = Math.min(1, Math.max(0, dist * 0.7 + Math.random() * 0.3))
+    const layer: 0 | 1 | 2 = depth < 0.34 ? 0 : depth < 0.67 ? 1 : 2
+    const baseScale = layer === 0 ? 0.82 : layer === 1 ? 0.94 : 1.06
+    // wider rotation for edge cards
+    const edge = er > 1.4 ? 6 : 0
+    const homeRot = rand(-20 - edge, 20 + edge)
+
+    // home is the top-left offset (cards are absolute top:0 left:0, moved by transform)
+    node.layer = layer
+    node.homeX = x - cw / 2
+    node.homeY = y - ch / 2
+    node.homeRot = homeRot
+    node.baseScale = baseScale
+    node.z = layer * 100 + (i % 90)
+    node.cx = node.homeX
+    node.cy = node.homeY
+    node.crot = homeRot
+    node.cscale = baseScale
+    node.vx = 0
+    node.vy = 0
+    node.px = 0
+    node.py = 0
+    node.tpx = 0
+    node.tpy = 0
+    node.role = 'pile'
+    node.active = false
+    node.lastT = ''
+
+    // breathe vars (set once on the inner layer)
+    const inner = inners[i]
+    if (inner) {
+      inner.style.setProperty('--bd', `${rand(7, 13).toFixed(2)}s`)
+      inner.style.setProperty('--bdl', `${rand(-6, 0).toFixed(2)}s`)
+    }
+    writeNode(node, els[i])
+  }
+}
+
+function writeNode(node: Node, el: HTMLElement | null | undefined) {
+  if (!el)
+    return
+  const t = `translate3d(${(node.cx + node.px) | 0}px,${(node.cy + node.py) | 0}px,0) rotate(${node.crot.toFixed(1)}deg) scale(${node.cscale.toFixed(3)})`
+  if (t !== node.lastT) {
+    el.style.transform = t
+    node.lastT = t
+  }
+}
+
+function setActive(node: Node, i: number, on: boolean) {
+  if (node.active === on)
+    return
+  node.active = on
+  const el = els[i]
+  if (el)
+    el.style.willChange = on ? 'transform' : ''
+}
+
+// ---------- per-frame tick ----------
+function tick(now: number) {
+  const dt = Math.min((now - last) / 16.667, 2)
+  last = now
+
+  // parallax: write container vars + nothing per-card (layer wrappers read them)
+  if (needsMove) {
+    needsMove = false
+    if (pileEl) {
+      pileEl.style.setProperty('--px', ((mx - cx0) * 0.012).toFixed(2))
+      pileEl.style.setProperty('--py', ((my - cy0) * 0.012).toFixed(2))
+    }
+  }
+
+  let anyActive = false
+  for (let i = 0; i < S.length; i++) {
+    const node = S[i]!
+    const el = els[i]
+    if (!el)
+      continue
+
+    if (node.role === 'dragging') {
+      // position forced directly to the cursor; nothing to integrate
+      anyActive = true
+      writeNode(node, el)
+      continue
+    }
+
+    // repulsion target: pile cards near the cursor get shoved away (the spring
+    // below eases px/py back to 0 when the cursor leaves). The integration loop
+    // is already O(n), so an inline distance check is cheaper than a bucket.
+    node.tpx = 0
+    node.tpy = 0
+    if (pointerInside && node.role === 'pile') {
+      const ncx = node.cx + cw / 2
+      const ncy = node.cy + ch / 2
+      const ddx = ncx - mx
+      const ddy = ncy - my
+      const d2 = ddx * ddx + ddy * ddy
+      if (d2 < REP_R2 && d2 > 0.01) {
+        const d = Math.sqrt(d2)
+        const f = (1 - d2 / REP_R2) * PUSH * (0.5 + node.layer * 0.35)
+        node.tpx = (ddx / d) * f
+        node.tpy = (ddy / d) * f
+        anyActive = true
+      }
+    }
+
+    // ease repulsion offset toward its target (springs back when target → 0)
+    node.px += (node.tpx - node.px) * 0.18 * dt
+    node.py += (node.tpy - node.py) * 0.18 * dt
+
+    if (node.role === 'thrown') {
+      node.cx += node.vx
+      node.cy += node.vy
+      node.vx *= FRICTION
+      node.vy *= FRICTION
+      // keep it loosely on screen
+      node.cx = Math.max(-cw, Math.min(window.innerWidth - cw * 0.2, node.cx))
+      node.cy = Math.max(-ch, Math.min(window.innerHeight - ch * 0.2, node.cy))
+      if (Math.hypot(node.vx, node.vy) < 0.4) {
+        // settle AMONG the others where it landed: this becomes its new home
+        node.homeX = node.cx
+        node.homeY = node.cy
+        node.role = 'pile'
+        setActive(node, i, false)
+        releaseLoop()
+      }
+      else {
+        anyActive = true
+      }
+      writeNode(node, el)
+      continue
+    }
+
+    // pile + picked: critically-damped spring toward target pose
+    let tx = node.homeX
+    let ty = node.homeY
+    let trot = node.homeRot
+    let tscale = node.baseScale
+    if (node.role === 'picked') {
+      tx = cx0 - cw / 2
+      ty = cy0 - ch / 2 - ch * 0.55 // offset above the panel title
+      trot = 0
+      tscale = window.innerWidth <= 720 ? 1.35 : 1.5
+      anyActive = true
+    }
+
+    const dx = tx - node.cx
+    const dy = ty - node.cy
+    const dr = trot - node.crot
+    const ds = tscale - node.cscale
+    node.vx = (node.vx + dx * K_POS) * DAMP
+    node.vy = (node.vy + dy * K_POS) * DAMP
+    node.cx += node.vx * dt
+    node.cy += node.vy * dt
+    node.crot += dr * K_ROT * dt
+    node.cscale += ds * 0.12 * dt
+
+    const moving = Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4 || Math.abs(node.px - node.tpx) > 0.4 || Math.abs(node.py - node.tpy) > 0.4 || Math.abs(dr) > 0.2 || Math.abs(ds) > 0.003
+    if (moving || node.role === 'picked')
+      anyActive = true
+
+    writeNode(node, el)
+  }
+
+  // self-stop when fully settled (release the implicit "frame" reason)
+  if (!anyActive && reasons <= 1 && !pointerInside) {
+    if (raf) {
+      cancelAnimationFrame(raf)
+      raf = 0
+    }
+    reasons = 0
+    return
+  }
+  raf = requestAnimationFrame(tick)
+}
+
+// ---------- pointer: parallax + repulsion ----------
+function onMove(e: PointerEvent) {
+  mx = e.clientX
+  my = e.clientY
+  needsMove = true
+  lastInputAt = performance.now()
+  if (!pointerInside) {
+    pointerInside = true
+    requestLoop()
+  }
+}
+function onLeave() {
+  if (!pointerInside)
+    return
+  pointerInside = false
+  for (const node of S) {
+    node.tpx = 0
+    node.tpy = 0
+  }
+  releaseLoop()
+}
+
+// ---------- pick-to-front + auto-deal ----------
+function pick(i: number) {
+  if (i < 0 || i >= S.length)
+    return
+  if (pickedId === i)
+    return
+  releasePick()
+  const node = S[i]!
+  if (node.role === 'dragging' || node.role === 'thrown')
+    return
+  pickedId = i
+  node.role = 'picked'
+  node.tpx = 0
+  node.tpy = 0
+  const el = els[i]
+  if (el)
+    el.style.zIndex = '9000'
+  setActive(node, i, true)
+  focused.value = node.card
+  requestLoop()
+  if (pickHold)
+    clearTimeout(pickHold)
+  pickHold = setTimeout(releasePick, PICK_HOLD_MS)
+}
+function releasePick() {
+  if (pickHold) {
+    clearTimeout(pickHold)
+    pickHold = null
+  }
+  if (pickedId < 0)
+    return
+  const i = pickedId
+  const node = S[i]
+  pickedId = -1
+  if (!node)
+    return
+  node.role = 'pile'
+  const el = els[i]
+  if (el)
+    el.style.zIndex = String(node.z)
+  setActive(node, i, false)
+  focused.value = null
+  requestLoop()
+  releaseLoop()
+}
+
+function startDeal() {
+  if (reduce || dealTimer)
+    return
+  dealTimer = setInterval(() => {
+    if (!visible || document.hidden)
+      return
+    // only when idle (no recent pointer/drag) and nothing held/picked
+    if (performance.now() - lastInputAt < 2500)
+      return
+    if (pickedId >= 0 || dragId >= 0)
+      return
+    const candidates: number[] = []
+    for (let i = 0; i < S.length; i++) {
+      if (S[i]!.role === 'pile')
+        candidates.push(i)
+    }
+    if (!candidates.length)
+      return
+    pick(candidates[Math.floor(Math.random() * candidates.length)]!)
+  }, ROTATE_DEAL_MS)
+}
+function stopDeal() {
+  if (dealTimer) {
+    clearInterval(dealTimer)
+    dealTimer = null
+  }
+}
+
+// ---------- pick affordance (hover dwell / click / keyboard) ----------
+function onCardEnter(i: number) {
+  if (reduce)
+    return
+  if (dwellTimer)
+    clearTimeout(dwellTimer)
+  dwellTimer = setTimeout(pick, DWELL_MS, i)
+}
+function onCardLeaveHover() {
+  if (dwellTimer) {
+    clearTimeout(dwellTimer)
+    dwellTimer = null
+  }
+}
+
+// ---------- drag & throw ----------
+function onCardDown(i: number, e: PointerEvent) {
+  if (reduce)
+    return
+  const node = S[i]
+  const el = els[i]
+  if (!node || !el)
+    return
+  lastInputAt = performance.now()
+  // a drag cancels any pick (drag > picked) — including the card being grabbed,
+  // else its pickHold timer + rAF reason leak and can clobber the throw.
+  if (pickedId >= 0)
+    releasePick()
+  el.setPointerCapture?.(e.pointerId)
+  el.style.touchAction = 'none'
+  dragId = i
+  node.role = 'dragging'
+  node.vx = 0
+  node.vy = 0
+  node.tpx = 0
+  node.tpy = 0
+  el.style.zIndex = '9500'
+  setActive(node, i, true)
+  grabDX = e.clientX - node.cx
+  grabDY = e.clientY - node.cy
+  ring.length = 0
+  ring.push({ x: e.clientX, y: e.clientY, t: performance.now() })
+  requestLoop()
+}
+function onCardMove(i: number, e: PointerEvent) {
+  if (dragId !== i)
+    return
+  const node = S[i]!
+  node.cx = e.clientX - grabDX
+  node.cy = e.clientY - grabDY
+  lastInputAt = performance.now()
+  ring.push({ x: e.clientX, y: e.clientY, t: performance.now() })
+  if (ring.length > 5)
+    ring.shift()
+}
+function onCardUp(i: number, e: PointerEvent) {
+  if (dragId !== i)
+    return
+  const node = S[i]!
+  const el = els[i]
+  el?.releasePointerCapture?.(e.pointerId)
+  if (el)
+    el.style.touchAction = ''
+  dragId = -1
+  // throw velocity from the ring buffer (oldest vs newest)
+  let vx = 0
+  let vy = 0
+  if (ring.length >= 2) {
+    const a = ring[0]!
+    const b = ring[ring.length - 1]!
+    const dtMs = b.t - a.t
+    // a slow drag then pause is a place-down, not a fling
+    if (dtMs > 0 && performance.now() - b.t < 120) {
+      vx = ((b.x - a.x) / dtMs) * 16.667
+      vy = ((b.y - a.y) / dtMs) * 16.667
+    }
+  }
+  node.vx = Math.max(-MAX_THROW, Math.min(MAX_THROW, vx))
+  node.vy = Math.max(-MAX_THROW, Math.min(MAX_THROW, vy))
+  if (Math.hypot(node.vx, node.vy) > 0.6) {
+    node.role = 'thrown'
+    requestLoop() // keep integrating the throw
+  }
+  else {
+    // place-down: settle here
+    node.homeX = node.cx
+    node.homeY = node.cy
+    node.role = 'pile'
+    setActive(node, i, false)
+  }
+  if (el)
+    el.style.zIndex = String(node.z)
+  releaseLoop() // pair the requestLoop in onCardDown
+}
+function onCardCancel(i: number) {
+  if (dragId !== i)
+    return
+  const node = S[i]!
+  dragId = -1
+  node.role = 'pile'
+  const el = els[i]
+  if (el) {
+    el.style.touchAction = ''
+    el.style.zIndex = String(node.z)
+  }
+  setActive(node, i, false)
+  releaseLoop()
+}
+
+// ---------- resize / visibility ----------
+function onResize() {
+  if (resizeTimer)
+    clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    // Keep the (fixed) card count but re-factor the grid to the new aspect so the
+    // pile still spans the whole viewport; recompute card size to keep overlap.
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    const n = S.length || 1
+    gridCols = Math.max(2, Math.round(Math.sqrt(n * (vw / vh))))
+    gridRows = Math.max(2, Math.ceil(n / gridCols))
+    cw = Math.min(vw <= 720 ? 200 : 300, (vw * OVERSCAN) / gridCols / OVERLAP)
+    ch = cw * 1.4
+    layout()
+    if (reduce)
+      return
+    requestLoop()
+    releaseLoop()
+  }, 200)
+}
+function onIntersect(entries: IntersectionObserverEntry[]) {
+  const e = entries[0]
+  if (!e)
+    return
+  visible = e.isIntersecting && e.intersectionRatio > 0.1
+}
+function onVisibility() {
+  if (document.hidden) {
+    // park everything; the loop will self-stop next frame
+    pointerInside = false
+  }
+}
+function onWindowBlur() {
+  // a card stuck to the cursor mid-drag would never release otherwise
+  if (dragId >= 0)
+    onCardCancel(dragId)
+  onLeave()
+}
+
+// ---------- reduced-motion static spotlight ----------
+function staticSpotlight() {
+  // pick one tasteful card as a still spotlight in the pocket
+  if (!S.length)
+    return
+  const i = Math.floor(S.length / 2)
+  const node = S[i]!
+  node.cx = cx0 - cw / 2
+  node.cy = cy0 - ch / 2 - ch * 0.4
+  node.crot = 0
+  node.cscale = 1.35
+  node.z = 9000
+  const el = els[i]
+  if (el) {
+    el.style.zIndex = '9000'
+    writeNode(node, el)
+  }
+  focused.value = node.card
+}
+
+// ---------- load ----------
+onMounted(async () => {
+  if (!import.meta.client)
+    return
+  reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   try {
     const { cards: pool } = await $fetch<{ cards: LandingCard[] }>('/api/landing/cards', {
       query: { _: Date.now() },
     })
-    // Keep a handful for the gallery rotation; shuffle for per-visit variety.
-    cards.value = (pool ?? []).filter(c => c.art).sort(() => Math.random() - 0.5).slice(0, 8)
-    ready.value = cards.value.length > 0
-    startRotation()
+    const grid = solveGrid(window.innerWidth, window.innerHeight)
+    gridCols = grid.cols
+    gridRows = grid.rows
+    cw = grid.cw
+    ch = grid.cw * 1.4
+    const n = grid.count
+    const base = (pool ?? []).filter(c => c.image).sort(() => Math.random() - 0.5)
+    if (!base.length)
+      throw new Error('no cards')
+    // Repeat from the pool if the viewport needs more cards than we fetched
+    // (huge/ultrawide screens) so the tide always covers the whole screen.
+    const picked: LandingCard[] = []
+    for (let i = 0; i < n; i++)
+      picked.push(base[i % base.length]!)
+    cards.value = picked
   }
   catch {
-    ready.value = false // graceful: the gradient backdrop alone still looks fine
+    ready.value = false
+    return
   }
-}
+  if (!cards.value.length)
+    return
 
-onMounted(() => {
-  reduce = import.meta.client && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  load()
+  S = cards.value.map(card => ({
+    card,
+    layer: 0,
+    homeX: 0,
+    homeY: 0,
+    homeRot: 0,
+    baseScale: 1,
+    z: 0,
+    cx: 0,
+    cy: 0,
+    crot: 0,
+    cscale: 1,
+    vx: 0,
+    vy: 0,
+    px: 0,
+    py: 0,
+    tpx: 0,
+    tpy: 0,
+    role: 'pile',
+    lastT: '',
+    active: false,
+  }))
+  ready.value = true
+
+  await nextTick()
+  sectionEl = sectionRef.value
+  pileEl = pileRef.value
+  layout()
+
+  // Resize reflows the static pile even in reduced-motion (onResize early-returns
+  // the rAF when reduce is set), so a rotation/resize doesn't leave a stale layout.
+  window.addEventListener('resize', onResize)
+
+  if (reduce) {
+    staticSpotlight()
+    return
+  }
+
+  window.addEventListener('pointermove', onMove, { passive: true })
+  window.addEventListener('blur', onWindowBlur)
+  document.addEventListener('visibilitychange', onVisibility)
+  if (sectionEl) {
+    io = new IntersectionObserver(onIntersect, { threshold: [0, 0.1, 0.5] })
+    io.observe(sectionEl)
+  }
+  startDeal()
 })
-onBeforeUnmount(stopRotation)
+
+onBeforeUnmount(() => {
+  if (raf)
+    cancelAnimationFrame(raf)
+  stopDeal()
+  if (dwellTimer)
+    clearTimeout(dwellTimer)
+  if (pickHold)
+    clearTimeout(pickHold)
+  if (resizeTimer)
+    clearTimeout(resizeTimer)
+  io?.disconnect()
+  if (import.meta.client) {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('resize', onResize)
+    window.removeEventListener('blur', onWindowBlur)
+    document.removeEventListener('visibilitychange', onVisibility)
+  }
+})
+
+function onImgLoad(e: Event) {
+  ;(e.target as HTMLElement).classList.add('loaded')
+}
 </script>
 
 <template>
-  <section class="cine" :style="{ '--accent': accent }">
-    <!-- ===== Full-bleed crossfading artwork stage ===== -->
-    <div class="stage" aria-hidden="true">
+  <section ref="sectionRef" class="pile-hero" :style="{ '--accent': accent }">
+    <!-- ===== Card pile (decorative) ===== -->
+    <div ref="pileRef" class="pile" aria-hidden="true">
       <div
-        v-for="(c, i) in cards"
-        :key="c.name + i"
-        class="frame"
-        :class="{ on: i === index, kb: i === index && !reduce }"
-        :style="{ backgroundImage: `url(${c.art})` }"
-      />
-      <!-- Legibility scrim + accent wash + film grain -->
-      <div class="scrim" />
-      <div class="wash" />
-      <div class="grain" />
+        v-for="l in 3"
+        :key="`layer-${l}`"
+        class="layer"
+        :style="{ '--dl': l === 1 ? 4 : l === 2 ? 9 : 16 }"
+      >
+        <template v-for="(c, i) in cards" :key="c.name + i">
+          <div
+            v-if="S[i] && S[i].layer === l - 1"
+            :ref="setElRef(i)"
+            class="card"
+            :style="{ zIndex: S[i].z }"
+            @pointerenter="onCardEnter(i)"
+            @pointerleave="onCardLeaveHover"
+            @pointerdown="onCardDown(i, $event)"
+            @pointermove="onCardMove(i, $event)"
+            @pointerup="onCardUp(i, $event)"
+            @pointercancel="onCardCancel(i)"
+          >
+            <div :ref="setInnerRef(i)" class="card-inner">
+              <img :src="c.image" alt="" loading="lazy" decoding="async" draggable="false" @load="onImgLoad">
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
+
+    <!-- ===== Scrim over the reading pocket ===== -->
+    <div class="scrim" aria-hidden="true" />
+    <div class="wash" aria-hidden="true" />
 
     <!-- ===== Top bar ===== -->
     <header class="bar">
@@ -125,53 +842,45 @@ onBeforeUnmount(stopRotation)
       </div>
     </header>
 
-    <!-- ===== Hero copy ===== -->
-    <div class="copy">
-      <span class="eyebrow">
-        <span class="dot" />{{ t('landing.badge') }}
-      </span>
-      <h1 class="title">
-        <span class="l1">{{ t('landing.title1') }}</span>
-        <span class="l2">{{ t('landing.title2') }}</span>
-      </h1>
-      <p class="sub">
-        {{ t('landing.subtitle') }}
-      </p>
-      <div class="actions">
-        <button type="button" class="cta" @click="openAuth('register')">
-          <UIcon name="i-lucide-sparkles" class="h-[18px] w-[18px]" />
-          {{ t('landing.ctaPrimary') }}
-          <UIcon name="i-lucide-arrow-right" class="h-[18px] w-[18px] arr" />
-        </button>
-        <button type="button" class="ghost ghost--lg" @click="openAuth('login')">
-          {{ t('landing.ctaSecondary') }}
-        </button>
-      </div>
-    </div>
-
-    <!-- ===== Gallery credit + progress (bottom) ===== -->
-    <div class="gallery">
-      <Transition name="credit" mode="out-in">
-        <div v-if="current" :key="current.name" class="credit">
-          <span class="credit-card">{{ current.name }}</span>
-          <span v-if="current.artist" class="credit-art">{{ t('landing.illus') }} {{ current.artist }}</span>
+    <!-- ===== Glass hero panel (the readable pocket) ===== -->
+    <div class="stage">
+      <!-- close-up caption: the picked card's name + artist (decorative) -->
+      <Transition name="meta">
+        <div v-if="focused" :key="focused.name" class="closeup" aria-hidden="true">
+          <span class="closeup-name">{{ focused.name }}</span>
+          <span v-if="focused.artist" class="closeup-art">{{ t('landing.illus') }} · {{ focused.artist }}</span>
         </div>
       </Transition>
-      <div v-if="cards.length > 1" class="dots" role="tablist">
-        <button
-          v-for="(c, i) in cards"
-          :key="c.name + i"
-          type="button"
-          class="dot-btn"
-          :class="{ on: i === index }"
-          :aria-label="c.name"
-          @click="pick(i)"
-        >
-          <span class="dot-fill" :style="i === index && !reduce ? { animationDuration: `${ROTATE_MS}ms` } : {}" />
-        </button>
+
+      <div class="glass">
+        <span class="eyebrow">
+          <span class="dot" />{{ t('landing.badge') }}
+        </span>
+        <h1 class="title">
+          <span class="l1">{{ t('landing.title1') }}</span>
+          <span class="l2">{{ t('landing.title2') }}</span>
+        </h1>
+        <p class="sub">
+          {{ t('landing.subtitle') }}
+        </p>
+        <div class="actions">
+          <button type="button" class="cta" @click="openAuth('register')">
+            <UIcon name="i-lucide-sparkles" class="h-[18px] w-[18px]" />
+            {{ t('landing.ctaPrimary') }}
+            <UIcon name="i-lucide-arrow-right" class="h-[18px] w-[18px] arr" />
+          </button>
+          <button type="button" class="ghost ghost--lg" @click="openAuth('login')">
+            {{ t('landing.ctaSecondary') }}
+          </button>
+        </div>
+        <span class="pile-hint">
+          <UIcon name="i-lucide-hand" class="h-[13px] w-[13px]" />
+          {{ t('landing.pileHint') }}
+        </span>
       </div>
     </div>
 
+    <div class="grain" aria-hidden="true" />
     <div class="scroll" aria-hidden="true">
       <UIcon name="i-lucide-chevron-down" />
     </div>
@@ -179,73 +888,95 @@ onBeforeUnmount(stopRotation)
 </template>
 
 <style scoped>
-.cine {
+.pile-hero {
   position: relative;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   isolation: isolate;
+  background: #08070a;
   color: #f4f1ea;
 }
 
-/* ===== Artwork stage ===== */
-.stage {
+/* ===== Pile + layers ===== */
+.pile {
   position: absolute;
   inset: 0;
-  z-index: -1;
-  background: #08070a;
+  z-index: 0;
 }
-.frame {
+.layer {
   position: absolute;
-  inset: -4%; /* bleed so the Ken-Burns zoom never reveals an edge */
-  background-size: cover;
-  background-position: center;
-  opacity: 0;
-  transition: opacity 1.6s ease;
-  will-change: opacity, transform;
+  inset: 0;
+  transform: translate3d(calc(var(--px, 0) * var(--dl) * 1px), calc(var(--py, 0) * var(--dl) * 1px), 0);
+  will-change: transform;
 }
-.frame.on {
+.card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--cw, 180px);
+  height: var(--ch, 252px);
+  transform-origin: center;
+  backface-visibility: hidden;
+  cursor: grab;
+}
+.card:active {
+  cursor: grabbing;
+}
+.card-inner {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+  animation: breathe var(--bd, 9s) var(--bdl, 0s) ease-in-out infinite alternate;
+}
+.card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4.8% / 3.5%;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.5),
+    0 14px 34px -12px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.card img.loaded {
   opacity: 1;
 }
-.frame.kb {
-  animation: kenburns 8s ease-out forwards;
-}
-@keyframes kenburns {
-  from {
-    transform: scale(1.02) translate(0, 0);
-  }
+@keyframes breathe {
   to {
-    transform: scale(1.14) translate(-1.5%, -1.5%);
+    transform: translate3d(0, -5px, 0) rotate(1.2deg) scale(1.012);
   }
 }
-/* Dark scrim weighted to the left/bottom where the copy lives */
+
+/* ===== Scrim + accent wash over the centre pocket ===== */
 .scrim {
   position: absolute;
   inset: 0;
+  z-index: 1;
+  pointer-events: none;
   background:
-    linear-gradient(
-      105deg,
-      rgba(8, 7, 10, 0.92) 0%,
-      rgba(8, 7, 10, 0.62) 38%,
-      rgba(8, 7, 10, 0.15) 70%,
-      transparent 100%
-    ),
-    linear-gradient(0deg, rgba(8, 7, 10, 0.95) 2%, transparent 32%),
-    linear-gradient(180deg, rgba(8, 7, 10, 0.7) 0%, transparent 22%);
+    radial-gradient(58% 50% at 50% 46%, rgba(8, 7, 10, 0.86) 0%, rgba(8, 7, 10, 0.4) 55%, transparent 78%),
+    linear-gradient(0deg, rgba(8, 7, 10, 0.85) 0%, transparent 26%),
+    linear-gradient(180deg, rgba(8, 7, 10, 0.7) 0%, transparent 18%);
 }
-/* Accent colour wash tying the page to the current card's identity */
 .wash {
   position: absolute;
   inset: 0;
-  background: radial-gradient(80% 60% at 75% 30%, rgba(var(--accent), 0.22), transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(46% 36% at 50% 44%, rgba(var(--accent), 0.16), transparent 72%);
   mix-blend-mode: screen;
-  transition: background 1.6s ease;
+  transition: background 1.2s ease;
 }
 .grain {
   position: absolute;
   inset: 0;
-  opacity: 0.5;
+  z-index: 4;
+  opacity: 0.4;
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
   mix-blend-mode: overlay;
@@ -253,6 +984,8 @@ onBeforeUnmount(stopRotation)
 
 /* ===== Top bar ===== */
 .bar {
+  position: relative;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -269,6 +1002,8 @@ onBeforeUnmount(stopRotation)
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   overflow: hidden;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 .lang button {
   padding: 5px 11px;
@@ -311,34 +1046,89 @@ onBeforeUnmount(stopRotation)
   background: rgba(var(--accent), 0.12);
 }
 
-/* ===== Hero copy ===== */
-.copy {
+/* ===== Stage (centres the glass panel in the pocket) ===== */
+.stage {
+  position: relative;
+  z-index: 5;
   flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 0 clamp(20px, 5vw, 64px);
+  pointer-events: none; /* let pile cards behind stay grabbable; panel re-enables */
+}
+.closeup {
+  position: absolute;
+  top: clamp(64px, 14vh, 130px);
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  max-width: min(760px, 92vw);
-  padding: 0 clamp(20px, 5vw, 64px);
-  text-align: left;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+.closeup-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(244, 241, 234, 0.95);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+}
+.closeup-art {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(244, 241, 234, 0.62);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+}
+.meta-enter-active,
+.meta-leave-active {
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
+}
+.meta-enter-from {
+  opacity: 0;
+  transform: translate(-50%, 8px);
+}
+.meta-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -8px);
+}
+
+.glass {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: min(600px, 92vw);
+  padding: clamp(28px, 4vw, 48px) clamp(24px, 4vw, 52px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 11, 14, 0.55);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  backdrop-filter: blur(16px) saturate(1.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 40px 90px -30px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 7px 14px;
-  margin-bottom: 26px;
+  margin-bottom: 22px;
   font-family: var(--font-mono);
   font-size: 11.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(244, 241, 234, 0.8);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  animation: rise 0.7s 0.05s ease both;
 }
 .eyebrow .dot {
   width: 6px;
@@ -347,54 +1137,49 @@ onBeforeUnmount(stopRotation)
   background: rgb(var(--accent));
   box-shadow: 0 0 10px 1px rgb(var(--accent));
   transition:
-    background 1.6s ease,
-    box-shadow 1.6s ease;
+    background 1.2s ease,
+    box-shadow 1.2s ease;
 }
 .title {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(2.8rem, 8.5vw, 6.2rem);
-  line-height: 0.94;
+  font-size: clamp(2.4rem, 6.5vw, 4.6rem);
+  line-height: 0.96;
   letter-spacing: -0.045em;
   text-wrap: balance;
 }
 .title .l1 {
   display: block;
   color: #f6f3ec;
-  text-shadow: 0 2px 40px rgba(0, 0, 0, 0.5);
-  animation: rise 0.8s 0.12s ease both;
 }
 .title .l2 {
   display: block;
-  background: linear-gradient(100deg, rgb(var(--accent)), #fff 90%);
+  background: linear-gradient(100deg, rgb(var(--accent)), #fff 92%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: background 1.6s ease;
-  animation: rise 0.8s 0.2s ease both;
+  transition: background 1.2s ease;
 }
 .sub {
-  max-width: 50ch;
-  margin: 28px 0 0;
-  font-size: clamp(1rem, 1.6vw, 1.2rem);
-  line-height: 1.65;
+  max-width: 44ch;
+  margin: 22px 0 0;
+  font-size: clamp(0.98rem, 1.4vw, 1.12rem);
+  line-height: 1.6;
   color: rgba(244, 241, 234, 0.82);
-  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.5);
-  animation: rise 0.8s 0.3s ease both;
 }
 .actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 14px;
-  margin-top: 40px;
-  animation: rise 0.8s 0.4s ease both;
+  margin-top: 32px;
 }
 .cta {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 16px 28px;
+  padding: 15px 26px;
   font-size: 15.5px;
   font-weight: 600;
   color: #0a0a0b;
@@ -406,7 +1191,7 @@ onBeforeUnmount(stopRotation)
   transition:
     transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.25s,
-    background 1.6s ease;
+    background 1.2s ease;
 }
 .cta:hover {
   transform: translateY(-3px);
@@ -431,105 +1216,27 @@ onBeforeUnmount(stopRotation)
 .cta--sm:hover {
   transform: translateY(-2px);
 }
-
-/* ===== Gallery credit + progress ===== */
-.gallery {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 0 clamp(20px, 5vw, 64px) 30px;
-}
-.credit {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  animation: rise 0.8s 0.5s ease both;
-}
-.credit-card {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(244, 241, 234, 0.92);
-}
-.credit-art {
+.pile-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 22px;
   font-family: var(--font-mono);
   font-size: 11px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: rgba(244, 241, 234, 0.5);
-}
-.credit-enter-active,
-.credit-leave-active {
-  transition:
-    opacity 0.5s ease,
-    transform 0.5s ease;
-}
-.credit-enter-from {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.credit-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
-}
-
-.dots {
-  display: flex;
-  gap: 8px;
-}
-.dot-btn {
-  position: relative;
-  width: 34px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  overflow: hidden;
-  transition: background 0.3s;
-}
-.dot-btn:hover {
-  background: rgba(255, 255, 255, 0.4);
-}
-.dot-btn.on {
-  background: rgba(255, 255, 255, 0.25);
-}
-.dot-fill {
-  position: absolute;
-  inset: 0;
-  width: 0;
-  background: rgb(var(--accent));
-  transition: background 1.6s ease;
-}
-.dot-btn.on .dot-fill {
-  animation: fill linear forwards;
-}
-@keyframes fill {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
 }
 
 .scroll {
   position: absolute;
+  z-index: 5;
   bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
   color: rgba(244, 241, 234, 0.5);
   font-size: 20px;
   animation: bob 2s ease-in-out infinite;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(22px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 @keyframes bob {
   0%,
@@ -544,30 +1251,20 @@ onBeforeUnmount(stopRotation)
 }
 
 @media (max-width: 720px) {
-  .gallery {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
+  /* Hide ONLY the top-bar login (cramped on phones); the panel's secondary
+     "I already have an account" CTA (.ghost--lg) must stay so mobile users can
+     still reach login directly. */
+  .bar .ghost {
+    display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .frame {
-    transition: opacity 0.3s ease;
-  }
-  .frame.kb,
-  .scroll,
-  .eyebrow,
-  .title .l1,
-  .title .l2,
-  .sub,
-  .actions,
-  .credit {
+  .card-inner {
     animation: none;
   }
-  .dot-btn.on .dot-fill {
+  .scroll {
     animation: none;
-    width: 100%;
   }
 }
 </style>

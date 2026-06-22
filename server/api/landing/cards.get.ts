@@ -7,7 +7,7 @@
 // page, and slim each to { art, colors, name }. Cached ~10 min (SWR) so a burst of
 // visitors is coalesced into a single upstream request — polite to Scryfall.
 
-interface ScryImg { art_crop?: string }
+interface ScryImg { art_crop?: string, normal?: string }
 interface ScryCard {
   name?: string
   artist?: string
@@ -21,6 +21,7 @@ interface ScryCard {
 export interface LandingCard {
   name: string
   art: string // widescreen art_crop — ideal for a full-bleed cinematic background
+  image: string // the full bordered card (normal) — for the interactive card-pile hero
   artist: string // illustrator credit (shown discreetly, gallery-style)
   colors: string[] // WUBRG letters (empty = colourless)
 }
@@ -31,10 +32,16 @@ export interface LandingCard {
 // `order=edhrec` surfaces the most-played cards across Magic's whole history —
 // the staples with the most beloved art — and a random page keeps it fresh.
 const QUERY = 'is:hires game:paper -is:digital -is:ub -t:token -t:emblem -t:basic -is:funny -layout:art_series (rarity:rare or rarity:mythic)'
-const POOL_SIZE = 40
+// A full-screen card "tide" needs plenty of distinct cards so the pile never
+// looks repetitive; the client scatters as many as fit the viewport (capped),
+// and repeats from the pool only on very large/ultrawide screens.
+const POOL_SIZE = 90
 
 function art(c: ScryCard): string | null {
   return c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop ?? null
+}
+function image(c: ScryCard): string | null {
+  return c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? null
 }
 
 export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[] }> => {
@@ -49,10 +56,11 @@ export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[]
 
   const data = await res.json() as { data?: ScryCard[] }
   const all = (data.data ?? [])
-    .filter(c => art(c) && c.name)
+    .filter(c => art(c) && image(c) && c.name)
     .map<LandingCard>(c => ({
       name: c.name!,
       art: art(c)!,
+      image: image(c)!,
       artist: c.artist ?? c.card_faces?.[0]?.artist ?? '',
       colors: (c.colors ?? c.color_identity ?? []).map(x => x.toLowerCase()),
     }))
@@ -68,8 +76,8 @@ export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[]
   // Short cache (no SWR): the pool rotates to a fresh random Scryfall page every
   // ~2 min, so the hero genuinely changes — while a burst of visits within the
   // window is still coalesced into one upstream request (polite to Scryfall).
-  // The client also picks a random 6 from the 24-card pool per visit, so even
-  // within one window two visitors rarely see the same hero.
+  // The client shuffles + scatters this pool into the card-tide hero per visit,
+  // so even within one window two visitors rarely see the same arrangement.
   maxAge: 120,
   name: 'landing-cards',
   // Constant key: the client appends a `_` cache-buster (to dodge the BROWSER's
