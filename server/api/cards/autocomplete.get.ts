@@ -4,9 +4,6 @@
 // so a 1h cache eliminates most autocomplete round-trips. Key is the (trimmed)
 // prefix; names are language-agnostic so no locale dimension is needed.
 
-const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
-const SCRYFALL = 'https://api.scryfall.com/cards/autocomplete'
-
 export default defineCachedEventHandler(async (event): Promise<{ names: string[] }> => {
   const query = getQuery(event)
   const q = typeof query.q === 'string' ? query.q.trim() : ''
@@ -14,8 +11,8 @@ export default defineCachedEventHandler(async (event): Promise<{ names: string[]
     return { names: [] }
   }
 
-  const url = `${SCRYFALL}?q=${encodeURIComponent(q)}`
-  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+  const url = `${SCRYFALL_AUTOCOMPLETE}?q=${encodeURIComponent(q)}`
+  const res = await scryfallFetch(url)
   if (!res.ok) {
     throw createError({ statusCode: 502, statusMessage: `Scryfall ${res.status}` })
   }

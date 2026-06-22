@@ -14,8 +14,6 @@
 
 import { createHash } from 'node:crypto'
 
-const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
-const SCRYFALL_SEARCH = 'https://api.scryfall.com/cards/search'
 // Scryfall query strings are URL-length bound and each `(set:x cn:y)` term is
 // verbose, so resolve in modest chunks (one request each).
 const CHUNK = 60
@@ -58,7 +56,7 @@ async function fetchChunk(
   const terms = group.map(g => `(set:${g.set} cn:${g.number})`).join(' or ')
   const q = `(${terms}) lang:${lang}`
   const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&unique=prints&order=set`
-  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+  const res = await scryfallFetch(url)
   // 404 = none of this chunk has a printing in that language: a valid empty answer.
   if (res.status === 404)
     return

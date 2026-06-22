@@ -32,9 +32,6 @@ export interface PrintOption {
   promo: boolean
 }
 
-const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
-const SCRYFALL = 'https://api.scryfall.com/cards/search'
-
 function thumb(c: ScryPrint): string | null {
   return c.image_uris?.normal ?? c.image_uris?.small
     ?? c.card_faces?.[0]?.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.small ?? null
@@ -53,11 +50,11 @@ export default defineCachedEventHandler(async (event): Promise<{ prints: PrintOp
 
   // All printings (any language) of the exact card, newest first.
   const q = `!"${name.replace(/"/g, '')}" include:extras`
-  const url = `${SCRYFALL}?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc&include_multilingual=true`
+  const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc&include_multilingual=true`
 
   let data: { data?: ScryPrint[] }
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+    const res = await scryfallFetch(url)
     if (res.status === 404)
       return { prints: [] }
     if (!res.ok)

@@ -14,9 +14,7 @@
 
 import { createHash } from 'node:crypto'
 
-const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
-const SCRYFALL_COLLECTION = 'https://api.scryfall.com/cards/collection'
-const MAX_IDENTIFIERS = 75
+const MAX_IDENTIFIERS = SCRYFALL_COLLECTION_CHUNK
 
 interface Identifier {
   name?: string
@@ -42,11 +40,7 @@ export default defineCachedEventHandler(async (event): Promise<{ data: unknown[]
   if (!identifiers.length)
     return { data: [], notFound: [] }
 
-  const res = await fetch(SCRYFALL_COLLECTION, {
-    method: 'POST',
-    headers: { 'User-Agent': UA, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ identifiers }),
-  })
+  const res = await scryfallFetch(SCRYFALL_COLLECTION, { method: 'POST', json: { identifiers } })
   if (!res.ok) {
     // Don't cache failures — throw so the cache write is skipped and a transient
     // Scryfall hiccup isn't pinned for the whole window.

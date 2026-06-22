@@ -34,8 +34,6 @@ interface SuggestBody {
 }
 
 const MODEL = 'claude-sonnet-4-6'
-const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
-const SCRYFALL_COLLECTION = 'https://api.scryfall.com/cards/collection'
 
 const ACTION_BRIEF: Record<Action, string> = {
   complete: 'Suggest up to 10 cards to ADD that improve this deck (fill the weakest roles: ramp, draw, removal, interaction, synergy, or a missing wincon). Do not suggest cards already in the list.',
@@ -64,8 +62,6 @@ const TOOL = {
     },
   },
 }
-
-interface Suggestion { name: string, reason: string }
 
 // ---- Prompt construction ----------------------------------------------------
 
@@ -110,48 +106,8 @@ function buildPrompt(body: SuggestBody, action: Action): string {
   ].filter(Boolean).join('\n')
 }
 
-// ---- Server-side validation gate -------------------------------------------
-
-interface ScryCard { name?: string, color_identity?: string[], legalities?: Record<string, string> }
-
-/** Resolve names to real Scryfall cards (cached collection route, in chunks). */
-async function resolveCards(event: any, names: string[]): Promise<Map<string, ScryCard>> {
-  const byName = new Map<string, ScryCard>()
-  const unique = [...new Set(names.map(n => n.trim()).filter(Boolean))]
-  for (let i = 0; i < unique.length; i += 75) {
-    const identifiers = unique.slice(i, i + 75).map(name => ({ name }))
-    try {
-      // Hit Scryfall directly here (server→server); same UA as the cached route.
-      const res = await fetch(SCRYFALL_COLLECTION, {
-        method: 'POST',
-        headers: { 'User-Agent': UA, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ identifiers }),
-      })
-      if (!res.ok)
-        continue
-      const data = await res.json() as { data?: ScryCard[] }
-      for (const c of data.data ?? []) {
-        if (c.name)
-          byName.set(c.name.toLowerCase(), c)
-      }
-    }
-    catch {
-      // Best-effort: a failed chunk just means those names stay unvalidated → dropped.
-    }
-  }
-  return byName
-}
-
-/** A card is in-identity when every colour of its identity is in the allowed set. */
-function inIdentity(card: ScryCard, allowed: Set<string>): boolean {
-  const id = card.color_identity ?? []
-  return id.every(c => allowed.has(c.toLowerCase()))
-}
-function legalInCommander(card: ScryCard): boolean {
-  // Be permissive if Scryfall didn't return legalities; only drop on explicit non-legal.
-  const l = card.legalities?.commander
-  return l !== 'not_legal' && l !== 'banned'
-}
+// The validation gate (resolve + identity + legality + dedupe) lives in
+// server/utils/suggestValidate.ts — filterValidCuts / validateAdds.
 
 export default defineEventHandler(async (event) => {
   await requireAppUser(event)
@@ -205,42 +161,12 @@ export default defineEventHandler(async (event) => {
   const rawAdd: Suggestion[] = Array.isArray(raw.add) ? raw.add : []
   const rawCut: Suggestion[] = Array.isArray(raw.cut) ? raw.cut : []
 
-  // ---- Gate CUTs: must be a card already in the decklist (verbatim, ci) ----
+  // ---- Validation gate: cuts must be in the deck; adds must resolve, be
+  //      in-identity, Commander-legal, not already present, and unique. ----
   const inDeck = new Set(cards.map(c => c.trim().toLowerCase()))
-  const cut = rawCut.filter(s => inDeck.has(s.name.trim().toLowerCase()))
-  const cutDropped = rawCut.length - cut.length
-
-  // ---- Gate ADDs: must resolve, be in-identity, and Commander-legal ----
   const allowed = new Set(identity.map(c => c.toLowerCase()))
-  let add: Suggestion[] = []
-  let addDropped = 0
-  if (rawAdd.length) {
-    const resolved = await resolveCards(event, rawAdd.map(s => s.name))
-    for (const s of rawAdd) {
-      const card = resolved.get(s.name.trim().toLowerCase())
-      const ok = card
-        && (allowed.size === 0 || inIdentity(card, allowed))
-        && legalInCommander(card)
-        && !inDeck.has(s.name.trim().toLowerCase())
-      if (ok)
-        add.push({ name: card!.name ?? s.name, reason: s.reason })
-      else
-        addDropped++
-    }
-    // De-dupe by canonical name (the model can repeat). Repeated names are
-    // counted as dropped too, so `dropped.add` reflects the full gap between
-    // what the model proposed and what the UI shows.
-    const seen = new Set<string>()
-    add = add.filter((s) => {
-      const k = s.name.toLowerCase()
-      if (seen.has(k)) {
-        addDropped++
-        return false
-      }
-      seen.add(k)
-      return true
-    })
-  }
+  const { cut, dropped: cutDropped } = filterValidCuts(rawCut, inDeck)
+  const { add, dropped: addDropped } = await validateAdds(rawAdd, allowed, inDeck)
 
   return {
     action,

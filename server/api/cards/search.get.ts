@@ -8,10 +8,6 @@
 // so FR and EN results never collide. maxAge is short (60s) so the card pool
 // stays fresh while a burst of identical requests is coalesced.
 
-const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
-const SCRYFALL = 'https://api.scryfall.com/cards/search'
-const SCRYFALL_COLLECTION = 'https://api.scryfall.com/cards/collection'
-
 interface ScryCard {
   name?: string
   lang?: string
@@ -34,34 +30,11 @@ async function enrichFrenchPrices(cards: ScryCard[]): Promise<void> {
   const missing = cards.filter(c => c.name && !c.prices?.eur)
   if (!missing.length)
     return
-  // Unique names (a search page rarely repeats, but be safe).
-  const names = [...new Set(missing.map(c => c.name!))]
-  const priceByName = new Map<string, string>()
-
-  for (let i = 0; i < names.length; i += 75) {
-    const identifiers = names.slice(i, i + 75).map(name => ({ name }))
-    try {
-      const res = await fetch(SCRYFALL_COLLECTION, {
-        method: 'POST',
-        headers: { 'User-Agent': UA, 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ identifiers }),
-      })
-      if (!res.ok)
-        continue
-      const data = await res.json() as { data?: ScryCard[] }
-      for (const d of data.data ?? []) {
-        const eur = d.prices?.eur
-        if (d.name && eur)
-          priceByName.set(d.name.toLowerCase(), eur)
-      }
-    }
-    catch {
-      // Best-effort enrichment: a failure just leaves those prices blank.
-    }
-  }
-
+  // Resolve the default (usually EN) printing of each missing-price card and
+  // patch its EUR price onto the FR card (shared chunk-by-75 collection loop).
+  const byName = await resolveScryfallByName<ScryCard>(missing.map(c => c.name!))
   for (const c of missing) {
-    const eur = priceByName.get((c.name ?? '').toLowerCase())
+    const eur = byName.get((c.name ?? '').toLowerCase())?.prices?.eur
     if (eur)
       c.prices = { ...(c.prices ?? {}), eur }
   }
@@ -81,9 +54,9 @@ export default defineCachedEventHandler(async (event): Promise<SearchResult> => 
     return { total: 0, hasMore: false, cards: [] }
   }
 
-  const url = `${SCRYFALL}?q=${encodeURIComponent(q)}&order=${encodeURIComponent(order)}&dir=${encodeURIComponent(dir)}&page=${page}&unique=${unique}`
+  const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&order=${encodeURIComponent(order)}&dir=${encodeURIComponent(dir)}&page=${page}&unique=${unique}`
 
-  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+  const res = await scryfallFetch(url)
 
   // Scryfall returns 404 when a valid query simply matches nothing.
   if (res.status === 404) {

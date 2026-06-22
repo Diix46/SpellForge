@@ -6,9 +6,6 @@
 //
 // Cached 24h per (set, number, lang): a given printing's data is stable.
 
-const UA = 'Spellforge/0.1 (deckbuilder; contact: spellforge.app)'
-const SCRYFALL = 'https://api.scryfall.com/cards'
-
 export default defineCachedEventHandler(async (event): Promise<{ card: unknown | null }> => {
   const query = getQuery(event)
   const set = typeof query.set === 'string' ? query.set.trim().toLowerCase() : ''
@@ -17,8 +14,8 @@ export default defineCachedEventHandler(async (event): Promise<{ card: unknown |
   if (!set || !number || !lang)
     return { card: null }
 
-  const url = `${SCRYFALL}/${encodeURIComponent(set)}/${encodeURIComponent(number)}/${encodeURIComponent(lang)}`
-  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+  const url = `${SCRYFALL_CARDS}/${encodeURIComponent(set)}/${encodeURIComponent(number)}/${encodeURIComponent(lang)}`
+  const res = await scryfallFetch(url)
 
   // A missing localized printing (no FR version of this exact card) is a normal,
   // cacheable answer — return null rather than throwing so we don't re-hit
