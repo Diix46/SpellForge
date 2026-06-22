@@ -10,15 +10,18 @@
 interface ScryImg { art_crop?: string }
 interface ScryCard {
   name?: string
+  artist?: string
+  type_line?: string
   colors?: string[]
   color_identity?: string[]
   image_uris?: ScryImg
-  card_faces?: Array<{ image_uris?: ScryImg }>
+  card_faces?: Array<{ image_uris?: ScryImg, artist?: string }>
 }
 
 export interface LandingCard {
   name: string
-  art: string
+  art: string // widescreen art_crop — ideal for a full-bleed cinematic background
+  artist: string // illustrator credit (shown discreetly, gallery-style)
   colors: string[] // WUBRG letters (empty = colourless)
 }
 
@@ -50,6 +53,7 @@ export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[]
     .map<LandingCard>(c => ({
       name: c.name!,
       art: art(c)!,
+      artist: c.artist ?? c.card_faces?.[0]?.artist ?? '',
       colors: (c.colors ?? c.color_identity ?? []).map(x => x.toLowerCase()),
     }))
 

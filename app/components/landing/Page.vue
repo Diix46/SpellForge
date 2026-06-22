@@ -1,28 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
 import { useScrollReveal } from '~/composables/useScrollReveal'
 
 // Marketing landing shown on "/" to signed-out visitors (the dashboard renders
-// instead once logged in). Brings its own minimal header — the app shell chrome
-// is hidden for guests. CTAs open the shared AuthModal.
+// instead once logged in). The cinematic hero owns its own header + auth CTAs;
+// this page adds the feature/steps/final sections below the fold.
 
-const { t, locale, setLocale } = useLocale()
+const { t } = useLocale()
 const { show: openAuth } = useAuthOverlay()
 
 const root = ref<HTMLElement | null>(null)
 useScrollReveal(() => root.value)
-
-// Marquee: each feature word becomes a bordered "chip" (icon + label). Icons map
-// by position to the 5 features. Repeated 3× so the ribbon fills any width and
-// loops seamlessly (each of the two tracks holds the full triple-repeat).
-const MQ_ICONS = ['i-lucide-wand-sparkles', 'i-lucide-printer', 'i-lucide-link', 'i-lucide-euro', 'i-lucide-layers']
-const marqueeItems = computed(() => {
-  const words = t('landing.marquee').split('·').map(w => w.trim()).filter(Boolean)
-  const base = words.map((label, i) => ({ label, icon: MQ_ICONS[i % MQ_ICONS.length]! }))
-  return [...base, ...base, ...base]
-})
 
 const FEATURES = [
   { icon: 'i-lucide-wand-sparkles', key: 'f1', glow: '79,168,232' },
@@ -59,80 +49,8 @@ function resetTilt(e: PointerEvent) {
 
 <template>
   <div ref="root" class="lp">
-    <!-- ============ Minimal header ============ -->
-    <header class="lp-head">
-      <div class="lp-head-inner">
-        <AppLogo />
-        <div class="lp-head-right">
-          <div class="lang">
-            <button :class="{ on: locale === 'fr' }" aria-label="Français" @click="setLocale('fr')">
-              FR
-            </button>
-            <button :class="{ on: locale === 'en' }" aria-label="English" @click="setLocale('en')">
-              EN
-            </button>
-          </div>
-          <button type="button" class="ghost-btn" @click="openAuth('login')">
-            {{ t('auth.login') }}
-          </button>
-          <button type="button" class="solid-btn" @click="openAuth('register')">
-            {{ t('landing.ctaPrimary') }}
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- ============ HERO ============ -->
-    <section class="hero">
-      <LandingHeroBackdrop />
-
-      <div class="hero-content">
-        <span class="badge" data-reveal>
-          <span class="badge-dot" />
-          {{ t('landing.badge') }}
-        </span>
-
-        <h1 class="hero-title" data-reveal>
-          <span class="ln">{{ t('landing.title1') }}</span>
-          <span class="ln grad">{{ t('landing.title2') }}</span>
-        </h1>
-
-        <p class="hero-sub" data-reveal>
-          {{ t('landing.subtitle') }}
-        </p>
-
-        <div class="hero-cta" data-reveal>
-          <button type="button" class="cta-primary" @click="openAuth('register')">
-            <UIcon name="i-lucide-sparkles" class="h-[18px] w-[18px]" />
-            {{ t('landing.ctaPrimary') }}
-            <UIcon name="i-lucide-arrow-right" class="h-[18px] w-[18px] arr" />
-          </button>
-          <button type="button" class="cta-ghost" @click="openAuth('login')">
-            {{ t('landing.ctaSecondary') }}
-          </button>
-        </div>
-      </div>
-
-      <div class="scroll-hint" aria-hidden="true">
-        <UIcon name="i-lucide-chevron-down" />
-      </div>
-    </section>
-
-    <!-- ============ Marquee: scrolling feature chips ============ -->
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee-track">
-        <span v-for="(it, i) in marqueeItems" :key="`a${i}`" class="mq-chip">
-          <UIcon :name="it.icon" class="mq-ic" />
-          {{ it.label }}
-        </span>
-      </div>
-      <div class="marquee-track" aria-hidden="true">
-        <span v-for="(it, i) in marqueeItems" :key="`b${i}`" class="mq-chip">
-          <UIcon :name="it.icon" class="mq-ic" />
-          {{ it.label }}
-        </span>
-      </div>
-    </div>
+    <!-- ============ HERO: cinematic full-bleed card gallery ============ -->
+    <LandingCinematicHero />
 
     <!-- ============ FEATURES (bento) ============ -->
     <section class="section">
@@ -263,169 +181,7 @@ function resetTilt(e: PointerEvent) {
   overflow-x: hidden;
 }
 
-/* ---------- Header ---------- */
-.lp-head {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  background: linear-gradient(180deg, rgba(10, 10, 11, 0.7), transparent);
-}
-.lp-head-inner {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-.lp-head-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.lang {
-  display: inline-flex;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-.lang button {
-  padding: 5px 11px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  transition:
-    color var(--dur) var(--ease-out),
-    background var(--dur) var(--ease-out);
-}
-.lang button.on {
-  color: var(--color-text-high);
-  background: var(--color-surface-2);
-}
-.ghost-btn {
-  padding: 8px 14px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-mid);
-  border-radius: var(--radius-md);
-  transition:
-    color var(--dur) var(--ease-out),
-    background var(--dur) var(--ease-out);
-}
-.ghost-btn:hover {
-  color: var(--color-text-high);
-  background: var(--color-surface-2);
-}
-.solid-btn {
-  padding: 8px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #0a0a0b;
-  border-radius: var(--radius-md);
-  background: linear-gradient(120deg, rgb(var(--lp-a)), rgb(var(--lp-b)));
-  box-shadow: 0 8px 24px -8px rgba(var(--lp-b), 0.6);
-  transition:
-    transform var(--dur) var(--ease-spring),
-    box-shadow var(--dur) var(--ease-out);
-}
-.solid-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px -8px rgba(var(--lp-b), 0.8);
-}
-
-/* ---------- Hero ---------- */
-.hero {
-  position: relative;
-  min-height: 92vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 80px 24px 60px;
-}
-.hero-content {
-  position: relative;
-  z-index: 2;
-  max-width: 880px;
-}
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  margin-bottom: 28px;
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--color-text-mid);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-full);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-}
-.badge-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgb(var(--lp-a));
-  box-shadow: 0 0 10px 1px rgb(var(--lp-a));
-  animation: pulse 2.2s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(0.8);
-  }
-}
-.hero-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(2.6rem, 8vw, 5.4rem);
-  line-height: 0.98;
-  letter-spacing: -0.04em;
-  margin: 0;
-}
-.hero-title .ln {
-  display: block;
-}
-.hero-title .grad {
-  background: linear-gradient(100deg, rgb(var(--lp-a)) 0%, rgb(var(--lp-b)) 55%, #f0abfc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-size: 200% auto;
-  animation: shimmer 6s linear infinite;
-}
-@keyframes shimmer {
-  to {
-    background-position: 200% center;
-  }
-}
-.hero-sub {
-  max-width: 620px;
-  margin: 26px auto 0;
-  font-size: clamp(1rem, 2.2vw, 1.2rem);
-  line-height: 1.6;
-  color: var(--color-text-mid);
-}
-.hero-cta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  justify-content: center;
-  margin-top: 38px;
-}
+/* ---------- Shared CTA (hero owns its own; reused by the final section) ---------- */
 .cta-primary {
   display: inline-flex;
   align-items: center;
@@ -459,99 +215,6 @@ function resetTilt(e: PointerEvent) {
   padding: 17px 34px;
   font-size: 16.5px;
 }
-.cta-ghost {
-  display: inline-flex;
-  align-items: center;
-  padding: 14px 24px;
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--color-text-high);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-strong);
-  background: rgba(255, 255, 255, 0.02);
-  transition:
-    border-color var(--dur) var(--ease-out),
-    background var(--dur) var(--ease-out);
-}
-.cta-ghost:hover {
-  border-color: rgba(var(--lp-a), 0.6);
-  background: rgba(var(--lp-a), 0.08);
-}
-.scroll-hint {
-  position: absolute;
-  bottom: 22px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  color: var(--color-text-muted);
-  font-size: 22px;
-  animation: bobHint 2s ease-in-out infinite;
-}
-@keyframes bobHint {
-  0%,
-  100% {
-    transform: translate(-50%, 0);
-    opacity: 0.6;
-  }
-  50% {
-    transform: translate(-50%, 8px);
-    opacity: 1;
-  }
-}
-
-/* ---------- Marquee: scrolling feature chips ---------- */
-.marquee {
-  position: relative;
-  z-index: 2;
-  overflow: hidden;
-  display: flex;
-  width: 100%;
-  padding: 18px 0;
-  border-top: 1px solid var(--color-border-subtle);
-  border-bottom: 1px solid var(--color-border-subtle);
-  background: rgba(255, 255, 255, 0.015);
-  /* Gentle fade at the edges so chips glide in/out instead of cutting off. */
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
-}
-/* Two identical tracks scroll as one: as track A exits left, track B (flush
-   after it) arrives — seamless at any viewport width. Each is its own content
-   width and translates exactly -100% of itself. */
-.marquee-track {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding-right: 14px; /* keep the gap rhythm across the A→B seam */
-  width: max-content;
-  animation: scrollX 60s linear infinite;
-}
-/* Each feature is a bordered glass chip with an accent icon. */
-.mq-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 16px;
-  white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--color-text-mid);
-  background: var(--color-surface-1);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-full);
-}
-.mq-ic {
-  width: 16px;
-  height: 16px;
-  color: rgb(var(--lp-a));
-}
-@keyframes scrollX {
-  to {
-    transform: translateX(-100%);
-  }
-}
-
 /* ---------- Sections ---------- */
 .section {
   position: relative;
@@ -814,15 +477,8 @@ function resetTilt(e: PointerEvent) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .badge-dot,
-  .hero-title .grad,
-  .marquee-track,
-  .scroll-hint,
   .final-aurora {
     animation: none;
-  }
-  .hero-title .grad {
-    background-position: 0 center;
   }
   [data-reveal] {
     opacity: 1;
