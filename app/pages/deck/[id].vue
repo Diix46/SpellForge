@@ -50,49 +50,10 @@ const fetching = ref(false)
 let loadToken = 0
 const fetchProgress = ref({ loaded: 0, total: 0 })
 
-// Preview & Buy are terminal actions (print / purchase), not peer destinations,
-// so they open as overlays from the Deck workspace rather than as tabs. Their
-// open state mirrors to the route query (?preview / ?buy) so a finished deck's
-// view/buy state is shareable.
-const previewOpen = ref(false)
-const buyOpen = ref(false)
-// Esc closes whichever terminal overlay is open (a div's @keydown.esc won't fire
-// unless focused, so bind at the window while one is open).
-function onOverlayEsc(e: KeyboardEvent) {
-  if (e.key !== 'Escape')
-    return
-  if (previewOpen.value)
-    previewOpen.value = false
-  else if (buyOpen.value)
-    buyOpen.value = false
-}
-watch([previewOpen, buyOpen], ([p, b]) => {
-  if (!import.meta.client)
-    return
-  if (p || b)
-    window.addEventListener('keydown', onOverlayEsc)
-  else
-    window.removeEventListener('keydown', onOverlayEsc)
-})
-onBeforeUnmount(() => {
-  if (import.meta.client)
-    window.removeEventListener('keydown', onOverlayEsc)
-})
-
-// Coach IA slide-over open state. Esc closes it (bound only while open).
-const coachOpen = ref(false)
-function onCoachEsc(e: KeyboardEvent) {
-  if (e.key === 'Escape')
-    coachOpen.value = false
-}
-watch(coachOpen, (open) => {
-  if (import.meta.client)
-    open ? window.addEventListener('keydown', onCoachEsc) : window.removeEventListener('keydown', onCoachEsc)
-})
-onBeforeUnmount(() => {
-  if (import.meta.client)
-    window.removeEventListener('keydown', onCoachEsc)
-})
+// Overlay open-state (Preview / Buy / Coach) + Esc-to-close + ?preview/?buy
+// deep-link sync. The page opens them (toolbar, deep-link in initDeck). See
+// useDeckOverlays.
+const { previewOpen, buyOpen, coachOpen } = useDeckOverlays(route, router)
 
 // Import/Export modal (the old raw-text editor lives here now).
 const showImportExport = ref(false)
@@ -631,19 +592,6 @@ watch([previewOpen, buyOpen], ([p, b]) => {
     && (resolvedCards.value.length === 0 || resolvedDirty.value)) {
     loadCards({ silent: true })
   }
-})
-
-// Deep-link: keep ?preview / ?buy in sync with the overlays so a finished deck's
-// view/buy state is shareable. Only one overlay at a time.
-watch([previewOpen, buyOpen], ([p, b]) => {
-  const q = { ...route.query }
-  delete q.preview
-  delete q.buy
-  if (p)
-    q.preview = '1'
-  else if (b)
-    q.buy = '1'
-  router.replace({ query: q })
 })
 
 function setCommander(card: ResolvedCard) {
