@@ -509,42 +509,43 @@ function resetTilt(e: PointerEvent) {
   overflow: hidden;
   display: flex;
   width: 100%;
-  padding: 14px 0;
+  padding: 11px 0;
   border-top: 1px solid var(--color-border-subtle);
   border-bottom: 1px solid var(--color-border-subtle);
-  background: linear-gradient(90deg, rgba(var(--lp-a), 0.04), rgba(var(--lp-b), 0.04)), rgba(255, 255, 255, 0.02);
-  /* Soft fade only at the very edges so the ribbon reads as full-width. */
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  /* No tint — a discreet ticker, not a loud banner. */
+  /* Gentle fade at the edges so the ribbon glides in/out. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
 /* Two identical tracks scroll as one: as track A exits left, track B (flush
    after it) arrives — seamless at any viewport width. Each is its own content
-   width and translates exactly -100% of itself. */
+   width and translates exactly -100% of itself. Slow + subtle. */
 .marquee-track {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   width: max-content;
-  animation: scrollX 38s linear infinite;
+  animation: scrollX 55s linear infinite;
 }
 .mq-item {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
-  padding-right: 14px;
+  gap: 22px;
+  padding-right: 22px;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   white-space: nowrap;
-  color: var(--color-text-mid);
+  color: var(--color-text-muted);
 }
 .mq-dot {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
-  background: linear-gradient(120deg, rgb(var(--lp-a)), rgb(var(--lp-b)));
-  box-shadow: 0 0 8px 0 rgba(var(--lp-a), 0.7);
+  background: rgb(var(--lp-a));
+  opacity: 0.6;
 }
 @keyframes scrollX {
   to {

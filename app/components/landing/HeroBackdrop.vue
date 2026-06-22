@@ -18,6 +18,8 @@ interface FloatSlot {
   depth: number // parallax factor (0 far → 1 near)
   scale: number
   delay: number
+  opacity: number // far cards fade back for a layered, superposed feel
+  blur: number // px — far cards blur into the backdrop (depth of field)
   art?: string // real card art_crop (filled after fetch)
   name?: string
 }
@@ -36,17 +38,47 @@ function glowFor(colors: string[]): string {
   return c ? COLOR_GLOW[c]! : '168,178,196' // multicolour/colourless → platinum
 }
 
-// Hand-placed layout so the composition reads as a fanned spread around the
-// headline, not a random scatter. Art is slotted in on fetch; glow is a sensible
-// per-slot default until then.
-const CARDS = ref<FloatSlot[]>([
-  { glow: '79,168,232', x: 12, y: 22, rot: -14, depth: 0.9, scale: 1.05, delay: 0 },
-  { glow: '232,88,68', x: 80, y: 16, rot: 12, depth: 1, scale: 1.1, delay: 0.6 },
-  { glow: '56,184,131', x: 86, y: 64, rot: 8, depth: 0.7, scale: 0.92, delay: 1.2 },
-  { glow: '233,226,200', x: 6, y: 66, rot: 10, depth: 0.6, scale: 0.88, delay: 1.8 },
-  { glow: '140,134,160', x: 22, y: 78, rot: -8, depth: 0.45, scale: 0.8, delay: 2.4 },
-  { glow: '79,168,232', x: 68, y: 80, rot: -10, depth: 0.55, scale: 0.85, delay: 3 },
-])
+// A dense, layered scatter of cards around the headline — foreground cards
+// (sharp, opaque, larger) frame the edges; background cards (small, faded,
+// blurred) fill the gaps and overlap for a "drift of cards" depth effect. The
+// centre horizontal band is kept lighter so the headline stays readable. Art is
+// slotted in on fetch; glow is a sensible per-slot default until then. Glow
+// values cycle WUBRG so the pre-art silhouettes already look varied.
+const G = ['79,168,232', '232,88,68', '56,184,131', '233,226,200', '140,134,160', '168,85,247']
+const RAW_SLOTS: Array<[x: number, y: number, rot: number, depth: number, scale: number, opacity: number, blur: number]> = [
+  // --- Foreground (sharp, large, opaque) — the heroes of the composition ---
+  [10, 20, -14, 1.0, 1.15, 1, 0],
+  [82, 14, 12, 1.0, 1.2, 1, 0],
+  [86, 62, 9, 0.85, 1.0, 0.96, 0],
+  [7, 64, 11, 0.8, 0.98, 0.96, 0],
+  // --- Mid layer (medium, slight fade) ---
+  [21, 78, -9, 0.6, 0.82, 0.85, 0.5],
+  [70, 80, -11, 0.62, 0.86, 0.85, 0.5],
+  [2, 40, -6, 0.55, 0.74, 0.7, 1],
+  [94, 38, 7, 0.55, 0.78, 0.7, 1],
+  [33, 10, -5, 0.5, 0.7, 0.72, 1],
+  [62, 8, 6, 0.5, 0.72, 0.72, 1],
+  // --- Background (small, faded, blurred — fills gaps, overlaps) ---
+  [16, 48, 16, 0.32, 0.56, 0.42, 2.5],
+  [88, 86, -14, 0.34, 0.6, 0.42, 2.5],
+  [44, 90, 4, 0.3, 0.54, 0.4, 3],
+  [58, 92, -6, 0.3, 0.52, 0.4, 3],
+  [38, 30, -18, 0.26, 0.46, 0.3, 3.5],
+  [76, 50, 14, 0.26, 0.48, 0.3, 3.5],
+]
+const CARDS = ref<FloatSlot[]>(
+  RAW_SLOTS.map(([x, y, rot, depth, scale, opacity, blur], i) => ({
+    glow: G[i % G.length]!,
+    x,
+    y,
+    rot,
+    depth,
+    scale,
+    opacity,
+    blur,
+    delay: (i % 6) * 0.5, // stagger the idle bob so they don't pulse in unison
+  })),
+)
 
 // Fetch the random-art pool and slot a fresh pick into each card on every visit.
 // Best-effort: a failure just leaves the silhouettes, so the hero never breaks.
@@ -59,11 +91,12 @@ async function loadArt() {
     })
     if (!cards?.length)
       return
-    const pool = [...cards]
-    CARDS.value = CARDS.value.map((slot) => {
-      if (!pool.length)
-        return slot
-      const pick = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]!
+    // Shuffle once; assign sequentially so every slot gets a distinct card. If
+    // there are more slots than cards, wrap around (a repeat far in the back is
+    // invisible). This guarantees no slot is left as a bare silhouette.
+    const shuffled = [...cards].sort(() => Math.random() - 0.5)
+    CARDS.value = CARDS.value.map((slot, i) => {
+      const pick = shuffled[i % shuffled.length]!
       return { ...slot, art: pick.art, name: pick.name, glow: glowFor(pick.colors) }
     })
   }
@@ -105,18 +138,21 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(raf)
 })
 
-// Parallax translate for a card given its depth.
+// Parallax translate for a card given its depth (near cards move more).
 function cardStyle(c: FloatSlot) {
-  const tx = -px.value * 26 * c.depth
-  const ty = -py.value * 26 * c.depth
+  const tx = -px.value * 30 * c.depth
+  const ty = -py.value * 30 * c.depth
   return {
     'left': `${c.x}%`,
     'top': `${c.y}%`,
+    'zIndex': Math.round(c.depth * 10), // nearer = on top, for real overlap layering
     '--rot': `${c.rot}deg`,
     '--depth-x': `${tx}px`,
     '--depth-y': `${ty}px`,
     '--glow': c.glow,
     '--scale': c.scale,
+    '--opacity': c.opacity,
+    '--blur': `${c.blur}px`,
     'animationDelay': `${c.delay}s`,
   }
 }
@@ -251,8 +287,10 @@ function cardStyle(c: FloatSlot) {
 /* ---- Floating cards ---- */
 .float-card {
   position: absolute;
-  width: clamp(96px, 11vw, 168px);
+  width: clamp(92px, 10vw, 156px);
   aspect-ratio: 63 / 88;
+  opacity: var(--opacity, 1);
+  filter: blur(var(--blur, 0));
   transform: translate(var(--depth-x, 0), var(--depth-y, 0)) rotate(var(--rot)) scale(var(--scale));
   transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
   animation: bob 9s ease-in-out infinite;
