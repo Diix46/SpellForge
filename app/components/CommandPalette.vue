@@ -1,120 +1,35 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import type { CommandItem } from '~/composables/useCommandPaletteSearch'
+import { nextTick, ref, watch } from 'vue'
 import { useCommandPalette } from '~/composables/useCommandPalette'
-import { useDeckStore } from '~/composables/useDeckStore'
+import { useCommandPaletteSearch } from '~/composables/useCommandPaletteSearch'
 import { useLocale } from '~/composables/useLocale'
 
 const { open, hide } = useCommandPalette()
 const { t } = useLocale()
-const { decks } = useDeckStore()
 const router = useRouter()
 
 const q = ref('')
 const inputEl = ref<HTMLInputElement | null>(null)
 const sel = ref(0)
 
-interface Item {
-  id: string
-  label: string
-  hint?: string
-  icon: string
-  kbd?: string
-  group: string
-  pips?: string[]
-  run: () => void
-}
-
 function go(path: string) {
   hide()
   router.push(path)
 }
-
 function openScryfall(name: string) {
   hide()
   window.open(`https://scryfall.com/search?q=${encodeURIComponent(`!"${name}"`)}`, '_blank')
 }
 
-// ----- Static actions -----
-const actions = computed<Item[]>(() => [
-  { id: 'new', label: t('cmd.newDeck'), icon: 'i-lucide-plus', kbd: 'N', group: t('cmd.grpActions'), run: () => go('/?new=1') },
-  { id: 'import', label: t('cmd.import'), icon: 'i-lucide-download', group: t('cmd.grpActions'), run: () => go('/?import=1') },
-  { id: 'home', label: t('cmd.allDecks'), icon: 'i-lucide-layout-grid', group: t('cmd.grpActions'), run: () => go('/') },
-])
-
-// ----- Deck navigation (from the store) -----
-const deckItems = computed<Item[]>(() =>
-  decks.value.map(d => ({
-    id: `deck-${d.id}`,
-    label: d.name,
-    hint: t('cmd.deck'),
-    icon: 'i-lucide-layers',
-    group: t('cmd.grpDecks'),
-    run: () => go(`/deck/${d.id}`),
-  })),
-)
-
-// ----- Live card autocomplete (Scryfall via our cached route) -----
-const cardNames = ref<string[]>([])
-let seq = 0
-watch(q, async (val) => {
-  const term = val.trim()
-  if (term.length < 2) {
-    cardNames.value = []
-    return
-  }
-  const mine = ++seq
-  try {
-    const { names } = await $fetch<{ names: string[] }>('/api/cards/autocomplete', { params: { q: term } })
-    if (mine === seq)
-      cardNames.value = names.slice(0, 6)
-  }
-  catch {
-    if (mine === seq)
-      cardNames.value = []
-  }
-})
-const cardItems = computed<Item[]>(() =>
-  cardNames.value.map(name => ({
-    id: `card-${name}`,
-    label: name,
-    hint: t('cmd.card'),
-    icon: 'i-lucide-sparkles',
-    group: t('cmd.grpCards'),
-    run: () => openScryfall(name),
-  })),
-)
-
-// ----- Filter + flatten -----
-function match(it: Item, term: string) {
-  return it.label.toLowerCase().includes(term) || it.group.toLowerCase().includes(term)
-}
-const results = computed<Item[]>(() => {
-  const term = q.value.trim().toLowerCase()
-  const acts = term ? actions.value.filter(a => match(a, term)) : actions.value
-  const dks = term ? deckItems.value.filter(d => match(d, term)) : deckItems.value.slice(0, 5)
-  // cards only show when actively typing (they come from the API)
-  return [...acts, ...dks, ...cardItems.value]
-})
-
-// group results for rendering, preserving order
-const grouped = computed(() => {
-  const out: { group: string, items: Item[] }[] = []
-  for (const it of results.value) {
-    let g = out.find(x => x.group === it.group)
-    if (!g) {
-      g = { group: it.group, items: [] }
-      out.push(g)
-    }
-    g.items.push(it)
-  }
-  return out
-})
+// Data layer (actions / decks / live card autocomplete / filter + group).
+const { results, grouped, reset } = useCommandPaletteSearch(q, { go, openScryfall })
 
 watch(results, () => {
   sel.value = 0
 })
 
-function flatIndex(it: Item) {
+function flatIndex(it: CommandItem) {
   return results.value.findIndex(r => r.id === it.id)
 }
 
@@ -137,7 +52,7 @@ function onKey(e: KeyboardEvent) {
 watch(open, async (isOpen) => {
   if (isOpen) {
     q.value = ''
-    cardNames.value = []
+    reset()
     sel.value = 0
     await nextTick()
     inputEl.value?.focus()
