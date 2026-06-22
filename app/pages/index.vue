@@ -4,7 +4,7 @@ import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 
-const { locale, t } = useLocale()
+const { locale, t, formatShortDate } = useLocale()
 
 useSeoMeta({
   title: () => t('dash.title'),
@@ -65,8 +65,7 @@ function deckCardCount(raw: string): number {
 const lastUpdated = computed(() => {
   if (!decks.value.length)
     return '—'
-  const ts = Math.max(...decks.value.map(d => d.updatedAt))
-  return new Date(ts).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short' })
+  return formatShortDate(Math.max(...decks.value.map(d => d.updatedAt)))
 })
 
 // Decks "ready to play" ≈ those at/over a typical Commander/Standard size.

@@ -15,7 +15,7 @@ const emit = defineEmits<{
 
 const { parse, totalCards } = useDecklist()
 const { identity, colorVar, accentStyle } = useManaIdentity()
-const { locale, t } = useLocale()
+const { t, formatShortDate } = useLocale()
 
 // Stable id so the clickable tile (role=button) borrows the deck-name heading
 // as its accessible name (visible label === accessible name).
@@ -38,10 +38,6 @@ const sourceBadge = computed(() => {
 
 // Per-tile accent from the deck's mana identity (drives the hover top-bar + glow).
 const tileAccent = computed(() => accentStyle(colors.value))
-
-function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short' })
-}
 
 const menuItems = computed(() => [
   [{ label: t('tile.open'), icon: 'i-lucide-folder-open', onSelect: () => emit('open', props.deck.id) }],
@@ -83,7 +79,7 @@ const menuItems = computed(() => [
     </div>
 
     <p class="tile-sub">
-      {{ t('tile.updated') }} {{ formatDate(deck.updatedAt) }}
+      {{ t('tile.updated') }} {{ formatShortDate(deck.updatedAt) }}
     </p>
 
     <!-- mana fingerprint -->

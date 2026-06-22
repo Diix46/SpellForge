@@ -580,5 +580,11 @@ export function useLocale() {
 
   const isFr = computed(() => locale.value === 'fr')
 
-  return { locale, setLocale, toggle, t, rarityLabel, isFr }
+  // Short locale-aware date (e.g. "22 juin" / "Jun 22") for deck timestamps.
+  // Shared by the dashboard and deck tiles so the format stays in one place.
+  function formatShortDate(ts: number): string {
+    return new Date(ts).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short' })
+  }
+
+  return { locale, setLocale, toggle, t, rarityLabel, isFr, formatShortDate }
 }

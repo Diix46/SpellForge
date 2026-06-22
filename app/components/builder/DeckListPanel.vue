@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 import { useCardDnd } from '~/composables/useCardDnd'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
-import { CATEGORY_ORDER, categoryLabelKey, WUBRG } from '~/composables/useMtg'
+import { cardKey, CATEGORY_ORDER, categoryLabelKey, WUBRG } from '~/composables/useMtg'
 
 const props = defineProps<{
   entries: DeckEntry[]
@@ -84,10 +84,10 @@ const statsOpen = ref(false)
 
 // Localized display name for an entry, falling back to its raw (English) name.
 function displayNameOf(name: string): string {
-  return props.displayNameByName?.get(name.trim().toLowerCase()) || name
+  return props.displayNameByName?.get(cardKey(name)) || name
 }
 function metaOf(name: string) {
-  return props.cardMetaByName?.get(name.trim().toLowerCase())
+  return props.cardMetaByName?.get(cardKey(name))
 }
 // Mana cost → array of symbol tokens (without braces) for the row pips.
 function manaSymbols(name: string): string[] {
@@ -141,7 +141,7 @@ const { colorVar, colorCode } = useManaIdentity()
 const distribution = computed(() => {
   const counts: Record<string, number> = { w: 0, u: 0, b: 0, r: 0, g: 0, c: 0 }
   for (const e of props.entries) {
-    const id = props.colorByName?.get(e.name.trim().toLowerCase())
+    const id = props.colorByName?.get(cardKey(e.name))
     if (!id || id.length === 0) {
       counts.c = (counts.c ?? 0) + e.quantity
     }
@@ -162,18 +162,18 @@ function barCount(c: string): number {
 }
 
 function categoryOf(entry: DeckEntry): string {
-  return props.categoryByName?.get(entry.name.trim().toLowerCase()) ?? 'other'
+  return props.categoryByName?.get(cardKey(entry.name)) ?? 'other'
 }
 
 const groups = computed(() => {
   // Entries are keyed by raw (English) names; match the commander on its raw name
   // (commanderName is localized and wouldn't match). Fall back to commanderName.
-  const cmdr = (props.commanderRawName || props.commanderName).trim().toLowerCase()
+  const cmdr = cardKey(props.commanderRawName || props.commanderName)
   const map = new Map<string, DeckEntry[]>()
   for (const e of props.entries) {
     // The commander is shown in its own feature card above — skip it here so it
     // isn't listed twice.
-    if (cmdr && e.name.trim().toLowerCase() === cmdr)
+    if (cmdr && cardKey(e.name) === cmdr)
       continue
     const cat = categoryOf(e)
     if (!map.has(cat))

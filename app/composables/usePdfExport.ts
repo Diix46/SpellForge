@@ -8,6 +8,13 @@ export type Orientation = 'portrait' | 'landscape'
 const CARD_W_MM = 63
 const CARD_H_MM = 88
 
+// PDF styling constants (jsPDF greyscale 0–255). Named so the crop-mark / placeholder
+// look can be tuned in one place instead of hunting magic numbers in the draw code.
+const CROP_MARK_LENGTH_MM = 3 // how far each corner tick extends
+const CROP_MARK_COLOR = 160 // mid-grey, faint but visible for cutting
+const CROP_MARK_LINE_WIDTH = 0.1 // hairline
+const PLACEHOLDER_BOX_COLOR = 200 // light-grey outline for a failed image slot
+
 const PAGE_DIMS: Record<PageFormat, { width: number, height: number }> = {
   a4: { width: 210, height: 297 },
   a3: { width: 297, height: 420 },
@@ -175,7 +182,7 @@ export function usePdfExport() {
       }
       else {
         // Placeholder for failed image
-        doc.setDrawColor(200)
+        doc.setDrawColor(PLACEHOLDER_BOX_COLOR)
         doc.rect(x, y, CARD_W_MM, CARD_H_MM)
       }
 
@@ -195,9 +202,9 @@ export function usePdfExport() {
     y: number,
     layout: ReturnType<typeof computeLayout>,
   ) {
-    const len = 3 // mm crop-mark length
-    doc.setDrawColor(160)
-    doc.setLineWidth(0.1)
+    const len = CROP_MARK_LENGTH_MM
+    doc.setDrawColor(CROP_MARK_COLOR)
+    doc.setLineWidth(CROP_MARK_LINE_WIDTH)
 
     const right = x + CARD_W_MM
     const bottom = y + CARD_H_MM

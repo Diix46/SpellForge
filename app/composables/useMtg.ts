@@ -94,8 +94,17 @@ export const ANY_NUMBER_CARDS: ReadonlySet<string> = new Set([
   'slime against humanity',
 ])
 
+/**
+ * Canonical lookup key for a card name (trimmed + lowercased). Use everywhere a
+ * name indexes a Map (category/colour/display-name lookups) so normalisation is
+ * consistent and lives in one place.
+ */
+export function cardKey(name: string): string {
+  return name.trim().toLowerCase()
+}
+
 export function isBasicLand(name: string): boolean {
-  return BASIC_LANDS.has(name.trim().toLowerCase())
+  return BASIC_LANDS.has(cardKey(name))
 }
 
 /** Card may be in a deck in any quantity (basics + "any number" cards). */

@@ -43,11 +43,13 @@ async function submit(text?: string) {
   await send(msg, props.deckContext)
 }
 
-// Auto-scroll to the latest message as it streams.
-watch(() => messages.value.map(m => m.text).join('|'), async () => {
+// Auto-scroll to the latest message as it streams. Deep-watch the messages
+// array (its elements' text mutates in place during streaming) rather than
+// re-joining every message into a string on each reactive tick.
+watch(messages, async () => {
   await nextTick()
   scroller.value?.scrollTo({ top: scroller.value.scrollHeight, behavior: 'smooth' })
-})
+}, { deep: true })
 </script>
 
 <template>

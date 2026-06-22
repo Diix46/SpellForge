@@ -118,15 +118,14 @@ export interface SearchState {
   cards: ScryfallCard[]
 }
 
+// Single source of truth for an empty result set (init + every reset), so the
+// SearchState shape lives in one place. Mirrors emptyFilters() above.
+export function emptySearchState(): SearchState {
+  return { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
+}
+
 export function useCardSearch() {
-  const state = ref<SearchState>({
-    loading: false,
-    error: null,
-    total: 0,
-    hasMore: false,
-    page: 1,
-    cards: [],
-  })
+  const state = ref<SearchState>(emptySearchState())
 
   let lastQuery = ''
   let lastOrder: SortOrder = 'edhrec'
@@ -138,7 +137,7 @@ export function useCardSearch() {
   async function run(query: string, page = 1, append = false, order: SortOrder = 'edhrec') {
     if (!query) {
       seq++ // invalidate any in-flight request
-      state.value = { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
+      state.value = emptySearchState()
       return
     }
     const reqId = ++seq
@@ -214,7 +213,7 @@ export function useCardSearch() {
       if (reqId !== seq)
         return
       if (!names.length) {
-        state.value = { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
+        state.value = emptySearchState()
         return
       }
       // Resolve the names to cards (current language) via one Scryfall query.
