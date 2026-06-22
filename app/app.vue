@@ -238,10 +238,15 @@ function openImport() {
   min-height: 100dvh;
 }
 /* Chrome-less mode (landing for guests): the page IS the whole viewport — no top
-   bar / footer, the content area carries everything full-bleed. */
+   bar / footer, the content area carries everything full-bleed. Override the
+   members' content frame (max-width 1720 + padding + auto margins) so the landing
+   truly spans edge to edge on any screen width. */
 .app-shell--bare .content {
   flex: 1;
   min-height: 100dvh;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 /* Viewport-locked mode (deck page): the whole shell is exactly one screen — the
    page fills the space below the top bar and scrolls internally, the footer
