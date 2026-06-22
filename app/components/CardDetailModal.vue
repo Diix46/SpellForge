@@ -292,6 +292,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
           <!-- Printings selector -->
           <CardPrintingPicker
             class="mt-4"
+            :open="open"
             :english-name="englishName"
             :card-key="cardKey"
             :current-print-key="currentPrintKey"

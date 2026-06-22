@@ -266,7 +266,7 @@ function hideAcSoon() {
         v-model="filters.subtype"
         name="subtype"
         :placeholder="t('build.subtype')"
-        @update:model-value="emit('textInput')"
+        @update:model-value="onTextInput"
       />
     </div>
 

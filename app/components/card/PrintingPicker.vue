@@ -19,6 +19,10 @@ interface PrintOption {
 }
 
 const props = defineProps<{
+  /** Whether the parent modal is open — every fresh open starts the gallery
+   *  collapsed (the modal instance persists across opens, so we can't rely on
+   *  unmount). Mirrors the original "reset on each new card view" behaviour. */
+  open: boolean
   /** English card name (the prints lookup key). Empty disables the fetch. */
   englishName: string
   /** Changes when the displayed card changes — used to reset the gallery. */
@@ -39,10 +43,16 @@ const show = ref(false)
 const prints = ref<PrintOption[]>([])
 const loading = ref(false)
 
-// Reset the gallery whenever the card changes.
-watch(() => props.cardKey, () => {
+function reset() {
   show.value = false
   prints.value = []
+}
+// Reset when the card changes (in-place swap) OR each time the modal opens
+// (a persisted instance must still start collapsed on every fresh view).
+watch(() => props.cardKey, reset)
+watch(() => props.open, (isOpen) => {
+  if (isOpen)
+    reset()
 })
 
 async function toggle() {
