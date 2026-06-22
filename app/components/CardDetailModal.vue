@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
 import { displayName, displayOracle, displayType, englishTypeLine, isCommanderType } from '~/composables/useMtg'
+import { useOracleText } from '~/composables/useOracleText'
 
 const props = defineProps<{
   open: boolean
@@ -16,18 +17,7 @@ const emit = defineEmits<{
   'setPrinting': [payload: { name: string, set: string, collectorNumber: string }]
 }>()
 
-const { t, rarityLabel, isFr, locale } = useLocale()
-
-interface PrintOption {
-  id: string
-  set: string
-  setName: string
-  collectorNumber: string
-  lang: string
-  image: string | null
-  priceEur: string | null
-  promo: boolean
-}
+const { t, rarityLabel, isFr } = useLocale()
 
 // Only legendary creatures / planeswalkers can be commanders.
 const canBeCommander = computed(() => isCommanderType(englishTypeLine(props.card?.card ?? null)))
@@ -93,168 +83,28 @@ const cmUrl = computed(() => searchUrl(englishName.value || props.card?.entry.na
 const scryUrl = computed(() => c.value?.scryfall_uri?.replace(/\?.*$/, '') ?? null)
 
 // ----- Printings gallery (pick a specific edition / art) -----
-const showPrints = ref(false)
-const prints = ref<PrintOption[]>([])
-const printsLoading = ref(false)
+// The displayed printing + the deck entry's pinned printing (for highlighting).
+// The gallery's fetch/open/list state lives in CardPrintingPicker.
 const currentPrintKey = computed(() => {
   const card = c.value
   return card ? `${card.set}/${card.collector_number}` : ''
 })
-// The deck entry's pinned printing, if any (set+number stored on the entry).
 const pinnedKey = computed(() => {
   const e = props.card?.entry
   return e?.set && e?.collectorNumber ? `${e.set.toLowerCase()}/${e.collectorNumber}` : ''
 })
+// Stable per-card key so the picker resets when the displayed card changes.
+const cardKey = computed(() => props.card?.card?.id ?? props.card?.entry.name ?? '')
 
-watch(() => props.card, () => {
-  // Reset the gallery when the card changes.
-  showPrints.value = false
-  prints.value = []
-})
-
-async function togglePrints() {
-  showPrints.value = !showPrints.value
-  if (showPrints.value && prints.value.length === 0 && englishName.value) {
-    printsLoading.value = true
-    try {
-      const res = await $fetch<{ prints: PrintOption[] }>('/api/cards/prints', {
-        params: { name: englishName.value, lang: locale.value },
-      })
-      prints.value = res.prints
-    }
-    catch {
-      prints.value = []
-    }
-    finally {
-      printsLoading.value = false
-    }
-  }
-}
-
-function pickPrint(p: PrintOption) {
+function onPickPrint(p: { set: string, collectorNumber: string }) {
   const name = englishName.value || props.card?.entry.name
   if (!name)
     return
   emit('setPrinting', { name, set: p.set, collectorNumber: p.collectorNumber })
 }
 
-// ----- Keyword highlighting -----
-// English keyword → French translation (the common evergreen + popular ones).
-const KW_FR: Record<string, string> = {
-  'Vigilance': 'Vigilance',
-  'Flying': 'Vol',
-  'Trample': 'Piétinement',
-  'Haste': 'Célérité',
-  'Lifelink': 'Lien de vie',
-  'Deathtouch': 'Contact mortel',
-  'First strike': 'Initiative',
-  'Double strike': 'Double initiative',
-  'Reach': 'Portée',
-  'Menace': 'Menace',
-  'Hexproof': 'Défense talismanique',
-  'Shroud': 'Linceul',
-  'Indestructible': 'Indestructible',
-  'Defender': 'Défenseur',
-  'Flash': 'Flash',
-  'Ward': 'Protection',
-  'Scry': 'Méditer',
-  'Prowess': 'Prouesse',
-  'Equip': 'Équipement',
-  'Enchant': 'Enchanter',
-  'Cycling': 'Recyclage',
-  'Kicker': 'Surcoût',
-  'Flashback': 'Flash-back',
-  'Convoke': 'Convocation',
-  'Delve': 'Fouille',
-  'Adventure': 'Aventure',
-  'Mill': 'Meule',
-  'Proliferate': 'Prolifération',
-  'Surveil': 'Veiller',
-  'Crew': 'Conduite',
-  'Embalm': 'Embaumement',
-  'Eternalize': 'Éternisation',
-  'Exalted': 'Exaltation',
-  'Infect': 'Infection',
-  'Toxic': 'Toxique',
-  'Affinity': 'Affinité',
-  'Cascade': 'Cascade',
-  'Storm': 'Tempête',
-  'Annihilator': 'Annihilateur',
-  'Persist': 'Persistance',
-  'Undying': 'Sans fin',
-  'Mentor': 'Mentor',
-  'Riot': 'Émeute',
-  'Afterlife': 'Au-delà',
-  'Escape': 'Évasion',
-  'Companion': 'Compagnon',
-  'Mutate': 'Mutation',
-  'Foretell': 'Présage',
-  'Boast': 'Vantardise',
-  'Disturb': 'Trouble',
-  'Daybound': 'Lié au jour',
-  'Nightbound': 'Lié à la nuit',
-  'Cleave': 'Fendre',
-  'Training': 'Entraînement',
-  'Blitz': 'Razzia',
-  'Casualty': 'Sacrifice',
-  'Connive': 'Combine',
-  'Backup': 'Renfort',
-  'Bargain': 'Tractation',
-}
-
-const keywordTerms = computed<string[]>(() => {
-  const kws = c.value?.keywords ?? []
-  const terms = new Set<string>()
-  for (const kw of kws) {
-    if (isFr.value) {
-      terms.add(KW_FR[kw] ?? kw)
-    }
-    else {
-      terms.add(kw)
-    }
-  }
-  return [...terms].filter(Boolean)
-})
-
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-// Oracle text → typed segments so we can render mana pips and keyword highlights
-// as real elements (no v-html). A segment is plain text, a mana symbol, a
-// keyword to highlight, or a line break.
-type Segment
-  = | { t: 'text', v: string }
-    | { t: 'mana', v: string }
-    | { t: 'kw', v: string }
-    | { t: 'br' }
-
-const oracleSegments = computed<Segment[]>(() => {
-  const text = oracle.value
-  if (!text)
-    return []
-  const terms = [...keywordTerms.value].filter(Boolean).sort((a, b) => b.length - a.length)
-  // One regex: a {mana} token, a newline, or any keyword (whole-word-ish).
-  const kwAlt = terms.length ? `|(?<kw>(?<=^|[^\\p{L}])(?:${terms.map(escapeRe).join('|')})(?=$|[^\\p{L}]))` : ''
-  const re = new RegExp(`(?<mana>\\{[^}]+\\})|(?<br>\\n)${kwAlt}`, 'giu')
-  const out: Segment[] = []
-  let last = 0
-  for (const m of text.matchAll(re)) {
-    if (m.index > last)
-      out.push({ t: 'text', v: text.slice(last, m.index) })
-    const g = m.groups ?? {}
-    if (g.mana)
-      out.push({ t: 'mana', v: g.mana.replace(/[{}]/g, '') })
-    else if (g.br)
-      out.push({ t: 'br' })
-    else if (g.kw)
-      out.push({ t: 'kw', v: m[0] })
-    last = m.index + m[0].length
-  }
-  if (last < text.length)
-    out.push({ t: 'text', v: text.slice(last) })
-  return out
-})
+// ----- Oracle text: localized keyword chips + typed segments (mana/kw/text) -----
+const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 </script>
 
 <template>
@@ -440,68 +290,14 @@ const oracleSegments = computed<Segment[]>(() => {
           </div>
 
           <!-- Printings selector -->
-          <div class="mt-4 border-t border-(--color-border-subtle) pt-4">
-            <button
-              type="button"
-              class="flex w-full items-center justify-between text-left font-mono text-[11px] uppercase tracking-wider text-(--color-text-mid) transition-colors hover:text-(--color-text-high)"
-              @click="togglePrints"
-            >
-              <span class="flex items-center gap-1.5">
-                <UIcon name="i-lucide-layers" class="h-3.5 w-3.5 text-(--accent-text)" />
-                {{ t('print.versions') }}
-              </span>
-              <UIcon
-                :name="showPrints ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                class="h-4 w-4"
-              />
-            </button>
-
-            <div v-if="showPrints" class="mt-3">
-              <div
-                v-if="printsLoading"
-                class="flex items-center gap-2 font-mono text-xs text-(--color-text-muted)"
-              >
-                <UIcon name="i-lucide-loader-circle" class="h-4 w-4 animate-spin" />
-                {{ t('print.loading') }}
-              </div>
-              <div
-                v-else-if="!prints.length"
-                class="font-mono text-xs text-(--color-text-muted)"
-              >
-                {{ t('print.none') }}
-              </div>
-              <div
-                v-else
-                class="grid max-h-[40vh] grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4"
-              >
-                <button
-                  v-for="p in prints"
-                  :key="p.id"
-                  type="button"
-                  class="group/print relative overflow-hidden rounded-[var(--radius-md)] ring-2 transition-all"
-                  :class="(pinnedKey || currentPrintKey) === `${p.set}/${p.collectorNumber}`
-                    ? 'ring-(--accent-border)'
-                    : 'ring-transparent hover:ring-(--color-border-strong)'"
-                  :title="`${p.setName} · #${p.collectorNumber}${p.priceEur ? ` · ${p.priceEur} €` : ''}`"
-                  @click="pickPrint(p)"
-                >
-                  <img
-                    v-if="p.image"
-                    :src="p.image"
-                    :alt="p.setName"
-                    loading="lazy"
-                    class="block aspect-[63/88] w-full object-cover"
-                  >
-                  <span
-                    class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/70 px-1.5 py-0.5 font-mono text-[8px] text-(--color-text-mid)"
-                  >
-                    <span class="truncate uppercase">{{ p.set }}</span>
-                    <span class="shrink-0 rounded-sm bg-white/10 px-1">{{ p.lang.toUpperCase() }}</span>
-                  </span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <CardPrintingPicker
+            class="mt-4"
+            :english-name="englishName"
+            :card-key="cardKey"
+            :current-print-key="currentPrintKey"
+            :pinned-key="pinnedKey"
+            @pick="onPickPrint"
+          />
 
           <button
             v-if="canBeCommander && !isCommander"
