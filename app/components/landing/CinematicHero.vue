@@ -1269,14 +1269,13 @@ onBeforeUnmount(() => {
 }
 .closeup {
   position: absolute;
-  top: clamp(64px, 14vh, 130px);
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: clamp(20px, 5vh, 48px);
+  right: clamp(20px, 4vw, 56px);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: 3px;
-  text-align: center;
+  text-align: right;
   /* discreet glass plate so the caption reads over the busy pile */
   padding: 8px 16px;
   border-radius: 12px;
@@ -1326,11 +1325,11 @@ onBeforeUnmount(() => {
 }
 .meta-enter-from {
   opacity: 0;
-  transform: translate(-50%, 8px);
+  transform: translateY(8px);
 }
 .meta-leave-to {
   opacity: 0;
-  transform: translate(-50%, -8px);
+  transform: translateY(-8px);
 }
 
 .glass {
