@@ -108,9 +108,6 @@ let mx = 0
 let my = 0
 let cx0 = 0 // viewport centre
 let cy0 = 0
-let parX = 0 // current parallax base offset (px) written to the .pile container
-let parY = 0
-let needsMove = false
 let cw = 180 // card width px
 let ch = 252 // card height px
 let gridCols = 6 // grid columns (solved to cover the viewport)
@@ -321,17 +318,6 @@ function tick(now: number) {
   const dt = Math.min((now - last) / 16.667, 2)
   last = now
 
-  // parallax: write container vars + nothing per-card (layer wrappers read them)
-  if (needsMove) {
-    needsMove = false
-    parX = (mx - cx0) * 0.012
-    parY = (my - cy0) * 0.012
-    if (pileEl) {
-      pileEl.style.setProperty('--px', parX.toFixed(2))
-      pileEl.style.setProperty('--py', parY.toFixed(2))
-    }
-  }
-
   let anyActive = false
   for (let i = 0; i < S.length; i++) {
     const node = S[i]!
@@ -413,12 +399,6 @@ function tick(now: number) {
       const halfCardW = (cw * tscale) / 2
       const halfCardH = (ch * tscale) / 2
       const fitsBeside = sideRoom > cw * 0.9 // enough room to sit beside the panel
-      // The card lives inside a .layer wrapper that is itself parallax-translated
-      // by (parX|parY * dl); subtract that so the picked card lands at an ABSOLUTE
-      // screen position rather than drifting with the parallax.
-      const dl = node.layer === 0 ? 4 : node.layer === 1 ? 9 : 16
-      const compX = parX * dl
-      const compY = parY * dl
       let centreX: number
       let centreY: number
       if (fitsBeside) {
@@ -434,8 +414,8 @@ function tick(now: number) {
       // clamp so the whole scaled card stays on-screen (below the top bar)
       centreX = Math.max(halfCardW + 12, Math.min(vw - halfCardW - 12, centreX))
       centreY = Math.max(halfCardH + 88, Math.min(vh - halfCardH - 24, centreY))
-      tx = centreX - cw / 2 - compX
-      ty = centreY - ch / 2 - compY
+      tx = centreX - cw / 2
+      ty = centreY - ch / 2
       anyActive = true
     }
     else if (node.hovered) {
@@ -477,11 +457,10 @@ function tick(now: number) {
   raf = requestAnimationFrame(tick)
 }
 
-// ---------- pointer: parallax + repulsion ----------
+// ---------- pointer: cursor repulsion ----------
 function onMove(e: PointerEvent) {
   mx = e.clientX
   my = e.clientY
-  needsMove = true
   lastInputAt = performance.now()
   if (!pointerInside) {
     pointerInside = true
@@ -895,7 +874,6 @@ function onImgLoad(e: Event) {
         v-for="l in 3"
         :key="`layer-${l}`"
         class="layer"
-        :style="{ '--dl': l === 1 ? 4 : l === 2 ? 9 : 16 }"
       >
         <template v-for="(c, i) in cards" :key="c.name + i">
           <div
@@ -1043,8 +1021,6 @@ function onImgLoad(e: Event) {
 .layer {
   position: absolute;
   inset: 0;
-  transform: translate3d(calc(var(--px, 0) * var(--dl) * 1px), calc(var(--py, 0) * var(--dl) * 1px), 0);
-  will-change: transform;
 }
 .card {
   position: absolute;
