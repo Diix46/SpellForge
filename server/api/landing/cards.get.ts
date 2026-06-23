@@ -21,6 +21,7 @@ interface ScryCard {
 export interface LandingCard {
   name: string
   image: string // the full bordered card (normal) — for the interactive card-pile hero
+  art: string // landscape art crop — for compact thumbnails (e.g. the steps mockups)
   artist: string // illustrator credit (shown in the click-to-preview modal)
   colors: string[] // WUBRG letters (empty = colourless)
 }
@@ -36,10 +37,9 @@ const QUERY = 'is:hires game:paper -is:digital -is:ub -t:token -t:emblem -t:basi
 // and repeats from the pool only on very large/ultrawide screens.
 const POOL_SIZE = 90
 
-// Gate cards to those with a real art crop (a quality bar — skips cards whose art
-// didn't resolve) even though only the full `image` is shipped to the client.
-function hasArt(c: ScryCard): boolean {
-  return Boolean(c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop)
+// Landscape art crop — also gates out cards whose art didn't resolve (quality bar).
+function art(c: ScryCard): string | null {
+  return c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop ?? null
 }
 function image(c: ScryCard): string | null {
   return c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? null
@@ -57,10 +57,11 @@ export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[]
 
   const data = await res.json() as { data?: ScryCard[] }
   const all = (data.data ?? [])
-    .filter(c => hasArt(c) && image(c) && c.name)
+    .filter(c => art(c) && image(c) && c.name)
     .map<LandingCard>(c => ({
       name: c.name!,
       image: image(c)!,
+      art: art(c)!,
       artist: c.artist ?? c.card_faces?.[0]?.artist ?? '',
       colors: (c.colors ?? c.color_identity ?? []).map(x => x.toLowerCase()),
     }))

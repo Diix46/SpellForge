@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
 import { useScrollReveal } from '~/composables/useScrollReveal'
@@ -13,6 +13,25 @@ const { show: openAuth } = useAuthOverlay()
 
 const root = ref<HTMLElement | null>(null)
 useScrollReveal(() => root.value)
+
+// Real Magic cards for the "how it works" step mockups (Coach suggestions + the
+// printed PDF sheet) so the demos show actual cards, not abstract placeholders.
+interface DemoCard { name: string, image: string, art: string, colors: string[] }
+const demoCards = ref<DemoCard[]>([])
+const coachCards = ref<DemoCard[]>([])
+onMounted(async () => {
+  if (!import.meta.client)
+    return
+  try {
+    const { cards } = await $fetch<{ cards: DemoCard[] }>('/api/landing/cards', { query: { _: Date.now() } })
+    const pool = (cards ?? []).filter(c => c.image && c.art)
+    demoCards.value = pool.slice(0, 9) // fills the 3×3 PDF sheet
+    coachCards.value = pool.slice(9, 12) // 3 distinct cards for the Coach demo
+  }
+  catch {
+    // graceful: the mockups fall back to placeholder tiles if the fetch fails
+  }
+})
 
 const FEATURES = [
   { icon: 'i-lucide-wand-sparkles', key: 'f1', glow: '79,168,232' },
@@ -135,27 +154,39 @@ function resetTilt(e: PointerEvent) {
               </div>
             </div>
 
-            <!-- 2) Coach: suggestion chips with add/keep states -->
+            <!-- 2) Coach: real suggested cards (art thumb + name) with add/cut state -->
             <div v-else-if="s.key === 's2'" class="art-card art-coach">
-              <div class="art-coach-row">
+              <div class="art-coach-head">
                 <UIcon name="i-lucide-sparkles" class="art-coach-ic" />
                 <span class="art-coach-label">{{ t('ai.toAdd') }}</span>
               </div>
-              <div class="art-chip art-chip--add">
-                <UIcon name="i-lucide-plus" class="h-3 w-3" /> Cultivate
+              <div
+                v-for="(c, ci) in coachCards"
+                :key="c.name"
+                class="art-sugg"
+                :class="ci === 2 ? 'art-sugg--cut' : 'art-sugg--add'"
+              >
+                <span class="art-sugg-thumb">
+                  <img :src="c.art" alt="" loading="lazy" decoding="async">
+                </span>
+                <span class="art-sugg-name">{{ c.name }}</span>
+                <UIcon :name="ci === 2 ? 'i-lucide-scissors' : 'i-lucide-plus'" class="art-sugg-act" />
               </div>
-              <div class="art-chip art-chip--add">
-                <UIcon name="i-lucide-plus" class="h-3 w-3" /> Swords to Plowshares
-              </div>
-              <div class="art-chip art-chip--cut">
-                <UIcon name="i-lucide-scissors" class="h-3 w-3" /> Divination
-              </div>
+              <!-- fallback skeleton while cards load -->
+              <template v-if="!coachCards.length">
+                <div v-for="n in 3" :key="n" class="art-sugg art-sugg--skel">
+                  <span class="art-sugg-thumb" />
+                  <span class="art-sugg-name art-skel-line" />
+                </div>
+              </template>
             </div>
 
-            <!-- 3) Print: a PDF sheet with cut guides -->
+            <!-- 3) Print: a real PDF sheet of actual card images with cut guides -->
             <div v-else class="art-card art-print">
               <div class="art-sheet">
-                <span v-for="n in 9" :key="n" class="art-mini-card" />
+                <span v-for="n in 9" :key="n" class="art-mini-card">
+                  <img v-if="demoCards[n - 1]" :src="demoCards[n - 1]?.image" alt="" loading="lazy" decoding="async">
+                </span>
                 <span class="art-cut art-cut--v1" />
                 <span class="art-cut art-cut--v2" />
                 <span class="art-cut art-cut--h1" />
@@ -517,14 +548,13 @@ function resetTilt(e: PointerEvent) {
   border-radius: var(--radius-md);
   background: linear-gradient(120deg, rgb(var(--lp-a)), rgb(var(--lp-b)));
 }
-/* 2) Coach suggestion chips */
+/* 2) Coach suggestions — real cards (art thumbnail + name + add/cut state) */
 .art-coach {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-items: flex-start;
 }
-.art-coach-row {
+.art-coach-head {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -533,7 +563,7 @@ function resetTilt(e: PointerEvent) {
 .art-coach-ic {
   width: 15px;
   height: 15px;
-  color: rgb(var(--lp-a));
+  color: rgb(var(--glow));
 }
 .art-coach-label {
   font-family: var(--font-mono);
@@ -542,25 +572,73 @@ function resetTilt(e: PointerEvent) {
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
-.art-chip {
-  display: inline-flex;
+.art-sugg {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
+  padding: 5px 9px 5px 5px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-1);
+}
+.art-sugg-thumb {
+  flex-shrink: 0;
+  width: 40px;
+  height: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--color-surface-3);
+}
+.art-sugg-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.art-sugg-name {
+  flex: 1;
+  min-width: 0;
   font-size: 12.5px;
   font-weight: 500;
-  padding: 6px 11px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-high);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.art-chip--add {
+.art-sugg-act {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+}
+.art-sugg--add {
+  border-color: rgba(56, 184, 131, 0.32);
+}
+.art-sugg--add .art-sugg-act {
   color: rgb(56, 184, 131);
-  background: rgba(56, 184, 131, 0.1);
-  border-color: rgba(56, 184, 131, 0.3);
 }
-.art-chip--cut {
+.art-sugg--cut {
+  border-color: rgba(232, 88, 68, 0.3);
+}
+.art-sugg--cut .art-sugg-name {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+.art-sugg--cut .art-sugg-act {
   color: rgb(232, 120, 100);
-  background: rgba(232, 88, 68, 0.08);
-  border-color: rgba(232, 88, 68, 0.28);
+}
+.art-sugg--skel .art-sugg-thumb,
+.art-skel-line {
+  background: linear-gradient(90deg, var(--color-surface-2), var(--color-surface-3), var(--color-surface-2));
+  background-size: 200% 100%;
+  animation: skelShimmer 1.4s ease-in-out infinite;
+}
+.art-skel-line {
+  height: 11px;
+  border-radius: 4px;
+}
+@keyframes skelShimmer {
+  to {
+    background-position: -200% 0;
+  }
 }
 /* 3) PDF print sheet with cut guides */
 .art-print {
@@ -582,9 +660,20 @@ function resetTilt(e: PointerEvent) {
   gap: 7px;
 }
 .art-mini-card {
+  position: relative;
   border-radius: 2px;
+  overflow: hidden;
   background: linear-gradient(140deg, #2a2c3a, #3c3550);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.art-mini-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* show the top (art) of each card so the sheet reads as real cards */
+  object-position: top center;
 }
 .art-cut {
   position: absolute;
