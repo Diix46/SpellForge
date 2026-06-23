@@ -138,6 +138,8 @@ const DAMP = 0.86
 const K_ROT = 0.1
 const REP_R = 190 // repulsion radius px
 const REP_R2 = REP_R * REP_R
+const REP_DEADZONE = 70 // cards whose centre is within this of the cursor don't flee
+const REP_DEADZONE2 = REP_DEADZONE * REP_DEADZONE
 const PUSH = 64 // max repulsion offset px
 const FRICTION = 0.93
 const MAX_THROW = 32 // px/frame clamp
@@ -332,18 +334,19 @@ function tick(now: number) {
       continue
     }
 
-    // repulsion target: pile cards near the cursor get shoved away (the spring
-    // below eases px/py back to 0 when the cursor leaves). The integration loop
-    // is already O(n), so an inline distance check is cheaper than a bucket.
+    // repulsion target: pile cards NEAR the cursor get shoved away in a wave,
+    // but the card actually under the cursor (hovered) is left alone so it stays
+    // put to be clicked (it rises via the hover lift instead). A small deadzone
+    // around the cursor keeps cards stacked right under it from fleeing too.
     node.tpx = 0
     node.tpy = 0
-    if (pointerInside && node.role === 'pile') {
+    if (pointerInside && node.role === 'pile' && !node.hovered) {
       const ncx = node.cx + cw / 2
       const ncy = node.cy + ch / 2
       const ddx = ncx - mx
       const ddy = ncy - my
       const d2 = ddx * ddx + ddy * ddy
-      if (d2 < REP_R2 && d2 > 0.01) {
+      if (d2 < REP_R2 && d2 > REP_DEADZONE2) {
         const d = Math.sqrt(d2)
         const f = (1 - d2 / REP_R2) * PUSH * (0.5 + node.layer * 0.35)
         node.tpx = (ddx / d) * f
