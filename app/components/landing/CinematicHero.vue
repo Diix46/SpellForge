@@ -7,9 +7,10 @@ import { useLocale } from '~/composables/useLocale'
 // Interactive full-screen "card tide" hero: dozens of real Magic cards dumped
 // across the viewport in messy overlap, with a translucent glass panel floating
 // in a carved-out reading pocket at center. The pile is ALIVE — it breathes (pure
-// CSS), shoves away from the cursor, lifts on hover, opens a full close-up on
-// click (and auto-cycles a featured card when idle), and lets you grab & fling
-// cards with light inertia. The hero accent reacts to the focused card's mana.
+// CSS), drifts in depth as you move the cursor (parallax), shoves away from the
+// cursor, lifts on hover, opens a full close-up on click (and auto-cycles a
+// featured card when idle), and lets you grab & fling cards with light inertia.
+// The hero accent reacts to the focused card's mana.
 //
 // Architecture (from a judged design study): hybrid-zones spine.
 //  - Two layers per card: outer .card carries the JS physics transform; inner
@@ -106,6 +107,15 @@ let reasons = 0
 let last = 0
 let mx = 0
 let my = 0
+// Normalised pointer offset from viewport centre (-1..1), eased toward the raw
+// pointer each frame so the parallax glides instead of snapping. Drives the
+// depth-parallax: the whole pile drifts opposite the cursor, deeper layers less,
+// nearer layers more — so the tide reads as 3D and "changeant" as you move.
+let pdx = 0
+let pdy = 0
+let pdxTarget = 0
+let pdyTarget = 0
+let parallaxReason = false // holds one loop reason while the depth glides back
 let cx0 = 0 // viewport centre
 let cy0 = 0
 let cw = 180 // card width px
@@ -143,6 +153,10 @@ const REP_DEADZONE2 = REP_DEADZONE * REP_DEADZONE
 const PUSH = 64 // max repulsion offset px
 const FRICTION = 0.93
 const MAX_THROW = 32 // px/frame clamp
+// Depth-parallax: max px the pointer can shift each layer (0=deepest … 2=nearest).
+// Nearer cards travel further → the pile gains apparent depth on cursor move.
+const PARALLAX_LAYER = [10, 22, 38]
+const PARALLAX_EASE = 0.06 // how fast pdx/pdy glide toward the pointer target
 const ROTATE_DEAL_MS = 4200
 const PICK_HOLD_MS = 2600
 
@@ -299,7 +313,12 @@ function layout() {
 function writeNode(node: Node, el: HTMLElement | null | undefined) {
   if (!el)
     return
-  const t = `translate3d(${(node.cx + node.px) | 0}px,${(node.cy + node.py) | 0}px,0) rotate(${node.crot.toFixed(1)}deg) scale(${node.cscale.toFixed(3)})`
+  // Depth-parallax: shift the pile opposite the cursor, deeper layers less. Only
+  // resting pile cards parallax — a picked/dragged/thrown card owns its own pose.
+  const dl = node.role === 'pile' ? PARALLAX_LAYER[node.layer]! : 0
+  const qx = (node.cx + node.px - pdx * dl) | 0
+  const qy = (node.cy + node.py - pdy * dl) | 0
+  const t = `translate3d(${qx}px,${qy}px,0) rotate(${node.crot.toFixed(1)}deg) scale(${node.cscale.toFixed(3)})`
   if (t !== node.lastT) {
     el.style.transform = t
     node.lastT = t
@@ -320,7 +339,19 @@ function tick(now: number) {
   const dt = Math.min((now - last) / 16.667, 2)
   last = now
 
-  let anyActive = false
+  // Ease the parallax offset toward the pointer target (read once, per the
+  // read-then-write rule). Keep the loop alive while it's still gliding so the
+  // pile finishes drifting even when every card is otherwise at rest — after the
+  // cursor leaves (releaseLoop) we hold ONE dedicated reason until it settles.
+  pdx += (pdxTarget - pdx) * PARALLAX_EASE * dt
+  pdy += (pdyTarget - pdy) * PARALLAX_EASE * dt
+  const parallaxMoving = Math.abs(pdxTarget - pdx) > 0.0008 || Math.abs(pdyTarget - pdy) > 0.0008
+  if (!parallaxMoving && parallaxReason) {
+    // depth has settled → release the glide-back reason held by onLeave
+    parallaxReason = false
+    releaseLoop()
+  }
+  let anyActive = parallaxMoving
   for (let i = 0; i < S.length; i++) {
     const node = S[i]!
     const el = els[i]
@@ -464,6 +495,9 @@ function tick(now: number) {
 function onMove(e: PointerEvent) {
   mx = e.clientX
   my = e.clientY
+  // normalised pointer offset from centre (-1..1) → parallax target
+  pdxTarget = Math.max(-1, Math.min(1, (mx - cx0) / (cx0 || 1)))
+  pdyTarget = Math.max(-1, Math.min(1, (my - cy0) / (cy0 || 1)))
   lastInputAt = performance.now()
   if (!pointerInside) {
     pointerInside = true
@@ -474,6 +508,15 @@ function onLeave() {
   if (!pointerInside)
     return
   pointerInside = false
+  // glide the pile back to neutral depth: hold a dedicated loop reason BEFORE
+  // releasing the pointer reason, so dropping the pointer can't cancel the rAF
+  // mid-glide (the tick releases this reason once the depth has settled).
+  pdxTarget = 0
+  pdyTarget = 0
+  if (!parallaxReason && (Math.abs(pdx) > 0.0008 || Math.abs(pdy) > 0.0008)) {
+    parallaxReason = true
+    requestLoop()
+  }
   for (const node of S) {
     node.tpx = 0
     node.tpy = 0
