@@ -117,6 +117,7 @@ let cx0 = 0 // viewport centre
 let cy0 = 0
 let cw = 180 // card width px
 let ch = 252 // card height px
+let barH = 76 // top-bar height px (measured once at layout, used to centre zone cards on the panel)
 let gridCols = 6 // grid columns (solved to cover the viewport)
 let gridRows = 6 // grid rows
 
@@ -157,7 +158,8 @@ const MAX_THROW = 32 // px/frame clamp
 // Nearer cards travel further → the pile gains apparent depth on cursor move.
 const PARALLAX_LAYER = [10, 22, 38]
 const PARALLAX_EASE = 0.06 // how fast pdx/pdy glide toward the pointer target
-const ROTATE_DEAL_MS = 4200 // auto-deal cadence (fills a free zone when idle)
+const ROTATE_DEAL_MS = 9000 // auto-deal cadence (fills a free zone when idle) — slow + spaced
+const DEAL_IDLE_MS = 4000 // how long with no input before auto-deal resumes
 // Reserved z-tiers (never reordered per-frame): pile = layer*100+jitter (≤299),
 // a showcased card rides at 9000, a grabbed/thrown card above that at 9500.
 const Z_ZONE = 9000
@@ -210,18 +212,30 @@ function zoneTarget(side: number): { tx: number, ty: number, tscale: number } {
   const halfCardW = (cw * tscale) / 2
   const halfCardH = (ch * tscale) / 2
   const fitsBeside = sideRoom > cw * 0.9
+
+  // Vertical: align with the GLASS PANEL's centre, not the raw viewport centre.
+  // The panel lives in .stage (flex:1 below the top bar), so its centre sits ~half
+  // the bar height below cy0. barH is measured once at layout (never per-frame, to
+  // avoid a forced reflow in the tick) and biases the target by barH/2.
+  const panelCy = cy0 + barH / 2
+
   let centreX: number
   let centreY: number
   if (fitsBeside) {
-    centreX = cx0 + dir * (halfPanelW + 28 + halfCardW)
-    centreY = cy0
+    // SYMMETRIC offset: pick the gap that fits on BOTH sides (the tighter one wins),
+    // so the left and right cards have identical margins to the panel and the edges.
+    const desired = halfPanelW + 28 + halfCardW
+    const maxOffset = vw / 2 - halfCardW - 12 // keep the card fully on-screen
+    const offset = Math.min(desired, maxOffset)
+    centreX = cx0 + dir * offset
+    centreY = panelCy
   }
   else {
     // too narrow (mobile) → stack the two slots above/below the title instead
     centreX = cx0
-    centreY = cy0 - ch * 0.5 + dir * (halfCardH + 12)
+    centreY = panelCy - ch * 0.5 + dir * (halfCardH + 12)
   }
-  centreX = Math.max(halfCardW + 12, Math.min(vw - halfCardW - 12, centreX))
+  // clamp Y on-screen only (X is already symmetric + on-screen above)
   centreY = Math.max(halfCardH + 88, Math.min(vh - halfCardH - 24, centreY))
   return { tx: centreX - cw / 2, ty: centreY - ch / 2, tscale }
 }
@@ -273,6 +287,9 @@ function layout() {
   const vh = window.innerHeight
   cx0 = vw / 2
   cy0 = vh / 2
+  // measure the top bar ONCE here (not per-frame) so zone cards centre on the panel
+  const barEl = sectionEl?.querySelector<HTMLElement>('.bar')
+  barH = barEl ? barEl.getBoundingClientRect().height : 76
   if (pileEl) {
     pileEl.style.setProperty('--cw', `${cw}px`)
     pileEl.style.setProperty('--ch', `${ch}px`)
@@ -643,7 +660,7 @@ function startDeal() {
     if (!visible || document.hidden)
       return
     // only when idle (no recent pointer/drag) and not mid-grab
-    if (performance.now() - lastInputAt < 2500)
+    if (performance.now() - lastInputAt < DEAL_IDLE_MS)
       return
     if (dragId >= 0)
       return
