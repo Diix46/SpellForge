@@ -1275,8 +1275,19 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   text-align: center;
+  /* discreet glass plate so the caption reads over the busy pile */
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgba(12, 11, 14, 0.55);
+  border: 1px solid rgba(var(--accent), 0.22);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+  box-shadow:
+    0 8px 28px -12px rgba(0, 0, 0, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 1.2s ease;
 }
 .closeup-name {
   font-family: var(--font-display);
