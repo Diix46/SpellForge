@@ -152,10 +152,10 @@ function rand(a: number, b: number): number {
 // pile, while keeping the card COUNT under a perf cap. We grow the card size
 // until cols*rows fits the cap — so a huge/ultrawide screen gets fewer, bigger
 // cards but is still fully tiled (no bald gaps). Returns the grid + card width.
-const OVERLAP = 0.64 // cell pitch as a fraction of the card (lower = more overlap)
+const OVERLAP = 0.52 // cell pitch as a fraction of the card (lower = more overlap)
 const OVERSCAN = 1.18 // grid extends 9% past each edge so cards bleed off-screen
 function solveGrid(vw: number, vh: number) {
-  const cap = vw <= 720 ? 30 : vw <= 1100 ? 64 : 132
+  const cap = vw <= 720 ? 40 : vw <= 1100 ? 90 : 170
   const minW = vw <= 720 ? Math.max(108, vw * 0.28) : 150
   const maxW = vw <= 720 ? 200 : 300
   let cw = minW
@@ -237,8 +237,8 @@ function layout() {
     const gr = Math.floor(i / cols)
     // cell centre + jitter so the grid dissolves into a messy dump (kept under
     // half a pitch so coverage stays gap-free even with overlap)
-    let x = offX + (gc + 0.5) * pitchX + rand(-0.46, 0.46) * pitchX
-    let y = offY + (gr + 0.5) * pitchY + rand(-0.46, 0.46) * pitchY
+    let x = offX + (gc + 0.5) * pitchX + rand(-0.3, 0.3) * pitchX
+    let y = offY + (gr + 0.5) * pitchY + rand(-0.3, 0.3) * pitchY
     // diagonal "drift current" so the pile reads as flowing, not uniform noise
     x += Math.sin((gr + gc) * 0.6) * 6
 
@@ -860,10 +860,6 @@ onBeforeUnmount(() => {
     document.removeEventListener('visibilitychange', onVisibility)
   }
 })
-
-function onImgLoad(e: Event) {
-  ;(e.target as HTMLElement).classList.add('loaded')
-}
 </script>
 
 <template>
@@ -871,28 +867,21 @@ function onImgLoad(e: Event) {
     <!-- ===== Card pile (decorative) ===== -->
     <div ref="pileRef" class="pile" aria-hidden="true">
       <div
-        v-for="l in 3"
-        :key="`layer-${l}`"
-        class="layer"
+        v-for="(c, i) in cards"
+        :key="c.name + i"
+        :ref="setElRef(i)"
+        class="card"
+        :style="{ zIndex: S[i]?.z ?? 0 }"
+        @pointerenter="onCardEnter(i)"
+        @pointerleave="onCardLeaveHover(i)"
+        @pointerdown="onCardDown(i, $event)"
+        @pointermove="onCardMove(i, $event)"
+        @pointerup="onCardUp(i, $event)"
+        @pointercancel="onCardCancel(i)"
       >
-        <template v-for="(c, i) in cards" :key="c.name + i">
-          <div
-            v-if="S[i] && S[i].layer === l - 1"
-            :ref="setElRef(i)"
-            class="card"
-            :style="{ zIndex: S[i].z }"
-            @pointerenter="onCardEnter(i)"
-            @pointerleave="onCardLeaveHover(i)"
-            @pointerdown="onCardDown(i, $event)"
-            @pointermove="onCardMove(i, $event)"
-            @pointerup="onCardUp(i, $event)"
-            @pointercancel="onCardCancel(i)"
-          >
-            <div :ref="setInnerRef(i)" class="card-inner">
-              <img :src="c.image" alt="" loading="lazy" decoding="async" draggable="false" @load="onImgLoad">
-            </div>
-          </div>
-        </template>
+        <div :ref="setInnerRef(i)" class="card-inner">
+          <img :src="c.image" alt="" loading="eager" decoding="async" draggable="false">
+        </div>
       </div>
     </div>
 
@@ -1011,17 +1000,13 @@ function onImgLoad(e: Event) {
   color: #f4f1ea;
 }
 
-/* ===== Pile + layers ===== */
+/* ===== Pile ===== */
 .pile {
   position: absolute;
   inset: 0;
   z-index: 0;
-}
-.layer {
-  position: absolute;
-  inset: 0;
-  /* Layers are full-screen grouping/z-order wrappers; without this the top
-     layer's empty areas would swallow clicks meant for cards in lower layers. */
+  /* The pile wrapper spans the screen; its empty gaps must not swallow clicks
+     (cards re-enable pointer-events). Depth ordering is via each card's z-index. */
   pointer-events: none;
 }
 .card {
@@ -1033,7 +1018,7 @@ function onImgLoad(e: Event) {
   transform-origin: center;
   backface-visibility: hidden;
   cursor: grab;
-  pointer-events: auto; /* re-enable: the parent .layer is pointer-events:none */
+  pointer-events: auto;
 }
 .card:active {
   cursor: grabbing;
@@ -1052,13 +1037,8 @@ function onImgLoad(e: Event) {
   box-shadow:
     0 1px 1px rgba(0, 0, 0, 0.5),
     0 14px 34px -12px rgba(0, 0, 0, 0.8);
-  opacity: 0;
-  transition: opacity 0.5s ease;
   -webkit-user-drag: none;
   user-select: none;
-}
-.card img.loaded {
-  opacity: 1;
 }
 @keyframes breathe {
   to {
