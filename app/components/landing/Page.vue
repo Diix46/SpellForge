@@ -563,7 +563,7 @@ function resetTilt(e: PointerEvent) {
   position: relative;
   overflow: hidden;
   text-align: center;
-  padding: 72px 32px;
+  padding: 52px 32px;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--color-border-subtle);
   background: radial-gradient(120% 120% at 50% 0%, rgba(var(--lp-b), 0.12), transparent 60%), var(--color-surface-1);
@@ -616,8 +616,8 @@ function resetTilt(e: PointerEvent) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 40px 24px 52px;
+  gap: 6px;
+  padding: 22px 24px 26px;
   border-top: 1px solid var(--color-border-subtle);
   text-align: center;
 }
