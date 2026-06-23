@@ -55,7 +55,6 @@ function resetTilt(e: PointerEvent) {
     <!-- ============ FEATURES (bento) ============ -->
     <section class="section">
       <div class="sec-head" data-reveal>
-        <span class="kicker">{{ t('landing.featuresKicker') }}</span>
         <h2 class="sec-title">
           {{ t('landing.featuresTitle') }}
         </h2>
@@ -88,7 +87,6 @@ function resetTilt(e: PointerEvent) {
     <!-- ============ STEPS ============ -->
     <section class="section">
       <div class="sec-head" data-reveal>
-        <span class="kicker">{{ t('landing.stepsKicker') }}</span>
         <h2 class="sec-title">
           {{ t('landing.stepsTitle') }}
         </h2>
@@ -121,7 +119,6 @@ function resetTilt(e: PointerEvent) {
     <section class="section">
       <div class="final" data-reveal>
         <div class="final-aurora" aria-hidden="true" />
-        <span class="kicker">{{ t('landing.finalKicker') }}</span>
         <h2 class="final-title">
           {{ t('landing.finalTitle') }}
         </h2>
@@ -226,16 +223,6 @@ function resetTilt(e: PointerEvent) {
 .sec-head {
   text-align: center;
   margin-bottom: 52px;
-}
-.kicker {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: rgb(var(--lp-a));
-  margin-bottom: 14px;
 }
 .sec-title {
   font-family: var(--font-display);
