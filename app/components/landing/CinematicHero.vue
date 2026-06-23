@@ -97,6 +97,8 @@ let mx = 0
 let my = 0
 let cx0 = 0 // viewport centre
 let cy0 = 0
+let parX = 0 // current parallax base offset (px) written to the .pile container
+let parY = 0
 let needsMove = false
 let cw = 180 // card width px
 let ch = 252 // card height px
@@ -104,6 +106,8 @@ let gridCols = 6 // grid columns (solved to cover the viewport)
 let gridRows = 6 // grid rows
 
 let pickedId = -1
+let pickSide = 1 // next pick lands on this side of the panel (1 = right, -1 = left)
+let pickedSide = 1 // the side chosen for the CURRENT pick (stable during the hold)
 let dragId = -1
 let grabDX = 0
 let grabDY = 0
@@ -307,9 +311,11 @@ function tick(now: number) {
   // parallax: write container vars + nothing per-card (layer wrappers read them)
   if (needsMove) {
     needsMove = false
+    parX = (mx - cx0) * 0.012
+    parY = (my - cy0) * 0.012
     if (pileEl) {
-      pileEl.style.setProperty('--px', ((mx - cx0) * 0.012).toFixed(2))
-      pileEl.style.setProperty('--py', ((my - cy0) * 0.012).toFixed(2))
+      pileEl.style.setProperty('--px', parX.toFixed(2))
+      pileEl.style.setProperty('--py', parY.toFixed(2))
     }
   }
 
@@ -380,10 +386,43 @@ function tick(now: number) {
     let trot = node.homeRot
     let tscale = node.baseScale
     if (node.role === 'picked') {
-      tx = cx0 - cw / 2
-      ty = cy0 - ch / 2 - ch * 0.55 // offset above the panel title
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      // Scale the close-up DOWN to fit beside the panel + stay fully on-screen.
+      const halfPanelW = Math.min(600, vw * 0.92) / 2
+      const sideRoom = vw / 2 - halfPanelW - 40 // free width on one side of the panel
+      // target a comfortable size, but never wider than the side gap or taller
+      // than the viewport (with margins)
+      const maxByW = (sideRoom - 24) / cw
+      const maxByH = (vh - 120) / ch
+      tscale = Math.max(0.9, Math.min(vw <= 720 ? 1.4 : 1.55, maxByW, maxByH))
       trot = 0
-      tscale = window.innerWidth <= 720 ? 1.35 : 1.5
+      const halfCardW = (cw * tscale) / 2
+      const halfCardH = (ch * tscale) / 2
+      const fitsBeside = sideRoom > cw * 0.9 // enough room to sit beside the panel
+      // The card lives inside a .layer wrapper that is itself parallax-translated
+      // by (parX|parY * dl); subtract that so the picked card lands at an ABSOLUTE
+      // screen position rather than drifting with the parallax.
+      const dl = node.layer === 0 ? 4 : node.layer === 1 ? 9 : 16
+      const compX = parX * dl
+      const compY = parY * dl
+      let centreX: number
+      let centreY: number
+      if (fitsBeside) {
+        // beside the panel, vertically centred on the viewport
+        centreX = cx0 + pickedSide * (halfPanelW + 28 + halfCardW)
+        centreY = cy0
+      }
+      else {
+        // too narrow (mobile) → rise above the title instead
+        centreX = cx0
+        centreY = cy0 - ch * 0.5
+      }
+      // clamp so the whole scaled card stays on-screen (below the top bar)
+      centreX = Math.max(halfCardW + 12, Math.min(vw - halfCardW - 12, centreX))
+      centreY = Math.max(halfCardH + 88, Math.min(vh - halfCardH - 24, centreY))
+      tx = centreX - cw / 2 - compX
+      ty = centreY - ch / 2 - compY
       anyActive = true
     }
 
@@ -450,6 +489,10 @@ function pick(i: number) {
   if (node.role === 'dragging' || node.role === 'thrown')
     return
   pickedId = i
+  // Alternate the side the card rises to (right, then left, …) so it never sits
+  // behind the centred hero panel.
+  pickedSide = pickSide
+  pickSide = -pickSide
   node.role = 'picked'
   node.tpx = 0
   node.tpy = 0
