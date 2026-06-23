@@ -179,9 +179,10 @@ function resetTilt(e: PointerEvent) {
     <!-- ============ Footer ============ -->
     <footer class="lp-foot">
       <div class="lp-foot-brand">
-        <AppLogo :wordmark="false" :size="20" />
+        <AppLogo :wordmark="false" :size="18" />
         <span class="lp-foot-name">Spellforge</span>
       </div>
+      <span class="lp-foot-sep" aria-hidden="true">·</span>
       <p class="lp-foot-copy">
         {{ t('landing.copyright') }}
       </p>
@@ -614,30 +615,33 @@ function resetTilt(e: PointerEvent) {
   z-index: 2;
   margin-top: auto; /* pin to the viewport bottom when content is short */
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap; /* drops to a 2nd line only on very narrow screens */
   align-items: center;
-  gap: 3px;
-  padding: 7px 24px 8px;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
   border-top: 1px solid var(--color-border-subtle);
   text-align: center;
 }
 .lp-foot-brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
 }
 .lp-foot-name {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--color-text-high);
 }
+.lp-foot-sep {
+  color: var(--color-text-disabled);
+}
 .lp-foot-copy {
   margin: 0;
-  max-width: 460px;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--color-text-muted);
 }
 

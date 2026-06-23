@@ -297,7 +297,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.subtitle': 'Gérez vos decks Magic, affûtez-les avec le Coach IA, et imprimez vos proxies en PDF (FR ou EN).',
     'landing.ctaPrimary': 'Commencer gratuitement',
     'landing.ctaSecondary': 'J\'ai déjà un compte',
-    'landing.copyright': 'Spellforge — outil non officiel pour fans. Magic: The Gathering est © Wizards of the Coast.',
+    'landing.copyright': 'Outil non officiel · Magic: The Gathering est © Wizards of the Coast.',
     'landing.illus': 'Illustration', // card-preview credit prefix (e.g. "Illustration · John Avon")
     'landing.closePreview': 'Fermer l\'aperçu',
     'landing.featuresTitle': 'De l\'idée à la table',
@@ -592,7 +592,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.subtitle': 'Manage your Magic decks, sharpen them with the AI Coach, and print your proxies as PDF (EN or FR).',
     'landing.ctaPrimary': 'Start for free',
     'landing.ctaSecondary': 'I already have an account',
-    'landing.copyright': 'Spellforge — unofficial fan tool. Magic: The Gathering is © Wizards of the Coast.',
+    'landing.copyright': 'Unofficial fan tool · Magic: The Gathering is © Wizards of the Coast.',
     'landing.illus': 'Art by', // card-preview credit prefix (e.g. "Art by · John Avon")
     'landing.closePreview': 'Close preview',
     'landing.featuresTitle': 'From idea to the table',
