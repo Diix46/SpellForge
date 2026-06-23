@@ -48,6 +48,7 @@ interface Node {
   tpx: number // repulsion target x
   tpy: number // repulsion target y
   role: Role
+  hovered: boolean // pointer is over this pile card (discreet lift)
   lastT: string // last written transform string (dirty-skip)
   active: boolean // will-change toggle
 }
@@ -67,11 +68,21 @@ function accentFor(colors: string[]): string {
   const c = colors.find(x => COLOR_RGB[x])
   return c ? COLOR_RGB[c]! : '210,180,120'
 }
+// One WUBRG letter → its own pip colour (for the preview modal's colour dots).
+function accentForPip(color: string): string {
+  return COLOR_RGB[color] ?? '170,170,180'
+}
 
 // ---- Reactive (UI-only) state ----
 const ready = ref(false)
 const focused = ref<LandingCard | null>(null)
-const accent = computed(() => (focused.value ? accentFor(focused.value.colors) : '210,180,120'))
+// Click/tap a card → a full close-up modal that STAYS until dismissed.
+const preview = ref<LandingCard | null>(null)
+// The accent follows the open modal first, then the transient hover/auto pick.
+const accent = computed(() => {
+  const c = preview.value ?? focused.value
+  return c ? accentFor(c.colors) : '210,180,120'
+})
 
 // Rendered once by v-for; never mutated per-frame.
 const cards = ref<LandingCard[]>([])
@@ -111,7 +122,10 @@ let pickedSide = 1 // the side chosen for the CURRENT pick (stable during the ho
 let dragId = -1
 let grabDX = 0
 let grabDY = 0
-let dwellTimer: ReturnType<typeof setTimeout> | null = null
+// tap detection (a quick press that barely moves opens the preview modal)
+let downX = 0
+let downY = 0
+let downT = 0
 let pickHold: ReturnType<typeof setTimeout> | null = null
 let dealTimer: ReturnType<typeof setInterval> | null = null
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
@@ -132,7 +146,6 @@ const FRICTION = 0.93
 const MAX_THROW = 32 // px/frame clamp
 const ROTATE_DEAL_MS = 4200
 const PICK_HOLD_MS = 2600
-const DWELL_MS = 120
 
 // ---------- helpers ----------
 function rand(a: number, b: number): number {
@@ -425,6 +438,14 @@ function tick(now: number) {
       ty = centreY - ch / 2 - compY
       anyActive = true
     }
+    else if (node.hovered) {
+      // discreet hover lift (the BIG view is the click modal); rise a touch,
+      // straighten slightly, grow a little — stays in place in the pile.
+      ty = node.homeY - 14
+      trot = node.homeRot * 0.6
+      tscale = node.baseScale * 1.12
+      anyActive = true
+    }
 
     const dx = tx - node.cx
     const dy = ty - node.cy
@@ -537,7 +558,7 @@ function startDeal() {
     // only when idle (no recent pointer/drag) and nothing held/picked
     if (performance.now() - lastInputAt < 2500)
       return
-    if (pickedId >= 0 || dragId >= 0)
+    if (pickedId >= 0 || dragId >= 0 || preview.value)
       return
     const candidates: number[] = []
     for (let i = 0; i < S.length; i++) {
@@ -556,19 +577,32 @@ function stopDeal() {
   }
 }
 
-// ---------- pick affordance (hover dwell / click / keyboard) ----------
+// ---------- preview modal (click / tap a card → big close-up that stays) ----------
+function openPreview(card: LandingCard) {
+  // releasing any transient hover/auto pick so the accent + pile settle
+  releasePick()
+  preview.value = card
+  lastInputAt = performance.now()
+}
+function closePreview() {
+  preview.value = null
+  lastInputAt = performance.now()
+}
+
+// ---------- hover lift (a discreet raise; the BIG view is the click modal) ----------
 function onCardEnter(i: number) {
   if (reduce)
     return
-  if (dwellTimer)
-    clearTimeout(dwellTimer)
-  dwellTimer = setTimeout(pick, DWELL_MS, i)
+  const node = S[i]
+  if (!node || node.role !== 'pile')
+    return
+  node.hovered = true
+  requestLoop()
 }
-function onCardLeaveHover() {
-  if (dwellTimer) {
-    clearTimeout(dwellTimer)
-    dwellTimer = null
-  }
+function onCardLeaveHover(i: number) {
+  const node = S[i]
+  if (node)
+    node.hovered = false
 }
 
 // ---------- drag & throw ----------
@@ -596,6 +630,9 @@ function onCardDown(i: number, e: PointerEvent) {
   setActive(node, i, true)
   grabDX = e.clientX - node.cx
   grabDY = e.clientY - node.cy
+  downX = e.clientX
+  downY = e.clientY
+  downT = performance.now()
   ring.length = 0
   ring.push({ x: e.clientX, y: e.clientY, t: performance.now() })
   requestLoop()
@@ -620,6 +657,22 @@ function onCardUp(i: number, e: PointerEvent) {
   if (el)
     el.style.touchAction = ''
   dragId = -1
+
+  // TAP (quick press that barely moved) → open the full close-up modal and snap
+  // the card back home, instead of throwing/placing it.
+  const moved = Math.hypot(e.clientX - downX, e.clientY - downY)
+  const elapsed = performance.now() - downT
+  if (moved < 8 && elapsed < 400) {
+    node.role = 'pile'
+    node.hovered = false
+    setActive(node, i, false)
+    if (el)
+      el.style.zIndex = String(node.z)
+    openPreview(node.card)
+    releaseLoop() // pair the requestLoop in onCardDown
+    return
+  }
+
   // throw velocity from the ring buffer (oldest vs newest)
   let vx = 0
   let vy = 0
@@ -697,6 +750,10 @@ function onVisibility() {
     // park everything; the loop will self-stop next frame
     pointerInside = false
   }
+}
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape' && preview.value)
+    closePreview()
 }
 function onWindowBlur() {
   // a card stuck to the cursor mid-drag would never release otherwise
@@ -776,6 +833,7 @@ onMounted(async () => {
     tpx: 0,
     tpy: 0,
     role: 'pile',
+    hovered: false,
     lastT: '',
     active: false,
   }))
@@ -797,6 +855,7 @@ onMounted(async () => {
 
   window.addEventListener('pointermove', onMove, { passive: true })
   window.addEventListener('blur', onWindowBlur)
+  window.addEventListener('keydown', onKey)
   document.addEventListener('visibilitychange', onVisibility)
   if (sectionEl) {
     io = new IntersectionObserver(onIntersect, { threshold: [0, 0.1, 0.5] })
@@ -809,8 +868,6 @@ onBeforeUnmount(() => {
   if (raf)
     cancelAnimationFrame(raf)
   stopDeal()
-  if (dwellTimer)
-    clearTimeout(dwellTimer)
   if (pickHold)
     clearTimeout(pickHold)
   if (resizeTimer)
@@ -820,6 +877,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('resize', onResize)
     window.removeEventListener('blur', onWindowBlur)
+    window.removeEventListener('keydown', onKey)
     document.removeEventListener('visibilitychange', onVisibility)
   }
 })
@@ -846,7 +904,7 @@ function onImgLoad(e: Event) {
             class="card"
             :style="{ zIndex: S[i].z }"
             @pointerenter="onCardEnter(i)"
-            @pointerleave="onCardLeaveHover"
+            @pointerleave="onCardLeaveHover(i)"
             @pointerdown="onCardDown(i, $event)"
             @pointermove="onCardMove(i, $event)"
             @pointerup="onCardUp(i, $event)"
@@ -927,6 +985,40 @@ function onImgLoad(e: Event) {
     <div class="scroll" aria-hidden="true">
       <UIcon name="i-lucide-chevron-down" />
     </div>
+
+    <!-- ===== Card preview modal (click/tap a card → big readable close-up) ===== -->
+    <Transition name="modal">
+      <div
+        v-if="preview"
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="preview.name"
+        @click="closePreview"
+      >
+        <button type="button" class="modal-close" :aria-label="t('landing.closePreview')" @click="closePreview">
+          <UIcon name="i-lucide-x" class="h-5 w-5" />
+        </button>
+        <!-- stop propagation so clicks on the card itself don't dismiss -->
+        <figure class="modal-card" @click.stop>
+          <img :src="preview.image" :alt="preview.name" decoding="async">
+          <figcaption class="modal-meta">
+            <span class="modal-name">{{ preview.name }}</span>
+            <span class="modal-sub">
+              <span v-if="preview.colors.length" class="modal-pips">
+                <span
+                  v-for="col in preview.colors"
+                  :key="col"
+                  class="modal-pip"
+                  :style="{ background: `rgb(${accentForPip(col)})` }"
+                />
+              </span>
+              <span v-if="preview.artist" class="modal-art">{{ t('landing.illus') }} · {{ preview.artist }}</span>
+            </span>
+          </figcaption>
+        </figure>
+      </div>
+    </Transition>
   </section>
 </template>
 
@@ -1293,6 +1385,111 @@ function onImgLoad(e: Event) {
   }
 }
 
+/* ===== Preview modal (click a card) ===== */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: clamp(20px, 5vh, 64px);
+  background: radial-gradient(120% 120% at 50% 50%, rgba(6, 5, 8, 0.82), rgba(6, 5, 8, 0.94));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+}
+.modal-close {
+  position: absolute;
+  top: clamp(16px, 3vw, 32px);
+  right: clamp(16px, 3vw, 32px);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: #f4f1ea;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: rotate(90deg);
+}
+.modal-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  cursor: default;
+}
+.modal-card img {
+  width: auto;
+  height: min(72vh, 640px);
+  max-width: 92vw;
+  border-radius: 4.8% / 3.5%;
+  box-shadow:
+    0 0 0 1px rgba(var(--accent), 0.3),
+    0 40px 100px -24px rgba(0, 0, 0, 0.9),
+    0 0 80px -20px rgba(var(--accent), 0.5);
+}
+.modal-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.modal-name {
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2.4vw, 1.5rem);
+  font-weight: 600;
+  color: #f6f3ec;
+}
+.modal-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.modal-pips {
+  display: inline-flex;
+  gap: 5px;
+}
+.modal-pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px 0 rgba(0, 0, 0, 0.6);
+}
+.modal-art {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(244, 241, 234, 0.62);
+}
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.28s ease;
+}
+.modal-enter-active .modal-card,
+.modal-leave-active .modal-card {
+  transition:
+    opacity 0.28s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from .modal-card,
+.modal-leave-to .modal-card {
+  opacity: 0;
+  transform: scale(0.86) translateY(14px);
+}
+
 @media (max-width: 720px) {
   /* Hide ONLY the top-bar login (cramped on phones); the panel's secondary
      "I already have an account" CTA (.ghost--lg) must stay so mobile users can
@@ -1308,6 +1505,14 @@ function onImgLoad(e: Event) {
   }
   .scroll {
     animation: none;
+  }
+  .modal-enter-active .modal-card,
+  .modal-leave-active .modal-card {
+    transition: opacity 0.2s ease;
+  }
+  .modal-enter-from .modal-card,
+  .modal-leave-to .modal-card {
+    transform: none;
   }
 }
 </style>

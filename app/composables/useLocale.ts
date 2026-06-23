@@ -300,7 +300,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.trust': 'Données & images via Scryfall · Imports EDHREC',
     'landing.copyright': 'Spellforge — outil non officiel pour fans. Magic: The Gathering est © Wizards of the Coast.',
     'landing.illus': 'Illustration', // gallery credit prefix (e.g. "Illustration · John Avon")
-    'landing.pileHint': 'Attrapez les cartes', // affordance hint over the interactive card pile
+    'landing.pileHint': 'Cliquez, attrapez, lancez les cartes', // affordance hint over the interactive card pile
+    'landing.closePreview': 'Fermer l\'aperçu',
     // Marquee feature words (·-separated; split + repeated into a seamless ribbon).
     'landing.marquee': 'Coach IA·Proxies FR/EN·Import EDHREC·Prix Cardmarket·Decks illimités',
     'landing.featuresKicker': 'Tout pour jouer plus vite',
@@ -601,7 +602,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.trust': 'Data & images via Scryfall · EDHREC imports',
     'landing.copyright': 'Spellforge — unofficial fan tool. Magic: The Gathering is © Wizards of the Coast.',
     'landing.illus': 'Art by', // gallery credit prefix (e.g. "Art by · John Avon")
-    'landing.pileHint': 'Grab the cards', // affordance hint over the interactive card pile
+    'landing.pileHint': 'Click, grab, throw the cards', // affordance hint over the interactive card pile
+    'landing.closePreview': 'Close preview',
     // Marquee feature words (·-separated; split + repeated into a seamless ribbon).
     'landing.marquee': 'AI Coach·EN/FR proxies·EDHREC import·Cardmarket pricing·Unlimited decks',
     'landing.featuresKicker': 'Everything to play faster',
