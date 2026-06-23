@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
 import { useScrollReveal } from '~/composables/useScrollReveal'
 
 // Marketing landing shown on "/" to signed-out visitors (the dashboard renders
 // instead once logged in). The cinematic hero owns its own header + auth CTAs;
-// this page adds the feature/steps/final sections below the fold.
+// this page adds the feature + steps sections below the fold.
 
 const { t, locale } = useLocale()
-const { show: openAuth } = useAuthOverlay()
 
 const root = ref<HTMLElement | null>(null)
 useScrollReveal(() => root.value)
@@ -199,24 +197,6 @@ function resetTilt(e: PointerEvent) {
       </div>
     </section>
 
-    <!-- ============ FINAL CTA ============ -->
-    <section class="section">
-      <div class="final" data-reveal>
-        <div class="final-aurora" aria-hidden="true" />
-        <h2 class="final-title">
-          {{ t('landing.finalTitle') }}
-        </h2>
-        <p class="final-body">
-          {{ t('landing.finalBody') }}
-        </p>
-        <button type="button" class="cta-primary big" @click="openAuth('register')">
-          <UIcon name="i-lucide-sparkles" class="h-5 w-5" />
-          {{ t('landing.finalCta') }}
-          <UIcon name="i-lucide-arrow-right" class="h-5 w-5 arr" />
-        </button>
-      </div>
-    </section>
-
     <!-- ============ Footer ============ -->
     <footer class="lp-foot">
       <div class="lp-foot-brand">
@@ -263,40 +243,6 @@ function resetTilt(e: PointerEvent) {
   overflow-x: hidden;
 }
 
-/* ---------- Shared CTA (hero owns its own; reused by the final section) ---------- */
-.cta-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 26px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #0a0a0b;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(120deg, rgb(var(--lp-a)), rgb(var(--lp-b)));
-  box-shadow:
-    0 0 0 1px rgba(var(--lp-a), 0.3),
-    0 14px 40px -10px rgba(var(--lp-b), 0.7);
-  transition:
-    transform var(--dur) var(--ease-spring),
-    box-shadow var(--dur) var(--ease-out);
-}
-.cta-primary:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    0 0 0 1px rgba(var(--lp-a), 0.5),
-    0 20px 50px -10px rgba(var(--lp-b), 0.9);
-}
-.cta-primary .arr {
-  transition: transform var(--dur) var(--ease-spring);
-}
-.cta-primary:hover .arr {
-  transform: translateX(4px);
-}
-.cta-primary.big {
-  padding: 17px 34px;
-  font-size: 16.5px;
-}
 /* ---------- Sections ---------- */
 .section {
   position: relative;
@@ -710,56 +656,6 @@ function resetTilt(e: PointerEvent) {
   font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
-}
-
-/* ---------- Final CTA ---------- */
-.final {
-  position: relative;
-  overflow: hidden;
-  text-align: center;
-  padding: 52px 32px;
-  border-radius: var(--radius-2xl);
-  border: 1px solid var(--color-border-subtle);
-  background: radial-gradient(120% 120% at 50% 0%, rgba(var(--lp-b), 0.12), transparent 60%), var(--color-surface-1);
-}
-.final-aurora {
-  position: absolute;
-  width: 60%;
-  height: 200%;
-  left: 20%;
-  top: -50%;
-  background: radial-gradient(circle, rgba(var(--lp-a), 0.18), transparent 60%);
-  filter: blur(60px);
-  animation: drift1 16s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes drift1 {
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-  50% {
-    transform: translate(8%, 6%);
-  }
-}
-.final-title {
-  position: relative;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(1.9rem, 5vw, 3rem);
-  letter-spacing: -0.03em;
-  margin: 12px 0 0;
-}
-.final-body {
-  position: relative;
-  max-width: 480px;
-  margin: 14px auto 30px;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--color-text-mid);
-}
-.final .cta-primary {
-  position: relative;
 }
 
 /* ---------- Footer ---------- */

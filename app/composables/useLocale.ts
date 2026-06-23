@@ -319,9 +319,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.s2Body': 'Le Coach suggère, vous décidez. Le deck prend forme.',
     'landing.s3Title': 'Imprimez & jouez',
     'landing.s3Body': 'Imprimez, découpez, jouez.',
-    'landing.finalTitle': 'Forgez votre premier deck',
-    'landing.finalBody': 'Gratuit, sans carte bancaire. Créez un compte et lancez-vous.',
-    'landing.finalCta': 'Créer mon compte',
   },
   en: {
     'nav.decks': 'Decks',
@@ -613,9 +610,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.s2Body': 'The Coach suggests, you decide. The deck takes shape.',
     'landing.s3Title': 'Print & play',
     'landing.s3Body': 'Print, cut, play.',
-    'landing.finalTitle': 'Forge your first deck',
-    'landing.finalBody': 'Free, no credit card. Create an account and dive in.',
-    'landing.finalCta': 'Create my account',
   },
 }
 
