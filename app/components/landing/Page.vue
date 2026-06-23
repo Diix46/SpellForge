@@ -19,8 +19,8 @@ const FEATURES = [
   { icon: 'i-lucide-printer', key: 'f2', glow: '56,184,131' },
   { icon: 'i-lucide-link', key: 'f3', glow: '168,85,247' },
   { icon: 'i-lucide-euro', key: 'f4', glow: '233,196,106' },
-  { icon: 'i-lucide-palette', key: 'f5', glow: '232,88,68' },
-  { icon: 'i-lucide-zap', key: 'f6', glow: '79,168,232' },
+  { icon: 'i-lucide-shield-check', key: 'f5', glow: '232,88,68' },
+  { icon: 'i-lucide-bar-chart-3', key: 'f6', glow: '79,168,232' },
 ] as const
 
 const STEPS = [
@@ -111,6 +111,49 @@ function resetTilt(e: PointerEvent) {
           <p class="step-body">
             {{ t(`landing.${s.key}Body`) }}
           </p>
+
+          <!-- Mini illustration of what the step looks like in the app -->
+          <div class="step-art" aria-hidden="true">
+            <!-- 1) Import: an EDHREC URL field -->
+            <div v-if="s.key === 's1'" class="art-card art-import">
+              <div class="art-field">
+                <UIcon name="i-lucide-link" class="art-field-ic" />
+                <span class="art-url">edhrec.com/commanders/<b>atraxa</b></span>
+              </div>
+              <div class="art-import-btn">
+                {{ t('modal.import') }}
+              </div>
+            </div>
+
+            <!-- 2) Coach: suggestion chips with add/keep states -->
+            <div v-else-if="s.key === 's2'" class="art-card art-coach">
+              <div class="art-coach-row">
+                <UIcon name="i-lucide-sparkles" class="art-coach-ic" />
+                <span class="art-coach-label">{{ t('ai.toAdd') }}</span>
+              </div>
+              <div class="art-chip art-chip--add">
+                <UIcon name="i-lucide-plus" class="h-3 w-3" /> Cultivate
+              </div>
+              <div class="art-chip art-chip--add">
+                <UIcon name="i-lucide-plus" class="h-3 w-3" /> Swords to Plowshares
+              </div>
+              <div class="art-chip art-chip--cut">
+                <UIcon name="i-lucide-scissors" class="h-3 w-3" /> Divination
+              </div>
+            </div>
+
+            <!-- 3) Print: a PDF sheet with cut guides -->
+            <div v-else class="art-card art-print">
+              <div class="art-sheet">
+                <span v-for="n in 9" :key="n" class="art-mini-card" />
+                <span class="art-cut art-cut--v1" />
+                <span class="art-cut art-cut--v2" />
+                <span class="art-cut art-cut--h1" />
+                <span class="art-cut art-cut--h2" />
+              </div>
+              <span class="art-print-tag">PDF · A4</span>
+            </div>
+          </div>
         </article>
       </div>
     </section>
@@ -218,7 +261,7 @@ function resetTilt(e: PointerEvent) {
   z-index: 2;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 96px 24px;
+  padding: 64px 24px;
 }
 .sec-head {
   text-align: center;
@@ -350,6 +393,169 @@ function resetTilt(e: PointerEvent) {
   line-height: 1.55;
   color: var(--color-text-mid);
   margin: 0;
+}
+
+/* ---------- Step mini-mockups (real little UI illustrations) ---------- */
+.step-art {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+}
+.art-card {
+  width: 100%;
+  max-width: 280px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-1);
+  padding: 14px;
+  box-shadow: 0 16px 40px -24px rgba(0, 0, 0, 0.8);
+}
+/* 1) Import field */
+.art-import {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.art-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-base);
+}
+.art-field-ic {
+  width: 15px;
+  height: 15px;
+  color: rgb(var(--lp-b));
+  flex-shrink: 0;
+}
+.art-url {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.art-url b {
+  color: var(--color-text-high);
+  font-weight: 600;
+}
+.art-import-btn {
+  align-self: flex-end;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0a0a0b;
+  padding: 7px 16px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(120deg, rgb(var(--lp-a)), rgb(var(--lp-b)));
+}
+/* 2) Coach suggestion chips */
+.art-coach {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.art-coach-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 2px;
+}
+.art-coach-ic {
+  width: 15px;
+  height: 15px;
+  color: rgb(var(--lp-a));
+}
+.art-coach-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.art-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 11px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-subtle);
+}
+.art-chip--add {
+  color: rgb(56, 184, 131);
+  background: rgba(56, 184, 131, 0.1);
+  border-color: rgba(56, 184, 131, 0.3);
+}
+.art-chip--cut {
+  color: rgb(232, 120, 100);
+  background: rgba(232, 88, 68, 0.08);
+  border-color: rgba(232, 88, 68, 0.28);
+}
+/* 3) PDF print sheet with cut guides */
+.art-print {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.art-sheet {
+  position: relative;
+  width: 150px;
+  height: 196px;
+  background: #f4f1ea;
+  border-radius: 3px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 7px;
+}
+.art-mini-card {
+  border-radius: 2px;
+  background: linear-gradient(140deg, #2a2c3a, #3c3550);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.art-cut {
+  position: absolute;
+  background: repeating-linear-gradient(to var(--dir, right), rgba(10, 10, 11, 0.55) 0 4px, transparent 4px 8px);
+}
+.art-cut--v1,
+.art-cut--v2 {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  --dir: bottom;
+}
+.art-cut--v1 {
+  left: 33.5%;
+}
+.art-cut--v2 {
+  left: 66.5%;
+}
+.art-cut--h1,
+.art-cut--h2 {
+  left: 0;
+  right: 0;
+  height: 1px;
+  --dir: right;
+}
+.art-cut--h1 {
+  top: 33.5%;
+}
+.art-cut--h2 {
+  top: 66.5%;
+}
+.art-print-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
 }
 
 /* ---------- Final CTA ---------- */

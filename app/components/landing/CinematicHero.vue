@@ -944,10 +944,6 @@ onBeforeUnmount(() => {
             {{ t('landing.ctaSecondary') }}
           </button>
         </div>
-        <span class="pile-hint">
-          <UIcon name="i-lucide-hand" class="h-[13px] w-[13px]" />
-          {{ t('landing.pileHint') }}
-        </span>
       </div>
     </div>
 
@@ -1312,17 +1308,6 @@ onBeforeUnmount(() => {
 }
 .cta--sm:hover {
   transform: translateY(-2px);
-}
-.pile-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 22px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(244, 241, 234, 0.5);
 }
 
 .scroll {
