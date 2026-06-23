@@ -298,8 +298,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.ctaPrimary': 'Commencer gratuitement',
     'landing.ctaSecondary': 'J\'ai déjà un compte',
     'landing.copyright': 'Outil non officiel · Magic: The Gathering est © Wizards of the Coast.',
-    'landing.illus': 'Illustration', // card-preview credit prefix (e.g. "Illustration · John Avon")
-    'landing.closePreview': 'Fermer l\'aperçu',
+    'landing.illus': 'Illustration', // showcase-card credit prefix (e.g. "Illustration · John Avon")
     'landing.featuresTitle': 'De l\'idée à la table',
     'landing.f1Title': 'Coach IA',
     'landing.f1Body': 'Un coach qui analyse votre deck — courbe, rôles, identité — et propose de vraies cartes, vérifiées sur Scryfall.',
@@ -593,8 +592,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'landing.ctaPrimary': 'Start for free',
     'landing.ctaSecondary': 'I already have an account',
     'landing.copyright': 'Unofficial fan tool · Magic: The Gathering is © Wizards of the Coast.',
-    'landing.illus': 'Art by', // card-preview credit prefix (e.g. "Art by · John Avon")
-    'landing.closePreview': 'Close preview',
+    'landing.illus': 'Art by', // showcase-card credit prefix (e.g. "Art by · John Avon")
     'landing.featuresTitle': 'From idea to the table',
     'landing.f1Title': 'AI Coach',
     'landing.f1Body': 'A coach that analyses your deck — curve, roles, identity — and suggests real cards, verified against Scryfall.',

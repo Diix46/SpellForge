@@ -24,7 +24,7 @@ import { useLocale } from '~/composables/useLocale'
 
 interface LandingCard { name: string, image: string, artist: string, colors: string[] }
 
-type Role = 'pile' | 'picked' | 'dragging' | 'thrown'
+type Role = 'pile' | 'zoned' | 'dragging' | 'thrown'
 
 interface Node {
   card: LandingCard
@@ -49,6 +49,7 @@ interface Node {
   tpx: number // repulsion target x
   tpy: number // repulsion target y
   role: Role
+  zone: -1 | 0 | 1 // which showcase slot this card occupies (-1 none, 0 left, 1 right)
   hovered: boolean // pointer is over this pile card (discreet lift)
   lastT: string // last written transform string (dirty-skip)
   active: boolean // will-change toggle
@@ -69,21 +70,17 @@ function accentFor(colors: string[]): string {
   const c = colors.find(x => COLOR_RGB[x])
   return c ? COLOR_RGB[c]! : '210,180,120'
 }
-// One WUBRG letter → its own pip colour (for the preview modal's colour dots).
+// One WUBRG letter → its own pip colour (for the showcase card's colour dots).
 function accentForPip(color: string): string {
   return COLOR_RGB[color] ?? '170,170,180'
 }
 
 // ---- Reactive (UI-only) state ----
 const ready = ref(false)
+// The card whose name/artist the caption shows + whose mana drives the accent:
+// the most-recently-showcased card (clicked or auto-dealt into a zone).
 const focused = ref<LandingCard | null>(null)
-// Click/tap a card → a full close-up modal that STAYS until dismissed.
-const preview = ref<LandingCard | null>(null)
-// The accent follows the open modal first, then the transient hover/auto pick.
-const accent = computed(() => {
-  const c = preview.value ?? focused.value
-  return c ? accentFor(c.colors) : '210,180,120'
-})
+const accent = computed(() => focused.value ? accentFor(focused.value.colors) : '210,180,120')
 
 // Rendered once by v-for; never mutated per-frame.
 const cards = ref<LandingCard[]>([])
@@ -123,17 +120,20 @@ let ch = 252 // card height px
 let gridCols = 6 // grid columns (solved to cover the viewport)
 let gridRows = 6 // grid rows
 
-let pickedId = -1
-let pickSide = 1 // next pick lands on this side of the panel (1 = right, -1 = left)
-let pickedSide = 1 // the side chosen for the CURRENT pick (stable during the hold)
+// Showcase ZONES: two fixed slots, left (0) and right (1) of the panel. A clicked
+// or auto-dealt card flies to a free slot — ALWAYS the same spot, ALWAYS on top of
+// the whole pile — and re-clicking it sends it home. zoneSlots holds the node index
+// occupying each slot (-1 = empty); nextSlot decides which side the next card takes.
+const zoneSlots: number[] = [-1, -1] // node index in slot 0 (left) / 1 (right); -1 = empty
+let nextSlot: 0 | 1 = 1 // start on the right (matches the old alternating feel)
 let dragId = -1
 let grabDX = 0
 let grabDY = 0
-// tap detection (a quick press that barely moves opens the preview modal)
+let grabWasZoned = false // the grabbed card was showcased (so a tap sends it home)
+// tap detection (a quick press that barely moves toggles the card into/out of a zone)
 let downX = 0
 let downY = 0
 let downT = 0
-let pickHold: ReturnType<typeof setTimeout> | null = null
 let dealTimer: ReturnType<typeof setInterval> | null = null
 let resizeTimer: ReturnType<typeof setTimeout> | null = null
 let lastInputAt = 0
@@ -157,8 +157,11 @@ const MAX_THROW = 32 // px/frame clamp
 // Nearer cards travel further → the pile gains apparent depth on cursor move.
 const PARALLAX_LAYER = [10, 22, 38]
 const PARALLAX_EASE = 0.06 // how fast pdx/pdy glide toward the pointer target
-const ROTATE_DEAL_MS = 4200
-const PICK_HOLD_MS = 2600
+const ROTATE_DEAL_MS = 4200 // auto-deal cadence (fills a free zone when idle)
+// Reserved z-tiers (never reordered per-frame): pile = layer*100+jitter (≤299),
+// a showcased card rides at 9000, a grabbed/thrown card above that at 9500.
+const Z_ZONE = 9000
+const Z_DRAG = 9500
 
 // ---------- helpers ----------
 function rand(a: number, b: number): number {
@@ -190,6 +193,39 @@ function solveGrid(vw: number, vh: number) {
   return { cols, rows, cw: Math.min(maxW, cw), count: cols * rows }
 }
 
+// Fixed pose for a showcase slot (0 = left, 1 = right of the panel). DETERMINISTIC:
+// the same viewport always yields the same centre + scale, so a card sent here lands
+// at the exact same spot every time — no "random" placement. Returns the top-left
+// offset (cards are absolute top:0 left:0, moved by transform) + the target scale.
+function zoneTarget(side: number): { tx: number, ty: number, tscale: number } {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const dir = side === 1 ? 1 : -1
+  const halfPanelW = Math.min(600, vw * 0.92) / 2
+  const sideRoom = vw / 2 - halfPanelW - 40 // free width on one side of the panel
+  // a comfortable size, but never wider than the side gap nor taller than the viewport
+  const maxByW = (sideRoom - 24) / cw
+  const maxByH = (vh - 120) / ch
+  const tscale = Math.max(0.9, Math.min(vw <= 720 ? 1.4 : 1.55, maxByW, maxByH))
+  const halfCardW = (cw * tscale) / 2
+  const halfCardH = (ch * tscale) / 2
+  const fitsBeside = sideRoom > cw * 0.9
+  let centreX: number
+  let centreY: number
+  if (fitsBeside) {
+    centreX = cx0 + dir * (halfPanelW + 28 + halfCardW)
+    centreY = cy0
+  }
+  else {
+    // too narrow (mobile) → stack the two slots above/below the title instead
+    centreX = cx0
+    centreY = cy0 - ch * 0.5 + dir * (halfCardH + 12)
+  }
+  centreX = Math.max(halfCardW + 12, Math.min(vw - halfCardW - 12, centreX))
+  centreY = Math.max(halfCardH + 88, Math.min(vh - halfCardH - 24, centreY))
+  return { tx: centreX - cw / 2, ty: centreY - ch / 2, tscale }
+}
+
 type VueRef = Element | ComponentPublicInstance | null
 function setElRef(i: number) {
   return (e: VueRef) => {
@@ -215,6 +251,17 @@ function releaseLoop() {
   if (reasons > 0 && --reasons === 0 && raf) {
     cancelAnimationFrame(raf)
     raf = 0
+  }
+}
+// Kick the loop for a SELF-LIMITING animation (a card springing to/from a zone):
+// it starts the rAF if idle but holds NO persistent reason, so the tick's
+// self-stop reclaims it once the motion settles — no leaked reason, no battery drain.
+function kickLoop() {
+  if (reduce)
+    return
+  if (!raf) {
+    last = performance.now()
+    raf = requestAnimationFrame(tick)
   }
 }
 
@@ -286,19 +333,32 @@ function layout() {
     node.homeRot = homeRot
     node.baseScale = baseScale
     node.z = layer * 100 + (i % 90)
-    node.cx = node.homeX
-    node.cy = node.homeY
-    node.crot = homeRot
-    node.cscale = baseScale
+    // Don't yank a showcased card back into the pile on a resize/relayout: keep its
+    // zone + role, just refresh its home so it springs to the recomputed zone target.
+    const showcased = node.role === 'zoned'
+    if (!showcased) {
+      node.cx = node.homeX
+      node.cy = node.homeY
+      node.crot = homeRot
+      node.cscale = baseScale
+      node.role = 'pile'
+      node.zone = -1
+    }
     node.vx = 0
     node.vy = 0
     node.px = 0
     node.py = 0
     node.tpx = 0
     node.tpy = 0
-    node.role = 'pile'
-    node.active = false
+    node.active = showcased
     node.lastT = ''
+
+    // z-index is owned imperatively by the engine (the template no longer binds it,
+    // so a non-reactive S[i].z can't be clobbered by Vue re-patching the style):
+    // pile cards keep their depth z; a showcased card already set its own 9000+ tier.
+    const el = els[i]
+    if (el && !showcased)
+      el.style.zIndex = String(node.z)
 
     // breathe vars (set once on the inner layer)
     const inner = inners[i]
@@ -306,7 +366,7 @@ function layout() {
       inner.style.setProperty('--bd', `${rand(7, 13).toFixed(2)}s`)
       inner.style.setProperty('--bdl', `${rand(-6, 0).toFixed(2)}s`)
     }
-    writeNode(node, els[i])
+    writeNode(node, el)
   }
 }
 
@@ -413,47 +473,23 @@ function tick(now: number) {
       continue
     }
 
-    // pile + picked: critically-damped spring toward target pose
+    // pile + zoned: critically-damped spring toward target pose
     let tx = node.homeX
     let ty = node.homeY
     let trot = node.homeRot
     let tscale = node.baseScale
-    if (node.role === 'picked') {
-      const vw = window.innerWidth
-      const vh = window.innerHeight
-      // Scale the close-up DOWN to fit beside the panel + stay fully on-screen.
-      const halfPanelW = Math.min(600, vw * 0.92) / 2
-      const sideRoom = vw / 2 - halfPanelW - 40 // free width on one side of the panel
-      // target a comfortable size, but never wider than the side gap or taller
-      // than the viewport (with margins)
-      const maxByW = (sideRoom - 24) / cw
-      const maxByH = (vh - 120) / ch
-      tscale = Math.max(0.9, Math.min(vw <= 720 ? 1.4 : 1.55, maxByW, maxByH))
+    if (node.role === 'zoned' && node.zone >= 0) {
+      // a showcased card springs to its FIXED slot beside the panel (same spot
+      // every time), straightened and enlarged — geometry lives in zoneTarget()
+      const z = zoneTarget(node.zone)
+      tx = z.tx
+      ty = z.ty
       trot = 0
-      const halfCardW = (cw * tscale) / 2
-      const halfCardH = (ch * tscale) / 2
-      const fitsBeside = sideRoom > cw * 0.9 // enough room to sit beside the panel
-      let centreX: number
-      let centreY: number
-      if (fitsBeside) {
-        // beside the panel, vertically centred on the viewport
-        centreX = cx0 + pickedSide * (halfPanelW + 28 + halfCardW)
-        centreY = cy0
-      }
-      else {
-        // too narrow (mobile) → rise above the title instead
-        centreX = cx0
-        centreY = cy0 - ch * 0.5
-      }
-      // clamp so the whole scaled card stays on-screen (below the top bar)
-      centreX = Math.max(halfCardW + 12, Math.min(vw - halfCardW - 12, centreX))
-      centreY = Math.max(halfCardH + 88, Math.min(vh - halfCardH - 24, centreY))
-      tx = centreX - cw / 2
-      ty = centreY - ch / 2
+      tscale = z.tscale
       anyActive = true
     }
     else if (node.hovered) {
-      // discreet hover lift (the BIG view is the click modal); rise a touch,
+      // discreet hover lift (a click sends it to a showcase zone); rise a touch,
       // straighten slightly, grow a little — stays in place in the pile.
       ty = node.homeY - 14
       trot = node.homeRot * 0.6
@@ -472,8 +508,11 @@ function tick(now: number) {
     node.crot += dr * K_ROT * dt
     node.cscale += ds * 0.12 * dt
 
+    // A zoned card that has reached its slot is at rest like any settled card: the
+    // loop may idle (battery) and the card simply holds its last transform. Only
+    // genuine motion keeps the loop alive.
     const moving = Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4 || Math.abs(node.px - node.tpx) > 0.4 || Math.abs(node.py - node.tpy) > 0.4 || Math.abs(dr) > 0.2 || Math.abs(ds) > 0.003
-    if (moving || node.role === 'picked')
+    if (moving)
       anyActive = true
 
     writeNode(node, el)
@@ -524,54 +563,77 @@ function onLeave() {
   releaseLoop()
 }
 
-// ---------- pick-to-front + auto-deal ----------
-function pick(i: number) {
-  if (i < 0 || i >= S.length)
+// ---------- showcase zones (send a card to a fixed L/R slot, on top of all) ----------
+// Send card i to a specific slot (0 = left, 1 = right). If the slot already holds
+// another card, that one is sent home first. Idempotent if i already owns the slot.
+function sendToZone(i: number, slot: 0 | 1) {
+  const node = S[i]
+  if (!node || node.role === 'dragging' || node.role === 'thrown')
     return
-  if (pickedId === i)
+  if (node.zone === slot)
     return
-  releasePick()
-  const node = S[i]!
-  if (node.role === 'dragging' || node.role === 'thrown')
-    return
-  pickedId = i
-  // Alternate the side the card rises to (right, then left, …) so it never sits
-  // behind the centred hero panel.
-  pickedSide = pickSide
-  pickSide = -pickSide
-  node.role = 'picked'
+  // evict whoever currently holds the target slot
+  const occupant = zoneSlots[slot] ?? -1
+  if (occupant >= 0 && occupant !== i)
+    sendHome(occupant)
+  // if this card was showing in the OTHER slot, free that slot too
+  if (node.zone >= 0)
+    zoneSlots[node.zone] = -1
+  zoneSlots[slot] = i
+  node.zone = slot
+  node.role = 'zoned'
+  node.hovered = false
   node.tpx = 0
   node.tpy = 0
   const el = els[i]
   if (el)
-    el.style.zIndex = '9000'
+    el.style.zIndex = String(Z_ZONE + slot) // right rides just above left
   setActive(node, i, true)
   focused.value = node.card
-  requestLoop()
-  if (pickHold)
-    clearTimeout(pickHold)
-  pickHold = setTimeout(releasePick, PICK_HOLD_MS)
+  nextSlot = slot === 1 ? 0 : 1 // next auto-deal prefers the other side
+  kickLoop()
 }
-function releasePick() {
-  if (pickHold) {
-    clearTimeout(pickHold)
-    pickHold = null
-  }
-  if (pickedId < 0)
-    return
-  const i = pickedId
+// Return a showcased card to the pile (springs back to its home pose).
+function sendHome(i: number) {
   const node = S[i]
-  pickedId = -1
-  if (!node)
+  if (!node || node.role !== 'zoned')
     return
+  if (node.zone >= 0)
+    zoneSlots[node.zone] = -1
+  node.zone = -1
   node.role = 'pile'
   const el = els[i]
   if (el)
     el.style.zIndex = String(node.z)
   setActive(node, i, false)
-  focused.value = null
-  requestLoop()
-  releaseLoop()
+  // accent follows whichever card is still showcased, else resets
+  const left = zoneSlots[0] ?? -1
+  const right = zoneSlots[1] ?? -1
+  const other = left >= 0 ? left : right
+  focused.value = other >= 0 ? S[other]!.card : null
+  kickLoop()
+}
+// Which slot a new showcase card should take: the preferred (alternating) side if
+// free, else the other side if free, else the preferred side (evicting its card).
+function chooseSlot(): 0 | 1 {
+  const other: 0 | 1 = nextSlot === 1 ? 0 : 1
+  if ((zoneSlots[nextSlot] ?? -1) < 0)
+    return nextSlot
+  if ((zoneSlots[other] ?? -1) < 0)
+    return other
+  return nextSlot
+}
+// Click/tap a card: a showcased card goes home; a pile card fills a free slot
+// (preferring the alternating side, else evicting the older one).
+function toggleZone(i: number) {
+  const node = S[i]
+  if (!node)
+    return
+  if (node.role === 'zoned') {
+    sendHome(i)
+    return
+  }
+  sendToZone(i, chooseSlot())
 }
 
 function startDeal() {
@@ -580,10 +642,10 @@ function startDeal() {
   dealTimer = setInterval(() => {
     if (!visible || document.hidden)
       return
-    // only when idle (no recent pointer/drag) and nothing held/picked
+    // only when idle (no recent pointer/drag) and not mid-grab
     if (performance.now() - lastInputAt < 2500)
       return
-    if (pickedId >= 0 || dragId >= 0 || preview.value)
+    if (dragId >= 0)
       return
     const candidates: number[] = []
     for (let i = 0; i < S.length; i++) {
@@ -592,7 +654,7 @@ function startDeal() {
     }
     if (!candidates.length)
       return
-    pick(candidates[Math.floor(Math.random() * candidates.length)]!)
+    sendToZone(candidates[Math.floor(Math.random() * candidates.length)]!, chooseSlot())
   }, ROTATE_DEAL_MS)
 }
 function stopDeal() {
@@ -602,19 +664,7 @@ function stopDeal() {
   }
 }
 
-// ---------- preview modal (click / tap a card → big close-up that stays) ----------
-function openPreview(card: LandingCard) {
-  // releasing any transient hover/auto pick so the accent + pile settle
-  releasePick()
-  preview.value = card
-  lastInputAt = performance.now()
-}
-function closePreview() {
-  preview.value = null
-  lastInputAt = performance.now()
-}
-
-// ---------- hover lift (a discreet raise; the BIG view is the click modal) ----------
+// ---------- hover lift (a discreet raise; a click sends it to a showcase zone) ----------
 function onCardEnter(i: number) {
   if (reduce)
     return
@@ -639,10 +689,13 @@ function onCardDown(i: number, e: PointerEvent) {
   if (!node || !el)
     return
   lastInputAt = performance.now()
-  // a drag cancels any pick (drag > picked) — including the card being grabbed,
-  // else its pickHold timer + rAF reason leak and can clobber the throw.
-  if (pickedId >= 0)
-    releasePick()
+  // grabbing a showcased card frees its slot (drag wins over the zone state).
+  // Remember it WAS showcased so a tap (no drag) reads as "send home", not "re-show".
+  grabWasZoned = node.zone >= 0
+  if (node.zone >= 0) {
+    zoneSlots[node.zone] = -1
+    node.zone = -1
+  }
   el.setPointerCapture?.(e.pointerId)
   el.style.touchAction = 'none'
   dragId = i
@@ -651,7 +704,7 @@ function onCardDown(i: number, e: PointerEvent) {
   node.vy = 0
   node.tpx = 0
   node.tpy = 0
-  el.style.zIndex = '9500'
+  el.style.zIndex = String(Z_DRAG)
   setActive(node, i, true)
   grabDX = e.clientX - node.cx
   grabDY = e.clientY - node.cy
@@ -683,18 +736,22 @@ function onCardUp(i: number, e: PointerEvent) {
     el.style.touchAction = ''
   dragId = -1
 
-  // TAP (quick press that barely moved) → open the full close-up modal and snap
-  // the card back home, instead of throwing/placing it.
+  // TAP (quick press that barely moved) → toggle the card's showcase state instead
+  // of throwing it. onCardDown already freed any zone it held + flipped role to
+  // 'dragging', so we reset it to pile here, then act on grabWasZoned: a tap on an
+  // ALREADY-showcased card sends it home; a tap on a pile card sends it to a slot.
   const moved = Math.hypot(e.clientX - downX, e.clientY - downY)
   const elapsed = performance.now() - downT
   if (moved < 8 && elapsed < 400) {
     node.role = 'pile'
     node.hovered = false
-    setActive(node, i, false)
     if (el)
       el.style.zIndex = String(node.z)
-    openPreview(node.card)
     releaseLoop() // pair the requestLoop in onCardDown
+    if (!grabWasZoned)
+      toggleZone(i) // pile → showcase slot (sets its own zone/role/z + kickLoop)
+    else
+      kickLoop() // already sent home above; spring it back, then the loop self-stops
     return
   }
 
@@ -777,8 +834,18 @@ function onVisibility() {
   }
 }
 function onKey(e: KeyboardEvent) {
-  if (e.key === 'Escape' && preview.value)
-    closePreview()
+  if (e.key !== 'Escape')
+    return
+  // Escape clears the showcase — send any zoned cards back to the pile.
+  const left = zoneSlots[0] ?? -1
+  const right = zoneSlots[1] ?? -1
+  if (left < 0 && right < 0)
+    return
+  if (right >= 0)
+    sendHome(right)
+  if (left >= 0)
+    sendHome(left)
+  lastInputAt = performance.now()
 }
 function onWindowBlur() {
   // a card stuck to the cursor mid-drag would never release otherwise
@@ -794,14 +861,15 @@ function staticSpotlight() {
     return
   const i = Math.floor(S.length / 2)
   const node = S[i]!
+  node.role = 'zoned' // excludes it from parallax; sits as a still hero spotlight
   node.cx = cx0 - cw / 2
   node.cy = cy0 - ch / 2 - ch * 0.4
   node.crot = 0
   node.cscale = 1.35
-  node.z = 9000
+  node.z = Z_ZONE
   const el = els[i]
   if (el) {
-    el.style.zIndex = '9000'
+    el.style.zIndex = String(Z_ZONE)
     writeNode(node, el)
   }
   focused.value = node.card
@@ -858,6 +926,7 @@ onMounted(async () => {
     tpx: 0,
     tpy: 0,
     role: 'pile',
+    zone: -1,
     hovered: false,
     lastT: '',
     active: false,
@@ -893,8 +962,6 @@ onBeforeUnmount(() => {
   if (raf)
     cancelAnimationFrame(raf)
   stopDeal()
-  if (pickHold)
-    clearTimeout(pickHold)
   if (resizeTimer)
     clearTimeout(resizeTimer)
   io?.disconnect()
@@ -917,7 +984,6 @@ onBeforeUnmount(() => {
         :key="c.name + i"
         :ref="setElRef(i)"
         class="card"
-        :style="{ zIndex: S[i]?.z ?? 0 }"
         @pointerenter="onCardEnter(i)"
         @pointerleave="onCardLeaveHover(i)"
         @pointerdown="onCardDown(i, $event)"
@@ -958,11 +1024,22 @@ onBeforeUnmount(() => {
 
     <!-- ===== Glass hero panel (the readable pocket) ===== -->
     <div class="stage">
-      <!-- close-up caption: the picked card's name + artist (decorative) -->
+      <!-- showcase caption: the most-recently-showcased card's name + colours +
+           artist (decorative; the card itself sits in a fixed L/R zone) -->
       <Transition name="meta">
         <div v-if="focused" :key="focused.name" class="closeup" aria-hidden="true">
           <span class="closeup-name">{{ focused.name }}</span>
-          <span v-if="focused.artist" class="closeup-art">{{ t('landing.illus') }} · {{ focused.artist }}</span>
+          <span class="closeup-sub">
+            <span v-if="focused.colors.length" class="closeup-pips">
+              <span
+                v-for="col in focused.colors"
+                :key="col"
+                class="closeup-pip"
+                :style="{ background: `rgb(${accentForPip(col)})` }"
+              />
+            </span>
+            <span v-if="focused.artist" class="closeup-art">{{ t('landing.illus') }} · {{ focused.artist }}</span>
+          </span>
         </div>
       </Transition>
 
@@ -994,39 +1071,6 @@ onBeforeUnmount(() => {
     <div class="scroll" aria-hidden="true">
       <UIcon name="i-lucide-chevron-down" />
     </div>
-
-    <!-- ===== Card preview modal (click/tap a card → big readable close-up) ===== -->
-    <Transition name="modal">
-      <div
-        v-if="preview"
-        class="modal"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="preview.name"
-        @pointerdown.self="closePreview"
-      >
-        <button type="button" class="modal-close" :aria-label="t('landing.closePreview')" @click="closePreview">
-          <UIcon name="i-lucide-x" class="h-5 w-5" />
-        </button>
-        <figure class="modal-card">
-          <img :src="preview.image" :alt="preview.name" decoding="async">
-          <figcaption class="modal-meta">
-            <span class="modal-name">{{ preview.name }}</span>
-            <span class="modal-sub">
-              <span v-if="preview.colors.length" class="modal-pips">
-                <span
-                  v-for="col in preview.colors"
-                  :key="col"
-                  class="modal-pip"
-                  :style="{ background: `rgb(${accentForPip(col)})` }"
-                />
-              </span>
-              <span v-if="preview.artist" class="modal-art">{{ t('landing.illus') }} · {{ preview.artist }}</span>
-            </span>
-          </figcaption>
-        </figure>
-      </div>
-    </Transition>
   </section>
 </template>
 
@@ -1210,6 +1254,21 @@ onBeforeUnmount(() => {
   color: rgba(244, 241, 234, 0.95);
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
 }
+.closeup-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.closeup-pips {
+  display: inline-flex;
+  gap: 4px;
+}
+.closeup-pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.6);
+}
 .closeup-art {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1375,111 +1434,6 @@ onBeforeUnmount(() => {
   }
 }
 
-/* ===== Preview modal (click a card) ===== */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: grid;
-  place-items: center;
-  padding: clamp(20px, 5vh, 64px);
-  background: radial-gradient(120% 120% at 50% 50%, rgba(6, 5, 8, 0.82), rgba(6, 5, 8, 0.94));
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  cursor: zoom-out;
-}
-.modal-close {
-  position: absolute;
-  top: clamp(16px, 3vw, 32px);
-  right: clamp(16px, 3vw, 32px);
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  color: #f4f1ea;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  transition:
-    background 0.2s,
-    transform 0.2s;
-}
-.modal-close:hover {
-  background: rgba(255, 255, 255, 0.16);
-  transform: rotate(90deg);
-}
-.modal-card {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 18px;
-  cursor: default;
-}
-.modal-card img {
-  width: auto;
-  height: min(72vh, 640px);
-  max-width: 92vw;
-  border-radius: 4.8% / 3.5%;
-  box-shadow:
-    0 0 0 1px rgba(var(--accent), 0.3),
-    0 40px 100px -24px rgba(0, 0, 0, 0.9),
-    0 0 80px -20px rgba(var(--accent), 0.5);
-}
-.modal-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-align: center;
-}
-.modal-name {
-  font-family: var(--font-display);
-  font-size: clamp(1.1rem, 2.4vw, 1.5rem);
-  font-weight: 600;
-  color: #f6f3ec;
-}
-.modal-sub {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-.modal-pips {
-  display: inline-flex;
-  gap: 5px;
-}
-.modal-pip {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  box-shadow: 0 0 8px 0 rgba(0, 0, 0, 0.6);
-}
-.modal-art {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: rgba(244, 241, 234, 0.62);
-}
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.28s ease;
-}
-.modal-enter-active .modal-card,
-.modal-leave-active .modal-card {
-  transition:
-    opacity 0.28s ease,
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-.modal-enter-from .modal-card,
-.modal-leave-to .modal-card {
-  opacity: 0;
-  transform: scale(0.86) translateY(14px);
-}
-
 @media (max-width: 720px) {
   /* Hide ONLY the top-bar login (cramped on phones); the panel's secondary
      "I already have an account" CTA (.ghost--lg) must stay so mobile users can
@@ -1495,14 +1449,6 @@ onBeforeUnmount(() => {
   }
   .scroll {
     animation: none;
-  }
-  .modal-enter-active .modal-card,
-  .modal-leave-active .modal-card {
-    transition: opacity 0.2s ease;
-  }
-  .modal-enter-from .modal-card,
-  .modal-leave-to .modal-card {
-    transform: none;
   }
 }
 </style>
