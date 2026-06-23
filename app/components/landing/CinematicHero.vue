@@ -7,8 +7,8 @@ import { useLocale } from '~/composables/useLocale'
 // Interactive full-screen "card tide" hero: dozens of real Magic cards dumped
 // across the viewport in messy overlap, with a translucent glass panel floating
 // in a carved-out reading pocket at center. The pile is ALIVE — it breathes (pure
-// CSS), reacts to the cursor (repulsion + depth parallax), lets you pick a card up
-// into a readable close-up (auto-cycles when idle), and lets you grab & fling
+// CSS), shoves away from the cursor, lifts on hover, opens a full close-up on
+// click (and auto-cycles a featured card when idle), and lets you grab & fling
 // cards with light inertia. The hero accent reacts to the focused card's mana.
 //
 // Architecture (from a judged design study): hybrid-zones spine.
@@ -21,7 +21,7 @@ import { useLocale } from '~/composables/useLocale'
 //  - Per frame: read inputs once, then one write pass; dirty-skip at-rest cards;
 //    integer-quantised transform strings; will-change only on active cards.
 
-interface LandingCard { name: string, art: string, image: string, artist: string, colors: string[] }
+interface LandingCard { name: string, image: string, artist: string, colors: string[] }
 
 type Role = 'pile' | 'picked' | 'dragging' | 'thrown'
 
