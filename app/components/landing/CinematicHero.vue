@@ -1236,13 +1236,18 @@ onBeforeUnmount(() => {
   font-weight: 500;
   color: #f4f1ea;
   border-radius: 10px;
-  border: 1px solid transparent;
+  /* discreet glass plate so the button reads over the busy card pile */
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(12, 11, 14, 0.5);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   transition:
     background 0.2s,
     border-color 0.2s;
 }
 .ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(12, 11, 14, 0.7);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 .ghost--lg {
   padding: 15px 24px;
