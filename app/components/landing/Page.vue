@@ -616,8 +616,8 @@ function resetTilt(e: PointerEvent) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 22px 24px 26px;
+  gap: 4px;
+  padding: 12px 24px 14px;
   border-top: 1px solid var(--color-border-subtle);
   text-align: center;
 }
