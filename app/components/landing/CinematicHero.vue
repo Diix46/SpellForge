@@ -972,13 +972,12 @@ function onImgLoad(e: Event) {
         role="dialog"
         aria-modal="true"
         :aria-label="preview.name"
-        @click="closePreview"
+        @pointerdown.self="closePreview"
       >
         <button type="button" class="modal-close" :aria-label="t('landing.closePreview')" @click="closePreview">
           <UIcon name="i-lucide-x" class="h-5 w-5" />
         </button>
-        <!-- stop propagation so clicks on the card itself don't dismiss -->
-        <figure class="modal-card" @click.stop>
+        <figure class="modal-card">
           <img :src="preview.image" :alt="preview.name" decoding="async">
           <figcaption class="modal-meta">
             <span class="modal-name">{{ preview.name }}</span>
