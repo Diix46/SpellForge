@@ -913,7 +913,8 @@ onMounted(async () => {
   reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   try {
     const { cards: pool } = await $fetch<{ cards: LandingCard[] }>('/api/landing/cards', {
-      query: { _: Date.now() },
+      // match the card images to the site language (French printings in FR)
+      query: { lang: locale.value, _: Date.now() },
     })
     const grid = solveGrid(window.innerWidth, window.innerHeight)
     gridCols = grid.cols

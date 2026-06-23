@@ -10,12 +10,13 @@
 interface ScryImg { art_crop?: string, normal?: string }
 interface ScryCard {
   name?: string
+  printed_name?: string // localized name (e.g. French) when lang:fr is requested
   artist?: string
   type_line?: string
   colors?: string[]
   color_identity?: string[]
   image_uris?: ScryImg
-  card_faces?: Array<{ image_uris?: ScryImg, artist?: string }>
+  card_faces?: Array<{ image_uris?: ScryImg, artist?: string, printed_name?: string }>
 }
 
 export interface LandingCard {
@@ -45,11 +46,19 @@ function image(c: ScryCard): string | null {
   return c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? null
 }
 
-export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[] }> => {
+export default defineCachedEventHandler(async (event): Promise<{ cards: LandingCard[] }> => {
+  // Match the card images to the site locale: French visitors see French-printed
+  // cards (lang:fr + include_multilingual), everyone else the English printings.
+  const lang = getQuery(event).lang === 'fr' ? 'fr' : 'en'
   // Scryfall paginates 175/page; a random page over the most-played cards keeps
   // results gorgeous + recognizable while varying the pool between cache windows.
-  const page = 1 + Math.floor(Math.random() * 25)
-  const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(QUERY)}&order=edhrec&dir=asc&page=${page}`
+  // French printings are a smaller pool, so cap the random page lower to avoid
+  // landing past the last page (which Scryfall 404s).
+  const maxPage = lang === 'fr' ? 8 : 25
+  const page = 1 + Math.floor(Math.random() * maxPage)
+  const q = lang === 'fr' ? `${QUERY} lang:fr` : QUERY
+  const multilingual = lang === 'fr' ? '&include_multilingual=true' : ''
+  const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&order=edhrec&dir=asc&page=${page}${multilingual}`
 
   const res = await scryfallFetch(url)
   if (!res.ok)
@@ -59,7 +68,8 @@ export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[]
   const all = (data.data ?? [])
     .filter(c => art(c) && image(c) && c.name)
     .map<LandingCard>(c => ({
-      name: c.name!,
+      // prefer the localized printed name (French) when present
+      name: c.printed_name ?? c.card_faces?.[0]?.printed_name ?? c.name!,
       image: image(c)!,
       art: art(c)!,
       artist: c.artist ?? c.card_faces?.[0]?.artist ?? '',
@@ -81,8 +91,10 @@ export default defineCachedEventHandler(async (): Promise<{ cards: LandingCard[]
   // so even within one window two visitors rarely see the same arrangement.
   maxAge: 120,
   name: 'landing-cards',
-  // Constant key: the client appends a `_` cache-buster (to dodge the BROWSER's
-  // HTTP cache), but the SERVER must ignore it so all visits within the window
-  // share one slot — one upstream Scryfall call, not one per visitor.
-  getKey: () => 'pool',
+  // Key by locale only: the client appends a `_` cache-buster (to dodge the
+  // BROWSER's HTTP cache), but the SERVER ignores it so all visits in the window
+  // share one slot per language — one upstream Scryfall call, not one per visitor.
+  getKey: (event) => {
+    return getQuery(event).lang === 'fr' ? 'pool-fr' : 'pool-en'
+  },
 })

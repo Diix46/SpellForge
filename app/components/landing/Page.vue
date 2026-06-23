@@ -8,7 +8,7 @@ import { useScrollReveal } from '~/composables/useScrollReveal'
 // instead once logged in). The cinematic hero owns its own header + auth CTAs;
 // this page adds the feature/steps/final sections below the fold.
 
-const { t } = useLocale()
+const { t, locale } = useLocale()
 const { show: openAuth } = useAuthOverlay()
 
 const root = ref<HTMLElement | null>(null)
@@ -23,7 +23,7 @@ onMounted(async () => {
   if (!import.meta.client)
     return
   try {
-    const { cards } = await $fetch<{ cards: DemoCard[] }>('/api/landing/cards', { query: { _: Date.now() } })
+    const { cards } = await $fetch<{ cards: DemoCard[] }>('/api/landing/cards', { query: { lang: locale.value, _: Date.now() } })
     const pool = (cards ?? []).filter(c => c.image && c.art)
     demoCards.value = pool.slice(0, 9) // fills the 3×3 PDF sheet
     coachCards.value = pool.slice(9, 12) // 3 distinct cards for the Coach demo
