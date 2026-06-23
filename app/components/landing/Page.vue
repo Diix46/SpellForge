@@ -24,9 +24,9 @@ const FEATURES = [
 ] as const
 
 const STEPS = [
-  { n: '01', icon: 'i-lucide-square-plus', key: 's1' },
-  { n: '02', icon: 'i-lucide-sparkles', key: 's2' },
-  { n: '03', icon: 'i-lucide-printer', key: 's3' },
+  { n: '01', icon: 'i-lucide-square-plus', key: 's1', glow: '79,168,232' },
+  { n: '02', icon: 'i-lucide-sparkles', key: 's2', glow: '168,85,247' },
+  { n: '03', icon: 'i-lucide-printer', key: 's3', glow: '56,184,131' },
 ] as const
 
 // Tilt a feature card toward the pointer (juicy, on-brand with the app's tilt).
@@ -93,24 +93,34 @@ function resetTilt(e: PointerEvent) {
       </div>
 
       <div class="steps">
-        <div class="steps-line" aria-hidden="true" />
+        <div class="steps-line" aria-hidden="true">
+          <span class="steps-line-fill" />
+        </div>
         <article
           v-for="(s, i) in STEPS"
           :key="s.key"
           class="step"
           data-reveal
-          :style="{ '--d': `${i * 120}ms` }"
+          :style="{ '--glow': s.glow, '--d': `${i * 110}ms` }"
+          @pointermove="onTilt"
+          @pointerleave="resetTilt"
         >
-          <div class="step-badge">
-            <UIcon :name="s.icon" class="h-5 w-5" />
-            <span class="step-n">{{ s.n }}</span>
-          </div>
-          <h3 class="step-title">
-            {{ t(`landing.${s.key}Title`) }}
-          </h3>
-          <p class="step-body">
-            {{ t(`landing.${s.key}Body`) }}
-          </p>
+          <div class="step-shine" />
+          <span class="step-watermark" aria-hidden="true">{{ s.n }}</span>
+
+          <header class="step-head">
+            <span class="step-ic">
+              <UIcon :name="s.icon" class="h-[18px] w-[18px]" />
+            </span>
+            <div class="step-text">
+              <h3 class="step-title">
+                {{ t(`landing.${s.key}Title`) }}
+              </h3>
+              <p class="step-body">
+                {{ t(`landing.${s.key}Body`) }}
+              </p>
+            </div>
+          </header>
 
           <!-- Mini illustration of what the step looks like in the app -->
           <div class="step-art" aria-hidden="true">
@@ -336,58 +346,111 @@ function resetTilt(e: PointerEvent) {
   margin: 0;
 }
 
-/* ---------- Steps ---------- */
+/* ---------- Steps (premium glass cards) ---------- */
 .steps {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: 20px;
 }
+/* Luminous connector running behind the cards, with an animated fill */
 .steps-line {
   position: absolute;
-  top: 28px;
-  left: 16%;
-  right: 16%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(var(--lp-a), 0.5), rgba(var(--lp-b), 0.5), transparent);
+  top: 50px;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.steps-line-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgb(79, 168, 232), rgb(168, 85, 247), rgb(56, 184, 131));
+  box-shadow: 0 0 16px -2px rgba(168, 85, 247, 0.7);
+  animation: lineGrow 1.4s 0.25s var(--ease-out) both;
+}
+@keyframes lineGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 .step {
   position: relative;
-  text-align: center;
-  padding: 0 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 26px 22px 22px;
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--color-border-subtle);
+  background: radial-gradient(120% 90% at 50% 0%, rgba(var(--glow), 0.1), transparent 60%), var(--color-surface-1);
+  transform: perspective(1000px) rotateX(var(--rx, 0)) rotateY(var(--ry, 0));
+  transform-style: preserve-3d;
+  transition:
+    transform 0.2s var(--ease-out),
+    border-color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
 }
-.step-badge {
+.step:hover {
+  border-color: rgba(var(--glow), 0.5);
+  box-shadow: 0 28px 70px -28px rgba(var(--glow), 0.6);
+}
+.step-shine {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 0%), rgba(var(--glow), 0.16), transparent 60%);
+  transition: opacity var(--dur) var(--ease-out);
+}
+.step:hover .step-shine {
+  opacity: 1;
+}
+.step-watermark {
+  position: absolute;
+  top: -18px;
+  right: 4px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 120px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: rgba(var(--glow), 0.1);
+  pointer-events: none;
+  user-select: none;
+}
+.step-head {
   position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.step-ic {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 58px;
-  height: 58px;
-  margin: 0 auto 20px;
-  border-radius: 50%;
-  color: rgb(var(--lp-a));
-  background: var(--color-surface-1);
-  border: 1px solid rgba(var(--lp-a), 0.4);
-  box-shadow:
-    0 0 0 6px rgba(10, 10, 11, 1),
-    0 0 24px -4px rgba(var(--lp-a), 0.5);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-lg);
+  color: rgb(var(--glow));
+  background: rgba(var(--glow), 0.12);
+  border: 1px solid rgba(var(--glow), 0.3);
 }
-.step-n {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: #0a0a0b;
-  background: rgb(var(--lp-a));
-  padding: 2px 6px;
-  border-radius: var(--radius-full);
+.step-text {
+  min-width: 0;
 }
 .step-title {
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
-  margin: 0 0 6px;
+  color: var(--color-text-high);
+  margin: 0 0 5px;
 }
 .step-body {
   font-size: 14px;
@@ -396,20 +459,21 @@ function resetTilt(e: PointerEvent) {
   margin: 0;
 }
 
-/* ---------- Step mini-mockups (real little UI illustrations) ---------- */
+/* ---------- Step mini-mockups (real little UI illustrations, inside the card) ---------- */
 .step-art {
-  margin-top: 22px;
+  margin-top: auto; /* pin the mockup to the bottom so cards align */
   display: flex;
   justify-content: center;
+  align-items: center;
+  min-height: 168px;
 }
 .art-card {
   width: 100%;
-  max-width: 280px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-1);
-  padding: 14px;
-  box-shadow: 0 16px 40px -24px rgba(0, 0, 0, 0.8);
+  background: var(--color-bg-base);
+  padding: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 /* 1) Import field */
 .art-import {
@@ -682,8 +746,13 @@ function resetTilt(e: PointerEvent) {
     transform: none;
     transition: none;
   }
-  .feat {
+  .feat,
+  .step {
     transform: none;
+  }
+  .steps-line-fill {
+    animation: none;
+    transform: scaleX(1);
   }
 }
 </style>
