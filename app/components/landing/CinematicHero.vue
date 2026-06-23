@@ -1020,6 +1020,9 @@ function onImgLoad(e: Event) {
 .layer {
   position: absolute;
   inset: 0;
+  /* Layers are full-screen grouping/z-order wrappers; without this the top
+     layer's empty areas would swallow clicks meant for cards in lower layers. */
+  pointer-events: none;
 }
 .card {
   position: absolute;
@@ -1030,6 +1033,7 @@ function onImgLoad(e: Event) {
   transform-origin: center;
   backface-visibility: hidden;
   cursor: grab;
+  pointer-events: auto; /* re-enable: the parent .layer is pointer-events:none */
 }
 .card:active {
   cursor: grabbing;
