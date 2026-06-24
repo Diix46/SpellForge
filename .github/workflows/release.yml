@@ -1,45 +1,91 @@
 name: Release
 
-# Cut a release by pushing a version tag:  git tag v1.0.0 && git push origin v1.0.0
-# Builds the Docker image and publishes it to GHCR (private) with the version
-# tags (v1.0.0, 1.0, 1) plus :latest. Unraid pulls ghcr.io/diix46/spellforge.
+# Fully automatic releases. On every push to main, semantic-release reads the
+# Conventional Commit messages and decides the next version (feat → minor, fix →
+# patch, BREAKING CHANGE → major; chore/docs/etc → no release). When a release is
+# cut it tags + creates the GitHub Release + updates CHANGELOG, then the Docker
+# image is built and pushed to GHCR with that version. No manual tagging.
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+
+# Avoid overlapping releases on rapid pushes.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  docker:
+  release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write # required to push to GHCR with GITHUB_TOKEN
+      contents: write # create tags, releases, commit the changelog
+      issues: write # semantic-release comments on released issues/PRs
+      pull-requests: write
+      packages: write # push the Docker image to GHCR
+    outputs:
+      published: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # semantic-release needs the full history + tags
 
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate the release on a green build (lint + types + build).
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+
+      # Compute + publish the release (tag, GitHub Release, CHANGELOG).
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 25
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/git@10
+            conventional-changelog-conventionalcommits@9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Only build/push the image when a new version was actually released.
       - name: Set up Docker Buildx
+        if: steps.semantic.outputs.new_release_published == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: steps.semantic.outputs.new_release_published == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Derive image tags from the git tag (semver) + latest.
       - name: Docker metadata
         id: meta
+        if: steps.semantic.outputs.new_release_published == 'true'
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/diix46/spellforge
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=raw,value=${{ steps.semantic.outputs.new_release_version }}
+            type=raw,value=${{ steps.semantic.outputs.new_release_major_version }}.${{ steps.semantic.outputs.new_release_minor_version }}
+            type=raw,value=${{ steps.semantic.outputs.new_release_major_version }}
             type=raw,value=latest
 
       - name: Build and push
+        if: steps.semantic.outputs.new_release_published == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .

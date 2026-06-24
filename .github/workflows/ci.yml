@@ -1,8 +1,9 @@
 name: CI
 
+# PRs only: validate before merge. Pushes to main are handled by release.yml
+# (which runs the same lint/typecheck/build before cutting a release), so we
+# don't duplicate the work here.
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
