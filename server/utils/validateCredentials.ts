@@ -5,7 +5,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s.@]+(?:\.[^\s.@]+)+$/
 export interface Credentials { email: string, password: string }
 
 export function validateCredentials(body: unknown): Credentials {
-  const b = (body ?? {}) as Record<string, unknown>
+  const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
   const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : ''
   const password = typeof b.password === 'string' ? b.password : ''
 

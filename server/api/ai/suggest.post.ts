@@ -13,6 +13,9 @@ import process from 'node:process'
 
 type Action = 'complete' | 'cut' | 'curve' | 'theme'
 
+interface AnthropicContentBlock { type: string, input?: unknown }
+interface AnthropicResponse { content?: AnthropicContentBlock[] }
+
 interface DeckStats {
   cardCount?: number
   avgCmc?: number
@@ -127,7 +130,7 @@ export default defineEventHandler(async (event) => {
 
   const prompt = buildPrompt(body ?? {}, action)
 
-  let data: any
+  let data: AnthropicResponse
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -156,8 +159,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 502, statusMessage: 'Appel IA échoué' })
   }
 
-  const toolUse = (data.content ?? []).find((c: any) => c.type === 'tool_use')
-  const raw = toolUse?.input ?? { add: [], cut: [], note: '' }
+  const toolUse = (data.content ?? []).find((c): c is AnthropicContentBlock => c.type === 'tool_use')
+  const raw = (toolUse?.input ?? { add: [], cut: [], note: '' }) as { add?: unknown, cut?: unknown, note?: unknown }
   const rawAdd: Suggestion[] = Array.isArray(raw.add) ? raw.add : []
   const rawCut: Suggestion[] = Array.isArray(raw.cut) ? raw.cut : []
 

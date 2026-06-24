@@ -29,6 +29,15 @@ function toolLabel(name: string): string {
   return TOOL_LABEL[name] ?? name
 }
 
+interface CoachActionCall { toolName?: string, name?: string }
+type CoachEvent
+  = | { type: 'message.appended', data?: { messageSoFar?: string, messageDelta?: string } }
+    | { type: 'message.completed', data?: { message?: string } }
+    | { type: 'actions.requested', data?: { actions?: CoachActionCall[], requests?: CoachActionCall[], toolCalls?: CoachActionCall[] } }
+    | { type: 'step.failed' | 'turn.failed' | 'session.failed', data?: { message?: string } }
+    // Catch-all for event types we don't act on (kept distinct so the cases above narrow).
+    | { type: 'other', data?: unknown }
+
 interface CoachPersist { messages: CoachMessage[], continuationToken: string }
 function loadPersisted(): CoachPersist {
   if (!import.meta.client)
@@ -145,14 +154,15 @@ export function useCoach() {
         throw new Error('no session id')
       await consumeStream(sessionId, assistant, signal)
     }
-    catch (e: any) {
+    catch (e) {
       // A deliberate stop() (panel closed / reset) isn't an error.
       if (signal.aborted) {
         if (!assistant.value.text)
           messages.value = messages.value.filter(m => m !== assistant.value)
         return
       }
-      error.value = e?.data?.statusMessage || e?.statusMessage || e?.message || 'Coach indisponible'
+      const err = e as { data?: { statusMessage?: string }, statusMessage?: string, message?: string } | null
+      error.value = err?.data?.statusMessage || err?.statusMessage || err?.message || 'Coach indisponible'
       // Drop the empty pending bubble on hard failure.
       if (!assistant.value.text)
         messages.value = messages.value.filter(m => m !== assistant.value)
@@ -179,9 +189,9 @@ export function useCoach() {
       const trimmed = line.trim()
       if (!trimmed)
         return
-      let ev: any
+      let ev: CoachEvent
       try {
-        ev = JSON.parse(trimmed)
+        ev = JSON.parse(trimmed) as CoachEvent
       }
       catch {
         return
@@ -211,28 +221,26 @@ export function useCoach() {
     }
   }
 
-  function handleEvent(ev: any, assistant: { value: CoachMessage }, seenTools: Set<string>) {
-    const type: string = ev?.type ?? ''
-    const data = ev?.data ?? {}
-    switch (type) {
+  function handleEvent(ev: CoachEvent, assistant: { value: CoachMessage }, seenTools: Set<string>) {
+    switch (ev?.type) {
       case 'message.appended': {
         // Eve carries the cumulative text in `messageSoFar` (delta in
         // `messageDelta`). Replace with the cumulative — don't concatenate.
-        if (typeof data.messageSoFar === 'string')
-          assistant.value.text = data.messageSoFar
-        else if (typeof data.messageDelta === 'string')
-          assistant.value.text += data.messageDelta
+        if (typeof ev.data?.messageSoFar === 'string')
+          assistant.value.text = ev.data.messageSoFar
+        else if (typeof ev.data?.messageDelta === 'string')
+          assistant.value.text += ev.data.messageDelta
         break
       }
       case 'message.completed': {
         // Finalised block text lives in `message`.
-        const final = typeof data.message === 'string' ? data.message : ''
+        const final = typeof ev.data?.message === 'string' ? ev.data.message : ''
         if (final.length >= assistant.value.text.length)
           assistant.value.text = final
         break
       }
       case 'actions.requested': {
-        const calls = data.actions ?? data.requests ?? data.toolCalls ?? []
+        const calls = ev.data?.actions ?? ev.data?.requests ?? ev.data?.toolCalls ?? []
         for (const c of calls) {
           const name = c?.toolName ?? c?.name
           if (name && !seenTools.has(name)) {
@@ -246,7 +254,7 @@ export function useCoach() {
       case 'turn.failed':
       case 'session.failed': {
         if (!assistant.value.text)
-          throw new Error(data?.message || 'Coach: échec')
+          throw new Error(ev.data?.message || 'Coach: échec')
         break
       }
     }

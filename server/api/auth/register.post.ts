@@ -8,9 +8,8 @@ import { validateCredentials } from '../../utils/validateCredentials'
 export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => null)
   const { email, password } = validateCredentials(body)
-  const displayName = typeof (body as any)?.displayName === 'string' && (body as any).displayName.trim()
-    ? (body as any).displayName.trim()
-    : (email.split('@')[0] ?? 'Joueur')
+  const d = (body as Record<string, unknown> | null)?.displayName
+  const displayName = typeof d === 'string' && d.trim() ? d.trim() : (email.split('@')[0] ?? 'Joueur')
 
   const db = useDb()
   const existing = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).get()
