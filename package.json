@@ -17,6 +17,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@iconify-json/lucide": "^1.2.112",
     "@iconify-json/simple-icons": "^1.2.86",
     "@libsql/client": "^0.17.4",

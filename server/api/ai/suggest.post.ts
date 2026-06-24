@@ -1,10 +1,15 @@
-import process from 'node:process'
+import type Anthropic from '@anthropic-ai/sdk'
+import { runStructured } from '../../eve/orchestrator'
 
 // AI deck-assistance — returns structured, actionable suggestions (NOT a chat).
 //
-// The model REASONS over the deck's real, computed data (curve, types, colours,
-// price, role counts, EDHREC ground-truth names) — it does not recall stats. Any
-// card name it returns is then VALIDATED server-side before reaching the client:
+// Powered by the same Eve engine as the conversational Coach (non-streaming
+// mode): the model can look up REAL cards via Scryfall/EDHREC and validate them
+// before answering, then emits one structured `deck_suggestions` tool call.
+//
+// It REASONS over the deck's real, computed data (curve, types, colours, price,
+// role counts, EDHREC ground-truth names) — it does not recall stats. Any card
+// name it returns is then VALIDATED server-side before reaching the client:
 //   - adds must resolve to a real Scryfall card, be within the commander's colour
 //     identity, and be legal in Commander;
 //   - cuts must already be in the submitted decklist.
@@ -12,9 +17,6 @@ import process from 'node:process'
 // player can't actually add (no more "Carte introuvable" from AI).
 
 type Action = 'complete' | 'cut' | 'curve' | 'theme'
-
-interface AnthropicContentBlock { type: string, input?: unknown }
-interface AnthropicResponse { content?: AnthropicContentBlock[] }
 
 interface DeckStats {
   cardCount?: number
@@ -36,8 +38,6 @@ interface SuggestBody {
   edhrec?: string[] // EDHREC top/synergy names (community ground truth)
 }
 
-const MODEL = 'claude-sonnet-4-6'
-
 const ACTION_BRIEF: Record<Action, string> = {
   complete: 'Suggest up to 10 cards to ADD that improve this deck (fill the weakest roles: ramp, draw, removal, interaction, synergy, or a missing wincon). Do not suggest cards already in the list.',
   cut: 'Suggest up to 10 cards to CUT — the weakest / most off-plan cards ALREADY in the deck — each with a short plan-relative reason. Only cut cards present in the list.',
@@ -45,7 +45,7 @@ const ACTION_BRIEF: Record<Action, string> = {
   theme: 'Identify the deck\'s strongest theme/strategy from its cards and stats, and suggest up to 10 ADDs that double down on it, plus any clearly off-theme CUTs.',
 }
 
-const TOOL = {
+const TOOL: Anthropic.Tool = {
   name: 'deck_suggestions',
   description: 'Return structured Magic: The Gathering deck suggestions.',
   input_schema: {
@@ -116,10 +116,6 @@ export default defineEventHandler(async (event) => {
   const user = await requireAppUser(event)
   rateLimit(`ai:suggest:${user.id}`, 10, 60_000)
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey)
-    throw createError({ statusCode: 503, statusMessage: 'AI non configurée (ANTHROPIC_API_KEY absente)' })
-
   const body = await readBody<SuggestBody>(event).catch(() => null)
   const action: Action = (body?.action && body.action in ACTION_BRIEF) ? body.action : 'complete'
   const commander = (body?.commander || '').trim()
@@ -139,38 +135,19 @@ export default defineEventHandler(async (event) => {
 
   const prompt = buildPrompt(body ?? {}, action)
 
-  let data: AnthropicResponse
+  // Run through Eve (non-streaming): it may look up real cards before emitting
+  // the structured deck_suggestions tool call.
+  let raw: { add?: unknown, cut?: unknown, note?: unknown }
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        tools: [TOOL],
-        tool_choice: { type: 'tool', name: 'deck_suggestions' },
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '')
-      console.error('[ai] Anthropic error', res.status, txt.slice(0, 500))
-      throw createError({ statusCode: 502, statusMessage: 'Service IA indisponible' })
-    }
-    data = await res.json()
+    raw = await runStructured(prompt, TOOL, { maxTokens: 1024 })
   }
   catch (err) {
     if (err && typeof err === 'object' && 'statusCode' in err)
       throw err
-    throw createError({ statusCode: 502, statusMessage: 'Appel IA échoué' })
+    console.error('[ai] Eve suggest error', err)
+    throw createError({ statusCode: 502, statusMessage: 'Service IA indisponible' })
   }
 
-  const toolUse = (data.content ?? []).find((c): c is AnthropicContentBlock => c.type === 'tool_use')
-  const raw = (toolUse?.input ?? { add: [], cut: [], note: '' }) as { add?: unknown, cut?: unknown, note?: unknown }
   const rawAdd: Suggestion[] = Array.isArray(raw.add) ? raw.add : []
   const rawCut: Suggestion[] = Array.isArray(raw.cut) ? raw.cut : []
 
