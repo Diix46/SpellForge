@@ -113,7 +113,8 @@ function buildPrompt(body: SuggestBody, action: Action): string {
 // server/utils/suggestValidate.ts — filterValidCuts / validateAdds.
 
 export default defineEventHandler(async (event) => {
-  await requireAppUser(event)
+  const user = await requireAppUser(event)
+  rateLimit(`ai:suggest:${user.id}`, 10, 60_000)
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey)
@@ -124,9 +125,17 @@ export default defineEventHandler(async (event) => {
   const commander = (body?.commander || '').trim()
   const identity = Array.isArray(body?.identity) ? body!.identity : []
   const cards = Array.isArray(body?.cards) ? body!.cards.slice(0, 200) : []
+  const edhrec = Array.isArray(body?.edhrec) ? body!.edhrec : []
 
   if (!cards.length && !commander)
     throw createError({ statusCode: 400, statusMessage: 'Deck vide' })
+
+  // Cheap abuse guards before we build the prompt / call the model: bound the
+  // total context size, the identity string, and any single card name.
+  const joinedLen = [...cards, ...edhrec].join('').length
+  const tooLongName = [...cards, ...edhrec].some(c => typeof c === 'string' && c.length > 200)
+  if (joinedLen > 5000 || identity.join('').length > 10 || tooLongName)
+    throw createError({ statusCode: 400, statusMessage: 'Données du deck trop volumineuses' })
 
   const prompt = buildPrompt(body ?? {}, action)
 
@@ -149,7 +158,8 @@ export default defineEventHandler(async (event) => {
     })
     if (!res.ok) {
       const txt = await res.text().catch(() => '')
-      throw createError({ statusCode: 502, statusMessage: `Anthropic ${res.status}: ${txt.slice(0, 200)}` })
+      console.error('[ai] Anthropic error', res.status, txt.slice(0, 500))
+      throw createError({ statusCode: 502, statusMessage: 'Service IA indisponible' })
     }
     data = await res.json()
   }

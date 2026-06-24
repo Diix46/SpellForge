@@ -6,23 +6,12 @@ import process from 'node:process'
 const EVE_URL = process.env.EVE_COACH_URL || 'http://127.0.0.1:3100'
 const UPSTREAM_TIMEOUT_MS = 30_000
 
-// Same loopback guard as session.post — EVE_COACH_URL must point at the internal
-// Eve service, never an attacker-controllable host.
-function assertLoopback(url: string) {
-  let host = ''
-  try {
-    host = new URL(url).hostname
-  }
-  catch {
-    throw createError({ statusCode: 500, statusMessage: 'EVE_COACH_URL invalide' })
-  }
-  if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1')
-    throw createError({ statusCode: 500, statusMessage: 'EVE_COACH_URL doit être en loopback' })
-}
-
 export default defineEventHandler(async (event) => {
-  await requireAppUser(event)
+  const user = await requireAppUser(event)
+  // Same loopback guard as session.post — EVE_COACH_URL must point at the
+  // internal Eve service, never an attacker-controllable host.
   assertLoopback(EVE_URL)
+  rateLimit(`coach:stream:${user.id}`, 20, 60_000)
 
   const id = getRouterParam(event, 'id')
   // Eve session ids are opaque tokens — validate the shape so a malformed id

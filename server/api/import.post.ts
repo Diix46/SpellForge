@@ -21,10 +21,14 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
  *   https://edhrec.com/average-decks/atraxa-praetors-voice
  *   https://edhrec.com/decks/...  (user decks → handled separately)
  */
+// Slugs/hashes are part of upstream URLs we build, so allow only safe chars
+// (blocks path traversal / odd input like `..` or encoded separators).
+const SLUG_RE = /^[a-z0-9-]+$/i
+
 function parseEdhrecUrl(url: string): { type: 'average' | 'deckpreview', slug: string } | null {
   try {
     const u = new URL(url)
-    if (!u.hostname.includes('edhrec.com'))
+    if (u.hostname !== 'edhrec.com' && u.hostname !== 'www.edhrec.com' && u.hostname !== 'json.edhrec.com')
       return null
 
     const parts = u.pathname.split('/').filter(Boolean)
@@ -35,17 +39,17 @@ function parseEdhrecUrl(url: string): { type: 'average' | 'deckpreview', slug: s
 
     // /deckpreview/<hash>
     if (first === 'deckpreview' && second) {
-      return { type: 'deckpreview', slug: second }
+      return SLUG_RE.test(second) ? { type: 'deckpreview', slug: second } : null
     }
 
     // /commanders/<slug>, /average-decks/<slug>, /decks/<slug>
     if (['commanders', 'average-decks', 'decks'].includes(first) && second) {
-      return { type: 'average', slug: second }
+      return SLUG_RE.test(second) ? { type: 'average', slug: second } : null
     }
 
     // Bare slug fallback: /atraxa-praetors-voice
     if (parts.length === 1) {
-      return { type: 'average', slug: first }
+      return SLUG_RE.test(first) ? { type: 'average', slug: first } : null
     }
 
     return null

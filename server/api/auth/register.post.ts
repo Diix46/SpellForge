@@ -13,8 +13,10 @@ export default defineEventHandler(async (event) => {
 
   const db = useDb()
   const existing = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).get()
-  if (existing)
+  if (existing) {
+    console.warn('[auth:register] e-mail déjà utilisé', email)
     throw createError({ statusCode: 409, statusMessage: 'Un compte existe déjà avec cet e-mail' })
+  }
 
   const id = genId('u_')
   await db.insert(schema.users).values({
@@ -24,6 +26,6 @@ export default defineEventHandler(async (event) => {
     displayName,
   })
 
-  await setUserSession(event, { user: { id, email, displayName } })
+  await setUserSession(event, { user: { id, email, displayName } }, { cookie: { sameSite: 'lax' } })
   return { user: { id, email, displayName } }
 })
