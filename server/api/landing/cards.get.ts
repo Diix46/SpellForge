@@ -7,7 +7,12 @@
 // page, and slim each to { art, colors, name }. Cached ~10 min (SWR) so a burst of
 // visitors is coalesced into a single upstream request — polite to Scryfall.
 
-interface ScryImg { art_crop?: string, normal?: string }
+// Explicit import: `getImageUris` exists both here (server) and as a client
+// composable export, so the auto-import global is ambiguous — import the server
+// copy directly to bind to the right one.
+import type { ScryImg } from '~~/server/utils/scryfall'
+import { getImageUris } from '~~/server/utils/scryfall'
+
 interface ScryCard {
   name?: string
   printed_name?: string // localized name (e.g. French) when lang:fr is requested
@@ -40,10 +45,10 @@ const POOL_SIZE = 90
 
 // Landscape art crop — also gates out cards whose art didn't resolve (quality bar).
 function art(c: ScryCard): string | null {
-  return c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop ?? null
+  return getImageUris(c)?.art_crop ?? null
 }
 function image(c: ScryCard): string | null {
-  return c.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.normal ?? null
+  return getImageUris(c)?.normal ?? null
 }
 
 export default defineCachedEventHandler(async (event): Promise<{ cards: LandingCard[] }> => {

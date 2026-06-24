@@ -165,7 +165,7 @@ function resetTilt(e: PointerEvent) {
                 :class="ci === 2 ? 'art-sugg--cut' : 'art-sugg--add'"
               >
                 <span class="art-sugg-thumb">
-                  <img :src="c.art" alt="" loading="lazy" decoding="async">
+                  <img :src="c.art" :alt="c.name" loading="lazy" decoding="async">
                 </span>
                 <span class="art-sugg-name">{{ c.name }}</span>
                 <UIcon :name="ci === 2 ? 'i-lucide-scissors' : 'i-lucide-plus'" class="art-sugg-act" />

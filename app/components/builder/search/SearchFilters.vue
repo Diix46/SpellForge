@@ -173,6 +173,8 @@ function hideAcSoon() {
       <UInput
         :model-value="filters.text"
         name="card-search"
+        aria-label="Rechercher une carte"
+        :aria-expanded="showAc"
         :placeholder="t('build.searchPlaceholder')"
         icon="i-lucide-search"
         autocomplete="off"
@@ -184,11 +186,13 @@ function hideAcSoon() {
       />
       <ul
         v-if="showAc"
+        role="listbox"
         class="glass-solid absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-[var(--radius-lg)] border border-(--color-border-strong) py-1 shadow-[var(--shadow-elev-3)]"
       >
         <li v-for="name in acItems" :key="name">
           <button
             type="button"
+            role="option"
             class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-(--color-text-mid) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
             @mousedown.prevent="pickSuggestion(name)"
           >
@@ -218,6 +222,11 @@ function hideAcSoon() {
           @click="toggleColor(pip, $event)"
         >
           <ManaSymbol :sym="pip" :size="22" />
+          <UIcon
+            v-if="filters.colors.includes(pip)"
+            name="i-lucide-check"
+            class="pointer-events-none absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-(--accent) p-px text-(--color-bg-base)"
+          />
         </button>
       </div>
     </div>
@@ -276,6 +285,7 @@ function hideAcSoon() {
       <UInput
         :model-value="filters.subtype"
         name="subtype"
+        aria-label="Sous-type"
         :placeholder="t('build.subtype')"
         @update:model-value="onSubtypeInput(String($event))"
       />

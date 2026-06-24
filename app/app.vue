@@ -23,7 +23,6 @@ useHead({
   link: [
     { rel: 'icon', type: 'image/svg+xml', href: FAVICON },
   ],
-  htmlAttrs: { lang: 'fr' },
 })
 
 useSeoMeta({
@@ -45,8 +44,10 @@ const isDark = computed(() => colorMode.value === 'dark')
 function toggleTheme() {
   colorMode.preference = isDark.value ? 'light' : 'dark'
 }
-// Browser chrome (mobile address bar) follows the active theme.
+// Browser chrome (mobile address bar) follows the active theme. The document
+// language follows the site locale (reactive — switches with the FR/EN toggle).
 useHead({
+  htmlAttrs: { lang: () => locale.value },
   meta: [{ name: 'theme-color', content: () => (isDark.value ? '#0a0a0b' : '#fafafa') }],
 })
 
@@ -105,6 +106,7 @@ function openImport() {
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
     <div class="app-shell" :class="{ 'app-shell--fullscreen': appFullscreen, 'app-shell--bare': !showChrome }" :style="{ zIndex: 'var(--z-content)' }">
+      <a href="#content" class="sr-only">Aller au contenu</a>
       <!-- ============ HEADER (single top bar) — members only ============ -->
       <header v-if="showChrome" class="topbar">
         <div class="topbar-inner">
@@ -156,7 +158,6 @@ function openImport() {
                 type="button"
                 class="icon-btn"
                 :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
-                :title="isDark ? t('theme.toLight') : t('theme.toDark')"
                 @click="toggleTheme"
               >
                 <UIcon :name="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" class="h-[18px] w-[18px]" />
@@ -205,7 +206,7 @@ function openImport() {
       </header>
 
       <!-- ============ MAIN ============ -->
-      <main class="content">
+      <main id="content" class="content">
         <NuxtPage />
       </main>
 

@@ -154,7 +154,7 @@ watch(open, async (isOpen) => {
   letter-spacing: -0.01em;
 }
 .cmdk-search input::placeholder {
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
 }
 .cmdk-esc {
   font-family: var(--font-mono);

@@ -6,6 +6,7 @@ import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { displayName } from '~/composables/useMtg'
+import { getImageUris } from '~/composables/useScryfall'
 
 // Buy/checkout concerns for the deck page: per-card Cardmarket pricing rows, the
 // cost summary, the marketplace-language toggle, and the one-step "buy the whole
@@ -66,7 +67,7 @@ export function useDeckBuy(ctx: BuyCtx) {
         unit: hasPrice ? unit : null,
         lineTotal: hasPrice ? Math.round(unit * rc.entry.quantity * 100) / 100 : null,
         url: searchUrl(enName, buyLang.value),
-        thumb: rc.card?.image_uris?.small ?? rc.card?.card_faces?.[0]?.image_uris?.small ?? null,
+        thumb: getImageUris(rc.card)?.small ?? null,
       }
     })
     // Priced cards first (most expensive on top), then unknown-price cards by name.

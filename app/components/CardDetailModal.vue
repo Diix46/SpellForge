@@ -137,7 +137,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
           <img
             v-if="displayImage"
             :src="displayImage"
-            :alt="englishName"
+            :alt="englishName || props.card?.entry.name || 'Carte'"
             class="mx-auto block w-full max-w-[300px] rounded-[var(--radius-lg)] object-contain shadow-[var(--shadow-elev-3)]"
           >
           <div

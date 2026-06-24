@@ -44,7 +44,7 @@ const delay = computed(() => `${Math.min((props.index ?? 0) * 22, 500)}ms`)
       v-else
       ref="spotEl"
       type="button"
-      class="holo-sheen group relative block w-full overflow-hidden rounded-[var(--radius-lg)] text-left transition-transform duration-200 hover:z-10 hover:scale-[1.04]"
+      class="holo-sheen group relative block aspect-[63/88] w-full overflow-hidden rounded-[var(--radius-lg)] text-left transition-transform duration-200 hover:z-10 hover:scale-[1.04]"
       :class="commander ? 'ring-2 ring-(--accent-border)' : ''"
       :style="{ boxShadow: commander ? 'var(--accent-glow-soft), var(--shadow-elev-2)' : 'var(--shadow-elev-2)' }"
       @click="emit('details', card)"
@@ -52,7 +52,7 @@ const delay = computed(() => `${Math.min((props.index ?? 0) * 22, 500)}ms`)
       <img
         :src="card.imageUrl"
         :alt="card.card?.name ?? card.entry.name"
-        class="block w-full rounded-[var(--radius-lg)]"
+        class="block h-full w-full rounded-[var(--radius-lg)] object-cover"
         loading="lazy"
       >
 

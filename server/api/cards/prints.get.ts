@@ -4,7 +4,12 @@
 //
 // Cached 24h per (name, lang): the set of printings for a card is stable.
 
-interface ScryImg { small?: string, normal?: string }
+// Explicit import: `getImageUris` exists both here (server) and as a client
+// composable export, so the auto-import global is ambiguous — import the server
+// copy directly to bind to the right one.
+import type { ScryImg } from '~~/server/utils/scryfall'
+import { getImageUris } from '~~/server/utils/scryfall'
+
 interface ScryPrint {
   id: string
   name: string
@@ -33,8 +38,8 @@ export interface PrintOption {
 }
 
 function thumb(c: ScryPrint): string | null {
-  return c.image_uris?.normal ?? c.image_uris?.small
-    ?? c.card_faces?.[0]?.image_uris?.normal ?? c.card_faces?.[0]?.image_uris?.small ?? null
+  const uris = getImageUris(c)
+  return uris?.normal ?? uris?.small ?? null
 }
 
 function hasImage(c: ScryPrint): boolean {
