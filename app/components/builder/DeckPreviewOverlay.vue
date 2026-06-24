@@ -56,7 +56,7 @@ const { t } = useLocale()
     <Transition name="ovl-slide">
       <div v-if="open" class="ovl-root">
         <div class="ovl-scrim" @click="emit('update:open', false)" />
-        <section class="ovl-panel ovl-panel--wide" role="dialog" aria-modal="true" :aria-label="t('tab.preview')">
+        <section class="ovl-panel ovl-panel--wide" role="dialog" aria-modal="true" :aria-label="t('tab.preview')" @keydown.escape="emit('update:open', false)">
           <header class="ovl-head">
             <div class="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[2px] text-(--accent-text)">
               <UIcon name="i-lucide-eye" class="h-4 w-4" />

@@ -83,6 +83,7 @@ function isSelected(p: PrintOption): boolean {
   <div class="border-t border-(--color-border-subtle) pt-4">
     <button
       type="button"
+      :aria-label="show ? 'Masquer les éditions' : 'Voir les éditions'"
       class="flex w-full items-center justify-between text-left font-mono text-[11px] uppercase tracking-wider text-(--color-text-mid) transition-colors hover:text-(--color-text-high)"
       @click="toggle"
     >

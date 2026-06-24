@@ -367,9 +367,9 @@ function issueText(issue: ValidationIssue): string {
       <div class="deck-cols-inner">
         <div v-for="group in groups" :key="group.key" class="deck-group">
           <div class="mb-1 flex items-center justify-between border-b border-(--color-border-subtle) pb-1">
-            <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+            <h4 class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
               {{ group.label }}
-            </span>
+            </h4>
             <span class="font-mono text-[10px] text-(--color-text-muted)">{{ group.count }}</span>
           </div>
 
@@ -406,7 +406,7 @@ function issueText(issue: ValidationIssue): string {
             <div class="flex shrink-0 items-center">
               <button
                 type="button"
-                class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) group-hover/row:opacity-100"
+                class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100"
                 aria-label="-"
                 @click.stop="emit('setQty', entry.name, entry.quantity - 1)"
               >
@@ -415,7 +415,7 @@ function issueText(issue: ValidationIssue): string {
               <span class="w-4 text-center font-mono text-xs text-(--color-text-high)">{{ entry.quantity }}</span>
               <button
                 type="button"
-                class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) group-hover/row:opacity-100"
+                class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100"
                 aria-label="+"
                 @click.stop="emit('setQty', entry.name, entry.quantity + 1)"
               >
@@ -452,7 +452,7 @@ function issueText(issue: ValidationIssue): string {
             <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-[var(--radius-sm)] pl-6 pr-1.5 opacity-0 transition-opacity bg-gradient-to-l from-(--color-surface-2) from-65% to-transparent group-hover/row:opacity-100">
               <button
                 type="button"
-                class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text)"
+                class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
                 :title="t('build.setCommander')"
                 @click.stop="emit('setCommander', entry.name)"
               >
@@ -460,7 +460,7 @@ function issueText(issue: ValidationIssue): string {
               </button>
               <button
                 type="button"
-                class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error)"
+                class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
                 aria-label="remove"
                 @click.stop="emit('remove', entry.name)"
               >

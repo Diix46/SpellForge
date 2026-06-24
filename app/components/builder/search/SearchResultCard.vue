@@ -66,7 +66,7 @@ const price = computed(() => props.card.prices?.eur ? `${props.card.prices.eur} 
         type="button"
         class="add-toggle pointer-events-auto flex flex-1 items-center justify-center gap-1 rounded-[var(--radius-sm)] py-1 text-xs font-semibold text-(--color-bg-base)"
         :class="{ 'is-in-deck': inDeck }"
-        :aria-label="`${inDeck ? t('build.removeFromDeck') : t('build.add')} — ${name}`"
+        :aria-label="`${inDeck ? t('build.removeFromDeck') : t('build.add')} — ${name}${price ? ` (${price})` : ''}`"
         @click="inDeck ? emit('remove', card) : emit('add', card)"
       >
         <UIcon v-if="!inDeck" name="i-lucide-plus" class="h-3.5 w-3.5" />
