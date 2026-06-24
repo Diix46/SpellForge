@@ -101,28 +101,28 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-### Coach IA (optionnel)
+### Coach IA (Eve)
 
-Le **Coach IA** est un service séparé (agent Eve) que l'app appelle via
-`/api/coach/*`. Il doit tourner pour que le chat fonctionne — sinon le panneau
-affiche « Coach IA indisponible (service hors-ligne) ».
+Le **Coach IA** (agent Eve) tourne désormais *à l'intérieur* de l'app, en routes
+Nitro (`server/eve/*`, exposé via `/api/coach/*`) — pas de service séparé. Il
+suffit d'une clé Anthropic dans le `.env` à la racine :
 
 ```bash
-# 1) une fois : builder l'agent + mettre la clé
-cd agent-coach && npm install && npm run build
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .env      # gitignored
-cd ..
-
-# 2) à chaque session : lancer le service (port 3100)
-npm run coach        # puis, dans un autre terminal : npm run dev
+echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env      # gitignored
+npm run dev
 ```
+
+Architecture : un **orchestrateur** (boucle tool-use, SDK Anthropic Messages) qui
+consulte 6 **spécialistes** (rampe, pioche, removal, courbe, légalité/identité,
+budget) et s'appuie sur des outils de données réelles (Scryfall, EDHREC,
+validation d'identité/légalité). Les boutons one-shot (Compléter/Couper/…)
+utilisent le même moteur.
 
 ## Scripts
 
 | Script | Rôle |
 |--------|------|
 | `npm run dev` | Serveur de développement (HMR) |
-| `npm run coach` | Lance le service Coach IA (agent Eve, port 3100) |
 | `npm run build` | Build de production |
 | `npm run preview` | Prévisualiser le build |
 | `npm run lint` | ESLint (`@antfu/eslint-config`) |
