@@ -1,7 +1,7 @@
 {
   "name": "spellforge",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Spellforge — gestionnaire de decks Magic: The Gathering & impression de proxies FR/EN (A4/A3).",
   "scripts": {
