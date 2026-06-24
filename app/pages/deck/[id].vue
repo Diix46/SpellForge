@@ -10,7 +10,8 @@ import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { classifyType, displayName, displayType, englishTypeLine } from '~/composables/useMtg'
-import { getImageUris, useScryfall } from '~/composables/useScryfall'
+import { useResolvedCards } from '~/composables/useResolvedCards'
+import { getImageUris } from '~/composables/useScryfall'
 import { isCardWithinIdentity } from '~/utils/mtgValidation'
 
 // The deck page has heavy async setup; with the global `cine` out-in page
@@ -25,7 +26,6 @@ const deckId = computed(() => route.params.id as string)
 const { getDeck, updateDeck, setShare, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
-const { fetchCollection } = useScryfall()
 const { identity, colorVar } = useManaIdentity()
 const { typeStats, detectCommanderIndex, commanderColors, manaCurve, priceSummary } = useDeckAnalysis()
 const { locale, t } = useLocale()
@@ -48,13 +48,28 @@ const deckName = ref('')
 // Card language follows the site locale (FR site → FR card images, EN → EN).
 const lang = computed<'en' | 'fr'>(() => locale.value)
 
-const resolvedCards = ref<ResolvedCard[]>([])
-const fetching = ref(false)
-// Monotonic token: each loadCards() call claims the next value. A slower,
-// superseded resolve (e.g. deck A still in-flight when we switch to B) checks
-// its token before committing, so it can't clobber the current deck's cards.
-let loadToken = 0
-const fetchProgress = ref({ loaded: 0, total: 0 })
+// Card-resolution engine: resolvedCards, fetching/progress, the dirty flag, the
+// monotonic-token loadCards(), and the name→card lookup. Lives in a composable
+// (see useResolvedCards) — the page just feeds it its live computeds as getters
+// and resets pagination on each resolve start (preserves `page.value = 1`).
+const {
+  resolvedCards,
+  fetching,
+  fetchProgress,
+  resolvedDirty,
+  loadCards,
+  resolvedByName,
+  resolvedFor,
+} = useResolvedCards({
+  // eslint-disable-next-line ts/no-use-before-define
+  allEntries: () => allEntries.value,
+  // eslint-disable-next-line ts/no-use-before-define
+  cardCount: () => cardCount.value,
+  lang: () => lang.value,
+  t,
+  // eslint-disable-next-line ts/no-use-before-define
+  onLoadStart: () => { page.value = 1 },
+})
 
 // Overlay open-state (Preview / Buy / Coach) + Esc-to-close + ?preview/?buy
 // deep-link sync. The page opens them (toolbar, deep-link in initDeck). See
@@ -132,9 +147,6 @@ const commanderOverride = ref(-1)
 // Pagination state (declared early: builder ops reset the page on commander change).
 const PAGE_SIZE = 24
 const page = ref(1)
-
-// True when the decklist changed since the last image resolve (preview stale).
-const resolvedDirty = ref(false)
 
 // ---- Builder (edits the deck on top of rawDecklist) ----
 const builder = useDeckBuilder({
@@ -262,23 +274,6 @@ function onDropAdd(name: string) {
 function onDropRemove(name: string) {
   builderOp(() => builder.removeCard(name))
   toast.add({ title: t('toast.removed'), description: name, color: 'neutral', icon: 'i-lucide-minus' })
-}
-
-// Resolved cards indexed by lowercased name for O(1) lookups. Keyed by BOTH the
-// original entry name (what the user typed, possibly French) and the canonical
-// English card name, so a lookup by either resolves. Built once per resolve
-// instead of re-scanning resolvedCards on every entry (was O(n²)).
-const resolvedByName = computed(() => {
-  const map = new Map<string, ResolvedCard>()
-  for (const rc of resolvedCards.value) {
-    map.set(rc.entry.name.trim().toLowerCase(), rc)
-    if (rc.card?.name)
-      map.set(rc.card.name.trim().toLowerCase(), rc)
-  }
-  return map
-})
-function resolvedFor(name: string): ResolvedCard | undefined {
-  return resolvedByName.value.get(name.trim().toLowerCase())
 }
 
 // ---- AI assistance ----
@@ -535,64 +530,6 @@ watch(filteredGridCards, () => {
   if (page.value > totalPages.value)
     page.value = 1
 })
-
-async function loadCards(opts: { silent?: boolean } = {}) {
-  if (cardCount.value === 0)
-    return
-  // Claim this resolve and snapshot the inputs. Don't bail when another resolve
-  // is running — supersede it: the older one's token is now stale and its result
-  // will be discarded below, so switching decks mid-resolve still loads the new one.
-  const token = ++loadToken
-  const entries = allEntries.value
-  const reqLang = lang.value
-  fetching.value = true
-  fetchProgress.value = { loaded: 0, total: cardCount.value }
-  page.value = 1
-  try {
-    const result = await fetchCollection(
-      entries,
-      reqLang,
-      (p) => {
-        if (token === loadToken)
-          fetchProgress.value = p
-      },
-      // Instant first paint: show default-image thumbnails as soon as the
-      // collection call returns, before the slower FR art resolves. The token
-      // check alone guards against deck-switch races; we deliberately repaint
-      // even when cards are already shown so a same-deck re-resolve (after an
-      // edit) refreshes the thumbnails instead of leaving stale art.
-      (preliminary) => {
-        if (token === loadToken)
-          resolvedCards.value = preliminary
-      },
-    )
-    if (token !== loadToken)
-      return // superseded by a newer load (deck switched) — drop these cards
-    resolvedCards.value = result
-    resolvedDirty.value = false
-    if (opts.silent)
-      return
-    const missing = resolvedCards.value.filter(c => !c.imageUrl).length
-    toast.add({
-      title: t('toast.cardsLoaded'),
-      description: missing
-        ? `${successCards.value.length} OK, ${missing} ${t('toast.notFoundCount')}`
-        : `${successCards.value.length} ${t('toast.cardsReady')}`,
-      color: missing ? 'warning' : 'success',
-      icon: missing ? 'i-lucide-alert-triangle' : 'i-lucide-check',
-    })
-  }
-  catch (err: unknown) {
-    if (token !== loadToken)
-      return // a stale resolve failing must not surface an error for the new deck
-    toast.add({ title: t('toast.loadError'), description: errMessage(err), color: 'error' })
-  }
-  finally {
-    // Only the current (winning) resolve may clear the in-flight flag.
-    if (token === loadToken)
-      fetching.value = false
-  }
-}
 
 // Auto-resolve images when the user opens Preview or Buy (lazy: no requests
 // while building). Re-resolves only when the list changed since the last load
