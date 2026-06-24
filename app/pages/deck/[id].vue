@@ -259,7 +259,6 @@ function builderRemove(name: string) {
 // dragged card resolves to a known Scryfall card that's out of identity, reuse
 // the identity gate; otherwise add by name.
 function onDropAdd(name: string) {
-  // eslint-disable-next-line ts/no-use-before-define
   const card = resolvedByName.value.get(name.trim().toLowerCase())?.card
   if (card) {
     addSearchCard(card)
