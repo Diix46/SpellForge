@@ -159,9 +159,10 @@ const PUSH = 64 // max repulsion offset px
 const FRICTION = 0.93
 const MAX_THROW = 32 // px/frame clamp
 // Depth-parallax: max px the pointer can shift each layer (0=deepest … 2=nearest).
+// Kept gentle on purpose — a large shift reads as "violent". ~half the original.
 // Nearer cards travel further → the pile gains apparent depth on cursor move.
-const PARALLAX_LAYER = [10, 22, 38]
-const PARALLAX_EASE = 0.06 // how fast pdx/pdy glide toward the pointer target
+const PARALLAX_LAYER = [6, 12, 20]
+const PARALLAX_EASE = 0.05 // how fast pdx/pdy glide toward the pointer target (slightly slower = calmer)
 const ROTATE_DEAL_MS = 6000 // auto-deal cadence (fills a free zone when idle)
 const DEAL_IDLE_MS = 3000 // how long with no input before auto-deal resumes
 // Reserved z-tiers (never reordered per-frame): pile = layer*100+jitter (≤299),
@@ -1250,17 +1251,20 @@ onBeforeUnmount(() => {
   background: rgba(12, 11, 14, 0.7);
   border-color: rgba(255, 255, 255, 0.28);
 }
+/* Secondary button INSIDE the glass panel. No own backdrop-filter — the panel is
+   already frosted; stacking blur-on-blur reads muddy. A clearer border + subtle
+   fill makes it a proper secondary next to the solid primary CTA. */
 .ghost--lg {
   padding: 15px 24px;
   font-size: 15px;
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.04);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
 }
 .ghost--lg:hover {
-  border-color: rgba(var(--accent), 0.7);
-  background: rgba(var(--accent), 0.12);
+  border-color: rgba(var(--accent), 0.75);
+  background: rgba(var(--accent), 0.14);
 }
 
 /* ===== Stage (centres the glass panel in the pocket) ===== */
@@ -1349,9 +1353,11 @@ onBeforeUnmount(() => {
   padding: clamp(28px, 4vw, 48px) clamp(24px, 4vw, 52px);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(12, 11, 14, 0.55);
-  -webkit-backdrop-filter: blur(16px) saturate(1.1);
-  backdrop-filter: blur(16px) saturate(1.1);
+  /* More opaque + stronger blur so headline/sub stay AA-legible even when a
+     bright card drifts behind the panel (liquid-glass: content first). */
+  background: rgba(12, 11, 14, 0.66);
+  -webkit-backdrop-filter: blur(20px) saturate(1.1);
+  backdrop-filter: blur(20px) saturate(1.1);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.04),
     0 40px 90px -30px rgba(0, 0, 0, 0.9),
@@ -1408,7 +1414,7 @@ onBeforeUnmount(() => {
   margin: 22px 0 0;
   font-size: clamp(0.98rem, 1.4vw, 1.12rem);
   line-height: 1.6;
-  color: rgba(244, 241, 234, 0.82);
+  color: rgba(244, 241, 234, 0.9);
 }
 .actions {
   display: flex;
@@ -1457,6 +1463,23 @@ onBeforeUnmount(() => {
 }
 .cta--sm:hover {
   transform: translateY(-2px);
+}
+
+/* Keyboard focus — visible on every hero control (was missing). A bright accent
+   ring + dark offset reads clearly over both the glass panel and the card pile. */
+.cta:focus-visible,
+.cta--sm:focus-visible,
+.ghost:focus-visible,
+.ghost--lg:focus-visible,
+.lang button:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 3px;
+}
+/* Mouse clicks shouldn't show the ring (only keyboard nav). */
+.cta:focus:not(:focus-visible),
+.ghost:focus:not(:focus-visible),
+.lang button:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .scroll {
