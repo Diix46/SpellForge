@@ -131,19 +131,48 @@ utilisent le même moteur.
 
 ## Production
 
+L'app a un **vrai backend** (Nitro + SQLite + sessions Eve en mémoire). Il lui
+faut un **serveur Node persistant** — pas un hébergement 100 % statique. Le build
+produit `.output/`, un serveur Node autonome :
+
 ```bash
 npm run build
-npm run preview
+node .output/server/index.mjs   # écoute sur $NUXT_PORT (défaut 3000)
 ```
 
-Déployable sur Vercel / Netlify / Cloudflare (preset Nitro automatique). Les
-routes serveur `/api/*` (proxys + cache) fonctionnent en mode serveur ; éviter
-un export 100 % statique qui les désactiverait.
+Variables d'environnement (à fournir au runtime, jamais commitées) :
 
-## CI
+| Variable | Rôle |
+|----------|------|
+| `ANTHROPIC_API_KEY` | Coach IA (Eve). Sans elle, le chat renvoie 503. |
+| `NUXT_SESSION_PASSWORD` | Secret de chiffrement des sessions (≥ 32 caractères). |
+| `DATABASE_URL` | Optionnel. Défaut `file:./.data/spellforge.db` (SQLite local). Mettre `libsql://…` + `DATABASE_AUTH_TOKEN` pour Turso. |
 
-GitHub Actions lance **lint + typecheck + build** sur chaque `push` et `pull_request`
-vers `main` (voir [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+Les migrations Drizzle s'appliquent automatiquement au démarrage
+(`server/plugins/migrate.ts`). La base SQLite + le cache vivent dans `./.data` —
+**à persister** (volume).
+
+### Déploiement Docker (Unraid)
+
+Une image est publiée sur GHCR à chaque tag de version (voir
+[`.github/workflows/release.yml`](.github/workflows/release.yml)) :
+
+```bash
+# Cut a release: tag + push → GitHub Actions build & push ghcr.io/diix46/spellforge
+git tag v1.0.0 && git push origin v1.0.0
+# → ghcr.io/diix46/spellforge:1.0.0, :1.0, :1, :latest (image privée)
+```
+
+Sur Unraid (template Docker) :
+- **Repository** : `ghcr.io/diix46/spellforge:latest` (registre privé → login GHCR requis)
+- **Port** : `3000` (host au choix) → `3000` (container)
+- **Volume** : `/mnt/user/appdata/spellforge` → `/app/.data` (DB + cache persistants)
+- **Variables** : `ANTHROPIC_API_KEY`, `NUXT_SESSION_PASSWORD` (et `DATABASE_URL` si Turso)
+
+## CI / Release
+
+- **CI** ([`ci.yml`](.github/workflows/ci.yml)) : lint + typecheck + build sur chaque `push`/`pull_request` vers `main`.
+- **Release** ([`release.yml`](.github/workflows/release.yml)) : build + push de l'image Docker vers GHCR sur chaque tag `v*`.
 
 ## Crédits & licence
 

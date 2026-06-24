@@ -1,0 +1,17 @@
+# Keep the build context small + never ship local state or secrets.
+node_modules
+.output
+.nuxt
+.data
+.git
+.github
+.vscode
+.idea
+*.log
+.env
+.env.*
+agent-coach
+.workflow-data
+.eve
+npm-debug.log*
+.DS_Store
