@@ -14,9 +14,11 @@
 
 import { createHash } from 'node:crypto'
 
-// Scryfall query strings are URL-length bound and each `(set:x cn:y)` term is
-// verbose, so resolve in modest chunks (one request each).
-const CHUNK = 60
+// Scryfall caps the number of clauses in a single query: a grouped
+// `(set:a cn:1) or (set:b cn:2) or …` search 400s past ~15 terms (verified
+// empirically). Keep chunks well under that so each grouped query succeeds —
+// otherwise the whole batch failed and the client fell back to a per-card N+1.
+const CHUNK = 12
 // Hard cap so a malformed/huge body can't fan out unboundedly.
 const MAX_ITEMS = 300
 
@@ -58,10 +60,10 @@ async function fetchChunk(
   const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&unique=prints&order=set`
   const res = await scryfallFetch(url)
   // 404 = none of this chunk has a printing in that language: a valid empty answer.
-  if (res.status === 404)
-    return
+  // Any other non-ok (e.g. a 400 from an over-long query): skip this chunk rather
+  // than failing the whole batch — the client just falls back per-card for these.
   if (!res.ok)
-    throw createError({ statusCode: 502, statusMessage: `Scryfall ${res.status}` })
+    return
   const data = await res.json() as { data?: ScryCard[] }
   for (const c of data.data ?? []) {
     if (c.set && c.collector_number && c.lang)

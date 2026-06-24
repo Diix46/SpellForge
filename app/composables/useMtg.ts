@@ -42,7 +42,9 @@ export function classifyType(typeLine: string): CategoryKey {
 export function categoryLabelKey(key: CategoryKey | 'commander'): string {
   if (key === 'commander')
     return 'commander.label'
-  return CATEGORY_DEFS.find(d => d.key === key)?.labelKey ?? 'build.deckTitle'
+  // 'other' (uncategorised, or types not yet resolved) gets its own label — NOT
+  // the panel's "Votre deck" title, which used to leak in as a stray column.
+  return CATEGORY_DEFS.find(d => d.key === key)?.labelKey ?? 'type.other'
 }
 
 // Display order for grouped deck lists: commander first, then CATEGORY_DEFS, 'other' last.

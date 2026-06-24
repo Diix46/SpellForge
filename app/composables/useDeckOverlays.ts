@@ -51,14 +51,29 @@ export function useDeckOverlays(route: RouteLocationNormalizedLoaded, router: Ro
 
   // Deep-link: keep ?preview / ?buy in sync with the overlays. Only one at a time.
   watch([previewOpen, buyOpen], ([p, b]) => {
+    // What the query SHOULD be for the current overlay state (preview wins).
+    const wantPreview = p ? '1' : undefined
+    const wantBuy = !p && b ? '1' : undefined
+    // No-op guard: on deck (re)init both overlays are written to false, producing
+    // the SAME query as now. Issuing router.replace() with an identical query
+    // during the in-flight SPA navigation that is mounting this page ABORTS that
+    // navigation — the page slot stays empty and onMounted never fires (white
+    // page). Only sync when the query actually changes (a real open/close/toggle).
+    if (route.query.preview === wantPreview && route.query.buy === wantBuy)
+      return
     const q = { ...route.query }
     delete q.preview
     delete q.buy
-    if (p)
-      q.preview = '1'
-    else if (b)
-      q.buy = '1'
+    if (wantPreview)
+      q.preview = wantPreview
+    else if (wantBuy)
+      q.buy = wantBuy
     router.replace({ query: q })
+  }, {
+    // flush:'post' runs the sync AFTER the component has mounted, so it can never
+    // fire inside the in-flight navigation that mounts this page (belt-and-braces
+    // with the no-op guard above — together they keep SPA deck-open from aborting).
+    flush: 'post',
   })
 
   return { previewOpen, buyOpen, coachOpen }

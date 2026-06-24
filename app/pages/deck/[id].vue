@@ -12,6 +12,11 @@ import { useManaIdentity } from '~/composables/useManaIdentity'
 import { classifyType, displayName, displayType, englishTypeLine } from '~/composables/useMtg'
 import { useScryfall } from '~/composables/useScryfall'
 
+// The deck page has heavy async setup; with the global `cine` out-in page
+// transition + Nuxt's Suspense, SPA navigation here resolved the component but
+// never MOUNTED it (blank page, onMounted never fired). Opting this route out of
+// the page transition fixes it — the deck opens reliably on client navigation.
+definePageMeta({ pageTransition: false })
 const route = useRoute()
 const router = useRouter()
 const deckId = computed(() => route.params.id as string)
@@ -346,12 +351,17 @@ function initDeck(id: string) {
   // below; otherwise a fast A→B switch drops A's last (still-debounced) changes.
   flushSave()
   const d = getDeck(id)
+  // eslint-disable-next-line no-console
+  console.log('[deckdbg] initDeck', id, 'found:', !!d, 'storeReady:', storeReady.value)
   if (!d) {
     // Only redirect once the store has finished loading. For a signed-in user
     // arriving via direct navigation/refresh, the cloud decks load async — bailing
     // before storeReady would bounce them home before their deck even arrives.
-    if (storeReady.value)
+    if (storeReady.value) {
+      // eslint-disable-next-line no-console
+      console.log('[deckdbg] REDIRECT to / (deck not found, store ready)')
       navigateTo('/')
+    }
     return
   }
   rawDecklist.value = d.raw
@@ -625,6 +635,8 @@ const {
   copyWantsList,
   buyWholeDeck,
 } = useDeckBuy({ resolvedCards, allEntries, price, resolvedFor, locale: lang })
+// eslint-disable-next-line no-console
+console.log('[deckdbg] setup END')
 </script>
 
 <template>

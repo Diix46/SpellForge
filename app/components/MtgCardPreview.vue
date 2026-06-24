@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed } from 'vue'
+import { useLocale } from '~/composables/useLocale'
 import { useSpotlight } from '~/composables/useSpotlight'
 
 const props = defineProps<{
@@ -10,6 +11,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ details: [card: ResolvedCard] }>()
 
+const { t } = useLocale()
 const { el: spotEl } = useSpotlight()
 
 const delay = computed(() => `${Math.min((props.index ?? 0) * 22, 500)}ms`)
@@ -33,7 +35,7 @@ const delay = computed(() => `${Math.min((props.index ?? 0) * 22, 500)}ms`)
         {{ card.entry.name }}
       </p>
       <p class="mt-1 text-[10px] leading-tight text-(--color-text-muted)">
-        Introuvable
+        {{ t('card.notFound') }}
       </p>
     </div>
 
@@ -70,7 +72,7 @@ const delay = computed(() => `${Math.min((props.index ?? 0) * 22, 500)}ms`)
           name="i-lucide-crown"
           class="h-3 w-3"
         />
-        Commander
+        {{ t('commander.label') }}
       </div>
 
       <!-- qty -->

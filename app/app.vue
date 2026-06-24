@@ -56,10 +56,9 @@ const { open: showAuth, show: openAuth } = useAuthOverlay()
 const mobileNav = ref(false)
 
 // The app chrome (top bar + footer) is for signed-in members only. Guests get
-// the full-bleed marketing landing, which brings its own minimal header. The
-// auth wall (middleware) keeps guests on /landing, but gate on both so a brief
-// pre-redirect frame never flashes the app shell.
-const showChrome = computed(() => loggedIn.value && route.path !== '/landing')
+// the full-bleed marketing landing (rendered on "/" itself), which brings its
+// own minimal header.
+const showChrome = computed(() => loggedIn.value)
 
 // A page can request a viewport-locked shell (no page scroll; the page fills the
 // area below the top bar and manages its own internal scroll). The deck page
@@ -238,10 +237,15 @@ function openImport() {
   min-height: 100dvh;
 }
 /* Chrome-less mode (landing for guests): the page IS the whole viewport — no top
-   bar / footer, the content area carries everything full-bleed. */
+   bar / footer, the content area carries everything full-bleed. Override the
+   members' content frame (max-width 1720 + padding + auto margins) so the landing
+   truly spans edge to edge on any screen width. */
 .app-shell--bare .content {
   flex: 1;
   min-height: 100dvh;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 /* Viewport-locked mode (deck page): the whole shell is exactly one screen — the
    page fills the space below the top bar and scrolls internally, the footer
