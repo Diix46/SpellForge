@@ -351,17 +351,12 @@ function initDeck(id: string) {
   // below; otherwise a fast A→B switch drops A's last (still-debounced) changes.
   flushSave()
   const d = getDeck(id)
-  // eslint-disable-next-line no-console
-  console.log('[deckdbg] initDeck', id, 'found:', !!d, 'storeReady:', storeReady.value)
   if (!d) {
     // Only redirect once the store has finished loading. For a signed-in user
     // arriving via direct navigation/refresh, the cloud decks load async — bailing
     // before storeReady would bounce them home before their deck even arrives.
-    if (storeReady.value) {
-      // eslint-disable-next-line no-console
-      console.log('[deckdbg] REDIRECT to / (deck not found, store ready)')
+    if (storeReady.value)
       navigateTo('/')
-    }
     return
   }
   rawDecklist.value = d.raw
