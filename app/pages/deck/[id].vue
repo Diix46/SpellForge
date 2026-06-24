@@ -75,6 +75,8 @@ const {
 // deep-link sync. The page opens them (toolbar, deep-link in initDeck). See
 // useDeckOverlays.
 const { previewOpen, buyOpen, coachOpen } = useDeckOverlays(route, router)
+// Coach large-panel toggle (shared state; the header button lives in CoachChat).
+const { expanded: coachExpanded } = useCoach()
 
 // Import/Export modal (the old raw-text editor lives here now).
 const showImportExport = ref(false)
@@ -658,9 +660,11 @@ console.log('[deckdbg] setup END')
                in-flight reply or loses scroll position; only its visibility
                toggles. -->
           <Transition name="coach-pop">
-            <div v-show="coachOpen" class="coach-panel">
+            <div v-show="coachOpen" class="coach-panel" :class="{ 'coach-panel--lg': coachExpanded }">
               <BuilderCoachChat
                 :deck-context="coachContext"
+                :deck-id="deckId"
+                :deck-name="deckName"
                 :ready="aiCardNames.length > 0"
                 @close="coachOpen = false"
               />

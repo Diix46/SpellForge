@@ -129,6 +129,9 @@ export function startSession(message: string, continuationToken: string | undefi
           case 'tool':
             push(session, { type: 'actions.requested', data: { actions: [{ toolName: ev.name }] } })
             break
+          case 'status':
+            push(session, { type: 'status', data: { label: ev.label } })
+            break
           case 'done':
             push(session, { type: 'message.completed', data: { message: ev.message } })
             break
