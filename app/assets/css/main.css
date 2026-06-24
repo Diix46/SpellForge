@@ -620,6 +620,14 @@ body {
   flex-direction: column;
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-elev-3);
+  transition:
+    width var(--dur-slow) var(--ease-spring),
+    height var(--dur-slow) var(--ease-spring);
+}
+/* Expanded mode — roughly double the width, taller; clamped to the viewport. */
+.coach-panel--lg {
+  width: min(720px, calc(100vw - 32px));
+  height: min(820px, calc(100dvh - 80px));
 }
 .coach-panel > * {
   flex: 1;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useCardPreview } from '~/composables/useCardPreview'
 import { useCoach } from '~/composables/useCoach'
 import { useLocale } from '~/composables/useLocale'
 import { useMarkdown } from '~/composables/useMarkdown'
@@ -13,12 +14,38 @@ const props = defineProps<{
   deckContext: string
   /** Whether the deck has enough to coach on yet. */
   ready: boolean
+  /** Current deck id + name, used to label/bind a new conversation in history. */
+  deckId?: string
+  deckName?: string
 }>()
 const emit = defineEmits<{ close: [] }>()
 
-const { t } = useLocale()
-const { messages, streaming, error, send, reset, stop } = useCoach()
+const { t, locale } = useLocale()
+const {
+  messages,
+  streaming,
+  error,
+  expanded,
+  conversations,
+  activeId,
+  send,
+  newConversation,
+  loadConversation,
+  deleteConversation,
+  stop,
+} = useCoach()
 const { render: renderMarkdown } = useMarkdown()
+
+// History dropdown open-state.
+const historyOpen = ref(false)
+function openConversation(id: string) {
+  loadConversation(id)
+  historyOpen.value = false
+}
+function startNew() {
+  newConversation()
+  historyOpen.value = false
+}
 
 // The panel lives behind a v-if in the slide-over, so closing it unmounts this
 // component — cancel any in-flight stream so it doesn't drain in the background.
@@ -26,6 +53,55 @@ onBeforeUnmount(stop)
 
 const input = ref('')
 const scroller = ref<HTMLElement | null>(null)
+
+// ── Hoverable cards ──────────────────────────────────────────────────────────
+// The Coach tags every card it names as [[Name]]; useMarkdown turns those into
+// <span class="coach-card" data-card="Name">. On hover we resolve the card's
+// image (site language) and show the shared big floating preview. Resolved URLs
+// are cached so re-hovering the same card is instant; in-flight names are tracked
+// so a quick hover-out doesn't strand a stale preview.
+const { preview, show: showPreviewSrc, hide: hidePreview } = useCardPreview()
+const imageCache = new Map<string, string | null>()
+let hoverToken = 0
+
+async function resolveCardImage(name: string): Promise<string | null> {
+  const key = `${locale.value}:${name.toLowerCase()}`
+  if (imageCache.has(key))
+    return imageCache.get(key) ?? null
+  try {
+    const res = await $fetch<{ image: string | null }>('/api/cards/card-image', {
+      params: { name, lang: locale.value },
+    })
+    imageCache.set(key, res.image)
+    return res.image
+  }
+  catch {
+    imageCache.set(key, null)
+    return null
+  }
+}
+
+async function onCardEnter(e: MouseEvent) {
+  const el = (e.target as HTMLElement)?.closest('.coach-card') as HTMLElement | null
+  if (!el)
+    return
+  const name = el.dataset.card
+  if (!name)
+    return
+  const token = ++hoverToken
+  const img = await resolveCardImage(name)
+  // Bail if the pointer already moved on to something else.
+  if (token !== hoverToken || !img)
+    return
+  showPreviewSrc(img, { currentTarget: el } as unknown as MouseEvent)
+}
+
+function onCardLeave(e: MouseEvent) {
+  if ((e.target as HTMLElement)?.closest('.coach-card')) {
+    hoverToken++ // cancel any pending resolve
+    hidePreview()
+  }
+}
 
 // Starter prompts — the "what can it do" affordance, one tap to ask.
 const STARTERS = computed(() => [
@@ -40,7 +116,7 @@ async function submit(text?: string) {
   if (!msg || streaming.value)
     return
   input.value = ''
-  await send(msg, props.deckContext)
+  await send(msg, props.deckContext, { id: props.deckId ?? '', name: props.deckName ?? '' })
 }
 
 // Auto-scroll to the latest message as it streams. Deep-watch the messages
@@ -60,14 +136,79 @@ watch(messages, async () => {
         <span class="text-sm leading-none">✦</span>
         {{ t('coach.title') }}
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-1">
+        <!-- History (all decks) -->
+        <div class="relative">
+          <button
+            type="button"
+            class="grid h-7 w-7 place-items-center rounded-full text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
+            :class="{ 'text-(--accent-text)': historyOpen }"
+            :aria-label="t('coach.history')"
+            :title="t('coach.history')"
+            @click="historyOpen = !historyOpen"
+          >
+            <UIcon name="i-lucide-history" class="h-4 w-4" />
+          </button>
+          <!-- Dropdown -->
+          <div
+            v-if="historyOpen"
+            class="glass-solid absolute right-0 top-9 z-10 max-h-80 w-72 overflow-y-auto rounded-[var(--radius-lg)] border border-(--color-border-subtle) p-1.5 shadow-[var(--shadow-elev-3)]"
+          >
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-[var(--radius-md)] px-2.5 py-2 text-left text-sm text-(--accent-text) transition-colors hover:bg-(--color-surface-2)"
+              @click="startNew"
+            >
+              <UIcon name="i-lucide-plus" class="h-4 w-4 shrink-0" />
+              {{ t('coach.newConversation') }}
+            </button>
+            <p v-if="!conversations.length" class="px-2.5 py-2 text-xs text-(--color-text-muted)">
+              {{ t('coach.historyEmpty') }}
+            </p>
+            <button
+              v-for="c in conversations"
+              :key="c.id"
+              type="button"
+              class="group flex w-full items-start gap-2 rounded-[var(--radius-md)] px-2.5 py-2 text-left transition-colors hover:bg-(--color-surface-2)"
+              :class="c.id === activeId ? 'bg-(--color-surface-2)' : ''"
+              @click="openConversation(c.id)"
+            >
+              <UIcon name="i-lucide-message-square" class="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--color-text-muted)" />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm text-(--color-text-high)">{{ c.title }}</span>
+                <span class="block truncate font-mono text-[10px] text-(--color-text-muted)">
+                  {{ c.deckName || t('coach.noDeck') }}
+                </span>
+              </span>
+              <UIcon
+                name="i-lucide-trash-2"
+                class="mt-0.5 h-3.5 w-3.5 shrink-0 text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-error) group-hover:opacity-100"
+                role="button"
+                :aria-label="t('coach.deleteConversation')"
+                @click.stop="deleteConversation(c.id)"
+              />
+            </button>
+          </div>
+        </div>
+        <!-- New conversation (quick) -->
         <button
           v-if="messages.length"
           type="button"
-          class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted) transition-colors hover:text-(--color-text-high)"
-          @click="reset"
+          class="grid h-7 w-7 place-items-center rounded-full text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
+          :aria-label="t('coach.newConversation')"
+          :title="t('coach.newConversation')"
+          @click="startNew"
         >
-          {{ t('coach.reset') }}
+          <UIcon name="i-lucide-plus" class="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          class="grid h-7 w-7 place-items-center rounded-full text-(--color-text-muted) transition-colors hover:bg-(--color-surface-2) hover:text-(--color-text-high)"
+          :aria-label="expanded ? t('coach.shrink') : t('coach.expand')"
+          :title="expanded ? t('coach.shrink') : t('coach.expand')"
+          @click="expanded = !expanded"
+        >
+          <UIcon :name="expanded ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'" class="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
@@ -111,6 +252,8 @@ watch(messages, async () => {
       ref="scroller"
       aria-live="polite"
       class="-mr-2 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2"
+      @mouseover="onCardEnter"
+      @mouseout="onCardLeave"
     >
       <div
         v-for="(m, i) in messages"
@@ -147,9 +290,19 @@ watch(messages, async () => {
           <p v-else-if="m.text" class="whitespace-pre-wrap leading-relaxed">
             {{ m.text }}
           </p>
-          <!-- streaming shimmer when the bubble is still empty -->
+          <!-- transient activity line while tools/specialists run -->
+          <div
+            v-if="m.pending && m.statusLine"
+            class="mt-1.5 flex items-center gap-1.5 font-mono text-[10px] text-(--accent-text)"
+          >
+            <span class="inline-flex gap-1 align-middle">
+              <span class="coach-dot" /><span class="coach-dot" /><span class="coach-dot" />
+            </span>
+            {{ m.statusLine }}
+          </div>
+          <!-- streaming shimmer when the bubble is still empty and idle -->
           <span
-            v-if="m.pending && !m.text"
+            v-else-if="m.pending && !m.text"
             class="inline-flex gap-1 align-middle"
           >
             <span class="coach-dot" /><span class="coach-dot" /><span class="coach-dot" />
@@ -185,10 +338,65 @@ watch(messages, async () => {
     <p class="mt-1.5 font-mono text-[10px] text-(--color-text-muted)">
       {{ t('coach.disclaimer') }}
     </p>
+
+    <!-- Big floating card preview for hovered [[cards]] in the Coach replies
+         (teleported to body so the chat panel can't clip it). -->
+    <Teleport to="body">
+      <Transition name="cardpop">
+        <img
+          v-if="preview"
+          :src="preview.src"
+          alt=""
+          class="card-preview pointer-events-none fixed z-[var(--z-tooltip)] rounded-[var(--radius-xl)] ring-1 ring-(--accent-border)"
+          :style="{ left: `${preview.x}px`, top: `${preview.y}px`, width: `${preview.w}px`, height: `${preview.h}px` }"
+        >
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+/* Cards the Coach names ([[Name]] → .coach-card): underlined accent token that
+   reveals the big card preview on hover. */
+.coach-md :deep(.coach-card) {
+  color: var(--accent-text);
+  font-weight: 600;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.coach-md :deep(.coach-card:hover) {
+  color: var(--color-text-high);
+  text-decoration-style: solid;
+}
+
+/* card preview pop (mirror the deck-list rows' transition) */
+.cardpop-enter-active {
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-spring);
+}
+.cardpop-leave-active {
+  transition: opacity var(--dur-fast) var(--ease-in);
+}
+.cardpop-enter-from,
+.cardpop-leave-to {
+  opacity: 0;
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cardpop-enter-active,
+  .cardpop-leave-active {
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .cardpop-enter-from,
+  .cardpop-leave-to {
+    transform: none;
+  }
+}
+
 /* Markdown rendered inside an assistant bubble — compact, chat-sized rhythm. */
 .coach-md :deep(p) {
   margin: 0 0 0.5rem;
