@@ -157,6 +157,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'type.planeswalker': 'Planeswalkers',
     'type.battle': 'Batailles',
     'type.land': 'Terrains',
+    'type.other': 'Autres',
     'errors.notFound': 'carte(s) introuvable(s)',
     // Toasts
     'toast.cardsLoaded': 'Cartes chargées',
@@ -453,6 +454,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'type.planeswalker': 'Planeswalkers',
     'type.battle': 'Battles',
     'type.land': 'Lands',
+    'type.other': 'Other',
     'errors.notFound': 'card(s) not found',
     // Toasts
     'toast.cardsLoaded': 'Cards loaded',
