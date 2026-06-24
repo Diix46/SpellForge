@@ -1,6 +1,6 @@
 import type { CategoryKey, ManaColor } from './useMtg'
 import type { ResolvedCard, ScryfallCard } from './useScryfall'
-import { canonicalColors, CATEGORY_DEFS, classifyType, englishTypeLine, isCommanderType } from './useMtg'
+import { CATEGORY_DEFS, classifyType, englishTypeLine, getColorIdentity, isCommanderType } from './useMtg'
 
 export interface TypeStat {
   key: CategoryKey
@@ -56,7 +56,7 @@ export function useDeckAnalysis() {
   function commanderColors(card: ScryfallCard | null): ManaColor[] {
     if (!card)
       return []
-    return canonicalColors(card.color_identity ?? card.colors)
+    return getColorIdentity(card)
   }
 
   /**

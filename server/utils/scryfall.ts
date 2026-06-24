@@ -13,6 +13,30 @@ export const SCRYFALL_COLLECTION = 'https://api.scryfall.com/cards/collection'
 export const SCRYFALL_CARDS = 'https://api.scryfall.com/cards'
 export const SCRYFALL_AUTOCOMPLETE = 'https://api.scryfall.com/cards/autocomplete'
 
+/**
+ * Scryfall's image-uris object. A superset of the sizes the various routes read
+ * (each route only touches the ones it needs); all optional so this one type fits
+ * every consumer (prints thumbnails, landing art-crops, etc.).
+ */
+export interface ScryImg {
+  small?: string
+  normal?: string
+  large?: string
+  png?: string
+  art_crop?: string
+}
+
+/**
+ * The image_uris for a card, falling back to the first face (DFCs carry their
+ * art per-face, not on the card root). Mirrors the client helper of the same
+ * name — the two copies are intentional (no shared client/server boundary).
+ */
+export function getImageUris(
+  card: { image_uris?: ScryImg, card_faces?: Array<{ image_uris?: ScryImg }> } | null | undefined,
+): ScryImg | undefined {
+  return card?.image_uris ?? card?.card_faces?.[0]?.image_uris
+}
+
 // Scryfall caps a /cards/collection request at 75 identifiers.
 export const SCRYFALL_COLLECTION_CHUNK = 75
 

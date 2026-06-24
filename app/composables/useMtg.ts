@@ -12,6 +12,23 @@ export function canonicalColors(letters: string[] | undefined | null): ManaColor
   return WUBRG.filter(c => set.has(c))
 }
 
+/**
+ * Colour IDENTITY (WUBRG) of a card — for legality/identity rules. Always reads
+ * `color_identity` (the Commander-relevant field), never the printed `colors`.
+ */
+export function getColorIdentity(card: { color_identity?: string[] } | null | undefined): ManaColor[] {
+  return canonicalColors(card?.color_identity ?? [])
+}
+
+/**
+ * Colours to DISPLAY for a card (pips, charts) — prefers the printed `colors`,
+ * falling back to `color_identity` (e.g. lands/devotion cards that are colourless
+ * on the face but carry an identity).
+ */
+export function getColorsForDisplay(card: { colors?: string[], color_identity?: string[] } | null | undefined): ManaColor[] {
+  return canonicalColors(card?.colors ?? card?.color_identity ?? [])
+}
+
 // ─── Card type classification ────────────────────────────────────────────────
 export type CategoryKey
   = | 'creature' | 'instant' | 'sorcery' | 'artifact'

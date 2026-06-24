@@ -1,5 +1,12 @@
 import type { DeckEntry } from './useDecklist'
 
+export interface ImageUris {
+  small: string
+  normal: string
+  large: string
+  png: string
+}
+
 export interface ScryfallCard {
   id: string
   oracle_id?: string
@@ -77,13 +84,17 @@ function isDoubleFaced(card: ScryfallCard): boolean {
   return DFC_LAYOUTS.includes(card.layout) && !!card.card_faces?.[1]?.image_uris
 }
 
+/**
+ * The image_uris for a card, falling back to the first face (DFCs carry their
+ * art per-face, not on the card root). Pick the quality you want off the result.
+ */
+export function getImageUris(card: ScryfallCard | null | undefined): ImageUris | undefined {
+  return card?.image_uris ?? card?.card_faces?.[0]?.image_uris
+}
+
 function frontImage(card: ScryfallCard, quality: 'normal' | 'large' | 'png' = 'large'): string | null {
-  if (card.image_uris)
-    return card.image_uris[quality] ?? card.image_uris.normal
-  if (card.card_faces?.[0]?.image_uris) {
-    return card.card_faces[0].image_uris[quality] ?? card.card_faces[0].image_uris.normal
-  }
-  return null
+  const uris = getImageUris(card)
+  return uris ? (uris[quality] ?? uris.normal) : null
 }
 
 function backImage(card: ScryfallCard, quality: 'normal' | 'large' | 'png' = 'large'): string | null {
@@ -120,7 +131,7 @@ async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, i: number)
 }
 
 function hasImage(card: ScryfallCard | null): boolean {
-  return !!card && (!!card.image_uris || !!card.card_faces?.[0]?.image_uris)
+  return !!getImageUris(card)
 }
 
 // A "real" image excludes Scryfall's "Localized Image Not Available" placeholders.

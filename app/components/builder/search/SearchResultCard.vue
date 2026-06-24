@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useCardDnd } from '~/composables/useCardDnd'
 import { useLocale } from '~/composables/useLocale'
 import { displayName } from '~/composables/useMtg'
+import { getImageUris } from '~/composables/useScryfall'
 
 // One search-result card: image (or name fallback), price tag, drag-to-add
 // handle, and the add/remove toggle overlay. Extracted from CardSearchPanel so
@@ -25,7 +26,7 @@ const { isFr, t } = useLocale()
 const { startDrag, endDrag } = useCardDnd()
 
 const name = computed(() => displayName(props.card, isFr.value))
-const image = computed(() => props.card.image_uris?.normal ?? props.card.card_faces?.[0]?.image_uris?.normal ?? null)
+const image = computed(() => getImageUris(props.card)?.normal ?? null)
 const price = computed(() => props.card.prices?.eur ? `${props.card.prices.eur} €` : '')
 </script>
 

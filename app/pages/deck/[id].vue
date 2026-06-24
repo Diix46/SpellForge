@@ -10,7 +10,8 @@ import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { classifyType, displayName, displayType, englishTypeLine } from '~/composables/useMtg'
-import { useScryfall } from '~/composables/useScryfall'
+import { getImageUris, useScryfall } from '~/composables/useScryfall'
+import { isCardWithinIdentity } from '~/utils/mtgValidation'
 
 // The deck page has heavy async setup; with the global `cine` out-in page
 // transition + Nuxt's Suspense, SPA navigation here resolved the component but
@@ -199,7 +200,7 @@ const cardMetaByName = computed(() => {
     const c = rc.card
     if (!c)
       continue
-    const uris = c.image_uris ?? c.card_faces?.[0]?.image_uris
+    const uris = getImageUris(c)
     m.set(rc.entry.name.trim().toLowerCase(), {
       thumb: uris?.small ?? uris?.normal ?? null,
       image: rc.imageUrl ?? uris?.normal ?? null,
@@ -218,8 +219,7 @@ function isWithinIdentity(card: ScryfallCard): boolean {
   const allowed = commander.value?.card?.color_identity
   if (!identityLocked.value || !allowed)
     return true
-  const set = new Set(allowed.map(c => c.toLowerCase()))
-  return (card.color_identity ?? []).every(c => set.has(c.toLowerCase()))
+  return isCardWithinIdentity(card, allowed.map(c => c.toLowerCase()))
 }
 
 function addSearchCard(card: ScryfallCard) {
