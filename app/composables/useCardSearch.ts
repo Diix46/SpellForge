@@ -133,14 +133,22 @@ export function useCardSearch() {
   // (Query-string identity can't disambiguate two in-flight requests for the
   // same query, so a slow earlier response could overwrite a fast newer one.)
   let seq = 0
+  // Abort the previous in-flight request when a newer one starts, so a superseded
+  // search stops downloading instead of just having its result ignored.
+  let currentAc: AbortController | null = null
 
   async function run(query: string, page = 1, append = false, order: SortOrder = 'edhrec') {
     if (!query) {
       seq++ // invalidate any in-flight request
+      currentAc?.abort()
+      currentAc = null
       state.value = emptySearchState()
       return
     }
     const reqId = ++seq
+    currentAc?.abort()
+    const ac = new AbortController()
+    currentAc = ac
     lastQuery = query
     lastOrder = order
     state.value.loading = true
@@ -148,6 +156,7 @@ export function useCardSearch() {
     try {
       const res = await $fetch<{ total: number, hasMore: boolean, cards: ScryfallCard[] }>('/api/cards/search', {
         params: { q: query, page, order, dir: 'auto' },
+        signal: ac.signal,
       })
       // Ignore out-of-order responses (a newer request superseded this one).
       if (reqId !== seq)
@@ -158,6 +167,9 @@ export function useCardSearch() {
       state.value.cards = append ? [...state.value.cards, ...res.cards] : res.cards
     }
     catch (err: unknown) {
+      // An aborted request (superseded by a newer search) is not an error.
+      if (err instanceof DOMException && err.name === 'AbortError')
+        return
       if (reqId !== seq)
         return
       state.value.error = err instanceof Error ? err.message : 'erreur'

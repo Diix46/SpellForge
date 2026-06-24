@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ManaColor } from '~/composables/useMtg'
 import type { ScryfallCard } from '~/composables/useScryfall'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useCardDnd } from '~/composables/useCardDnd'
 import { emptyFilters, useCardSearch } from '~/composables/useCardSearch'
 import { useLocale } from '~/composables/useLocale'
@@ -97,6 +97,11 @@ function debouncedSearch() {
     clearTimeout(debounce)
   debounce = setTimeout(runSearch, 350)
 }
+// Don't let a pending debounce fire after the panel unmounts.
+onBeforeUnmount(() => {
+  if (debounce)
+    clearTimeout(debounce)
+})
 
 // Re-run when the commander identity or locale changes. Watch a stable string
 // key (not the freshly-allocated ctx object) so equal values don't re-trigger.

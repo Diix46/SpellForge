@@ -71,9 +71,14 @@ function applyImportExport() {
   rawDecklist.value = importExportText.value
   showImportExport.value = false
 }
-function copyDecklistText() {
-  navigator.clipboard.writeText(rawDecklist.value)
-  toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
+async function copyDecklistText() {
+  try {
+    await navigator.clipboard.writeText(rawDecklist.value)
+    toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
+  }
+  catch {
+    toast.add({ title: t('toast.copyError'), color: 'error', icon: 'i-lucide-x' })
+  }
 }
 
 // Enable public sharing for this (cloud) deck and copy the link to the clipboard.
@@ -138,22 +143,25 @@ const builder = useDeckBuilder({
 // Reload the builder's structured view whenever the raw text changes from elsewhere
 // (initial mount, paste in the Edit tab, import). Guard against feedback loops:
 // builder.serialise() sets rawDecklist, which we don't want to echo back as a reload.
-let builderWriting = false
+// Re-entrancy depth, not a boolean: nested builderOp calls (or overlapping ops
+// before the nextTick flush) each inc/dec, so the guard can't be cleared early
+// by a sibling op while another is still pending.
+let writeDepth = 0
 watch(rawDecklist, () => {
   // Any decklist change makes the resolved preview stale (covers builder ops,
   // textarea edits, import). The auto-load watcher re-resolves on next preview.
   resolvedDirty.value = true
-  if (builderWriting)
+  if (writeDepth > 0)
     return
   builder.load()
 })
 function builderOp(fn: () => void) {
-  builderWriting = true
+  writeDepth++
   fn()
-  // The rawDecklist watcher flushes asynchronously, so only clear the guard
-  // after that flush — otherwise builder writes would reload (and clobber) the
-  // very edit we just made.
-  nextTick(() => (builderWriting = false))
+  // The rawDecklist watcher flushes asynchronously, so only release this op's
+  // depth after that flush — otherwise builder writes would reload (and clobber)
+  // the very edit we just made.
+  nextTick(() => (writeDepth--))
 }
 
 // Names already in the deck (lowercased) — for the search "added" state.
@@ -671,7 +679,7 @@ console.log('[deckdbg] setup END')
             :commander-image="commander?.imageUrl ?? null"
             :commander-type="commanderType"
             :commander-colors="themeColors"
-            :resolving="fetching && cardMetaByName.size === 0"
+            :resolving="fetching"
             :validation="validation"
             :category-by-name="categoryByName"
             :color-by-name="identityByName"
