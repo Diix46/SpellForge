@@ -15,7 +15,6 @@ import {
   hasRealImage,
   isDoubleFaced,
   mapPool,
-  quickResolved,
 } from './scryfall/helpers'
 
 // Re-export the public surface so consumers can keep importing everything from
@@ -123,11 +122,12 @@ export function useScryfall() {
   }
 
   /**
-   * Resolve a batch to final ResolvedCards (bounded concurrency, batch order).
-   * For FR, each card may still do its exact-printing lookup, but both caches
-   * are pre-warmed by prewarmFrench so those resolve instantly.
+   * Resolve a batch to final ResolvedCards (bounded concurrency, arrival order
+   * via `onCard`, input order in the returned array). For FR, each card may
+   * still do its exact-printing lookup, but both caches are pre-warmed by
+   * prewarmFrench so those resolve instantly (cache hits, no network).
    */
-  function resolveBatch(batch: DeckEntry[], foundCards: ScryfallCard[], requestError: string | null, lang: 'en' | 'fr'): Promise<ResolvedCard[]> {
+  function resolveBatch(batch: DeckEntry[], foundCards: ScryfallCard[], requestError: string | null, lang: 'en' | 'fr', onCard?: (card: ResolvedCard, i: number) => void): Promise<ResolvedCard[]> {
     return mapPool(batch, FR_CONCURRENCY, async (entry): Promise<ResolvedCard> => {
       if (requestError)
         return { entry, card: null, imageUrl: null, backImageUrl: null, lang, error: `Erreur réseau: ${requestError}` }
@@ -166,50 +166,69 @@ export function useScryfall() {
         lang: finalLang,
         priceEur,
       }
-    })
+    }, onCard)
   }
 
   async function fetchCollection(
     entries: DeckEntry[],
     lang: 'en' | 'fr',
     onProgress?: (p: FetchProgress) => void,
-    // Fires with a fast, default-image resolution per batch BEFORE the (slower)
-    // FR art enrichment, so the UI can show thumbnails immediately.
+    // Streams cards as they finish resolving — in their FINAL language, never a
+    // placeholder in the wrong one — so the deck list fills in progressively
+    // instead of sitting frozen until the whole batch settles. Cards resolve
+    // fast once prewarmFrench has warmed the caches (mostly cache hits), so
+    // this restores the "instant" feel the old EN-then-FR pre-paint gave
+    // without ever showing a card in the wrong language.
     onPartial?: (cards: ResolvedCard[]) => void,
   ): Promise<ResolvedCard[]> {
     const results: ResolvedCard[] = []
-    // Cumulative instant-paint set, grown one batch at a time. The consumer
-    // REPLACES its list with each emission (resolvedCards = preliminary), so we
-    // must emit the full set-so-far, not just the current batch — otherwise
-    // earlier batches would vanish from the grid between emissions.
-    const partial: ResolvedCard[] = []
     let processed = 0
+
+    // Cards can resolve within milliseconds of each other once caches are
+    // warm — emitting on every single one causes visible render jank, and
+    // mapPool's concurrency means they settle out of input order. Keep the
+    // in-flight batch's resolved-so-far cards in their original slots (so the
+    // emitted list never reorders) and throttle emissions to ~1 per 120ms.
+    let currentBatchSlots: (ResolvedCard | undefined)[] = []
+    let emitTimer: ReturnType<typeof setTimeout> | null = null
+    function scheduleEmit() {
+      if (!onPartial || emitTimer)
+        return
+      emitTimer = setTimeout(() => {
+        emitTimer = null
+        onPartial!([...results, ...currentBatchSlots.filter((c): c is ResolvedCard => !!c)])
+      }, 120)
+    }
 
     // Process in batches of BATCH_SIZE using the /cards/collection endpoint.
     for (let i = 0; i < entries.length; i += BATCH_SIZE) {
       const batch = entries.slice(i, i + BATCH_SIZE)
       const { foundCards, requestError } = await fetchBatch(batch)
 
-      // Instant first paint: emit this batch resolved to its default (usually EN)
-      // printing right away, so deck-list thumbnails appear without waiting for
-      // the slower FR art resolution below. Skipped in FR mode — painting EN
-      // cards first then swapping to FR reads as a locale bug, not a perf win.
-      if (onPartial && !requestError && lang !== 'fr') {
-        for (const entry of batch)
-          partial.push(quickResolved(entry, findMatch(foundCards, entry), lang))
-        onPartial([...partial])
-      }
-
       if (lang === 'fr' && !requestError)
         await prewarmFrench(batch, foundCards)
 
-      results.push(...await resolveBatch(batch, foundCards, requestError, lang))
+      currentBatchSlots = Array.from({ length: batch.length })
+      results.push(...await resolveBatch(batch, foundCards, requestError, lang, (card, idx) => {
+        currentBatchSlots[idx] = card
+        scheduleEmit()
+      }))
+      currentBatchSlots = []
       processed += batch.length
       onProgress?.({ loaded: processed, total: entries.length })
 
       if (i + BATCH_SIZE < entries.length)
         await new Promise(r => setTimeout(r, DELAY_MS))
     }
+
+    // Flush any cards still waiting on the throttle timer, and always emit the
+    // fully-resolved final set once — belt-and-suspenders in case the caller
+    // only reads onPartial (loadCards() also assigns the return value itself).
+    if (emitTimer) {
+      clearTimeout(emitTimer)
+      emitTimer = null
+    }
+    onPartial?.(results)
 
     return results
   }
