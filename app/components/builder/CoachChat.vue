@@ -109,6 +109,7 @@ const STARTERS = computed(() => [
   { icon: 'i-lucide-scissors', key: 'coach.starterCut' },
   { icon: 'i-lucide-search', key: 'coach.starterFind' },
   { icon: 'i-lucide-trophy', key: 'coach.starterWin' },
+  { icon: 'i-lucide-gauge', key: 'coach.starterBracket' },
 ])
 
 async function submit(text?: string) {

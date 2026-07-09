@@ -7,17 +7,22 @@ import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 
 const { t, formatShortDate } = useLocale()
-// "/" is the landing for guests and the dashboard for members — same URL.
 const { loggedIn } = useAuth()
-
-useSeoMeta({
-  title: () => (loggedIn.value ? t('dash.title') : 'Spellforge — Deck manager & proxy printer'),
-  description: () => (loggedIn.value ? 'Gérez vos decklists Magic: The Gathering, imprimez vos proxies en FR/EN.' : t('landing.subtitle')),
-})
 
 const route = useRoute()
 const router = useRouter()
 const { decks, duplicateDeck } = useDeckStore()
+
+// "/" is the landing for first-time visitors, the dashboard for everyone else.
+// No account is required to manage decks (they live in localStorage as a
+// guest); the marketing landing only shows before someone has actually
+// started — once a guest has a deck, "/" behaves like a member's dashboard.
+const showLanding = computed(() => !loggedIn.value && decks.value.length === 0)
+
+useSeoMeta({
+  title: () => (showLanding.value ? 'Spellforge — Deck manager & proxy printer' : t('dash.title')),
+  description: () => (showLanding.value ? t('landing.subtitle') : 'Gérez vos decklists Magic: The Gathering, imprimez vos proxies en FR/EN.'),
+})
 const { parse, totalCards } = useDecklist()
 const { identity } = useManaIdentity()
 
@@ -59,128 +64,132 @@ const restDecks = computed(() =>
 </script>
 
 <template>
-  <!-- Signed-out visitors get the marketing landing; members get the dashboard.
-       Same URL ("/") — no redirect, no /landing. -->
-  <LandingPage v-if="!loggedIn" />
+  <!-- Single root (Nuxt page transitions require it) wrapping both branches:
+       first-time visitors get the marketing landing; everyone else (guest
+       with local decks, or a signed-in member) gets the dashboard. Same URL
+       ("/") — no redirect, no /landing. -->
+  <div>
+    <LandingPage v-if="showLanding" />
 
-  <div v-else class="fade-up dash">
-    <!-- PAGE HEAD -->
-    <header class="dash-head">
-      <div class="min-w-0">
-        <h1 class="dash-title">
-          {{ t('dash.title') }}
-        </h1>
-        <p class="dash-sub">
-          <template v-if="decks.length">
-            {{ decks.length }} {{ t('dash.decks') }} · {{ totalCardsAll }} {{ t('dash.cards') }} · {{ t('dash.lastUpdate') }} {{ lastUpdated }}
-          </template>
-          <template v-else>
-            {{ t('dash.subtitle') }}
-          </template>
-        </p>
-      </div>
-      <div class="dash-actions">
-        <UButton
-          icon="i-lucide-download"
-          color="neutral"
-          variant="subtle"
-          @click="modals.showImport.value = true"
-        >
-          {{ t('nav.import') }}
-        </UButton>
-        <UButton
-          icon="i-lucide-plus"
-          color="primary"
-          variant="solid"
-          class="cta-glow"
-          @click="modals.showNewDeck.value = true"
-        >
-          {{ t('nav.newDeck') }}
-        </UButton>
-      </div>
-    </header>
+    <div v-else class="fade-up dash">
+      <!-- PAGE HEAD -->
+      <header class="dash-head">
+        <div class="min-w-0">
+          <h1 class="dash-title">
+            {{ t('dash.title') }}
+          </h1>
+          <p class="dash-sub">
+            <template v-if="decks.length">
+              {{ decks.length }} {{ t('dash.decks') }} · {{ totalCardsAll }} {{ t('dash.cards') }} · {{ t('dash.lastUpdate') }} {{ lastUpdated }}
+            </template>
+            <template v-else>
+              {{ t('dash.subtitle') }}
+            </template>
+          </p>
+        </div>
+        <div class="dash-actions">
+          <UButton
+            icon="i-lucide-download"
+            color="neutral"
+            variant="subtle"
+            @click="modals.showImport.value = true"
+          >
+            {{ t('nav.import') }}
+          </UButton>
+          <UButton
+            icon="i-lucide-plus"
+            color="primary"
+            variant="solid"
+            class="cta-glow"
+            @click="modals.showNewDeck.value = true"
+          >
+            {{ t('nav.newDeck') }}
+          </UButton>
+        </div>
+      </header>
 
-    <!-- EMPTY STATE -->
-    <div v-if="decks.length === 0" class="empty">
-      <div class="empty-art bob">
-        <UIcon name="i-lucide-layers" class="h-9 w-9" />
-      </div>
-      <h2 class="empty-title">
-        {{ t('dash.empty.title') }}
-      </h2>
-      <p class="empty-body">
-        {{ t('dash.empty.body') }}
-      </p>
-      <div class="empty-cta">
-        <UButton icon="i-lucide-plus" color="primary" variant="solid" size="lg" @click="modals.showNewDeck.value = true">
-          {{ t('dash.empty.create') }}
-        </UButton>
-        <UButton icon="i-lucide-download" color="neutral" variant="subtle" size="lg" @click="modals.showImport.value = true">
-          {{ t('dash.empty.import') }}
-        </UButton>
-      </div>
-    </div>
-
-    <template v-else>
-      <DashboardDashStats
-        :deck-count="decks.length"
-        :total-cards="totalCardsAll"
-        :ready-count="readyCount"
-        :last-updated="lastUpdated"
-      />
-
-      <DashboardDeckBento
-        v-if="featured"
-        :featured="featured"
-        :count="featuredCount"
-        :colors="featuredColors"
-        :accent="featuredAccent"
-        @open="(id) => navigateTo(`/deck/${id}`)"
-        @new="modals.showNewDeck.value = true"
-        @import="modals.showImport.value = true"
-      />
-
-      <!-- DECK GRID -->
-      <div class="sec">
-        <h2 class="sec-title">
-          {{ t('dash.allDecks') }}
+      <!-- EMPTY STATE -->
+      <div v-if="decks.length === 0" class="empty">
+        <div class="empty-art bob">
+          <UIcon name="i-lucide-layers" class="h-9 w-9" />
+        </div>
+        <h2 class="empty-title">
+          {{ t('dash.empty.title') }}
         </h2>
+        <p class="empty-body">
+          {{ t('dash.empty.body') }}
+        </p>
+        <div class="empty-cta">
+          <UButton icon="i-lucide-plus" color="primary" variant="solid" size="lg" @click="modals.showNewDeck.value = true">
+            {{ t('dash.empty.create') }}
+          </UButton>
+          <UButton icon="i-lucide-download" color="neutral" variant="subtle" size="lg" @click="modals.showImport.value = true">
+            {{ t('dash.empty.import') }}
+          </UButton>
+        </div>
       </div>
-      <div class="grid">
-        <DeckTile
-          v-for="(deck, i) in restDecks"
-          :key="deck.id"
-          :deck="deck"
-          class="stagger-item"
-          :style="{ '--stagger-delay': `${i * 45}ms` }"
-          @open="(id) => navigateTo(`/deck/${id}`)"
-          @duplicate="(id) => duplicateDeck(id)"
-          @delete="modals.requestDelete"
-          @rename="modals.openRename"
-        />
-        <!-- new deck tile -->
-        <button class="new-tile stagger-item" :style="{ '--stagger-delay': `${restDecks.length * 45}ms` }" @click="modals.showNewDeck.value = true">
-          <span class="new-plus"><UIcon name="i-lucide-plus" class="h-5 w-5" /></span>
-          <span>{{ t('nav.newDeck') }}</span>
-        </button>
-      </div>
-    </template>
 
-    <DashboardDeckModals
-      v-model:show-new-deck="modals.showNewDeck.value"
-      v-model:new-deck-name="modals.newDeckName.value"
-      v-model:show-import="modals.showImport.value"
-      v-model:import-url="modals.importUrl.value"
-      v-model:show-rename="modals.showRename.value"
-      v-model:rename-value="modals.renameValue.value"
-      v-model:show-delete="modals.showDelete.value"
-      :importing="modals.importing.value"
-      :delete-name="modals.deleteName.value"
-      @create="modals.handleCreate"
-      @import="modals.handleImport"
-      @rename="modals.handleRename"
-      @confirm-delete="modals.confirmDelete"
-    />
+      <template v-else>
+        <DashboardDashStats
+          :deck-count="decks.length"
+          :total-cards="totalCardsAll"
+          :ready-count="readyCount"
+          :last-updated="lastUpdated"
+        />
+
+        <DashboardDeckBento
+          v-if="featured"
+          :featured="featured"
+          :count="featuredCount"
+          :colors="featuredColors"
+          :accent="featuredAccent"
+          @open="(id) => navigateTo(`/deck/${id}`)"
+          @new="modals.showNewDeck.value = true"
+          @import="modals.showImport.value = true"
+        />
+
+        <!-- DECK GRID -->
+        <div class="sec">
+          <h2 class="sec-title">
+            {{ t('dash.allDecks') }}
+          </h2>
+        </div>
+        <div class="grid">
+          <DeckTile
+            v-for="(deck, i) in restDecks"
+            :key="deck.id"
+            :deck="deck"
+            class="stagger-item"
+            :style="{ '--stagger-delay': `${i * 45}ms` }"
+            @open="(id) => navigateTo(`/deck/${id}`)"
+            @duplicate="(id) => duplicateDeck(id)"
+            @delete="modals.requestDelete"
+            @rename="modals.openRename"
+          />
+          <!-- new deck tile -->
+          <button class="new-tile stagger-item" :style="{ '--stagger-delay': `${restDecks.length * 45}ms` }" @click="modals.showNewDeck.value = true">
+            <span class="new-plus"><UIcon name="i-lucide-plus" class="h-5 w-5" /></span>
+            <span>{{ t('nav.newDeck') }}</span>
+          </button>
+        </div>
+      </template>
+
+      <DashboardDeckModals
+        v-model:show-new-deck="modals.showNewDeck.value"
+        v-model:new-deck-name="modals.newDeckName.value"
+        v-model:show-import="modals.showImport.value"
+        v-model:import-url="modals.importUrl.value"
+        v-model:show-rename="modals.showRename.value"
+        v-model:rename-value="modals.renameValue.value"
+        v-model:show-delete="modals.showDelete.value"
+        :importing="modals.importing.value"
+        :delete-name="modals.deleteName.value"
+        @create="modals.handleCreate"
+        @import="modals.handleImport"
+        @rename="modals.handleRename"
+        @confirm-delete="modals.confirmDelete"
+      />
+    </div>
   </div>
 </template>
 

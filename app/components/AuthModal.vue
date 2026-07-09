@@ -146,7 +146,7 @@ async function submit() {
         </UButton>
       </form>
 
-      <p class="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-muted">
+      <p class="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-(--color-text-muted)">
         <UIcon name="i-lucide-cloud" class="size-3.5" />
         {{ t('auth.cloudNote') }}
       </p>

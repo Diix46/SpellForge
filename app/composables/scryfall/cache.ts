@@ -1,5 +1,5 @@
 import type { ScryfallCard } from './types'
-import { hasRealImage } from './helpers'
+import { hasRealImage, sanitizeCardName } from './helpers'
 
 // Simple per-session cache keyed by `${set}/${number}/${lang}` and by name.
 // These are module-scoped SINGLETONS: imported by reference everywhere, never
@@ -51,7 +51,7 @@ export async function searchFrenchByName(name: string): Promise<ScryfallCard | n
   if (frByNameCache.has(cacheName))
     return frByNameCache.get(cacheName)!
   try {
-    const q = `!"${name.replace(/"/g, '')}" lang:fr`
+    const q = `!"${sanitizeCardName(name)}" lang:fr`
     const data = await $fetch<{ cards?: ScryfallCard[] }>('/api/cards/search', {
       params: { q, order: 'released', dir: 'desc', unique: 'prints' },
     })
@@ -104,7 +104,7 @@ async function runBulkChunks(pending: string[]): Promise<void> {
     // Group the chunk's best FR printing by lowercased name.
     const byName = new Map<string, ScryfallCard>()
     try {
-      const q = `(${chunk.map(n => `!"${n.replace(/"/g, '')}"`).join(' or ')}) lang:fr`
+      const q = `(${chunk.map(n => `!"${sanitizeCardName(n)}"`).join(' or ')}) lang:fr`
       // Cached Nitro search route (SWR) instead of a direct Scryfall hit — the
       // FR by-name pre-pass is now instant on repeat opens.
       const data = await $fetch<{ cards?: ScryfallCard[] }>('/api/cards/search', {

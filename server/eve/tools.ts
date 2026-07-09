@@ -64,7 +64,11 @@ interface ScrySearchCard {
   prices?: { eur?: string | null, usd?: string | null }
 }
 
-async function runScryfallSearch(query: string): Promise<unknown> {
+// Cached like every other Scryfall path in the app (defineCachedEventHandler /
+// defineCachedFunction) — these two were the one place still hitting Scryfall
+// raw on every call, including repeat lookups across turns of the same
+// conversation (the model often re-searches/re-validates similar cards).
+const runScryfallSearch = defineCachedFunction(async (query: string): Promise<unknown> => {
   const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(query)}&order=edhrec&dir=auto`
   const res = await scryfallFetch(url)
   if (res.status === 404)
@@ -81,7 +85,11 @@ async function runScryfallSearch(query: string): Promise<unknown> {
     priceEur: c.prices?.eur ?? null,
   }))
   return { count: data.total_cards ?? cards.length, cards }
-}
+}, {
+  maxAge: 300,
+  name: 'eve-scryfall-search',
+  getKey: (query: string) => query,
+})
 
 async function runEdhrec(commander: string): Promise<unknown> {
   const names = await edhrecSuggestions(commander)
@@ -89,7 +97,7 @@ async function runEdhrec(commander: string): Promise<unknown> {
 }
 
 interface ValCard { name?: string, color_identity?: string[], legalities?: Record<string, string> }
-async function runValidate(names: string[], identity: string[]): Promise<unknown> {
+const runValidate = defineCachedFunction(async (names: string[], identity: string[]): Promise<unknown> => {
   const clean = (Array.isArray(names) ? names : []).map(n => String(n).trim()).filter(Boolean).slice(0, 60)
   if (!clean.length)
     return { results: [] }
@@ -107,7 +115,12 @@ async function runValidate(names: string[], identity: string[]): Promise<unknown
     }
   })
   return { results }
-}
+}, {
+  maxAge: 300,
+  name: 'eve-validate-cards',
+  getKey: (names: string[], identity: string[]) =>
+    `${(names ?? []).map(n => n.toLowerCase().trim()).sort().join(',')}|${(identity ?? []).map(c => c.toLowerCase()).sort().join(',')}`,
+})
 
 // Dispatch a tool call by name; never throws — returns an error payload the model
 // can read and recover from, so one bad tool call can't kill the turn.

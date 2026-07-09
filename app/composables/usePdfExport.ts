@@ -1,5 +1,16 @@
+// Type-only: the runtime class is dynamically imported inside generatePdf()
+// so jsPDF's ~180 KB (gzip) doesn't load until a user actually exports a PDF,
+// not on every deck-page visit (usePdfExport is called unconditionally from
+// the deck page's top-level script, well before the export button is used).
+import type { jsPDF } from 'jspdf'
 import type { ResolvedCard } from './useScryfall'
-import { jsPDF } from 'jspdf'
+import { mapPool } from './scryfall/helpers'
+
+// Bounded concurrency for the image pre-load pass — same order of magnitude as
+// the FR-resolution concurrency elsewhere (useScryfall), polite to the proxy
+// route while still loading a ~100-card deck in a fraction of the previous
+// fully-sequential time.
+const IMAGE_LOAD_CONCURRENCY = 8
 
 export type PageFormat = 'a4' | 'a3'
 export type Orientation = 'portrait' | 'landscape'
@@ -144,15 +155,16 @@ export function usePdfExport() {
     let loaded = 0
     const loadedImages = new Map<string, ImageData | null>()
 
-    for (const url of uniqueUrls) {
+    await mapPool(uniqueUrls, IMAGE_LOAD_CONCURRENCY, async (url) => {
       const img = await loadImageAsDataUrl(url)
       loadedImages.set(url, img)
       loaded++
       onProgress?.({ loaded, total: uniqueUrls.length, phase: 'loading' })
-    }
+    })
 
     onProgress?.({ loaded: uniqueUrls.length, total: uniqueUrls.length, phase: 'rendering' })
 
+    const { jsPDF } = await import('jspdf')
     // eslint-disable-next-line new-cap -- jsPDF is an external class with a lowercase name
     const doc = new jsPDF({
       orientation: settings.orientation,

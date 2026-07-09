@@ -28,6 +28,7 @@ const DELAY_MS = 100
 const FR_CONCURRENCY = 8
 
 export function useScryfall() {
+  const { t } = useLocale()
   // Resolve the best French version of a matched card with a REAL image, or null
   // if no usable French printing exists (caller keeps the matched card).
   // When `pinned` is true the user chose a specific printing, so we ONLY try the
@@ -78,7 +79,7 @@ export function useScryfall() {
       return { foundCards: data.data ?? [], requestError: null }
     }
     catch (err) {
-      return { foundCards: [], requestError: err instanceof Error ? err.message : 'erreur réseau' }
+      return { foundCards: [], requestError: err instanceof Error ? err.message : t('toast.loadError') }
     }
   }
 

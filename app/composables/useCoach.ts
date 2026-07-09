@@ -24,23 +24,39 @@ export interface CoachMessage {
 // Map raw tool names to friendly activity labels. Two kinds: the real-data tools
 // (Scryfall/EDHREC/validate) and the consult_<domain> tools — each consult names
 // one of the Coach's specialists, so the player sees the expert team at work.
-const TOOL_LABEL: Record<string, string> = {
-  scryfall_search: '🔍 Recherche de cartes (Scryfall)',
-  edhrec_suggestions: '📊 Cartes populaires (EDHREC)',
-  validate_cards: '✅ Vérification des cartes',
-  consult_ramp: '🌿 Spécialiste rampe & mana',
-  consult_draw: '🃏 Spécialiste pioche',
-  consult_removal: '🎯 Spécialiste removal & interaction',
-  consult_curve: '📈 Spécialiste courbe de mana',
-  consult_legality: '🛡️ Gardien légalité & identité',
-  consult_budget: '💰 Spécialiste budget',
+const TOOL_LABEL: Record<'fr' | 'en', Record<string, string>> = {
+  fr: {
+    scryfall_search: '🔍 Recherche de cartes (Scryfall)',
+    edhrec_suggestions: '📊 Cartes populaires (EDHREC)',
+    validate_cards: '✅ Vérification des cartes',
+    consult_ramp: '🌿 Spécialiste rampe & mana',
+    consult_draw: '🃏 Spécialiste pioche',
+    consult_removal: '🎯 Spécialiste removal & interaction',
+    consult_curve: '📈 Spécialiste courbe de mana',
+    consult_legality: '🛡️ Gardien légalité & identité',
+    consult_budget: '💰 Spécialiste budget',
+    consult_bracket: '🎚️ Spécialiste power level',
+  },
+  en: {
+    scryfall_search: '🔍 Card search (Scryfall)',
+    edhrec_suggestions: '📊 Popular cards (EDHREC)',
+    validate_cards: '✅ Card validation',
+    consult_ramp: '🌿 Ramp & mana specialist',
+    consult_draw: '🃏 Draw specialist',
+    consult_removal: '🎯 Removal & interaction specialist',
+    consult_curve: '📈 Mana curve specialist',
+    consult_legality: '🛡️ Legality & identity guardian',
+    consult_budget: '💰 Budget specialist',
+    consult_bracket: '🎚️ Power level specialist',
+  },
 }
-function toolLabel(name: string): string {
-  if (TOOL_LABEL[name])
-    return TOOL_LABEL[name]
+function toolLabel(name: string, locale: 'fr' | 'en'): string {
+  const known = TOOL_LABEL[locale][name]
+  if (known)
+    return known
   // Unknown consult_<x> → a generic specialist label rather than the raw tool id.
   if (name.startsWith('consult_'))
-    return `🧠 Spécialiste ${name.slice('consult_'.length)}`
+    return locale === 'fr' ? `🧠 Spécialiste ${name.slice('consult_'.length)}` : `🧠 ${name.slice('consult_'.length)} specialist`
   return name
 }
 
@@ -82,6 +98,7 @@ function newConvId(): string {
 }
 
 export function useCoach() {
+  const { locale, t } = useLocale()
   // Shared across every component that calls useCoach() in this session.
   const messages = useState<CoachMessage[]>('coach-messages', () => loadPersisted().messages)
   const streaming = useState('coach-streaming', () => false)
@@ -215,7 +232,7 @@ export function useCoach() {
     try {
       const { sessionId, continuationToken: tok } = await $fetch<{ sessionId: string, continuationToken: string }>(
         '/api/coach/session',
-        { method: 'POST', body: { message, continuationToken: continuationToken || undefined } },
+        { method: 'POST', body: { message, continuationToken: continuationToken || undefined, locale: locale.value } },
       )
       if (tok) {
         continuationToken = tok
@@ -233,7 +250,7 @@ export function useCoach() {
         return
       }
       const err = e as { data?: { statusMessage?: string }, statusMessage?: string, message?: string } | null
-      error.value = err?.data?.statusMessage || err?.statusMessage || err?.message || 'Coach indisponible'
+      error.value = err?.data?.statusMessage || err?.statusMessage || err?.message || t('coach.unavailable')
       // Drop the empty pending bubble on hard failure.
       if (!assistant.value.text)
         messages.value = messages.value.filter(m => m !== assistant.value)
@@ -324,7 +341,7 @@ export function useCoach() {
           const name = c?.toolName ?? c?.name
           if (name && !seenTools.has(name)) {
             seenTools.add(name)
-            ;(assistant.value.tools ??= []).push(toolLabel(name))
+            ;(assistant.value.tools ??= []).push(toolLabel(name, locale.value))
           }
         }
         break

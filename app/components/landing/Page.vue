@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useLandingCards } from '~/composables/useLandingCards'
 import { useLocale } from '~/composables/useLocale'
 import { useScrollReveal } from '~/composables/useScrollReveal'
 
@@ -7,29 +8,18 @@ import { useScrollReveal } from '~/composables/useScrollReveal'
 // instead once logged in). The cinematic hero owns its own header + auth CTAs;
 // this page adds the feature + steps sections below the fold.
 
-const { t, locale } = useLocale()
+const { t } = useLocale()
 
 const root = ref<HTMLElement | null>(null)
 useScrollReveal(() => root.value)
 
 // Real Magic cards for the "how it works" step mockups (Coach suggestions + the
 // printed PDF sheet) so the demos show actual cards, not abstract placeholders.
-interface DemoCard { name: string, image: string, art: string, colors: string[] }
-const demoCards = ref<DemoCard[]>([])
-const coachCards = ref<DemoCard[]>([])
-onMounted(async () => {
-  if (!import.meta.client)
-    return
-  try {
-    const { cards } = await $fetch<{ cards: DemoCard[] }>('/api/landing/cards', { query: { lang: locale.value, _: Date.now() } })
-    const pool = (cards ?? []).filter(c => c.image && c.art)
-    demoCards.value = pool.slice(0, 9) // fills the 3×3 PDF sheet
-    coachCards.value = pool.slice(9, 12) // 3 distinct cards for the Coach demo
-  }
-  catch {
-    // graceful: the mockups fall back to placeholder tiles if the fetch fails
-  }
-})
+// Shared pool (see useLandingCards) — same fetch CinematicHero uses, and it
+// refetches on a locale toggle so these stay in the site's current language.
+const { pool: landingPool } = useLandingCards()
+const demoCards = computed(() => landingPool.value.slice(0, 9)) // fills the 3×3 PDF sheet
+const coachCards = computed(() => landingPool.value.slice(9, 12)) // 3 distinct cards for the Coach demo
 
 const FEATURES = [
   { icon: 'i-lucide-wand-sparkles', key: 'f1', glow: '79,168,232' },

@@ -12,6 +12,7 @@ import { useManaIdentity } from '~/composables/useManaIdentity'
 import { classifyType, displayName, displayType, englishTypeLine } from '~/composables/useMtg'
 import { useResolvedCards } from '~/composables/useResolvedCards'
 import { getImageUris } from '~/composables/useScryfall'
+import { useUndoHistory } from '~/composables/useUndoHistory'
 import { isCardWithinIdentity } from '~/utils/mtgValidation'
 
 // The deck page has heavy async setup; with the global `cine` out-in page
@@ -71,12 +72,33 @@ const {
   onLoadStart: () => { page.value = 1 },
 })
 
+// Card language follows the site locale — re-resolve on toggle so names,
+// oracle text, images, and prices actually switch instead of staying pinned
+// to whichever language was active when the deck was first opened (affects
+// the grid, Preview, Buy tab, PDF export, and the FR-count badge).
+watch(lang, () => {
+  // eslint-disable-next-line ts/no-use-before-define
+  if (cardCount.value > 0)
+    loadCards({ silent: true })
+})
+
 // Overlay open-state (Preview / Buy / Coach) + Esc-to-close + ?preview/?buy
 // deep-link sync. The page opens them (toolbar, deep-link in initDeck). See
 // useDeckOverlays.
 const { previewOpen, buyOpen, coachOpen } = useDeckOverlays(route, router)
 // Coach large-panel toggle (shared state; the header button lives in CoachChat).
 const { expanded: coachExpanded } = useCoach()
+
+// The Preview overlay pulls in jsPDF/html2canvas/canvg/marked/dompurify (~590 KB
+// gzip ~190 KB) — load that chunk only once the panel is actually opened, not on
+// every deck-page visit. Once loaded it stays mounted (never gated back to
+// false) so its internal open/close <Transition> keeps animating normally on
+// every subsequent toggle.
+const previewLoaded = ref(false)
+watch(previewOpen, (v) => {
+  if (v)
+    previewLoaded.value = true
+})
 
 // Import/Export modal (the old raw-text editor lives here now).
 const showImportExport = ref(false)
@@ -236,6 +258,46 @@ function isWithinIdentity(card: ScryfallCard): boolean {
   return isCardWithinIdentity(card, allowed.map(c => c.toLowerCase()))
 }
 
+// Auto-add the token(s) a card creates (Scryfall's all_parts, component
+// 'token') — skips tokens already in the deck. Added by name (like the
+// drag-drop fallback below) rather than pre-fetching each token's exact
+// printing: token art rarely matters for a proxy sheet, and this reuses the
+// normal resolution path instead of a bespoke fetch.
+//
+// Scryfall only populates all_parts on the English/default printing — a FR
+// (or other locale) printing object omits it entirely, and this app searches
+// the site locale's printing by default. `card.name` is always the canonical
+// English oracle name regardless of printing language, so re-querying without
+// a lang filter reliably lands on the printing that actually carries the data
+// (cached server-side, so repeat adds of the same card are instant).
+async function addAssociatedTokens(card: ScryfallCard) {
+  let allParts = card.all_parts
+  if (!allParts) {
+    try {
+      const res = await $fetch<{ cards: ScryfallCard[] }>('/api/cards/search', {
+        params: { q: `!"${card.name.replace(/"/g, '')}"`, order: 'edhrec', dir: 'auto' },
+      })
+      allParts = res.cards[0]?.all_parts
+    }
+    catch {
+      return // best-effort: skip token auto-add on a network hiccup
+    }
+  }
+  const tokenNames = (allParts ?? [])
+    .filter(p => p.component === 'token')
+    .map(p => p.name.trim())
+    .filter((name, i, arr) => name && !inDeckNames.value.has(name.toLowerCase()) && arr.indexOf(name) === i)
+  for (const name of tokenNames)
+    builderOp(() => builder.addCard(name))
+  if (tokenNames.length) {
+    toast.add({
+      title: t('toast.tokensAdded'),
+      description: tokenNames.join(', '),
+      color: 'info',
+      icon: 'i-lucide-copy-plus',
+    })
+  }
+}
 function addSearchCard(card: ScryfallCard) {
   if (!isWithinIdentity(card)) {
     toast.add({ title: t('toast.outOfIdentity'), description: card.name, color: 'warning', icon: 'i-lucide-shield-alert' })
@@ -243,6 +305,7 @@ function addSearchCard(card: ScryfallCard) {
   }
   builderOp(() => builder.addScryfallCard(card))
   toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
+  addAssociatedTokens(card)
 }
 // Remove a card from the deck via the search grid's green-check toggle.
 function removeSearchCard(card: ScryfallCard) {
@@ -314,6 +377,18 @@ function openDeckEntryDetail(name: string) {
   openDetail(rc ?? { entry: { quantity: 1, name }, card: null, imageUrl: null, backImageUrl: null, lang: lang.value })
 }
 
+// ---- Undo/redo ----
+// One snapshot per debounced settle of the raw decklist + name — covers every
+// kind of edit (cards, quantities, commander, rename) since both derive from
+// these two refs (see the rawDecklist watcher above). Piggybacks on the save
+// debounce below so a burst of typing becomes one undo step, not one per keystroke.
+interface DeckSnapshot { raw: string, name: string }
+const history = useUndoHistory<DeckSnapshot>()
+// Set by applyHistorySnapshot() so the save it triggers doesn't ALSO record a
+// new history entry — that would immediately overwrite the redo branch we just
+// navigated to.
+let skipNextHistoryPush = false
+
 // Debounced autosave. The pending write is bound to the deck that was being
 // edited (captured at schedule time), NOT to whatever deck the route points at
 // when the timer fires — otherwise switching A→B mid-debounce would save A's
@@ -330,7 +405,26 @@ function flushSave() {
     pendingSave = null
     if (getDeck(id))
       updateDeck(id, { raw, name })
+    if (skipNextHistoryPush)
+      skipNextHistoryPush = false
+    else
+      history.push({ raw, name })
   }
+}
+function applyHistorySnapshot(snap: DeckSnapshot | null) {
+  if (!snap)
+    return
+  skipNextHistoryPush = true
+  rawDecklist.value = snap.raw
+  deckName.value = snap.name
+}
+function undoDeck() {
+  flushSave() // commit any in-flight edit as its own step first, so it isn't lost
+  applyHistorySnapshot(history.undo())
+}
+function redoDeck() {
+  flushSave()
+  applyHistorySnapshot(history.redo())
 }
 function scheduleSave() {
   const id = deckId.value
@@ -365,6 +459,7 @@ function initDeck(id: string) {
   }
   rawDecklist.value = d.raw
   deckName.value = d.name
+  history.reset({ raw: d.raw, name: d.name })
   resolvedCards.value = []
   commanderOverride.value = -1
   page.value = 1
@@ -400,6 +495,29 @@ watch([rawDecklist, deckName], scheduleSave)
 
 // Flush any pending save when leaving the page entirely.
 onBeforeUnmount(flushSave)
+
+// Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl+Y) for undo/redo — but not while
+// focused in a text field, where the browser's own native undo should win
+// (editing the deck name or the raw decklist textarea in Import/Export).
+function isTextEntry(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement))
+    return false
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+}
+function onHistoryKeydown(e: KeyboardEvent) {
+  const key = e.key.toLowerCase()
+  const hasModifier = e.metaKey || e.ctrlKey
+  if (!hasModifier || (key !== 'z' && key !== 'y') || isTextEntry(e.target))
+    return
+  const isRedo = key === 'y' || (key === 'z' && e.shiftKey)
+  e.preventDefault()
+  if (isRedo)
+    redoDeck()
+  else
+    undoDeck()
+}
+onMounted(() => window.addEventListener('keydown', onHistoryKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onHistoryKeydown))
 
 const parsed = computed(() => rawDecklist.value.trim() ? parse(rawDecklist.value) : null)
 const allEntries = computed(() => parsed.value ? [...parsed.value.mainboard, ...parsed.value.sideboard] : [])
@@ -576,8 +694,6 @@ const {
   copyWantsList,
   buyWholeDeck,
 } = useDeckBuy({ resolvedCards, allEntries, price, resolvedFor, locale: lang })
-// eslint-disable-next-line no-console
-console.log('[deckdbg] setup END')
 </script>
 
 <template>
@@ -595,10 +711,14 @@ console.log('[deckdbg] setup END')
       :logged-in="loggedIn"
       :sharing="sharing"
       :color-var="colorVar"
+      :can-undo="history.canUndo.value"
+      :can-redo="history.canRedo.value"
       @open-import-export="openImportExport"
       @share="shareDeck"
       @open-preview="previewOpen = true"
       @open-buy="buyOpen = true"
+      @undo="undoDeck"
+      @redo="redoDeck"
     />
 
     <!-- DECK WORKSPACE (the one primary surface; Preview/Buy are overlays) -->
@@ -685,8 +805,10 @@ console.log('[deckdbg] setup END')
       </Teleport>
     </div>
 
-    <!-- PREVIEW & PRINT — right slide-over (review visually + export PDF). -->
-    <BuilderDeckPreviewOverlay
+    <!-- PREVIEW & PRINT — right slide-over (review visually + export PDF).
+         Lazy: this pulls in jsPDF/html2canvas/canvg — see previewLoaded above. -->
+    <LazyBuilderDeckPreviewOverlay
+      v-if="previewLoaded"
       v-model:open="previewOpen"
       v-model:settings="settings"
       v-model:page="page"

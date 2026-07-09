@@ -76,7 +76,9 @@
   --color-mana-w: #e9e2c8;
   --color-mana-u: #4fa8e8;
   --color-mana-b: #8c86a0;
-  --color-mana-r: #e85844;
+  /* Nudged from #e85844 (~4.46:1 on --color-surface-3, just under the 4.5:1 AA
+     text threshold) to clear it (~4.9:1) while staying recognizably red. */
+  --color-mana-r: #ec644e;
   --color-mana-g: #38b883;
 
   /* WUBRG accent triplets (r,g,b) — drive the dynamic per-deck theme. */

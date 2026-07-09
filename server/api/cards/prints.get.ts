@@ -8,7 +8,7 @@
 // composable export, so the auto-import global is ambiguous — import the server
 // copy directly to bind to the right one.
 import type { ScryImg } from '~~/server/utils/scryfall'
-import { getImageUris } from '~~/server/utils/scryfall'
+import { getImageUris, sanitizeCardName } from '~~/server/utils/scryfall'
 
 interface ScryPrint {
   id: string
@@ -54,7 +54,7 @@ export default defineCachedEventHandler(async (event): Promise<{ prints: PrintOp
     return { prints: [] }
 
   // All printings (any language) of the exact card, newest first.
-  const q = `!"${name.replace(/"/g, '')}" include:extras`
+  const q = `!"${sanitizeCardName(name)}" include:extras`
   const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc&include_multilingual=true`
 
   let data: { data?: ScryPrint[] }

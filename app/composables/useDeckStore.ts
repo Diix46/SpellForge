@@ -50,6 +50,19 @@ export function useDeckStore() {
   // cloud decks once signed in (see syncFromCloud / migrateLocalToCloud).
   const decks = useState<Deck[]>('decks', loadLocal)
   const { loggedIn } = useUserSession()
+  const { t } = useLocale()
+  const toast = useToast()
+
+  // A failed cloud write must not fail silently: the optimistic local state
+  // already changed, so at minimum tell the player it didn't actually save.
+  function reportSaveFailure() {
+    toast.add({
+      title: t('toast.saveFailed'),
+      description: t('toast.saveFailedDesc'),
+      color: 'error',
+      icon: 'i-lucide-cloud-off',
+    })
+  }
   // True once we're operating against the cloud (signed in). Guest = local only.
   const cloud = computed(() => loggedIn.value)
   // Has the store finished its initial load? For guests this is immediate
@@ -73,13 +86,31 @@ export function useDeckStore() {
     }
   }
 
-  /** Pull the signed-in user's decks from the server (replaces the local set). */
+  /**
+   * Pull the signed-in user's decks from the server. NOT a blind replace: a
+   * create/edit whose background write (see createDeck/updateDeck) hasn't
+   * landed on the server yet must not be wiped out by this snapshot merely
+   * because it re-runs (e.g. a login/logout toggle within the same session).
+   * We keep the local copy of any deck that's newer than (or absent from)
+   * the server's response, and take the server's copy otherwise.
+   *
+   * This does not protect a not-yet-synced create/edit across a hard page
+   * reload (in-memory state is gone at that point) — closing that gap fully
+   * would need a persisted, per-account write queue, which is out of scope here.
+   */
   async function syncFromCloud() {
     if (!cloud.value)
       return
     try {
       const { decks: rows } = await $fetch<{ decks: any[] }>('/api/decks')
-      decks.value = rows.map(fromRow)
+      const serverDecks = rows.map(fromRow)
+      const serverById = new Map(serverDecks.map(d => [d.id, d]))
+      const localOnly = decks.value.filter((d) => {
+        const server = serverById.get(d.id)
+        return !server || d.updatedAt > server.updatedAt
+      })
+      const localOnlyIds = new Set(localOnly.map(d => d.id))
+      decks.value = [...serverDecks.filter(d => !localOnlyIds.has(d.id)), ...localOnly]
     }
     finally {
       // Mark ready even on failure so the UI doesn't hang on a spinner; a
@@ -122,8 +153,10 @@ export function useDeckStore() {
     const deck: Deck = { id: genId(), name: name.trim() || 'Nouveau deck', raw, source, createdAt: now, updatedAt: now }
     decks.value = [deck, ...decks.value]
     persist()
-    if (cloud.value)
-      $fetch('/api/decks', { method: 'POST', body: { id: deck.id, name: deck.name, raw, source } }).catch(() => {})
+    if (cloud.value) {
+      $fetch('/api/decks', { method: 'POST', body: { id: deck.id, name: deck.name, raw, source } })
+        .catch(reportSaveFailure)
+    }
     return deck
   }
 
@@ -139,15 +172,19 @@ export function useDeckStore() {
     decks.value[idx] = { ...existing, ...patch, updatedAt: Date.now() }
     decks.value = [...decks.value]
     persist()
-    if (cloud.value)
-      $fetch(`/api/decks/${id}`, { method: 'PATCH', body: patch }).catch(() => {})
+    if (cloud.value) {
+      $fetch(`/api/decks/${id}`, { method: 'PATCH', body: patch })
+        .catch(reportSaveFailure)
+    }
   }
 
   function deleteDeck(id: string) {
     decks.value = decks.value.filter(d => d.id !== id)
     persist()
-    if (cloud.value)
-      $fetch(`/api/decks/${id}`, { method: 'DELETE' }).catch(() => {})
+    if (cloud.value) {
+      $fetch(`/api/decks/${id}`, { method: 'DELETE' })
+        .catch(reportSaveFailure)
+    }
   }
 
   function duplicateDeck(id: string): Deck | undefined {

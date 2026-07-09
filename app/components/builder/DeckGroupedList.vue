@@ -186,7 +186,7 @@ const groups = computed(() => {
             <button
               type="button"
               class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
-              aria-label="remove"
+              :aria-label="t('build.removeFromDeck')"
               @click.stop="emit('remove', entry.name)"
             >
               <UIcon name="i-lucide-trash-2" class="h-3 w-3" />

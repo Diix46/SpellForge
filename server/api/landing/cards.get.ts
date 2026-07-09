@@ -81,6 +81,14 @@ export default defineCachedEventHandler(async (event): Promise<{ cards: LandingC
       colors: (c.colors ?? c.color_identity ?? []).map(x => x.toLowerCase()),
     }))
 
+  // A random page landing past the real result count (mostly the smaller FR
+  // pool) comes back empty — Scryfall returns 200+[] rather than 404 for that.
+  // Throw instead of returning {cards: []} so the cache layer never persists
+  // an empty pool: a landing visitor would otherwise see no card art for the
+  // full maxAge window on every subsequent request.
+  if (!all.length)
+    throw new Error('landing cards: empty page')
+
   // Shuffle (Fisher–Yates) and keep a pool; the client picks N at random per visit.
   for (let i = all.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

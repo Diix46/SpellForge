@@ -6,7 +6,9 @@ export default defineAppConfig({
       primary: 'ink',
       secondary: 'ink',
       neutral: 'ink',
-      info: 'ink',
+      // Dedicated cyan scale (matches the design system's --color-info token) so
+      // info-colored alerts/toasts are visually distinguishable from plain neutral UI.
+      info: 'cyan',
       success: 'green',
       warning: 'amber',
       error: 'red',
