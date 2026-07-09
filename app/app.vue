@@ -89,6 +89,7 @@ const initials = computed(() => {
 // rendered separately below and never shows an active fill.
 const nav = computed(() => [
   { to: '/', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
+  { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
 // A nav link is active only when it's the current route (exact). The dashboard
