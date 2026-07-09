@@ -136,7 +136,13 @@ const shareUrl = computed(() => {
 async function onToggleShare(enabled: boolean) {
   togglingShare.value = true
   try {
-    await setShare(deckId.value, enabled)
+    const shareId = await setShare(deckId.value, enabled)
+    // setShare() resolves to null both on legitimate disable and when the deck
+    // is a guest/local deck (no-op, cloud.value is false). Disabling always
+    // resolving to null is expected; enabling resolving to null means the call
+    // never reached the API and must surface as an error.
+    if (enabled && !shareId)
+      throw new Error('no share id')
   }
   catch {
     toast.add({ title: t('share.error'), color: 'error', icon: 'i-lucide-x' })
@@ -149,7 +155,11 @@ async function onToggleShare(enabled: boolean) {
 async function onTogglePublic(enabled: boolean) {
   togglingPublic.value = true
   try {
-    await setPublic(deckId.value, enabled)
+    const isPublic = await setPublic(deckId.value, enabled)
+    // Same guest/local-deck guard as onToggleShare: setPublic() also resolves
+    // to false both on legitimate disable and on a guest-mode no-op.
+    if (enabled && !isPublic)
+      throw new Error('no public flag')
   }
   catch {
     toast.add({ title: t('share.error'), color: 'error', icon: 'i-lucide-x' })
