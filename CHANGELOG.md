@@ -1,3 +1,11 @@
+## [0.3.1](https://github.com/Diix46/SpellForge/compare/v0.3.0...v0.3.1) (2026-07-09)
+
+### Bug Fixes
+
+* **cards:** supprime le flash EN puis FR et fiabilise la résolution haute résolution ([2a299ce](https://github.com/Diix46/SpellForge/commit/2a299cee8cb706f822e0427e13d3c0763701a9a8))
+* **coach:** bloque proprement l'accès invité au Coach IA ([b0c1ce4](https://github.com/Diix46/SpellForge/commit/b0c1ce4369bb33282a19ca181307b3c88fb516ce))
+* **landing:** charge les cartes du hero en lazy loading ([9db7e5d](https://github.com/Diix46/SpellForge/commit/9db7e5d9cd91079e82c484dea0e2e2d4ff2da63d))
+
 ## [0.3.0](https://github.com/Diix46/SpellForge/compare/v0.2.1...v0.3.0) (2026-07-09)
 
 ### Features
