@@ -7,6 +7,8 @@ export interface Deck {
   source?: string
   createdAt: number
   updatedAt: number
+  shareId?: string | null
+  public?: boolean
 }
 
 const STORAGE_KEY = 'mtg_decks_v1'
@@ -42,6 +44,8 @@ function fromRow(r: any): Deck {
     source: r.source ?? undefined,
     createdAt: typeof r.createdAt === 'number' ? r.createdAt : new Date(r.createdAt).getTime(),
     updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : new Date(r.updatedAt).getTime(),
+    shareId: r.shareId ?? null,
+    public: !!r.public,
   }
 }
 
@@ -199,7 +203,27 @@ export function useDeckStore() {
     if (!cloud.value)
       return null
     const { shareId } = await $fetch<{ shareId: string | null }>(`/api/decks/${id}/share`, { method: 'POST', body: { enabled } })
+    const idx = decks.value.findIndex(d => d.id === id)
+    if (idx !== -1) {
+      const existing = decks.value[idx]
+      decks.value[idx] = { ...existing, shareId, ...(enabled ? {} : { public: false }) } as Deck
+      decks.value = [...decks.value]
+    }
     return shareId
+  }
+
+  /** Enable/disable listing this deck in the public Discover gallery. */
+  async function setPublic(id: string, enabled: boolean): Promise<boolean> {
+    if (!cloud.value)
+      return false
+    const res = await $fetch<{ shareId: string | null, public: boolean }>(`/api/decks/${id}/publish`, { method: 'POST', body: { enabled } })
+    const idx = decks.value.findIndex(d => d.id === id)
+    if (idx !== -1) {
+      const existing = decks.value[idx]
+      decks.value[idx] = { ...existing, shareId: res.shareId, public: res.public } as Deck
+      decks.value = [...decks.value]
+    }
+    return res.public
   }
 
   return {
@@ -215,5 +239,6 @@ export function useDeckStore() {
     deleteDeck,
     duplicateDeck,
     setShare,
+    setPublic,
   }
 }
