@@ -1,0 +1,1 @@
+ALTER TABLE `decks` ADD `public` integer DEFAULT false NOT NULL;

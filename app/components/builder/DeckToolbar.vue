@@ -13,7 +13,6 @@ defineProps<{
   cardCount: number
   priceTotal: number
   loggedIn: boolean
-  sharing: boolean
   colorVar: (c: ManaColor) => string
   canUndo: boolean
   canRedo: boolean
@@ -110,7 +109,6 @@ const { t } = useLocale()
         color="neutral"
         variant="subtle"
         size="sm"
-        :loading="sharing"
         @click="emit('share')"
       >
         <span class="hidden lg:inline">{{ t('share.button') }}</span>

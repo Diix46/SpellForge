@@ -24,7 +24,7 @@ const route = useRoute()
 const router = useRouter()
 const deckId = computed(() => route.params.id as string)
 
-const { getDeck, updateDeck, setShare, ready: storeReady } = useDeckStore()
+const { getDeck, updateDeck, setShare, setPublic, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
 const { identity, colorVar } = useManaIdentity()
@@ -121,23 +121,61 @@ async function copyDecklistText() {
   }
 }
 
-// Enable public sharing for this (cloud) deck and copy the link to the clipboard.
-const sharing = ref(false)
-async function shareDeck() {
-  sharing.value = true
+// Share modal: two independent toggles (private link, public listing). Both
+// read/write through the store so decks.value stays the single source of truth.
+const showShareModal = ref(false)
+const togglingShare = ref(false)
+const togglingPublic = ref(false)
+
+const shareUrl = computed(() => {
+  if (!deck.value?.shareId || !import.meta.client)
+    return ''
+  return `${window.location.origin}/shared/${deck.value.shareId}`
+})
+
+async function onToggleShare(enabled: boolean) {
+  togglingShare.value = true
   try {
-    const shareId = await setShare(deckId.value, true)
-    if (!shareId)
+    const shareId = await setShare(deckId.value, enabled)
+    // setShare() resolves to null both on legitimate disable and when the deck
+    // is a guest/local deck (no-op, cloud.value is false). Disabling always
+    // resolving to null is expected; enabling resolving to null means the call
+    // never reached the API and must surface as an error.
+    if (enabled && !shareId)
       throw new Error('no share id')
-    const url = `${window.location.origin}/shared/${shareId}`
-    await navigator.clipboard.writeText(url)
-    toast.add({ title: t('share.copied'), description: url, color: 'success', icon: 'i-lucide-link' })
   }
   catch {
     toast.add({ title: t('share.error'), color: 'error', icon: 'i-lucide-x' })
   }
   finally {
-    sharing.value = false
+    togglingShare.value = false
+  }
+}
+
+async function onTogglePublic(enabled: boolean) {
+  togglingPublic.value = true
+  try {
+    const isPublic = await setPublic(deckId.value, enabled)
+    // Same guest/local-deck guard as onToggleShare: setPublic() also resolves
+    // to false both on legitimate disable and on a guest-mode no-op.
+    if (enabled && !isPublic)
+      throw new Error('no public flag')
+  }
+  catch {
+    toast.add({ title: t('share.error'), color: 'error', icon: 'i-lucide-x' })
+  }
+  finally {
+    togglingPublic.value = false
+  }
+}
+
+async function copyShareUrl() {
+  try {
+    await navigator.clipboard.writeText(shareUrl.value)
+    toast.add({ title: t('share.copied'), description: shareUrl.value, color: 'success', icon: 'i-lucide-link' })
+  }
+  catch {
+    toast.add({ title: t('share.copyError'), color: 'error', icon: 'i-lucide-x' })
   }
 }
 // Download the current decklist as a .txt file.
@@ -709,12 +747,11 @@ const {
       :card-count="cardCount"
       :price-total="price.total"
       :logged-in="loggedIn"
-      :sharing="sharing"
       :color-var="colorVar"
       :can-undo="history.canUndo.value"
       :can-redo="history.canRedo.value"
       @open-import-export="openImportExport"
-      @share="shareDeck"
+      @share="showShareModal = true"
       @open-preview="previewOpen = true"
       @open-buy="buyOpen = true"
       @undo="undoDeck"
@@ -925,6 +962,63 @@ const {
             @click="applyImportExport"
           >
             {{ t('build.apply') }}
+          </UButton>
+        </div>
+      </template>
+    </UModal>
+
+    <!-- Share settings: private link + public Discover listing -->
+    <UModal
+      v-model:open="showShareModal"
+      :title="t('share.button')"
+      :ui="{ overlay: 'bg-ink-950/70 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)]' }"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="text-sm font-medium text-(--color-text-high)">
+                {{ t('share.linkActive') }}
+              </div>
+              <p class="text-xs text-(--color-text-muted)">
+                {{ t('share.linkActiveHint') }}
+              </p>
+            </div>
+            <USwitch
+              :model-value="!!deck?.shareId"
+              :loading="togglingShare"
+              :disabled="togglingShare"
+              @update:model-value="onToggleShare"
+            />
+          </div>
+
+          <div v-if="deck?.shareId" class="flex items-center gap-2">
+            <UInput :model-value="shareUrl" readonly class="w-full font-mono text-xs" />
+            <UButton icon="i-lucide-clipboard-copy" color="neutral" variant="subtle" @click="copyShareUrl" />
+          </div>
+
+          <div class="flex items-center justify-between gap-4" :class="{ 'opacity-50': !deck?.shareId }">
+            <div>
+              <div class="text-sm font-medium text-(--color-text-high)">
+                {{ t('share.listPublic') }}
+              </div>
+              <p class="text-xs text-(--color-text-muted)">
+                {{ t('share.listPublicHint') }}
+              </p>
+            </div>
+            <USwitch
+              :model-value="!!deck?.public"
+              :disabled="!deck?.shareId || togglingPublic"
+              :loading="togglingPublic"
+              @update:model-value="onTogglePublic"
+            />
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end">
+          <UButton color="neutral" variant="subtle" @click="showShareModal = false">
+            {{ t('modal.close') }}
           </UButton>
         </div>
       </template>
