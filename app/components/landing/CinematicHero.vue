@@ -2,6 +2,7 @@
 import type { ComponentPublicInstance } from 'vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useAuthOverlay } from '~/composables/useAuthOverlay'
+import { useLandingCards } from '~/composables/useLandingCards'
 import { useLocale } from '~/composables/useLocale'
 
 // Interactive full-screen "card tide" hero: dozens of real Magic cards dumped
@@ -57,6 +58,7 @@ interface Node {
 
 const { t, locale, setLocale } = useLocale()
 const { show: openAuth } = useAuthOverlay()
+const { pool: landingPool, fetchPool: fetchLandingPool } = useLandingCards()
 
 // Accent RGB per WUBRG (brand mana colours); multicolour/colourless → warm gold.
 const COLOR_RGB: Record<string, string> = {
@@ -913,17 +915,16 @@ onMounted(async () => {
     return
   reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   try {
-    const { cards: pool } = await $fetch<{ cards: LandingCard[] }>('/api/landing/cards', {
-      // match the card images to the site language (French printings in FR)
-      query: { lang: locale.value, _: Date.now() },
-    })
+    // Shared pool with Page.vue's step mockups (see useLandingCards) — one
+    // fetch instead of two, and already in the site's current language.
+    await fetchLandingPool()
     const grid = solveGrid(window.innerWidth, window.innerHeight)
     gridCols = grid.cols
     gridRows = grid.rows
     cw = grid.cw
     ch = grid.cw * 1.4
     const n = grid.count
-    const base = (pool ?? []).filter(c => c.image).sort(() => Math.random() - 0.5)
+    const base = landingPool.value.filter(c => c.image).sort(() => Math.random() - 0.5)
     if (!base.length)
       throw new Error('no cards')
     // Repeat from the pool if the viewport needs more cards than we fetched

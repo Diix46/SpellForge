@@ -139,7 +139,7 @@ const modalUi = {
   >
     <template #body>
       <div class="space-y-3">
-        <UFormField :label="t('modal.edhrecUrl')" :help="t('modal.edhrecHelp')">
+        <UFormField :label="t('modal.importUrl')" :help="t('modal.importUrlHelp')">
           <UInput
             :model-value="importUrl"
             name="import-url"
@@ -155,7 +155,7 @@ const modalUi = {
           variant="soft"
           icon="i-lucide-info"
           :title="t('modal.examples')"
-          description="edhrec.com/commanders/<nom> • edhrec.com/average-decks/<nom> • edhrec.com/deckpreview/<id>"
+          description="edhrec.com/commanders/<nom> • edhrec.com/average-decks/<nom> • edhrec.com/deckpreview/<id> • archidekt.com/decks/<id>"
         />
       </div>
     </template>

@@ -1,6 +1,7 @@
 import type { ManaColor } from './useMtg'
 import type { ScryfallCard } from './useScryfall'
 import { ref } from 'vue'
+import { sanitizeCardName } from './scryfall/helpers'
 
 export interface SearchTheme {
   key: string
@@ -126,6 +127,7 @@ export function emptySearchState(): SearchState {
 
 export function useCardSearch() {
   const state = ref<SearchState>(emptySearchState())
+  const { t } = useLocale()
 
   let lastQuery = ''
   let lastOrder: SortOrder = 'edhrec'
@@ -172,7 +174,7 @@ export function useCardSearch() {
         return
       if (reqId !== seq)
         return
-      state.value.error = err instanceof Error ? err.message : 'erreur'
+      state.value.error = err instanceof Error ? err.message : t('toast.loadError')
       if (!append)
         state.value.cards = []
     }
@@ -230,8 +232,8 @@ export function useCardSearch() {
       }
       // Resolve the names to cards (current language) via one Scryfall query.
       // Cap to Scryfall's friendly limit; keep EDHREC's relevance order client-side.
-      const top = names.slice(0, 40)
-      const q = `(${top.map(n => `!"${n.replace(/"/g, '')}"`).join(' or ')}) lang:${lang}`
+      const top = names.slice(0, 40).map(sanitizeCardName).filter(Boolean)
+      const q = `(${top.map(n => `!"${n}"`).join(' or ')}) lang:${lang}`
       const res = await $fetch<{ cards: ScryfallCard[] }>('/api/cards/search', {
         params: { q, order: 'edhrec', dir: 'auto' },
       })
@@ -250,7 +252,7 @@ export function useCardSearch() {
     catch (err: unknown) {
       if (reqId !== seq)
         return
-      state.value.error = err instanceof Error ? err.message : 'erreur'
+      state.value.error = err instanceof Error ? err.message : t('toast.loadError')
       state.value.cards = []
     }
     finally {

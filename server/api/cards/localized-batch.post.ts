@@ -85,11 +85,16 @@ export default defineCachedEventHandler(async (event): Promise<{ cards: Record<s
     byLang.set(it.lang, arr)
   }
 
+  // Each chunk is an independent Scryfall search writing disjoint keys (grouped
+  // by lang, deduped by set/number/lang up front) — safe to run concurrently
+  // instead of one chunk after another.
   const cards: Record<string, ScryCard> = {}
+  const chunkPromises: Promise<void>[] = []
   for (const [lang, group] of byLang) {
     for (let i = 0; i < group.length; i += CHUNK)
-      await fetchChunk(group.slice(i, i + CHUNK), lang, cards)
+      chunkPromises.push(fetchChunk(group.slice(i, i + CHUNK), lang, cards))
   }
+  await Promise.all(chunkPromises)
   return { cards }
 }, {
   maxAge: 60 * 60 * 24,

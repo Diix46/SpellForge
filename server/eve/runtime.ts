@@ -12,6 +12,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 // for a coach), and there's a small LRU-ish cap so long-lived processes don't
 // leak. The NDJSON event shapes match exactly what useCoach.ts parses.
 
+import type { EveLocale } from './orchestrator'
 import { runOrchestrator } from './orchestrator'
 
 interface EveEventEnvelope { type: string, data?: unknown }
@@ -95,7 +96,7 @@ export interface StartResult { sessionId: string, continuationToken: string }
  * `now` is passed in (callers use Date.now()) to keep this module free of the
  * forbidden time/random globals.
  */
-export function startSession(message: string, continuationToken: string | undefined, now: number): StartResult {
+export function startSession(message: string, continuationToken: string | undefined, now: number, locale: EveLocale = 'fr'): StartResult {
   const conv = getConversation(continuationToken, now)
   // The first turn's message already carries the fenced <deck_data> preamble from
   // the client. Extract it as the per-turn deckContext the specialists receive.
@@ -139,7 +140,7 @@ export function startSession(message: string, continuationToken: string | undefi
             push(session, { type: 'turn.failed', data: { message: ev.message } })
             break
         }
-      })
+      }, locale)
       // Persist the assistant turn so the next message keeps context.
       conv.history.push({ role: 'assistant', content: finalText })
       conv.lastUsed = now

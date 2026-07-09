@@ -11,11 +11,20 @@ interface EdhrecCommander {
   container?: { json_dict?: { cardlists?: Cardlist[] } }
 }
 
+// True ligatures (Æther Vial, Œil, …) have no NFD decomposition — they're a
+// single codepoint, not a base letter + combining diacritic — so the
+// diacritic-strip below leaves them untouched. Expand the ones that actually
+// show up on Magic cards before that pass runs.
+const LIGATURES: Record<string, string> = { Æ: 'AE', æ: 'ae', Œ: 'OE', œ: 'oe' }
+function expandLigatures(name: string): string {
+  return name.replace(/[ÆŒ]/gi, c => LIGATURES[c] ?? c)
+}
+
 // EDHREC slug: lowercase, strip accents, DROP apostrophes entirely (EDHREC does
 // "Y'shtola, Night's Blessed" → "yshtola-nights-blessed", not "y-shtola-night-s"),
 // then turn any remaining non-alphanumerics into single hyphens.
 export function edhrecSlug(name: string): string {
-  return name
+  return expandLigatures(name)
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '') // strip combining diacritics
     .toLowerCase()
@@ -30,7 +39,10 @@ export function edhrecSlug(name: string): string {
 // for the whole cache window. Successful (non-empty) results ARE cached 24h.
 export const fetchEdhrecBySlug = defineCachedFunction(async (slug: string): Promise<string[]> => {
   const url = `https://json.edhrec.com/pages/commanders/${slug}.json`
-  const res = await fetch(url, { headers: { 'User-Agent': EDHREC_UA, 'Accept': 'application/json' } })
+  const res = await fetch(url, {
+    headers: { 'User-Agent': EDHREC_UA, 'Accept': 'application/json' },
+    signal: AbortSignal.timeout(10_000),
+  })
   if (!res.ok)
     throw new Error(`edhrec ${res.status}`)
   const data = await res.json() as EdhrecCommander

@@ -56,10 +56,13 @@ useHead({
 const { open: showAuth, show: openAuth } = useAuthOverlay()
 const mobileNav = ref(false)
 
-// The app chrome (top bar + footer) is for signed-in members only. Guests get
-// the full-bleed marketing landing (rendered on "/" itself), which brings its
-// own minimal header.
-const showChrome = computed(() => loggedIn.value)
+// The app chrome (top bar + footer) is hidden only for the chrome-less, full-bleed
+// marketing landing (a first-time guest on "/", which brings its own minimal
+// header). Everyone else — a guest already managing local decks, or a member —
+// gets the real app chrome, including on the deck editor and shared-deck pages.
+const { decks: guestDecks } = useDeckStore()
+const isMarketingLanding = computed(() => !loggedIn.value && route.path === '/' && guestDecks.value.length === 0)
+const showChrome = computed(() => !isMarketingLanding.value)
 
 // A page can request a viewport-locked shell (no page scroll; the page fills the
 // area below the top bar and manages its own internal scroll). The deck page

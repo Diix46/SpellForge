@@ -3,7 +3,7 @@ import type { BuyLang } from '~/composables/useCardmarket'
 import type { PriceSummary } from '~/composables/useDeckAnalysis'
 import type { DeckEntry } from '~/composables/useDecklist'
 import type { ResolvedCard } from '~/composables/useScryfall'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { displayName } from '~/composables/useMtg'
 import { getImageUris } from '~/composables/useScryfall'
@@ -41,8 +41,13 @@ export function useDeckBuy(ctx: BuyCtx) {
 
   // Cardmarket marketplace language (which site locale to open links in). Cards
   // are always matched by English name; this only changes the shop's UI language.
-  // Defaults to the site locale so a FR user lands on the FR marketplace.
+  // Defaults to the site locale so a FR user lands on the FR marketplace, and
+  // keeps following it on a later toggle (the Buy tab has its own override
+  // control for a user who wants a different marketplace language on purpose).
   const buyLang = ref<BuyLang>(locale.value === 'fr' ? 'fr' : 'en')
+  watch(locale, (l) => {
+    buyLang.value = l === 'fr' ? 'fr' : 'en'
+  })
 
   // Resolved cards, or a name-only fallback when nothing is resolved yet.
   const cardsOrFallback = computed<ResolvedCard[]>(() =>
@@ -98,7 +103,7 @@ export function useDeckBuy(ctx: BuyCtx) {
     return `${n.toFixed(2)} €`
   }
 
-  function openAllCardmarket() {
+  async function openAllCardmarket() {
     // Browsers block all but the first popup from one gesture, so open the first
     // card and copy the rest of the links to the clipboard.
     const links = cmLinks.value
@@ -106,13 +111,18 @@ export function useDeckBuy(ctx: BuyCtx) {
       return
     window.open(links[0]!.url, '_blank')
     if (links.length > 1) {
-      navigator.clipboard.writeText(links.map(l => l.url).join('\n'))
-      toast.add({
-        title: t('toast.linksCopied'),
-        description: `${links.length} ${t('editor.cardsWord')}`,
-        color: 'info',
-        icon: 'i-lucide-clipboard-copy',
-      })
+      try {
+        await navigator.clipboard.writeText(links.map(l => l.url).join('\n'))
+        toast.add({
+          title: t('toast.linksCopied'),
+          description: `${links.length} ${t('editor.cardsWord')}`,
+          color: 'info',
+          icon: 'i-lucide-clipboard-copy',
+        })
+      }
+      catch {
+        toast.add({ title: t('toast.copyError'), color: 'error', icon: 'i-lucide-x' })
+      }
     }
   }
 
@@ -123,28 +133,41 @@ export function useDeckBuy(ctx: BuyCtx) {
     allEntries.value.map(e => ({ ...e, name: resolvedFor(e.name)?.card?.name ?? e.name })),
   )
 
-  function copyWantsList() {
-    navigator.clipboard.writeText(wantsListText(enEntries.value))
-    toast.add({
-      title: t('toast.listCopied'),
-      description: t('toast.listCopiedDesc'),
-      color: 'success',
-      icon: 'i-lucide-clipboard-check',
-    })
+  async function copyWantsList() {
+    try {
+      await navigator.clipboard.writeText(wantsListText(enEntries.value))
+      toast.add({
+        title: t('toast.listCopied'),
+        description: t('toast.listCopiedDesc'),
+        color: 'success',
+        icon: 'i-lucide-clipboard-check',
+      })
+    }
+    catch {
+      toast.add({ title: t('toast.copyError'), color: 'error', icon: 'i-lucide-x' })
+    }
   }
 
   // One-step "buy the whole deck": copy the Cardmarket-formatted wants list to the
   // clipboard, then open Cardmarket's wants-list import page — the user pastes once
   // and Cardmarket builds the buyable list (closest to 1-click without a partner API).
-  function buyWholeDeck() {
-    navigator.clipboard.writeText(wantsListText(enEntries.value)).catch(() => {})
-    window.open(wantsListImportUrl(buyLang.value), '_blank')
-    toast.add({
-      title: t('buy.wantsCopiedTitle'),
-      description: t('buy.wantsCopiedDesc'),
-      color: 'success',
-      icon: 'i-lucide-clipboard-check',
-    })
+  async function buyWholeDeck() {
+    try {
+      await navigator.clipboard.writeText(wantsListText(enEntries.value))
+      window.open(wantsListImportUrl(buyLang.value), '_blank')
+      toast.add({
+        title: t('buy.wantsCopiedTitle'),
+        description: t('buy.wantsCopiedDesc'),
+        color: 'success',
+        icon: 'i-lucide-clipboard-check',
+      })
+    }
+    catch {
+      // Copy failed: still open the import page — the user can paste manually
+      // from the deck once they see the clipboard error.
+      window.open(wantsListImportUrl(buyLang.value), '_blank')
+      toast.add({ title: t('toast.copyError'), color: 'error', icon: 'i-lucide-x' })
+    }
   }
 
   return {

@@ -102,7 +102,7 @@ const isExporting = computed(() => props.exporting !== null)
             type="number"
             min="0"
             max="30"
-            aria-label="Marge en mm"
+            :aria-label="t('export.margin')"
             class="w-14 rounded-[var(--radius-sm)] border border-(--color-border-subtle) bg-(--color-surface-1) px-2 py-1 text-right font-mono text-sm text-(--color-text-high) focus:border-(--accent-border) focus:outline-none"
             @input="patch('marginMm', Number(($event.target as HTMLInputElement).value))"
           >
@@ -123,7 +123,7 @@ const isExporting = computed(() => props.exporting !== null)
             min="0"
             max="10"
             step="0.5"
-            aria-label="Espacement en mm"
+            :aria-label="t('export.spacing')"
             class="w-14 rounded-[var(--radius-sm)] border border-(--color-border-subtle) bg-(--color-surface-1) px-2 py-1 text-right font-mono text-sm text-(--color-text-high) focus:border-(--accent-border) focus:outline-none"
             @input="patch('gapMm', Number(($event.target as HTMLInputElement).value))"
           >
@@ -172,7 +172,8 @@ const isExporting = computed(() => props.exporting !== null)
     <!-- Primary CTA: A4 with neon ring -->
     <div class="neon-ring mb-2.5">
       <button
-        class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] px-4 py-3 font-semibold text-(--color-text-on-neon) transition-transform active:scale-[.98] disabled:opacity-60"
+        class="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] px-4 py-3 font-semibold text-(--color-text-on-neon) transition-transform active:scale-[.98]"
+        :class="isExporting && exporting !== 'a4' ? 'opacity-60' : ''"
         style="background: var(--gradient-accent)"
         :disabled="isExporting"
         @click="emit('export', 'a4')"

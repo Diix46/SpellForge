@@ -173,7 +173,7 @@ function hideAcSoon() {
       <UInput
         :model-value="filters.text"
         name="card-search"
-        aria-label="Rechercher une carte"
+        :aria-label="t('build.searchAria')"
         :aria-expanded="showAc"
         :placeholder="t('build.searchPlaceholder')"
         icon="i-lucide-search"
@@ -285,7 +285,7 @@ function hideAcSoon() {
       <UInput
         :model-value="filters.subtype"
         name="subtype"
-        aria-label="Sous-type"
+        :aria-label="t('build.subtypeAria')"
         :placeholder="t('build.subtype')"
         @update:model-value="onSubtypeInput(String($event))"
       />
@@ -302,7 +302,7 @@ function hideAcSoon() {
         max="10"
         step="1"
         class="flex-1 accent-(--accent)"
-        aria-label="Max CMC"
+        :aria-label="t('build.maxCmc')"
       >
       <span class="w-6 text-center font-mono text-sm text-(--color-text-high)">
         {{ filters.maxCmc ?? '∞' }}

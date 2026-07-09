@@ -15,6 +15,8 @@ defineProps<{
   loggedIn: boolean
   sharing: boolean
   colorVar: (c: ManaColor) => string
+  canUndo: boolean
+  canRedo: boolean
 }>()
 
 const emit = defineEmits<{
@@ -23,6 +25,8 @@ const emit = defineEmits<{
   'share': []
   'openPreview': []
   'openBuy': []
+  'undo': []
+  'redo': []
 }>()
 
 const { t } = useLocale()
@@ -40,11 +44,33 @@ const { t } = useLocale()
       :aria-label="t('nav.backToDecks')"
       class="shrink-0"
     />
+    <div class="flex shrink-0 items-center gap-0.5">
+      <UButton
+        icon="i-lucide-undo-2"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        :disabled="!canUndo"
+        :aria-label="t('build.undo')"
+        :title="t('build.undo')"
+        @click="emit('undo')"
+      />
+      <UButton
+        icon="i-lucide-redo-2"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        :disabled="!canRedo"
+        :aria-label="t('build.redo')"
+        :title="t('build.redo')"
+        @click="emit('redo')"
+      />
+    </div>
     <div class="flex min-w-[180px] flex-1 items-center gap-2.5">
       <input
         :value="deckName"
         name="deck-name"
-        aria-label="Nom du deck"
+        :aria-label="t('modal.deckName')"
         class="min-w-0 flex-1 truncate bg-transparent font-display text-xl font-bold text-(--color-text-high) caret-(--accent) focus:outline-none"
         @input="emit('update:deckName', ($event.target as HTMLInputElement).value)"
       >

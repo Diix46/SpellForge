@@ -14,6 +14,18 @@ export const SCRYFALL_CARDS = 'https://api.scryfall.com/cards'
 export const SCRYFALL_AUTOCOMPLETE = 'https://api.scryfall.com/cards/autocomplete'
 
 /**
+ * Sanitize a card name for embedding in a Scryfall `!"name"` exact-match
+ * clause: strip quotes/backslashes (either would break out of the quoted
+ * clause and produce an invalid query) and trim whitespace. Mirrors the
+ * client copy in app/composables/scryfall/helpers.ts — small utils are
+ * intentionally duplicated across the client/server boundary in this codebase
+ * (see getImageUris below for the same pattern) rather than shared.
+ */
+export function sanitizeCardName(name: string): string {
+  return name.replace(/["\\]/g, '').trim()
+}
+
+/**
  * Scryfall's image-uris object. A superset of the sizes the various routes read
  * (each route only touches the ones it needs); all optional so this one type fits
  * every consumer (prints thumbnails, landing art-crops, etc.).
@@ -47,9 +59,13 @@ export const SCRYFALL_COLLECTION_CHUNK = 75
  * caller decides how to treat 404 (Scryfall uses it for "no match", which is
  * often a valid empty answer, not an error).
  */
+// A hung upstream call (Scryfall having a bad day) must not hang the whole
+// Nitro route indefinitely — every caller gets the same bounded wait.
+const SCRYFALL_TIMEOUT_MS = 10_000
+
 export function scryfallFetch(url: string, opts: { method?: string, json?: unknown } = {}): Promise<Response> {
   const headers: Record<string, string> = { 'User-Agent': SCRYFALL_UA, 'Accept': 'application/json' }
-  const init: RequestInit = { method: opts.method ?? 'GET', headers }
+  const init: RequestInit = { method: opts.method ?? 'GET', headers, signal: AbortSignal.timeout(SCRYFALL_TIMEOUT_MS) }
   if (opts.json !== undefined) {
     headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(opts.json)
@@ -68,12 +84,19 @@ export function scryfallFetch(url: string, opts: { method?: string, json?: unkno
 export async function resolveScryfallByName<T extends { name?: string }>(names: string[]): Promise<Map<string, T>> {
   const byName = new Map<string, T>()
   const unique = [...new Set(names.map(n => n.trim()).filter(Boolean))]
-  for (let i = 0; i < unique.length; i += SCRYFALL_COLLECTION_CHUNK) {
-    const identifiers = unique.slice(i, i + SCRYFALL_COLLECTION_CHUNK).map(name => ({ name }))
+  const chunks: string[][] = []
+  for (let i = 0; i < unique.length; i += SCRYFALL_COLLECTION_CHUNK)
+    chunks.push(unique.slice(i, i + SCRYFALL_COLLECTION_CHUNK))
+
+  // Chunks are independent /cards/collection calls — run them concurrently
+  // instead of one after another. A big decklist's first open could previously
+  // trigger several sequential round-trips here (~400ms each).
+  await Promise.all(chunks.map(async (chunk) => {
+    const identifiers = chunk.map(name => ({ name }))
     try {
       const res = await scryfallFetch(SCRYFALL_COLLECTION, { method: 'POST', json: { identifiers } })
       if (!res.ok)
-        continue
+        return
       const data = await res.json() as { data?: T[] }
       for (const c of data.data ?? []) {
         if (c.name)
@@ -83,6 +106,6 @@ export async function resolveScryfallByName<T extends { name?: string }>(names: 
     catch {
       // Best-effort: a failed chunk just leaves those names unresolved.
     }
-  }
+  }))
   return byName
 }
