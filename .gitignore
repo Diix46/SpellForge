@@ -21,6 +21,7 @@ logs
 
 # Editor/agent workspace
 .claude
+.superpowers
 
 # Local env files
 .env
