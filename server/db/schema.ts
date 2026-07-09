@@ -24,6 +24,9 @@ export const decks = sqliteTable('decks', {
   source: text('source'),
   // Public read-only share token (null = private). Indexed for lookup.
   shareId: text('share_id').unique(),
+  // Listed in the public "Discover" gallery. Requires shareId to be set —
+  // enforced in app logic (publish.post.ts), not a DB constraint.
+  public: integer('public', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
 }, t => [
