@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useAuth } from '~/composables/useAuth'
+import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useCardPreview } from '~/composables/useCardPreview'
 import { useCoach } from '~/composables/useCoach'
 import { useLocale } from '~/composables/useLocale'
@@ -21,6 +23,8 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const { t, locale } = useLocale()
+const { loggedIn } = useAuth()
+const { show: openAuth } = useAuthOverlay()
 const {
   messages,
   streaming,
@@ -116,6 +120,13 @@ async function submit(text?: string) {
   const msg = (text ?? input.value).trim()
   if (!msg || streaming.value)
     return
+  // The Coach's server routes require an account (server/api/coach/*). Catch
+  // this before firing the request instead of letting it 401 silently — prompt
+  // login the same way the deck toolbar's other account-gated actions do.
+  if (!loggedIn.value) {
+    openAuth('login')
+    return
+  }
   input.value = ''
   await send(msg, props.deckContext, { id: props.deckId ?? '', name: props.deckName ?? '' })
 }
@@ -242,7 +253,10 @@ watch(messages, async () => {
           {{ t(s.key) }}
         </button>
       </div>
-      <p v-if="!ready" class="font-mono text-[10px] text-(--color-text-muted)">
+      <p v-if="!loggedIn" class="font-mono text-[10px] text-(--color-text-muted)">
+        {{ t('coach.needAccount') }}
+      </p>
+      <p v-else-if="!ready" class="font-mono text-[10px] text-(--color-text-muted)">
         {{ t('coach.needDeck') }}
       </p>
     </div>
