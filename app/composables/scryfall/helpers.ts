@@ -1,5 +1,5 @@
 import type { DeckEntry } from '../useDecklist'
-import type { ImageUris, ResolvedCard, ScryfallCard } from './types'
+import type { ImageUris, ScryfallCard } from './types'
 
 const DFC_LAYOUTS = ['transform', 'modal_dfc', 'double_faced_token', 'reversible_card', 'art_series']
 
@@ -38,14 +38,19 @@ export function backImage(card: ScryfallCard, quality: 'normal' | 'large' | 'png
   return null
 }
 
-/** Map items through an async fn with bounded concurrency, preserving order. */
-export async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
+/**
+ * Map items through an async fn with bounded concurrency, preserving order.
+ * `onItem`, when given, fires as each item settles (arrival order, not input
+ * order) — lets a caller stream progress without waiting for the whole pool.
+ */
+export async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>, onItem?: (result: R, i: number) => void): Promise<R[]> {
   const results = Array.from({ length: items.length }) as R[]
   let next = 0
   async function worker() {
     while (next < items.length) {
       const i = next++
       results[i] = await fn(items[i]!, i)
+      onItem?.(results[i]!, i)
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
@@ -62,21 +67,6 @@ export function hasRealImage(card: ScryfallCard | null): boolean {
     return false
   const status = card!.image_status
   return status !== 'placeholder' && status !== 'missing'
-}
-
-// Build a quick ResolvedCard from a matched (default/EN) Scryfall card — used
-// for the instant first paint before FR art is resolved.
-export function quickResolved(entry: DeckEntry, match: ScryfallCard | null, lang: string): ResolvedCard {
-  if (!match)
-    return { entry, card: null, imageUrl: null, backImageUrl: null, lang, error: `Carte introuvable: ${entry.name}` }
-  return {
-    entry,
-    card: match,
-    imageUrl: frontImage(match),
-    backImageUrl: isDoubleFaced(match) ? backImage(match) : null,
-    lang: match.lang,
-    priceEur: match.prices?.eur ?? null,
-  }
 }
 
 export function findMatch(cards: ScryfallCard[], entry: DeckEntry): ScryfallCard | null {
