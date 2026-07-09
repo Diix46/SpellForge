@@ -1,3 +1,9 @@
+## [0.3.2](https://github.com/Diix46/SpellForge/compare/v0.3.1...v0.3.2) (2026-07-09)
+
+### Bug Fixes
+
+* **cards:** restaure le chargement progressif sans flash de langue ([685315f](https://github.com/Diix46/SpellForge/commit/685315f2a0988ed3021e7a456cd84b8d8dba0f9e))
+
 ## [0.3.1](https://github.com/Diix46/SpellForge/compare/v0.3.0...v0.3.1) (2026-07-09)
 
 ### Bug Fixes
