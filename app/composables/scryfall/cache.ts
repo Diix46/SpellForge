@@ -75,6 +75,36 @@ export async function searchFrenchByName(name: string): Promise<ScryfallCard | n
   }
 }
 
+// Fallback: search all printings of a card by exact name (any language) and
+// prefer a highres scan — used when the printing we already matched (the EN
+// default from /cards/collection, or the FR fallback when no FR art exists)
+// isn't `highres_scan`. Mirrors searchFrenchByName's own quality preference,
+// minus the `lang:fr` filter, so a stale/blurry default printing gets upgraded
+// the same way a missing FR printing already does.
+const bestByNameCache = new Map<string, ScryfallCard | null>()
+
+export async function searchBestPrinting(name: string, lang: string): Promise<ScryfallCard | null> {
+  const cacheKey = `${name.toLowerCase()}/${lang}`
+  if (bestByNameCache.has(cacheKey))
+    return bestByNameCache.get(cacheKey)!
+  try {
+    const q = `!"${sanitizeCardName(name)}" lang:${lang}`
+    const data = await $fetch<{ cards?: ScryfallCard[] }>('/api/cards/search', {
+      params: { q, order: 'released', dir: 'desc', unique: 'prints' },
+    })
+    const target = name.toLowerCase()
+    const realImages: ScryfallCard[] = (data.cards ?? [])
+      .filter((c: ScryfallCard) => hasRealImage(c) && c.name.toLowerCase() === target)
+    const card: ScryfallCard | null = realImages.find(c => c.image_status === 'highres_scan') ?? null
+    bestByNameCache.set(cacheKey, card)
+    return card
+  }
+  catch {
+    bestByNameCache.set(cacheKey, null)
+    return null
+  }
+}
+
 // Bulk-prefetch French printings for many names in ONE search per ~40 names,
 // instead of one /cards/search per card. Pre-fills frByNameCache so the
 // per-card resolveFrench() step 2 becomes a cache hit (or a cached null) and

@@ -5,6 +5,7 @@ import {
   bulkPrefetchLocalized,
   fetchLocalized,
   frByNameCache,
+  searchBestPrinting,
   searchFrenchByName,
 } from './scryfall/cache'
 import {
@@ -45,15 +46,21 @@ export function useScryfall() {
     const preCached = frByNameCache.get(match.name.toLowerCase())
     if (preCached && hasRealImage(preCached))
       return preCached
-    // 1. exact printing in FR (only if it has a real image)
+    // 1. exact printing in FR — only settle for it immediately if it's a highres
+    //    scan; a real-but-lowres exact printing used to short-circuit here and
+    //    skip the highres-preferring by-name search below entirely.
     const exact = await fetchLocalized(match.set, match.collector_number, 'fr')
-    if (hasRealImage(exact))
+    if (exact && hasRealImage(exact) && exact.image_status === 'highres_scan')
       return exact
-    // 2. any FR printing by name with a real image (cache may already hold a
-    //    null from the bulk pass, in which case this is a no-op cache read).
+    // 2. any FR printing by name, preferring a highres scan (cache may already
+    //    hold a null from the bulk pass, in which case this is a no-op read).
     const byName = await searchFrenchByName(match.name)
     if (hasRealImage(byName))
       return byName
+    // No better FR printing found by name — fall back to the exact one if it
+    // at least has a real (if lower-res) image.
+    if (hasRealImage(exact))
+      return exact
     return null
   }
 
@@ -140,6 +147,15 @@ export function useScryfall() {
           finalLang = 'fr'
         }
       }
+      // Upgrade to a highres scan if we ended up on a lowres one — covers the
+      // EN default match (the /cards/collection endpoint can hand back an old
+      // scan) and the FR-unavailable fallback. The FR path above already
+      // applies its own highres preference via resolveFrench, so skip it there.
+      if (finalLang !== 'fr' && finalCard.image_status !== 'highres_scan') {
+        const better = await searchBestPrinting(finalCard.name, finalLang)
+        if (better)
+          finalCard = better
+      }
       // Price: prefer the displayed card's EUR, else the default printing's EUR.
       const priceEur = finalCard.prices?.eur ?? match.prices?.eur ?? null
       return {
@@ -176,8 +192,9 @@ export function useScryfall() {
 
       // Instant first paint: emit this batch resolved to its default (usually EN)
       // printing right away, so deck-list thumbnails appear without waiting for
-      // the slower FR art resolution below. The final return upgrades to FR.
-      if (onPartial && !requestError) {
+      // the slower FR art resolution below. Skipped in FR mode — painting EN
+      // cards first then swapping to FR reads as a locale bug, not a perf win.
+      if (onPartial && !requestError && lang !== 'fr') {
         for (const entry of batch)
           partial.push(quickResolved(entry, findMatch(foundCards, entry), lang))
         onPartial([...partial])
