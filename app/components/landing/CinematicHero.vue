@@ -1026,7 +1026,7 @@ onBeforeUnmount(() => {
         @pointercancel="onCardCancel(i)"
       >
         <div :ref="setInnerRef(i)" class="card-inner">
-          <img :src="c.image" alt="" loading="eager" decoding="async" draggable="false">
+          <img :src="c.image" alt="" loading="lazy" decoding="async" draggable="false">
         </div>
       </div>
     </div>
