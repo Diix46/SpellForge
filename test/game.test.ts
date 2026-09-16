@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assertProxyPrintable, CAPABILITIES, deckPath, gameFromSlug, libraryPath, parseGameId, sharedPath } from '../shared/game'
+import { assertProxyPrintable, CAPABILITIES, cardPath, deckPath, gameFromSlug, libraryPath, parseGameId, sharedPath } from '../shared/game'
 
 describe('game capabilities', () => {
   it('never prints One Piece proxies', () => {
@@ -20,6 +20,12 @@ describe('universe paths', () => {
     expect(sharedPath('optcg', 's1')).toBe('/one-piece/shared/s1')
     expect(sharedPath(null, 's1')).toBe('/magic/shared/s1')
     expect(libraryPath('mtg')).toBe('/magic')
+  })
+
+  it('gives each card a slash-free address', () => {
+    expect(cardPath('optcg', 'OP01-016')).toBe('/one-piece/card/OP01-016')
+    expect(cardPath('mtg', 'Atraxa, Praetors\' Voice')).toBe('/magic/card/Atraxa%2C%20Praetors\'%20Voice')
+    expect(cardPath('mtg', 'Delver of Secrets // Insectile Aberration')).toBe('/magic/card/Delver%20of%20Secrets')
   })
 
   it('reads game ids and slugs strictly', () => {

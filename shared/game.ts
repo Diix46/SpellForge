@@ -66,6 +66,16 @@ export function sharedPath(game: GameId | null | undefined, shareId: string): st
   return `/${UNIVERSE_SLUG[game ?? 'mtg']}/shared/${encodeURIComponent(shareId)}`
 }
 
+/**
+ * A card's own page. One Piece cards go by number (names repeat); Magic cards
+ * by English name, a double-faced card by its front face, so the address never
+ * holds a slash.
+ */
+export function cardPath(game: GameId, key: string): string {
+  const id = game === 'mtg' ? key.split(' // ')[0]! : key
+  return `/${UNIVERSE_SLUG[game]}/card/${encodeURIComponent(id)}`
+}
+
 /** A universe's home: its card library. */
 export function libraryPath(game: GameId): string {
   return `/${UNIVERSE_SLUG[game]}`

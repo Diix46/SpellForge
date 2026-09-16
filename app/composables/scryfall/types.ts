@@ -18,6 +18,10 @@ export interface ScryfallCard {
   set_name: string
   collector_number: string
   rarity?: string
+  artist?: string
+  released_at?: string
+  /** The local database keeps Commander's only. */
+  legalities?: Record<string, string>
   scryfall_uri?: string
   type_line?: string
   printed_type_line?: string

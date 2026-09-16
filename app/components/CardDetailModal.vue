@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref, watch } from 'vue'
+import { cardPath } from '#shared/game'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
 import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
@@ -281,6 +282,15 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
                 class="border border-(--accent-border) bg-(--accent-soft) text-(--accent-text) hover:bg-[rgba(var(--accent-rgb),0.28)]"
               >
                 Cardmarket
+              </UButton>
+              <UButton
+                v-if="library && c"
+                :to="cardPath('mtg', c.name)"
+                icon="i-lucide-link"
+                size="sm"
+                class="border border-(--color-border-strong) bg-(--color-surface-2) text-(--color-text-high) hover:bg-(--color-surface-3)"
+              >
+                {{ t('card.page') }}
               </UButton>
               <UButton
                 v-if="scryUrl"
