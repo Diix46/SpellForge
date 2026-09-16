@@ -15,8 +15,9 @@
  * Sizes: `small` (grid thumbnails) and `normal` (detail view). Deliberately NOT
  * `large`/`png`: those exist for the PDF proxy export, which is an occasional
  * deliberate action rather than a browse path, and at ~1 MB per PNG a full
- * mirror of them would dwarf everything else. They stay on-demand through the
- * existing Nitro image proxy.
+ * mirror of them would dwarf everything else. The image route
+ * (server/api/images/mtg) fetches each of them once, on first request, and
+ * serves it from disk afterwards.
  *
  * URLs are rebuilt, never stored: Scryfall's pattern is
  *   https://cards.scryfall.io/{size}/{face}/{id[0]}/{id[1]}/{id}.jpg?{version}

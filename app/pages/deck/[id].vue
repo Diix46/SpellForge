@@ -520,7 +520,7 @@ function initDeck(id: string) {
   coachOpen.value = false // reset modal state on deck switch (also detaches Esc)
   builder.load()
   // Resolve images/prices in the background so the Deck tab shows stats, prices
-  // and the commander right away (cheap on repeat: server cache + bulk FR).
+  // and the commander right away (one /api/cards/resolve call for the deck).
   // Deferred to nextTick so the computeds/functions below are initialized when
   // this watcher fires immediately during setup.
   nextTick(() => {

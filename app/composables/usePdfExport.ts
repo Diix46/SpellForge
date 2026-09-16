@@ -6,10 +6,9 @@ import type { jsPDF } from 'jspdf'
 import type { ResolvedCard } from './useScryfall'
 import { mapPool } from './scryfall/helpers'
 
-// Bounded concurrency for the image pre-load pass — same order of magnitude as
-// the FR-resolution concurrency elsewhere (useScryfall), polite to the proxy
-// route while still loading a ~100-card deck in a fraction of the previous
-// fully-sequential time.
+// Bounded concurrency for the image pre-load pass: polite to the image route,
+// which fetches a not-yet-mirrored size from Scryfall's CDN once, while still
+// loading a ~100-card deck in a fraction of the fully-sequential time.
 const IMAGE_LOAD_CONCURRENCY = 8
 
 export type PageFormat = 'a4' | 'a3'
@@ -71,10 +70,9 @@ async function loadImageAsDataUrl(url: string): Promise<ImageData | null> {
     return imageCache.get(url) ?? null
 
   try {
-    // Card images are served by our own origin and can be read directly. An
-    // absolute URL still points at Scryfall's CDN, which sends no CORS headers,
-    // so it goes through our proxy to get a same-origin response.
-    const res = await fetch(url.startsWith('/api/images/') ? url : `/api/proxy-image?url=${encodeURIComponent(url)}`)
+    // Card images are served by our own origin, so they can be read into a
+    // data URL directly — no CORS proxy needed any more.
+    const res = await fetch(url)
     if (!res.ok) {
       cacheImage(url, null)
       return null
