@@ -417,6 +417,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'theme.flying': 'Vol',
     // Card modal
     'card.flipBack': 'Voir le verso',
+    'rarity.common': 'Commune',
+    'rarity.uncommon': 'Inhabituelle',
+    'rarity.rare': 'Rare',
+    'rarity.mythic': 'Mythique',
+    'rarity.special': 'Spéciale',
+    'rarity.bonus': 'Bonus',
     'card.flipFront': 'Voir le recto',
     'card.priceNa': 'prix indisponible',
     'card.notFound': 'Introuvable',
@@ -882,6 +888,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'theme.graveyard': 'Graveyard',
     'theme.flying': 'Flying',
     'card.flipBack': 'Show back',
+    'rarity.common': 'Common',
+    'rarity.uncommon': 'Uncommon',
+    'rarity.rare': 'Rare',
+    'rarity.mythic': 'Mythic',
+    'rarity.special': 'Special',
+    'rarity.bonus': 'Bonus',
     'card.flipFront': 'Show front',
     'card.priceNa': 'price unavailable',
     'card.notFound': 'Not found',
@@ -973,10 +985,13 @@ export function useLocale() {
     return messages[locale.value][key] ?? messages.fr[key] ?? key
   }
 
+  // Built from the rarity, so an unknown one shows as itself, not as a key.
   function rarityLabel(rarity?: string): string {
     if (!rarity)
       return ''
-    return t(`rarity.${rarity.toLowerCase()}`) || rarity
+    const key = `rarity.${rarity.toLowerCase()}`
+    const label = t(key)
+    return label === key ? rarity : label
   }
 
   const isFr = computed(() => locale.value === 'fr')
