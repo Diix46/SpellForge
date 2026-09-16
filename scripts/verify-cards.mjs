@@ -54,17 +54,17 @@ console.log('   →', best[0] ? `${best[0].printed_name} [${best[0].set_code} ${
 console.log('\n── NAVIGATION PAR DÉFAUT (la requête la plus chaude) ───────')
 const browse = await time('identité ⊆ WUBG + légal + tri EDHREC', `SELECT name, edhrec_rank FROM oracle_cards
    WHERE (identity_mask & ~23)=0 AND legal_commander=1 AND is_extra=0 AND is_funny=0
-   ORDER BY edhrec_rank IS NULL, edhrec_rank LIMIT 10`)
+   ORDER BY edhrec_sort LIMIT 10`)
 console.log('   →', browse.slice(0, 3).map(r => `${r.name} (#${r.edhrec_rank})`).join(' · '))
 await time('… + cmc<=4 + budget ≤ 5 €', `SELECT name FROM oracle_cards
    WHERE (identity_mask & ~23)=0 AND legal_commander=1 AND cmc<=4
-     AND min_price_eur<=5 AND is_extra=0
-   ORDER BY edhrec_rank IS NULL, edhrec_rank LIMIT 20`)
+     AND min_price_eur<=5 AND is_extra=0 AND is_funny=0
+   ORDER BY edhrec_sort LIMIT 20`)
 
 console.log('\n── RECHERCHE PLEIN TEXTE ───────────────────────────────────')
 const fts = await time('oracle:"draw a card" (thème Pioche)', `SELECT o.name FROM card_search s JOIN oracle_cards o ON o.oracle_id=s.oracle_id
    WHERE card_search MATCH '"draw a card"' AND o.legal_commander=1
-   ORDER BY o.edhrec_rank IS NULL, o.edhrec_rank LIMIT 10`)
+   ORDER BY o.edhrec_sort LIMIT 10`)
 console.log('   →', fts.slice(0, 3).map(r => r.name).join(' · '))
 const acc = await time('recherche FR sans accent : "eclaireur"', `SELECT printed_name FROM card_search WHERE card_search MATCH 'eclaireur' LIMIT 5`)
 console.log('   →', acc.map(r => r.printed_name).filter(Boolean).slice(0, 3).join(' · ') || '(aucun)')
