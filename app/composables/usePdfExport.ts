@@ -71,10 +71,10 @@ async function loadImageAsDataUrl(url: string): Promise<ImageData | null> {
     return imageCache.get(url) ?? null
 
   try {
-    // Scryfall's image CDN has no CORS headers, so fetch through our proxy
-    // to get a same-origin response we can read into a data URL.
-    const proxied = `/api/proxy-image?url=${encodeURIComponent(url)}`
-    const res = await fetch(proxied)
+    // Card images are served by our own origin and can be read directly. An
+    // absolute URL still points at Scryfall's CDN, which sends no CORS headers,
+    // so it goes through our proxy to get a same-origin response.
+    const res = await fetch(url.startsWith('/api/images/') ? url : `/api/proxy-image?url=${encodeURIComponent(url)}`)
     if (!res.ok) {
       cacheImage(url, null)
       return null
