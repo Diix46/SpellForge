@@ -109,6 +109,8 @@ async function main() {
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     while (i < jobs.length) {
       const job = jobs[i++]
+      // Only a request to Bandai earns the polite pause, not a file on disk.
+      let requested = true
       try {
         const r = await download(job.lang, job.id, job.version)
         if (r.failed) {
@@ -116,6 +118,7 @@ async function main() {
         }
         else {
           bytes += r.bytes || 0
+          requested = !r.skipped
           if (r.skipped)
             skipped++
           else
@@ -127,7 +130,7 @@ async function main() {
       }
       if ((done + skipped + failures.length) % 200 === 0)
         process.stdout.write(`\r  ${done + skipped + failures.length} / ${jobs.length}`)
-      if (!PAUSE_MS)
+      if (!PAUSE_MS || !requested)
         continue
       await sleep(PAUSE_MS)
     }
@@ -139,6 +142,9 @@ async function main() {
   if (failures.length) {
     log(`\n  Échecs (${Math.min(failures.length, 10)} premiers) :`)
     for (const f of failures.slice(0, 10)) log(`    ${f}`)
+    // A partial mirror: a second run fetches only what is missing, which is
+    // what the scheduled refresh does on this code.
+    process.exitCode = 2
   }
 
   for (const lang of Object.keys(HOSTS)) {

@@ -21,7 +21,8 @@ RUN npm run build
 RUN cp -R node_modules/@libsql/linux-* .output/server/node_modules/@libsql/
 
 # ── Runtime stage ────────────────────────────────────────────────────────────
-# Slim image: the built server + the migration SQL only. No dev deps, no source.
+# Slim image: the built server, the migration SQL and the card scripts. No dev
+# deps, no app source.
 # A Nitro startup plugin (server/plugins/migrate.ts, bundled into .output) applies
 # pending migrations on boot, reading ./server/db/migrations relative to CWD — so
 # we ship that folder next to .output and run from /app.
@@ -33,6 +34,11 @@ ENV NUXT_HOST=0.0.0.0
 
 COPY --from=build /app/.output ./.output
 COPY --from=build /app/server/db/migrations ./server/db/migrations
+
+# The nightly card refresh (server/tasks/cards/refresh.ts) runs these scripts in
+# child processes; they find @libsql/client in the server bundle.
+COPY --from=build /app/scripts ./scripts
+RUN ln -s .output/server/node_modules node_modules
 
 # SQLite DB + Nitro fs cache live here — mount this as a volume to persist them.
 RUN mkdir -p /app/.data

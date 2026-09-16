@@ -70,6 +70,9 @@ export default defineNuxtConfig({
   // wiped on every restart, and the slow EDHREC cold-fetch paid again after
   // each deploy. Card data itself is local and not cached.
   nitro: {
+    // The card databases refresh every night (server/tasks/cards/refresh.ts).
+    experimental: { tasks: true },
+    scheduledTasks: { '30 4 * * *': ['cards:refresh'] },
     storage: {
       cache: { driver: 'fs', base: './.data/cache' },
     },

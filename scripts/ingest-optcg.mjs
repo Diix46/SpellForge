@@ -209,6 +209,25 @@ function decodeEntities(text) {
   return out
 }
 
+/**
+ * What the current database says about itself. A file without a meta table
+ * (the server opens, and so creates, an empty one before the first ingest)
+ * reads as nothing, hence as outdated.
+ */
+async function readMeta() {
+  const db = createClient({ url: `file:${FINAL_DB}` })
+  try {
+    const r = await db.execute(`SELECT key, value FROM meta WHERE key IN ('generated_at_fr', 'schema_version')`)
+    return Object.fromEntries(r.rows.map(row => [row.key, row.value]))
+  }
+  catch {
+    return {}
+  }
+  finally {
+    db.close()
+  }
+}
+
 async function ingestLang(db, lang, code) {
   const manifest = await getJson(`${lang}/manifest.json`)
   const packs = await getJson(`${lang}/packs.json`)
@@ -297,11 +316,7 @@ async function main() {
 
   if (!force && existsSync(FINAL_DB)) {
     const cur = await getJson('french/manifest.json')
-    const db = createClient({ url: `file:${FINAL_DB}` })
-    const r = await db.execute({ sql: `SELECT key, value FROM meta WHERE key IN ('generated_at_fr', 'schema_version')`, args: [] })
-    db.close()
-    const meta = Object.fromEntries(r.rows.map(row => [row.key, row.value]))
-    if (meta.generated_at_fr === String(cur.generated_at) && meta.schema_version === SCHEMA_VERSION) {
+    if (await readMeta().then(m => m.generated_at_fr === String(cur.generated_at) && m.schema_version === SCHEMA_VERSION)) {
       log('  base déjà à jour — rien à faire (--force pour reconstruire)\n')
       return
     }
