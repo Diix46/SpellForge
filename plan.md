@@ -182,7 +182,7 @@ comportement observable ne change qu'au lot 4.
 | **3** ~ | `GameCard` — **fait** ; `CardProvider` — reste | `ResolvedCard.card` devient une union discriminée par jeu ; `mtgRaw()` oblige chaque appel spécifique à Magic à se déclarer. Reste : extraire `providers/mtg/` depuis `useMtg` + `scryfall/*` | ✔ typecheck **42 → 0** · 23 tests (dont le repli du type-line sur la face avant) · bundle **inchangé à 4,07 Mo** |
 | **4** ✔ | Bascule — **faite**, cf. §6 bis | La base locale sert l'app ; suppression des proxies Scryfall | ✔ **zéro appel à l'API Scryfall au runtime** · proxies de recherche et d'images supprimés · syntaxe Scryfall compilée en local |
 | **5** ✔ | Images — **fait** | Miroir OP complet (FR + repli EN) ; miroir Magic `small` + `normal` des seules impressions affichables ; une route locale sert le miroir et récupère une seule fois le reste (`large`, `png`) | ✔ OP **4 374 visuels, 801 Mo** · Magic **134 226 fichiers, 6,36 Go, 19 min, 0 échec** · `large` : **217 ms** à la 1re demande, **1,5 ms** ensuite |
-| **6** | Adaptateur One Piece | Ingestion punk-records, moteur de règles OPTCG (50 + leader, 4 max par numéro, couleurs ⊆ leader, rotation par bloc, paires bannies) | Un deck OP se construit et se valide |
+| **6** ~ | Adaptateur One Piece — **serveur fait** (base enrichie, règles, recherche, résolution, images) | Ingestion punk-records, moteur de règles OPTCG (50 + leader, 4 max par numéro, couleurs ⊆ leader, rotation par bloc, paires bannies) | Un deck OP se construit et se valide |
 | **7** | UI multi-univers | Colonne `game`, migration `localStorage` v2, rail de filtres piloté par l'adaptateur, thèmes par univers, composants de coût | La maquette devient l'application |
 | **8** | SEO | Rendu hybride sur les pages publiques (bibliothèque, fiche carte, `/discover`, `/shared/:id`), robots, sitemap | Une fiche carte est indexable |
 | **9** | Rebrand | Prism : nom, logo, copies, métadonnées | — |
@@ -246,6 +246,34 @@ mot plutôt qu'en sous-chaîne (`goblin` −2,5 %), `pow>tou` −2,9 %, termes
 d'impression évalués sur les impressions anglaises, prix en EUR seulement, pas de
 regex. Tout mot-clé non pris en charge (`usd:`, `ft:`, `otag:`…) est **refusé avec
 un message** qui nomme le terme, jamais ignoré en silence.
+
+---
+
+## 6 ter. Lots 3, 6 et 7 : découpage et arbitrages
+
+Découpage proposé par l'agent `architect` (analyse du 16/09, fichier par fichier) :
+
+- **Trois couches.** `shared/` pour le code pur (identifiant de jeu, capacités,
+  formats de decklist, règles de chaque jeu), testé sous Node ; `app/providers/`
+  pour l'adaptateur client de chaque jeu ; **rien de polymorphe côté serveur**,
+  les deux moteurs ayant des contrats différents et déjà testés (Magic résout
+  par nom, One Piece par numéro).
+- **Clé de jointure.** `GameCard.key` : le nom anglais pour Magic, le numéro de
+  carte pour One Piece, dont les noms sont traduits et non uniques.
+- **Ordre imposé par les données.** Colonne `game` en base, puis stockage invité
+  v2, puis création de decks One Piece : un deck One Piece migré vers le compte
+  avant que le serveur connaisse `game` deviendrait Magic, sans retour possible.
+
+Arbitrages rendus (autonomie accordée le 16/09) :
+
+| Question | Décision | Pourquoi |
+|---|---|---|
+| Routage | `/magic/deck/[id]` et `/one-piece/deck/[id]` ; `/deck/[id]` redirige | Univers et mode fixés par page, code séparé par jeu (un deck One Piece ne charge ni jsPDF ni le coach), base du SEO du lot 8 |
+| Mode clair/sombre | Imposé par l'univers (One Piece de jour, Magic de nuit) ; le bouton reste sur les pages neutres | C'est la direction validée ; la préférence enregistrée n'est pas réécrite |
+| Images One Piece | **Miroir complet des deux langues** ; la route ne sert que le disque, avec repli sur l'autre langue | Bandai n'accorde ni permission de cache ni exemption : aucun appel au runtime |
+| Decklist One Piece | `4xOP01-016`, art en suffixe (`_p1`), Leader écrit en premier | Copier-coller compatible avec les simulateurs ; le Leader se reconnaît à sa catégorie |
+| Échec de migration | Le serveur refuse de démarrer | Mieux que des 500 silencieux sur toutes les routes de decks |
+| Deck de Magic | La page existante est déplacée et habillée, pas réécrite | Elle fonctionne ; la réécrire en espace de travail générique est un risque sans gain pour l'utilisateur. Les pièces neutres (barre d'outils, historique, sauvegarde) sont partagées |
 
 ---
 
