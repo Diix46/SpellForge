@@ -23,14 +23,26 @@ export async function run() {
     return { total: cards.length, misplaced: cards.filter(c => c.op !== c.left).length }
   })
   rec.check('card tide splits the two worlds', tide.total >= 60 && tide.misplaced <= tide.total * 0.1, `${tide.total} cards, ${tide.misplaced} across the seam`)
+  // Let the first cards land, and move the pointer in: the page stops dealing
+  // while someone is there, so nothing flies over the card about to be clicked.
+  await page.waitForTimeout(2500)
+  // (The page deals again after 3 s without input; the depth drift settles in ~2 s.)
+  await page.mouse.move(1000, 450, { steps: 4 })
+  await page.waitForTimeout(2200)
+  // Any Magic card of the pile that is on top where it is clicked.
   const pick = await page.evaluate(() => {
+    const spots = [[0.5, 0.5], [0.3, 0.25], [0.7, 0.75], [0.5, 0.15], [0.5, 0.85]]
     for (const el of document.querySelectorAll('[data-tide-card].card--mtg')) {
+      if (Number(el.style.zIndex) >= 9000)
+        continue
       const r = el.getBoundingClientRect()
-      const x = r.left + r.width / 2
-      const y = r.top + r.height / 2
-      if (x > 1150 && x < 1420 && y > 120 && y < 760 && Number(el.style.zIndex) < 9000
-        && document.elementFromPoint(x, y)?.closest('[data-tide-card]') === el) {
-        return { x, y, i: el.dataset.tideCard }
+      for (const [fx, fy] of spots) {
+        const x = r.left + r.width * fx
+        const y = r.top + r.height * fy
+        if (x > 760 && x < 1430 && y > 90 && y < 880
+          && document.elementFromPoint(x, y)?.closest('[data-tide-card]') === el) {
+          return { x, y, i: el.dataset.tideCard }
+        }
       }
     }
     return null
