@@ -15,7 +15,9 @@ export default defineNuxtConfig({
     pageTransition: { name: 'cine', mode: 'out-in' },
   },
 
-  css: ['~/assets/css/main.css'],
+  // universes.css redefines the tokens of main.css per game universe, so it
+  // must come after it.
+  css: ['~/assets/css/main.css', '~/assets/css/universes.css'],
 
   // Register custom color names so app.config.ts aliases resolve.
   ui: {
@@ -53,13 +55,18 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
 
   // Self-host fonts (no render-blocking @import, works offline).
-  // Geist (+ Geist Mono) is the whole type system. Orbitron, Sora and JetBrains
-  // Mono were dropped: nothing referenced them outside the CSS fallback stacks,
-  // so they were three unused families fetched on every first visit.
+  // Geist (+ Geist Mono) is the neutral type system. Each universe adds its
+  // own voice: Anton and Bangers for One Piece's posters and sound effects,
+  // Cinzel and EB Garamond for Magic's grimoire. A face is only downloaded on a
+  // page that uses it.
   fonts: {
     families: [
       { name: 'Geist', provider: 'google', weights: [400, 500, 600, 700] },
       { name: 'Geist Mono', provider: 'google', weights: [400, 500] },
+      { name: 'Anton', provider: 'google', weights: [400] },
+      { name: 'Bangers', provider: 'google', weights: [400] },
+      { name: 'Cinzel', provider: 'google', weights: [500, 700] },
+      { name: 'EB Garamond', provider: 'google', weights: [400, 500], styles: ['normal', 'italic'] },
     ],
   },
 })

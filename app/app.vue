@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 
 // Mana Prism favicon as an inline SVG data URI (matches AppLogo). Neutral bg now.
@@ -33,6 +34,7 @@ useSeoMeta({
 })
 
 const route = useRoute()
+const { universe } = useUniverse()
 const { locale, setLocale, t } = useLocale()
 const { loggedIn, user, logout } = useAuth()
 const { show: openCmdK } = useCommandPalette()
@@ -46,9 +48,17 @@ function toggleTheme() {
 }
 // Browser chrome (mobile address bar) follows the active theme. The document
 // language follows the site locale (reactive — switches with the FR/EN toggle).
+// The universe re-themes the whole document (assets/css/universes.css).
+const THEME_COLOR = { optcg: '#efdfc0', mtg: '#07060b' } as const
 useHead({
-  htmlAttrs: { lang: () => locale.value },
-  meta: [{ name: 'theme-color', content: () => (isDark.value ? '#0a0a0b' : '#fafafa') }],
+  htmlAttrs: {
+    'lang': () => locale.value,
+    'data-universe': () => universe.value ?? undefined,
+  },
+  meta: [{
+    name: 'theme-color',
+    content: () => (universe.value ? THEME_COLOR[universe.value] : isDark.value ? '#0a0a0b' : '#fafafa'),
+  }],
 })
 
 // Auth modal is driven by shared overlay state so the (chrome-less) landing page
@@ -92,6 +102,13 @@ const nav = computed(() => [
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
+// The two worlds, always one click away. Inside a universe its library is
+// the active entry; its decks live under it too.
+const worlds = computed(() => [
+  { game: 'optcg' as const, to: libraryPath('optcg'), label: 'One Piece' },
+  { game: 'mtg' as const, to: libraryPath('mtg'), label: 'Magic' },
+])
+
 // A nav link is active only when it's the current route (exact). The dashboard
 // link stays active on '/' even with a transient ?import/?new modal query.
 function isActive(to: string) {
@@ -108,7 +125,9 @@ function openImport() {
 
 <template>
   <UApp>
-    <FxAppBackground />
+    <FxOnePieceSea v-if="universe === 'optcg'" />
+    <FxMagicSanctum v-else-if="universe === 'mtg'" />
+    <FxAppBackground v-else />
 
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
@@ -140,6 +159,20 @@ function openImport() {
             </button>
           </nav>
 
+          <!-- the two worlds -->
+          <nav class="worlds" :aria-label="t('nav.worlds')">
+            <NuxtLink
+              v-for="w in worlds"
+              :key="w.game"
+              :to="w.to"
+              class="world"
+              :class="[`world--${w.game}`, { on: universe === w.game }]"
+              :aria-current="universe === w.game ? 'page' : undefined"
+            >
+              {{ w.label }}
+            </NuxtLink>
+          </nav>
+
           <!-- page-specific actions injected here by the active page -->
           <div id="topbar-actions" class="topbar-actions" />
 
@@ -160,7 +193,8 @@ function openImport() {
               </button>
             </div>
 
-            <ClientOnly>
+            <!-- A universe sets its own light: One Piece by day, Magic by night. -->
+            <ClientOnly v-if="!universe">
               <button
                 type="button"
                 class="icon-btn"
@@ -221,13 +255,17 @@ function openImport() {
         <div class="foot-inner">
           <div class="foot-brand">
             <AppLogo :wordmark="false" :size="20" />
-            <span>{{ t('footer.tagline') }}</span>
+            <span>{{ universe === 'optcg' ? t('footer.taglineOp') : t('footer.tagline') }}</span>
           </div>
-          <p>
+          <p v-if="universe !== 'optcg'">
             {{ t('footer.dataVia') }}
-            <a href="https://scryfall.com" target="_blank">Scryfall</a>
+            <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>
             • {{ t('footer.importsVia') }}
-            <a href="https://edhrec.com" target="_blank">EDHREC</a>
+            <a href="https://edhrec.com" target="_blank" rel="noopener">EDHREC</a>
+            • {{ t('footer.wotc') }}
+          </p>
+          <p v-if="universe !== 'mtg'">
+            {{ t('footer.bandai') }}
           </p>
         </div>
       </footer>
@@ -313,6 +351,57 @@ function openImport() {
   flex-shrink: 0;
   padding: 4px;
   border-radius: var(--radius-sm);
+}
+
+/* the two worlds: each pill wears its own universe, even outside it */
+.worlds {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 3px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-sm);
+}
+.world {
+  padding: 4px 11px;
+  border-radius: calc(var(--radius-sm) - 1px);
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.world:hover {
+  color: var(--color-text-high);
+  transform: translateY(-1px);
+}
+.world--optcg {
+  font-family: 'Anton', Impact, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.world--mtg {
+  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.world--optcg.on {
+  color: #fff8ec;
+  background: #c9312a;
+}
+.world--mtg.on {
+  color: #100c06;
+  background: #d4af5f;
+}
+@media (max-width: 720px) {
+  .worlds {
+    margin-left: 4px;
+  }
+  .world {
+    padding: 4px 8px;
+  }
 }
 
 /* primary nav (destinations) */
