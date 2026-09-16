@@ -1,6 +1,6 @@
 import type { CategoryKey, ManaColor } from './useMtg'
-import type { ResolvedCard, ScryfallCard } from './useScryfall'
-import { CATEGORY_DEFS, classifyType, englishTypeLine, getColorIdentity, isCommanderType } from './useMtg'
+import type { GameCard, ResolvedCard } from './useScryfall'
+import { CATEGORY_DEFS, classifyType, getColorIdentity, isCommanderType } from './useMtg'
 
 export interface TypeStat {
   key: CategoryKey
@@ -33,7 +33,7 @@ export function useDeckAnalysis() {
   function typeStats(cards: ResolvedCard[]): TypeStat[] {
     const counts = new Map<CategoryKey, number>()
     for (const rc of cards) {
-      const tl = englishTypeLine(rc.card)
+      const tl = rc.card?.typeLine ?? ''
       if (!tl)
         continue
       const key = classifyType(tl)
@@ -49,14 +49,16 @@ export function useDeckAnalysis() {
    *  Legendary Creature (or Planeswalker that can be a commander). Returns its index.
    */
   function detectCommanderIndex(cards: ResolvedCard[]): number {
-    return cards.findIndex(rc => isCommanderType(englishTypeLine(rc.card)))
+    return cards.findIndex(rc => isCommanderType(rc.card?.typeLine ?? ''))
   }
 
-  /** Mana identity (WUBRG) derived from a card's Scryfall color_identity. */
-  function commanderColors(card: ScryfallCard | null): ManaColor[] {
+  /** Mana identity (WUBRG) derived from a card's colour identity. */
+  function commanderColors(card: GameCard | null): ManaColor[] {
     if (!card)
       return []
-    return getColorIdentity(card)
+    // Reuse the existing canonicalisation (WUBRG order, unknown symbols dropped)
+    // rather than trusting the raw array — this is what drives the app theme.
+    return getColorIdentity({ color_identity: card.colorIdentity })
   }
 
   /**
@@ -68,7 +70,7 @@ export function useDeckAnalysis() {
     let cmcSum = 0
     let spells = 0
     for (const rc of cards) {
-      if (!rc.card || classifyType(englishTypeLine(rc.card)) === 'land')
+      if (!rc.card || classifyType(rc.card.typeLine) === 'land')
         continue
       const cmc = Math.max(0, Math.round(rc.card.cmc ?? 0))
       const idx = Math.min(cmc, 7)
@@ -89,7 +91,9 @@ export function useDeckAnalysis() {
     let total = 0
     let missing = 0
     for (const rc of cards) {
-      const eur = rc.priceEur ?? rc.card?.prices?.eur
+      // priceEur already tries the displayed card's price first, so a fallback
+      // to the card's own prices would only ever repeat it.
+      const eur = rc.priceEur
       const n = eur ? Number.parseFloat(eur) : Number.NaN
       if (Number.isFinite(n))
         total += n * rc.entry.quantity

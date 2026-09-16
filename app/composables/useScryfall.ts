@@ -16,10 +16,14 @@ import {
   isDoubleFaced,
   mapPool,
 } from './scryfall/helpers'
+import { toMtgCard } from './scryfall/toGameCard'
 
 // Re-export the public surface so consumers can keep importing everything from
-// '~/composables/useScryfall' unchanged (types + getImageUris + useScryfall()).
+// '~/composables/useScryfall' unchanged: types, image helpers, the game-neutral
+// card model and its Magic adapters, and useScryfall() itself.
+export type { GameCard } from '../types/cards'
 export { getImageUris, isDoubleFaced } from './scryfall/helpers'
+export { mtgRaw, toMtgCard } from './scryfall/toGameCard'
 export type { FetchProgress, ImageUris, ResolvedCard, ScryfallCard } from './scryfall/types'
 
 const BATCH_SIZE = 75
@@ -160,7 +164,7 @@ export function useScryfall() {
       const priceEur = finalCard.prices?.eur ?? match.prices?.eur ?? null
       return {
         entry,
-        card: finalCard,
+        card: toMtgCard(finalCard),
         imageUrl: frontImage(finalCard),
         backImageUrl: isDoubleFaced(finalCard) ? backImage(finalCard) : null,
         lang: finalLang,

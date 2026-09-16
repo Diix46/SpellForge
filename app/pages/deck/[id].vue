@@ -9,9 +9,9 @@ import { useDeckExport } from '~/composables/useDeckExport'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
-import { classifyType, displayName, displayType, englishTypeLine } from '~/composables/useMtg'
+import { classifyType, displayName, displayType } from '~/composables/useMtg'
 import { useResolvedCards } from '~/composables/useResolvedCards'
-import { getImageUris } from '~/composables/useScryfall'
+import { getImageUris, mtgRaw, toMtgCard } from '~/composables/useScryfall'
 import { useUndoHistory } from '~/composables/useUndoHistory'
 import { isCardWithinIdentity } from '~/utils/mtgValidation'
 
@@ -246,14 +246,14 @@ const inDeckNames = computed(() => new Set(builder.entries.value.map(e => e.name
 const categoryByName = computed(() => {
   const m = new Map<string, string>()
   for (const rc of resolvedCards.value)
-    m.set(rc.entry.name.trim().toLowerCase(), classifyType(englishTypeLine(rc.card)))
+    m.set(rc.entry.name.trim().toLowerCase(), classifyType(rc.card?.typeLine ?? ''))
   return m
 })
 const identityByName = computed(() => {
   const m = new Map<string, string[]>()
   for (const rc of resolvedCards.value) {
-    if (rc.card?.color_identity)
-      m.set(rc.entry.name.trim().toLowerCase(), rc.card.color_identity)
+    if (rc.card)
+      m.set(rc.entry.name.trim().toLowerCase(), rc.card.colorIdentity)
   }
   return m
 })
@@ -263,7 +263,7 @@ const displayNameByName = computed(() => {
   const isFr = locale.value === 'fr'
   for (const rc of resolvedCards.value) {
     if (rc.card)
-      m.set(rc.entry.name.trim().toLowerCase(), displayName(rc.card, isFr))
+      m.set(rc.entry.name.trim().toLowerCase(), displayName(mtgRaw(rc.card), isFr))
   }
   return m
 })
@@ -271,7 +271,7 @@ const displayNameByName = computed(() => {
 const cardMetaByName = computed(() => {
   const m = new Map<string, { thumb: string | null, image: string | null, manaCost: string }>()
   for (const rc of resolvedCards.value) {
-    const c = rc.card
+    const c = mtgRaw(rc.card)
     if (!c)
       continue
     const uris = getImageUris(c)
@@ -290,7 +290,7 @@ const identityLocked = ref(true)
 function isWithinIdentity(card: ScryfallCard): boolean {
   // `commander` is defined later but this only runs from event handlers (lazy-safe).
   // eslint-disable-next-line ts/no-use-before-define
-  const allowed = commander.value?.card?.color_identity
+  const allowed = commander.value?.card?.colorIdentity
   if (!identityLocked.value || !allowed)
     return true
   return isCardWithinIdentity(card, allowed.map(c => c.toLowerCase()))
@@ -362,7 +362,7 @@ function builderRemove(name: string) {
 // dragged card resolves to a known Scryfall card that's out of identity, reuse
 // the identity gate; otherwise add by name.
 function onDropAdd(name: string) {
-  const card = resolvedByName.value.get(name.trim().toLowerCase())?.card
+  const card = mtgRaw(resolvedByName.value.get(name.trim().toLowerCase())?.card)
   if (card) {
     addSearchCard(card)
     return
@@ -405,7 +405,16 @@ function openSearchDetail(c: ScryfallCard) {
   const front = c.image_uris?.large ?? c.image_uris?.png ?? c.image_uris?.normal
     ?? c.card_faces?.[0]?.image_uris?.large ?? c.card_faces?.[0]?.image_uris?.normal ?? null
   const back = c.card_faces?.[1]?.image_uris?.large ?? c.card_faces?.[1]?.image_uris?.normal ?? null
-  openDetail({ entry: { quantity: 1, name: c.name }, card: c, imageUrl: front, backImageUrl: back, lang: c.lang })
+  // priceEur must be set here: the detail modal used to fall back to the raw
+  // card's price, and this is the one ResolvedCard built outside resolveBatch.
+  openDetail({
+    entry: { quantity: 1, name: c.name },
+    card: toMtgCard(c),
+    imageUrl: front,
+    backImageUrl: back,
+    lang: c.lang,
+    priceEur: c.prices?.eur ?? null,
+  })
 }
 
 // Open the detail modal for a deck-list row (clicked by name). Uses the resolved
@@ -580,14 +589,14 @@ const commanderName = computed(() => {
   const c = commander.value?.card
   if (!c)
     return commander.value?.entry.name ?? ''
-  return displayName(c, locale.value === 'fr')
+  return displayName(mtgRaw(c), locale.value === 'fr')
 })
 // Canonical English commander name — EDHREC only knows English names, so the
 // suggestions lookup must use this, never the localized display name.
 const commanderEnName = computed(() =>
   commander.value?.card?.name ?? (builder.commanderName.value || commanderName.value),
 )
-const commanderType = computed(() => displayType(commander.value?.card ?? null, locale.value === 'fr'))
+const commanderType = computed(() => displayType(mtgRaw(commander.value?.card), locale.value === 'fr'))
 
 // Theme colors: from commander if resolved, else from decklist heuristic, else neutral.
 const { themeColors, themeStyle } = useDeckTheme(() =>
@@ -612,7 +621,7 @@ const builderIdentity = computed<ManaColor[] | null>(() => {
 const validation = computed(() => validateCommander(builder.entries.value, {
   commanderName: builder.commanderName.value || commanderName.value,
   identityByName: identityByName.value,
-  commanderIdentity: commander.value?.card?.color_identity,
+  commanderIdentity: commander.value?.card?.colorIdentity,
 }))
 
 // Cards excluding the commander (for the grid).
@@ -630,7 +639,7 @@ const price = computed(() => priceSummary(resolvedCards.value))
 const aiStats = computed(() => {
   const colors: Record<string, number> = {}
   for (const rc of resolvedCards.value) {
-    const id = rc.card?.color_identity ?? []
+    const id = rc.card?.colorIdentity ?? []
     if (!id.length) {
       colors.c = (colors.c ?? 0) + rc.entry.quantity
     }
@@ -674,7 +683,7 @@ function toggleTypeFilter(key: CategoryKey) {
 const filteredGridCards = computed(() => {
   if (!typeFilter.value)
     return gridCards.value
-  return gridCards.value.filter(rc => classifyType(englishTypeLine(rc.card)) === typeFilter.value)
+  return gridCards.value.filter(rc => classifyType(rc.card?.typeLine ?? '') === typeFilter.value)
 })
 
 // ---- Pagination ----

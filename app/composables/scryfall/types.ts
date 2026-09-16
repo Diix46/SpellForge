@@ -1,3 +1,4 @@
+import type { GameCard } from '../../types/cards'
 import type { DeckEntry } from '../useDecklist'
 
 export interface ImageUris {
@@ -63,7 +64,9 @@ export interface ScryfallCard {
 
 export interface ResolvedCard {
   entry: DeckEntry
-  card: ScryfallCard | null
+  // Game-neutral. Magic-only code narrows on `card.game === 'mtg'` to reach the
+  // Scryfall payload in `card.raw`; everything else reads the shared fields.
+  card: GameCard | null
   imageUrl: string | null
   backImageUrl: string | null
   lang: string

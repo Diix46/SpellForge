@@ -3,8 +3,9 @@ import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
-import { displayName, displayOracle, displayType, englishTypeLine, isCommanderType } from '~/composables/useMtg'
+import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
+import { mtgRaw } from '~/composables/useScryfall'
 
 const props = defineProps<{
   open: boolean
@@ -20,7 +21,7 @@ const emit = defineEmits<{
 const { t, rarityLabel, isFr } = useLocale()
 
 // Only legendary creatures / planeswalkers can be commanders.
-const canBeCommander = computed(() => isCommanderType(englishTypeLine(props.card?.card ?? null)))
+const canBeCommander = computed(() => isCommanderType(props.card?.card?.typeLine ?? ''))
 
 const { searchUrl } = useCardmarket()
 
@@ -29,7 +30,9 @@ watch(() => props.card, () => {
   showBack.value = false
 })
 
-const c = computed(() => props.card?.card ?? null)
+// This view is Magic-specific: faces, set line, oracle segments all read
+// Scryfall's shape. Narrowing once here keeps the rest of the component as is.
+const c = computed(() => mtgRaw(props.card?.card))
 const isDfc = computed(() => !!props.card?.backImageUrl)
 
 const displayImage = computed(() => {
