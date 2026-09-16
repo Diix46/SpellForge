@@ -5,8 +5,8 @@ import { useLocale } from '~/composables/useLocale'
 import { useScrollReveal } from '~/composables/useScrollReveal'
 
 // Marketing landing shown on "/" to signed-out visitors (the dashboard renders
-// instead once logged in). The cinematic hero owns its own header + auth CTAs;
-// this page adds the feature + steps sections below the fold.
+// instead once logged in). The portal owns its own header + auth CTAs and
+// sends each visitor to a world; the Magic features + steps follow below.
 
 const { t } = useLocale()
 
@@ -15,7 +15,7 @@ useScrollReveal(() => root.value)
 
 // Real Magic cards for the "how it works" step mockups (Coach suggestions + the
 // printed PDF sheet) so the demos show actual cards, not abstract placeholders.
-// Shared pool (see useLandingCards) — same fetch CinematicHero uses, and it
+// Shared pool (see useLandingCards), the same fetch the portal uses, and it
 // refetches on a locale toggle so these stay in the site's current language.
 const { pool: landingPool } = useLandingCards()
 const demoCards = computed(() => landingPool.value.slice(0, 9)) // fills the 3×3 PDF sheet
@@ -56,8 +56,8 @@ function resetTilt(e: PointerEvent) {
 
 <template>
   <div ref="root" class="lp">
-    <!-- ============ HERO: cinematic full-bleed card gallery ============ -->
-    <LandingCinematicHero />
+    <!-- ============ PORTAL: two worlds, one seam ============ -->
+    <LandingPortal />
 
     <!-- ============ FEATURES (bento) ============ -->
     <section class="section">
