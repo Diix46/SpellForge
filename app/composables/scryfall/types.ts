@@ -1,5 +1,5 @@
+import type { DeckEntry } from '#shared/decklist'
 import type { GameCard } from '../../types/cards'
-import type { DeckEntry } from '../useDecklist'
 
 export interface ImageUris {
   small: string

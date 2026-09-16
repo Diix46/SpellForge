@@ -1,8 +1,15 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
-// Plain Node tests — these cover server-side query building and the local card
-// databases, not Vue components, so no Nuxt environment is needed.
+// Plain Node tests — these cover server-side query building, the local card
+// databases and the pure game code, not Vue components, so no Nuxt environment
+// is needed. `#shared` is Nuxt's alias for shared/, which app code imports.
 export default defineConfig({
+  resolve: {
+    alias: {
+      '#shared': fileURLToPath(new URL('./shared', import.meta.url)),
+    },
+  },
   test: {
     environment: 'node',
     include: ['test/**/*.test.ts'],

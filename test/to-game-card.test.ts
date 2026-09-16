@@ -1,5 +1,6 @@
 import type { ScryfallCard } from '../app/composables/scryfall/types'
 import type { GameCard } from '../app/types/cards'
+import type { OptcgCard } from '../shared/optcg/types'
 import { describe, expect, it } from 'vitest'
 import { mtgRaw, toMtgCard } from '../app/composables/scryfall/toGameCard'
 
@@ -66,11 +67,12 @@ describe('mtgRaw', () => {
     const onePiece: GameCard = {
       game: 'optcg',
       id: 'OP01-001',
+      key: 'OP01-001',
       name: 'Roronoa Zoro',
       cmc: null,
       colorIdentity: ['Red'],
       typeLine: 'Leader',
-      raw: {},
+      raw: {} as OptcgCard,
     }
     expect(mtgRaw(onePiece)).toBeNull()
   })

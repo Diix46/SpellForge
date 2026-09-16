@@ -927,7 +927,7 @@ const {
               :key="err"
               class="rounded-full border border-(--color-error)/40 bg-(--color-error)/10 px-2.5 py-0.5 text-xs text-(--color-error)"
             >
-              {{ err }}
+              {{ t('parse.unrecognized') }} {{ err }}
             </span>
           </div>
         </div>

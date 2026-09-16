@@ -1,15 +1,12 @@
-import type { DeckEntry } from './useDecklist'
+import type { DeckEntry } from '#shared/decklist'
+import type { ValidationIssue } from '#shared/game'
 import type { ScryfallCard } from './useScryfall'
 import { computed, ref } from 'vue'
+import { mtgLine } from '#shared/mtg/decklist'
 import { useDecklist } from './useDecklist'
 import { allowsAnyQuantity, isBasicLand } from './useMtg'
 
-export interface ValidationIssue {
-  level: 'error' | 'warning'
-  /** i18n key + optional interpolation value. */
-  key: string
-  value?: string | number
-}
+export type { ValidationIssue } from '#shared/game'
 
 /**
  * Stateful deck-editing layer on top of the raw decklist text.
@@ -36,13 +33,8 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
   }
 
   function serialise() {
-    const lines = entries.value.map((e) => {
-      // Preserve a pinned printing as the Arena "(SET) NUM" suffix so it
-      // round-trips through the raw decklist and survives reloads.
-      const suffix = e.set && e.collectorNumber ? ` (${e.set.toUpperCase()}) ${e.collectorNumber}` : ''
-      return `${e.quantity} ${e.name}${suffix}`
-    })
-    rawModel.set(lines.join('\n') + sideboardRaw)
+    // A pinned printing round-trips as the Arena "(SET) NUM" suffix.
+    rawModel.set(entries.value.map(mtgLine).join('\n') + sideboardRaw)
   }
 
   function findIndex(name: string): number {

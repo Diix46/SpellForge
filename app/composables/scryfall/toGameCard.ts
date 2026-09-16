@@ -16,6 +16,7 @@ export function toMtgCard(card: ScryfallCard): MtgGameCard {
   return {
     game: 'mtg',
     id: card.id,
+    key: card.name,
     name: card.name,
     cmc: card.cmc ?? null,
     colorIdentity: card.color_identity ?? [],

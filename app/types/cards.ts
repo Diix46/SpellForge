@@ -1,4 +1,8 @@
+import type { GameId } from '#shared/game'
+import type { OptcgCard } from '#shared/optcg/types'
 import type { ScryfallCard } from '../composables/scryfall/types'
+
+export type { GameId } from '#shared/game'
 
 /**
  * Game-neutral card model.
@@ -12,13 +16,16 @@ import type { ScryfallCard } from '../composables/scryfall/types'
  * must narrow before it can reach Scryfall's shape — the compiler now says where
  * the Magic assumptions live instead of letting them spread.
  */
-export type GameId = 'mtg' | 'optcg'
-
 interface GameCardBase {
   game: GameId
   /** Printing id — stable enough to key a rendered list. */
   id: string
-  /** Canonical English name: the decklist join key, in every game. */
+  /**
+   * The decklist join key: the canonical English name for Magic, the card
+   * number for One Piece, whose names are translated and shared by many cards.
+   */
+  key: string
+  /** Reference name: English for Magic, the printing's language for One Piece. */
   name: string
   /** Mana value (Magic) or cost (One Piece). */
   cmc: number | null
@@ -35,9 +42,7 @@ export interface MtgGameCard extends GameCardBase {
 
 export interface OptcgGameCard extends GameCardBase {
   game: 'optcg'
-  // Typed once the One Piece adapter lands (lot 6). Declared now on purpose:
-  // a single-member union would let code reach `raw` without narrowing.
-  raw: unknown
+  raw: OptcgCard
 }
 
 export type GameCard = MtgGameCard | OptcgGameCard
