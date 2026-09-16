@@ -7,7 +7,7 @@
  * it in memory, keeps only the languages we serve, and writes a self-contained
  * card database.
  *
- * Output is `.data/cards.db` — deliberately SEPARATE from `.data/spellforge.db`.
+ * Output is `.data/cards-mtg.db` — deliberately SEPARATE from `.data/spellforge.db`.
  * The card DB is a rebuildable cache (drop it, re-run, done); the app DB holds
  * irreplaceable user data. Keeping them apart means an ingest can never corrupt
  * a deck, and the card DB can be swapped atomically while the app is running.

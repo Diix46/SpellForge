@@ -60,7 +60,7 @@ describe('query shape', () => {
 
   it('sorts on sentinel columns, never on a nullable one', () => {
     // An `IS NULL` guard at the head of ORDER BY defeats every index; this is
-    // the regression that cost 168 ms on the default browse.
+    // the regression that held the default browse at 66 ms.
     const { sql } = buildCardQuery({}, { identity: null, lang: 'en' }, 'edhrec')
     expect(sql).toContain('edhrec_sort')
     expect(sql).not.toMatch(/ORDER BY[^)]*IS NULL/)
@@ -129,9 +129,10 @@ withDb('against the real card database', () => {
     const t = performance.now()
     await rows(q)
     const ms = performance.now() - t
-    // This query runs on every keystroke. It has regressed twice already —
-    // once at 168 ms from a non-indexable ORDER BY, once at 86 ms from an index
-    // that made things worse. 25 ms leaves headroom without hiding a relapse.
+    // This query runs on every keystroke, and it took three fixes to get here:
+    // 168 ms from a correlated subquery picking the printing, then 66 ms from a
+    // non-indexable ORDER BY, with an 86 ms detour through an index that made
+    // things worse. 25 ms leaves headroom without hiding a relapse.
     expect(ms).toBeLessThan(25)
   })
 

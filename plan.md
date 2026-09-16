@@ -140,8 +140,11 @@ de comparaisons de chaînes — c'est la requête la plus chaude de l'app.
 4. **Les prix EUR sont absents de 98 % des impressions FR** (1 105 / 58 847). Filtrer
    sur le prix de la ligne française viderait le catalogue. Il faut un rollup
    `min(price_eur)` par `oracle_id` → couverture 99,8 %.
-5. **`ORDER BY edhrec_rank` met les NULL en premier** en SQLite ASC. Toujours
-   `ORDER BY edhrec_rank IS NULL, edhrec_rank`.
+5. **`ORDER BY edhrec_rank` met les NULL en premier** en SQLite ASC — mais le
+   correctif évident, `ORDER BY edhrec_rank IS NULL, edhrec_rank`, **est un piège** :
+   une expression en tête d'`ORDER BY` neutralise tout index. Il a coûté 66 ms sur
+   la navigation par défaut. La bonne réponse est une colonne sentinelle
+   (`edhrec_sort`, NULL → valeur haute) calculée à l'ingestion.
 6. **Plusieurs impressions FR partagent un `oracle_id`** → `GROUP BY oracle_id`,
    sinon la même carte apparaît trois fois. C'est exactement `unique=cards` vs
    `unique=prints` : il faut exposer le même choix.
@@ -166,8 +169,8 @@ comportement observable ne change qu'au lot 4.
 | **0** ✔ | Assainissement — **fait** | jspdf 2.5.2→**4.2.1** (sécurité, cf. §8 bis), `@nuxt/ui` 4.8.2→**4.11.1**, `npm audit fix`, Renovate `pnpmDedupe`→`npmDedupe`, Dockerfile node:20→**24**, purge des 3 polices inutilisées | ✔ lint 0 · typecheck 0 · build 0 · **`npm audit --omit=dev` : 0 vulnérabilité** · build 4,32 → **4,07 Mo** |
 | **1** ~ | Ingestion MTG **et** One Piece + tests | Streaming JSONL, schéma, index, FTS5, échange atomique, **une base par jeu**. Vitest en place (16 tests). Reste : passer l'ingestion en tâche Nitro planifiée | ✔ MTG **131,5 Mo en 92 s** (38 789 cartes / 174 228 impressions) · OP **6,7 Mo en 5 s** (2 888 FR + 4 843 EN) · `legal:commander` = **31 830, exact** · `npm run test` : **16/16** |
 | **2** ✔ | Moteur de recherche — **fait** | `server/utils/cards/mtg-query.ts` : thèmes en FTS5, masques de couleur, budget, identité, tris, pagination, épinglage, autocomplétion | ✔ **3,4 ms** sur la navigation par défaut (168 → 66 → 3,4), page 20 à **3,6 ms** (109), résultats justes en VF · plan d'exécution sans `SCAN bp` ni tri du jeu complet |
-| **3** | `GameCard` + `CardProvider` | Neutralisation de `ResolvedCard` (~25 fichiers), extraction de `providers/mtg/` depuis `useMtg` + `scryfall/*` | **Zéro changement de comportement**, lint + typecheck + tests verts |
-| **4** | Bascule | Les routes `/api/cards/*` lisent la base ; suppression des proxies Scryfall | Plus aucun appel sortant vers `api.scryfall.com` au runtime |
+| **3** ~ | `GameCard` — **fait** ; `CardProvider` — reste | `ResolvedCard.card` devient une union discriminée par jeu ; `mtgRaw()` oblige chaque appel spécifique à Magic à se déclarer. Reste : extraire `providers/mtg/` depuis `useMtg` + `scryfall/*` | ✔ typecheck **42 → 0** · 23 tests (dont le repli du type-line sur la face avant) · bundle **inchangé à 4,07 Mo** |
+| **4** | Bascule — **découpée, cf. §6 bis** | La base locale sert l'app ; suppression des proxies Scryfall | Plus aucun appel sortant vers `api.scryfall.com` au runtime |
 | **5** ~ | Images — **volet One Piece fait** | Miroir OP complet (FR + repli EN) ; reste : stratégie MTG (cf. §9) et adaptation du proxy Nitro | ✔ **4 374 visuels, 801 Mo, 743 s, 0 échec, 0 manquant** · intégrité vérifiée (118/118 vraies images) · reprise sur incident testée |
 | **6** | Adaptateur One Piece | Ingestion punk-records, moteur de règles OPTCG (50 + leader, 4 max par numéro, couleurs ⊆ leader, rotation par bloc, paires bannies) | Un deck OP se construit et se valide |
 | **7** | UI multi-univers | Colonne `game`, migration `localStorage` v2, rail de filtres piloté par l'adaptateur, thèmes par univers, composants de coût | La maquette devient l'application |
@@ -176,6 +179,33 @@ comportement observable ne change qu'au lot 4.
 
 Le lot 3 est le verrou : **tant que `ResolvedCard` transporte le JSON brut de
 Scryfall dans 25 fichiers, aucun second jeu n'est possible.**
+
+---
+
+## 6 bis. Découpage du lot 4 (la bascule)
+
+**Remplacer `/api/cards/search` en place casserait l'app en silence.** Cette route a
+une demi-douzaine d'appelants qui envoient tous de la syntaxe Scryfall brute
+(passage direct pour utilisateurs avancés, suggestions EDHREC en noms exacts,
+pré-chargement FR, jetons, page d'accueil, coach), et ses résultats circulent dans
+l'app **sous forme de JSON Scryfall brut** (`SearchResultCard`, `openSearchDetail`,
+`addSearchCard`, jetons via `all_parts`).
+
+**Stratégie : reconstruire la forme Scryfall à partir de la base locale.** La base
+contient tout ce que l'app consomme, ou de quoi le recalculer (couleurs depuis les
+masques, URL d'images depuis `id` + version). Le backend devient un remplacement
+transparent ; le client ne bouge pas. Les appelants en syntaxe brute restent sur
+l'ancien proxy le temps d'être migrés un par un, au lieu de se dégrader sans bruit.
+
+| Étape | Contenu | Gain visible |
+|---|---|---|
+| **4a** | Route d'images locale (repli vers le CDN Scryfall tant que le miroir est incomplet) + reconstruction de la forme Scryfall | Prérequis des trois suivantes |
+| **4b** | `/api/cards/resolve` : toute la cascade de résolution (collection + VF + meilleure impression) en **une** requête côté serveur | Ouverture d'un deck : **5 appels réseau par carte → 1 requête pour tout le deck** |
+| **4c** | `/api/cards/browse` à filtres structurés ; `useCardSearch.search()` quitte la chaîne Scryfall | Recherche locale à 3,4 ms |
+| **4d** | Migration des derniers appelants en syntaxe brute (suggestions, jetons, accueil, coach, éditions, autocomplétion, image du coach), puis suppression du proxy | **Zéro appel Scryfall au runtime** |
+
+Tailles d'images : `small` et `normal` sont mirorées ; `large` et `png` (fiche détail,
+export PDF) restent servies à la demande via le proxy existant, conformément au §9.
 
 ---
 
