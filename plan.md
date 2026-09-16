@@ -156,6 +156,16 @@ de comparaisons de chaînes — c'est la requête la plus chaude de l'app.
    **nommé, sur disque local**, non négociable — y compris en dev.
 10. **Ne jamais `fs.copyFile()` une base WAL ouverte.** `VACUUM INTO` pour les
     snapshots.
+11. **Le `oracle_text` des dumps contient le texte de rappel** (« Cycling {2}
+    ({2}, Discard this card: Draw a card.) »), alors que `oracle:` chez Scryfall
+    l'ignore. L'indexer tel quel faisait remonter 582 cartes de trop dans le
+    thème « pioche » (+22 %). L'index de recherche est construit sans lui.
+12. **Un pipe masque le code de sortie** : `npm run x | tail` renvoie celui de
+    `tail`. Une ingestion en échec a ainsi été rapportée comme réussie — deux
+    fois. Toujours capturer `$?` sans pipe sur une étape qui compte.
+13. **Le JSON d'un appel d'outil décode `\uXXXX`** : écrit dans du code source,
+    il devient un caractère littéral, parfois invisible. Construire ces valeurs
+    par `String.fromCharCode` plutôt que les écrire en échappement.
 
 ---
 
@@ -167,11 +177,11 @@ comportement observable ne change qu'au lot 4.
 | # | Lot | Contenu | Sortie attendue |
 |---|---|---|---|
 | **0** ✔ | Assainissement — **fait** | jspdf 2.5.2→**4.2.1** (sécurité, cf. §8 bis), `@nuxt/ui` 4.8.2→**4.11.1**, `npm audit fix`, Renovate `pnpmDedupe`→`npmDedupe`, Dockerfile node:20→**24**, purge des 3 polices inutilisées | ✔ lint 0 · typecheck 0 · build 0 · **`npm audit --omit=dev` : 0 vulnérabilité** · build 4,32 → **4,07 Mo** |
-| **1** ~ | Ingestion MTG **et** One Piece + tests | Streaming JSONL, schéma, index, FTS5, échange atomique, **une base par jeu**. Vitest en place (16 tests). Reste : passer l'ingestion en tâche Nitro planifiée | ✔ MTG **131,5 Mo en 92 s** (38 789 cartes / 174 228 impressions) · OP **6,7 Mo en 5 s** (2 888 FR + 4 843 EN) · `legal:commander` = **31 830, exact** · `npm run test` : **16/16** |
+| **1** ~ | Ingestion MTG **et** One Piece + tests | Streaming JSONL, schéma, index, FTS5, échange atomique, **une base par jeu**. Vitest en place. Reste : passer l'ingestion en tâche Nitro planifiée, **avec nouvelles tentatives réseau** — un simple aléa a déjà fait échouer une ingestion complète | ✔ MTG **127,8 Mo en 84 s** (38 789 cartes / 174 228 impressions) · OP **6,7 Mo en 5 s** (2 888 FR + 4 843 EN) · `legal:commander` = **31 830, exact** · `npm run test` : **64/64** |
 | **2** ✔ | Moteur de recherche — **fait** | `server/utils/cards/mtg-query.ts` : thèmes en FTS5, masques de couleur, budget, identité, tris, pagination, épinglage, autocomplétion | ✔ **3,4 ms** sur la navigation par défaut (168 → 66 → 3,4), page 20 à **3,6 ms** (109), résultats justes en VF · plan d'exécution sans `SCAN bp` ni tri du jeu complet |
 | **3** ~ | `GameCard` — **fait** ; `CardProvider` — reste | `ResolvedCard.card` devient une union discriminée par jeu ; `mtgRaw()` oblige chaque appel spécifique à Magic à se déclarer. Reste : extraire `providers/mtg/` depuis `useMtg` + `scryfall/*` | ✔ typecheck **42 → 0** · 23 tests (dont le repli du type-line sur la face avant) · bundle **inchangé à 4,07 Mo** |
-| **4** | Bascule — **découpée, cf. §6 bis** | La base locale sert l'app ; suppression des proxies Scryfall | Plus aucun appel sortant vers `api.scryfall.com` au runtime |
-| **5** ~ | Images — **volet One Piece fait** | Miroir OP complet (FR + repli EN) ; reste : stratégie MTG (cf. §9) et adaptation du proxy Nitro | ✔ **4 374 visuels, 801 Mo, 743 s, 0 échec, 0 manquant** · intégrité vérifiée (118/118 vraies images) · reprise sur incident testée |
+| **4** ~ | Bascule — **4a, 4b et 4c faits**, cf. §6 bis | La base locale sert l'app ; suppression des proxies Scryfall | ✔ ouverture de deck et recherche servies en local · reste 4d (derniers appelants, analyseur de syntaxe, suppression du proxy) |
+| **5** ✔ | Images — **fait** | Miroir OP complet (FR + repli EN) ; miroir Magic `small` + `normal` des seules impressions affichables ; une route locale sert le miroir et récupère une seule fois le reste (`large`, `png`) | ✔ OP **4 374 visuels, 801 Mo** · Magic **134 226 fichiers, 6,36 Go, 19 min, 0 échec** · `large` : **217 ms** à la 1re demande, **1,5 ms** ensuite |
 | **6** | Adaptateur One Piece | Ingestion punk-records, moteur de règles OPTCG (50 + leader, 4 max par numéro, couleurs ⊆ leader, rotation par bloc, paires bannies) | Un deck OP se construit et se valide |
 | **7** | UI multi-univers | Colonne `game`, migration `localStorage` v2, rail de filtres piloté par l'adaptateur, thèmes par univers, composants de coût | La maquette devient l'application |
 | **8** | SEO | Rendu hybride sur les pages publiques (bibliothèque, fiche carte, `/discover`, `/shared/:id`), robots, sitemap | Une fiche carte est indexable |
@@ -199,10 +209,10 @@ l'ancien proxy le temps d'être migrés un par un, au lieu de se dégrader sans 
 
 | Étape | Contenu | Gain visible |
 |---|---|---|
-| **4a** | Route d'images locale (repli vers le CDN Scryfall tant que le miroir est incomplet) + reconstruction de la forme Scryfall | Prérequis des trois suivantes |
-| **4b** | `/api/cards/resolve` : toute la cascade de résolution (collection + VF + meilleure impression) en **une** requête côté serveur | Ouverture d'un deck : **5 appels réseau par carte → 1 requête pour tout le deck** |
-| **4c** | `/api/cards/browse` à filtres structurés ; `useCardSearch.search()` quitte la chaîne Scryfall | Recherche locale à 3,4 ms |
-| **4d** | Migration des derniers appelants en syntaxe brute (suggestions, jetons, accueil, coach, éditions, autocomplétion, image du coach), puis suppression du proxy | **Zéro appel Scryfall au runtime** |
+| **4a** ✔ | Route d'images locale (repli vers le CDN Scryfall pour ce qui n'est pas miroré) + reconstruction de la forme Scryfall | 10 tests prouvent que la forme reconstruite passe dans les propres helpers de l'app |
+| **4b** ✔ | `/api/cards/resolve` : toute la cascade de résolution (collection + VF + meilleure impression) en **une** requête côté serveur | Deck Commander de 100 cartes résolu en **~6 ms** en HTTP, 100/100 en VF — contre jusqu'à 5 appels réseau **par carte** |
+| **4c** ✔ | `/api/cards/browse` à filtres structurés ; `useCardSearch.search()` quitte la chaîne Scryfall ; suggestions EDHREC via `resolve` | **~30 ms** en HTTP · top 5 identique à Scryfall sur 4 combinaisons, totaux à ±3,4 % · la syntaxe brute reste sur Scryfall jusqu'à 4d |
+| **4d** ~ | Migration des derniers appelants, puis suppression du proxy. **Fait** : suggestions, jetons, autocomplétion, validation IA et `validate_cards` du coach ; trois routes et le cache client supprimés ; 404 pour toute API inconnue. **Reste** : éditions, image du coach, page d'accueil, et l'analyseur de syntaxe (recherche brute + `scryfall_search` du coach) | **Zéro appel Scryfall au runtime** |
 
 Tailles d'images : `small` et `normal` sont mirorées ; `large` et `png` (fiche détail,
 export PDF) restent servies à la demande via le proxy existant, conformément au §9.
@@ -215,7 +225,8 @@ export PDF) restent servies à la demande via le proxy existant, conformément a
 |---|---|
 | **EDHREC** | Recommandations « souvent joué avec ». Ce n'est pas de la donnée carte et il n'existe aucun équivalent local. Alternative à terme : calculer nos propres statistiques sur les decks publics de la plateforme |
 | **API Anthropic** | Le coach. ⚠️ Son outil `scryfall_search` laisse le modèle écrire de la **syntaxe Scryfall libre** — à brancher sur le parseur du lot 2, ou à réécrire en filtres structurés |
-| **CDN Scryfall** | Uniquement si on choisit le hotlink pour les images Magic (cf. §9) |
+| **CDN Scryfall** (`cards.scryfall.io`) | Sollicité **une seule fois par image**, pour les tailles non mirorées (`large`, `png`) : la route locale récupère puis sert depuis le disque (217 ms la 1re fois, 1,5 ms ensuite). Explicitement exempté de limite de débit par Scryfall |
+| **Iconify** (`api.iconify.design` + 2 miroirs) | **Découvert en 4d, préexistant.** Avec `ssr: false`, `@nuxt/icon` choisit le fournisseur `iconify` et télécharge en ligne toute icône non embarquée ; la route `/api/_nuxt_icon` n'est jamais enregistrée. Correctif proposé, **non appliqué** — hors périmètre « cartes », et le rendu des icônes doit être vérifié à l'écran : `icon: { provider: 'server', serverBundle: { collections: ['lucide', 'simple-icons'] }, fallbackToApi: false }`, les deux collections étant déjà en dépendance |
 
 ---
 
