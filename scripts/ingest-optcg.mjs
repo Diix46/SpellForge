@@ -42,11 +42,28 @@ const COLOR_BIT = { Red: 1, Green: 2, Blue: 4, Purple: 8, Black: 16, Yellow: 32 
 const force = process.argv.includes('--force')
 const log = (...a) => console.log(...a)
 
-async function getJson(path) {
-  const res = await fetch(`${BASE}/${path}`, { headers: { 'User-Agent': UA } })
-  if (!res.ok)
-    throw new Error(`${path}: HTTP ${res.status}`)
-  return res.json()
+// Bump whenever the schema changes: an older database is rebuilt even when the
+// dataset has not moved, since the app would query tables it does not have.
+const SCHEMA_VERSION = '4'
+
+/** The network cause behind undici's bare "fetch failed". */
+const causeOf = e => [e.message, e.cause?.code ?? e.cause?.message].filter(Boolean).join(' — ')
+
+async function getJson(path, attempts = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      const res = await fetch(`${BASE}/${path}`, { headers: { 'User-Agent': UA } })
+      if (!res.ok)
+        throw new Error(`${path}: HTTP ${res.status}`)
+      return await res.json()
+    }
+    catch (e) {
+      // HTTP errors are final; only connection failures are worth a retry.
+      if (i >= attempts || e.message.includes('HTTP'))
+        throw new Error(`${path} : ${causeOf(e)}`)
+      await new Promise(r => setTimeout(r, i * 2000))
+    }
+  }
 }
 
 /** Bounded concurrency — be a good citizen towards raw.githubusercontent.com. */
@@ -118,6 +135,34 @@ const SCHEMA = [
      PRIMARY KEY (id, lang)
    )`,
   `CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)`,
+  // One row per card number: what the rules engine and the filters need,
+  // whatever the art or the language. Built in main() from op_cards.
+  `CREATE TABLE op_numbers (
+     card_number TEXT PRIMARY KEY,
+     category    TEXT NOT NULL,
+     colors      TEXT,
+     color_mask  INTEGER NOT NULL DEFAULT 0,
+     cost        INTEGER,
+     life        INTEGER,
+     power       INTEGER,
+     counter     INTEGER,
+     set_code    TEXT,
+     -- Highest block icon among the labelled printings; NULL when none is
+     -- labelled yet, which only happens for the newest sets.
+     block       INTEGER,
+     is_banned   INTEGER NOT NULL DEFAULT 0,
+     variants    INTEGER NOT NULL DEFAULT 1
+   )`,
+  // The printing to show per card number and site language: that language
+  // first, the base art before alternate ones. English fills the ~37 % of
+  // numbers French does not cover yet.
+  `CREATE TABLE op_best (
+     card_number TEXT NOT NULL,
+     lang        TEXT NOT NULL,
+     id          TEXT NOT NULL,
+     row_lang    TEXT NOT NULL,
+     PRIMARY KEY (card_number, lang)
+   )`,
 ]
 
 const INDEXES = [
@@ -126,6 +171,8 @@ const INDEXES = [
   `CREATE INDEX idx_op_browse   ON op_cards(lang, category, color_mask)`,
   `CREATE INDEX idx_op_set      ON op_cards(set_code, lang)`,
   `CREATE INDEX idx_op_block    ON op_cards(block_number)`,
+  `CREATE INDEX idx_opn_browse  ON op_numbers(category, color_mask)`,
+  `CREATE INDEX idx_opn_cost    ON op_numbers(cost)`,
 ]
 
 // \p{M} = every Unicode combining mark, which is exactly what NFD splits accents
@@ -133,13 +180,31 @@ const INDEXES = [
 // flags as obscure.
 const fold = s => (s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 
+// Bandai's pages leak HTML entities into the text ("Zoro &amp; Sanji", a
+// French "&nbsp;!"): 126 rows. Angle brackets are NOT markup here — "<Slash>"
+// is an attribute written in the rules text — so only entities are decoded,
+// and the app always renders this text as text. The no-break space is built
+// from its code so no tooling can turn it into an invisible literal.
+const NAMED_ENTITIES = { amp: '&', nbsp: String.fromCharCode(0xA0), quot: '"', apos: '\'', lt: '<', gt: '>' }
+function decodeEntities(text) {
+  if (typeof text !== 'string')
+    return text
+  return text.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const code = entity[1] === 'x' || entity[1] === 'X' ? Number.parseInt(entity.slice(2), 16) : Number(entity.slice(1))
+      return Number.isFinite(code) ? String.fromCodePoint(code) : match
+    }
+    return NAMED_ENTITIES[entity.toLowerCase()] ?? match
+  })
+}
+
 async function ingestLang(db, lang, code) {
   const manifest = await getJson(`${lang}/manifest.json`)
   const packs = await getJson(`${lang}/packs.json`)
   const ids = Object.keys(packs)
   log(`  ${code} · ${ids.length} extensions · dataset du ${new Date(manifest.generated_at * 1000).toISOString().slice(0, 10)}`)
 
-  const packRows = ids.map(id => [id, code, packs[id]?.title_parts?.label ?? null, packs[id]?.raw_title ?? null])
+  const packRows = ids.map(id => [id, code, packs[id]?.title_parts?.label ?? null, decodeEntities(packs[id]?.raw_title ?? null)])
   await db.execute({
     sql: `INSERT OR REPLACE INTO op_packs (id,lang,label,title) VALUES ${packRows.map(() => '(?,?,?,?)').join(',')}`,
     args: packRows.flat(),
@@ -158,16 +223,19 @@ async function ingestLang(db, lang, code) {
   const rows = []
   for (const cards of perPack) {
     for (const c of cards) {
-      // Parallel arts (`_p1`) are the SAME card for the 4-copy rule.
-      const cardNumber = String(c.id).replace(/_p\d+$/, '')
+      // Alternate arts (_p1) and reprints (_r1) share the base card number:
+      // the four-copy rule counts them together. 412 reprints were counted as
+      // cards of their own before _r was stripped too.
+      const cardNumber = String(c.id).replace(/_[pr]\d+$/, '')
       // punk-records stores a Leader's Life in `cost`; there is no `life` field.
       const isLeader = c.category === 'Leader'
+      const name = decodeEntities(c.name || '')
       rows.push([
         c.id,
         code,
         cardNumber,
-        c.name || '',
-        fold(c.name),
+        name,
+        fold(name),
         c.category || '',
         c.rarity ?? null,
         JSON.stringify(c.colors ?? []),
@@ -180,9 +248,9 @@ async function ingestLang(db, lang, code) {
         c.power ?? null,
         c.counter ?? null,
         JSON.stringify(c.attributes ?? []),
-        JSON.stringify(c.types ?? []),
-        c.effect ?? null,
-        c.trigger ?? null,
+        JSON.stringify((c.types ?? []).map(decodeEntities)),
+        decodeEntities(c.effect ?? null),
+        decodeEntities(c.trigger ?? null),
         BANNED.has(cardNumber) ? 1 : 0,
         imgVersion(c.img_full_url),
       ])
@@ -219,9 +287,10 @@ async function main() {
   if (!force && existsSync(FINAL_DB)) {
     const cur = await getJson('french/manifest.json')
     const db = createClient({ url: `file:${FINAL_DB}` })
-    const r = await db.execute({ sql: `SELECT value FROM meta WHERE key='generated_at_fr'`, args: [] })
+    const r = await db.execute({ sql: `SELECT key, value FROM meta WHERE key IN ('generated_at_fr', 'schema_version')`, args: [] })
     db.close()
-    if (r.rows[0]?.value === String(cur.generated_at)) {
+    const meta = Object.fromEntries(r.rows.map(row => [row.key, row.value]))
+    if (meta.generated_at_fr === String(cur.generated_at) && meta.schema_version === SCHEMA_VERSION) {
       log('  base déjà à jour — rien à faire (--force pour reconstruire)\n')
       return
     }
@@ -266,9 +335,40 @@ async function main() {
   await db.execute(`INSERT INTO op_search (id,lang,name_folded,effect,types)
                     SELECT id, lang, name_folded, COALESCE(effect,''), COALESCE(types,'') FROM op_cards`)
 
+  log('  · une ligne par numéro de carte')
+  await db.execute(`INSERT INTO op_numbers (card_number, category, block, is_banned, variants)
+                    SELECT card_number, MAX(category), MAX(block_number), MAX(is_banned), COUNT(DISTINCT id)
+                      FROM op_cards GROUP BY card_number`)
+  // Gameplay values from one reference row: English, base art first.
+  await db.execute(`UPDATE op_numbers
+                       SET (category, colors, color_mask, cost, life, power, counter, set_code) = (
+                         SELECT c.category, c.colors, c.color_mask, c.cost, c.life, c.power, c.counter, c.set_code
+                           FROM op_cards c
+                          WHERE c.card_number = op_numbers.card_number
+                          ORDER BY (c.lang = 'en') DESC, (c.id = c.card_number) DESC, c.id
+                          LIMIT 1)`)
+
+  log('  · impression affichée par langue')
+  for (const code of Object.values(LANGS)) {
+    await db.execute({
+      sql: `INSERT INTO op_best (card_number, lang, id, row_lang)
+            SELECT card_number, ?, id, lang FROM (
+              SELECT card_number, id, lang,
+                     ROW_NUMBER() OVER (PARTITION BY card_number
+                                        ORDER BY (lang = ?) DESC, (id = card_number) DESC, id) AS rn
+                FROM op_cards)
+             WHERE rn = 1`,
+      args: [code, code],
+    })
+  }
+
+  log('  · statistiques du planificateur')
+  await db.execute('ANALYZE')
+
   for (const [code, s] of Object.entries(stats)) {
     await db.execute({ sql: `INSERT OR REPLACE INTO meta (key,value) VALUES (?,?)`, args: [`generated_at_${code}`, String(s.generatedAt)] })
   }
+  await db.execute({ sql: `INSERT OR REPLACE INTO meta (key,value) VALUES ('schema_version',?)`, args: [SCHEMA_VERSION] })
   await db.execute({ sql: `INSERT OR REPLACE INTO meta (key,value) VALUES ('ingested_at',?)`, args: [new Date().toISOString()] })
 
   await db.execute('VACUUM')
@@ -286,6 +386,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('\n✖ ingestion échouée :', e.message)
+  console.error('\n✖ ingestion échouée :', causeOf(e))
   process.exitCode = 1
 })
