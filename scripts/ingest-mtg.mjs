@@ -58,7 +58,8 @@ const mb = n => `${(n / 1048576).toFixed(1)} MB`
 /** Accent-insensitive, case-insensitive key used for exact + prefix matching. */
 function fold(s) {
   // \p{M} = every Unicode combining mark, which is exactly what NFD splits
-  // accents into. Safer than a literal ̀-ͯ range, flagged as obscure.
+  // accents into. Safer than spelling out the combining-mark code point range,
+  // which lint flags as obscure.
   return (s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 }
 
@@ -86,6 +87,14 @@ function hasRealImage(card) {
 }
 
 const num = v => (v === undefined || v === null || v === '' ? null : Number(v))
+
+/**
+ * Rules text without its reminder text — the parenthesised explanations.
+ * Scryfall's `oracle:` search ignores them; our index must too.
+ */
+function stripReminder(text) {
+  return text ? text.replace(/\([^)]*\)/g, '') : null
+}
 
 // ─── batched writer ────────────────────────────────────────────────────────
 // One multi-row INSERT per flush inside an explicit transaction. Row-at-a-time
@@ -510,15 +519,33 @@ async function finalize(db, meta) {
                       tokenize="unicode61 remove_diacritics 2")`)
   // One FTS row per card, carrying the French printed strings so a French user
   // searching "Voix des Praetors" hits the same row as "Praetors' Voice".
-  await db.execute(`INSERT INTO card_search (oracle_id, name_folded, printed_name, oracle_text, printed_text, type_line)
-                    SELECT o.oracle_id, o.name_folded,
-                           (SELECT p.printed_name FROM printings p
-                             WHERE p.oracle_id = o.oracle_id AND p.lang='fr' AND p.printed_name IS NOT NULL LIMIT 1),
-                           o.oracle_text,
-                           (SELECT p.printed_text FROM printings p
-                             WHERE p.oracle_id = o.oracle_id AND p.lang='fr' AND p.printed_text IS NOT NULL LIMIT 1),
-                           o.type_line
-                    FROM oracle_cards o`)
+  //
+  // Rules text is indexed WITHOUT its reminder text, matching Scryfall's
+  // `oracle:` search. Bulk oracle_text keeps the parenthesised explanations, and
+  // indexing them made the "draw" theme match every cycling card ("Discard this
+  // card: Draw a card.") — 582 false hits, +22 % against Scryfall. The text
+  // shown to players is untouched; only the search column is stripped.
+  const { rows: sources } = await db.execute(`
+    SELECT o.oracle_id, o.name_folded, o.oracle_text, o.type_line,
+           (SELECT p.printed_name FROM printings p
+             WHERE p.oracle_id = o.oracle_id AND p.lang = 'fr' AND p.printed_name IS NOT NULL LIMIT 1) AS printed_name,
+           (SELECT p.printed_text FROM printings p
+             WHERE p.oracle_id = o.oracle_id AND p.lang = 'fr' AND p.printed_text IS NOT NULL LIMIT 1) AS printed_text
+      FROM oracle_cards o`)
+  const search = new Batch(db, 'card_search', ['oracle_id', 'name_folded', 'printed_name', 'oracle_text', 'printed_text', 'type_line'])
+  await db.execute('BEGIN')
+  for (const r of sources) {
+    await search.push([
+      r.oracle_id,
+      r.name_folded,
+      r.printed_name,
+      stripReminder(r.oracle_text),
+      stripReminder(r.printed_text),
+      r.type_line,
+    ])
+  }
+  await search.flush()
+  await db.execute('COMMIT')
 
   // Resolve the displayed printing per language, set-based. ROW_NUMBER ranks
   // every candidate printing once; the search then only ever does an equality

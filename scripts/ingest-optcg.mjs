@@ -129,7 +129,8 @@ const INDEXES = [
 ]
 
 // \p{M} = every Unicode combining mark, which is exactly what NFD splits accents
-// into. Safer than a literal ̀-ͯ range, which lint flags as obscure.
+// into. Safer than spelling out the combining-mark code point range, which lint
+// flags as obscure.
 const fold = s => (s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
 
 async function ingestLang(db, lang, code) {

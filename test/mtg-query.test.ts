@@ -123,6 +123,16 @@ withDb('against the real card database', () => {
     expect(r.length).toBeGreaterThan(0)
   })
 
+  it('ignores reminder text, like Scryfall\'s oracle: search', async () => {
+    // Cycling's reminder reads "Discard this card: Draw a card." Indexing it
+    // made the draw theme match every cycling land — 582 false hits.
+    const steppe = await rows(buildCardQuery({ themes: ['draw'], text: 'secluded steppe' }, { identity: null, lang: 'en' }))
+    expect(steppe).toHaveLength(0)
+    // A card whose rules text really does draw still matches.
+    const opt = await rows(buildCardQuery({ themes: ['draw'], text: 'opt' }, { identity: null, lang: 'en' }))
+    expect(opt.map(x => x.name)).toContain('Opt')
+  })
+
   it('keeps the default browse fast', async () => {
     const q = buildCardQuery({}, { identity: ['W', 'U', 'B', 'G'], lang: 'fr' }, 'edhrec', 1)
     await rows(q) // warm the page cache
