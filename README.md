@@ -5,7 +5,7 @@
 > **L'atelier de decks One Piece et Magic: The Gathering.**
 > Construisez un deck entier **sans créer de compte** ; l'inscription ne sert qu'à le garder partout, le partager et le publier.
 
-Deux univers qui ne se ressemblent pas : **One Piece de jour** (papier jauni, affiches WANTED, la mer au pied de la page, « DON!! » à chaque carte ajoutée) et **Magic de nuit** (obsidienne et or, cercle d'invocation, braises). L'accueil est un portail scindé entre les deux.
+Deux univers qui ne se ressemblent pas : **One Piece de jour** (papier jauni, affiches WANTED, la mer au pied de la page, « DON!! » à chaque carte ajoutée) et **Magic de nuit** (obsidienne et or, cercle d'invocation, braises). La page d'accueil (`/`) est scindée entre les deux ; l'atelier et les decks vivent sur `/decks`.
 
 Toutes les cartes des deux jeux vivent dans des **bases locales** : aucune API de cartes n'est appelée au runtime.
 
@@ -40,7 +40,9 @@ Le projet est né comme réécriture moderne (Nuxt 4 + TypeScript) de [MTGProxyP
 - 🤖 **Coach IA** (voir plus bas).
 
 ### Commun aux deux jeux
-- 👤 **Sans compte** : les decks vivent dans le navigateur ; à la connexion ils rejoignent le compte.
+- 👤 **Sans compte** : les decks vivent dans le navigateur ; à la connexion ils rejoignent le compte, avec leurs dates.
+- 💾 **Rien ne se perd** : pour un compte, chaque modification passe par une file gardée dans le navigateur et renvoyée tant qu'elle n'est pas arrivée (hors ligne compris).
+- 📥 **Import** : lien EDHREC ou Archidekt pour Magic, liste de simulateur collée pour One Piece.
 - 🔗 **Partage** en lecture seule sous l'univers du deck (`/one-piece/shared/:id`, `/magic/shared/:id`), copie du deck en un clic, galerie publique **Découvrir** filtrable par jeu.
 - 🃏 **Une page par carte** (`/one-piece/card/OP01-016`, `/magic/card/Sol%20Ring`), rendue par le serveur et indexable.
 - ⌘K **Palette de commandes** qui suit l'univers : cartes du jeu en cours, decks, bibliothèques.
@@ -90,7 +92,7 @@ app/                       # code applicatif (srcDir Nuxt 4)
     useUniverse, useOptcgDeck, useOptcgSearch, usePublicSeo, useDeckFingerprints
   components/optcg/        # affiches, rail de filtres, fiche carte, panneau de deck
   components/landing/      # portail scindé + sections
-  pages/                   # index (tableau de bord), landing, discover,
+  pages/                   # index (landing), decks (tableau de bord), discover,
                            #   one-piece/{index,deck/[id],card/[number],shared/[shareId]}
                            #   magic/{index,deck/[id],card/[name],shared/[shareId]}
 shared/                    # code pur des deux côtés : jeux et capacités (game.ts),
@@ -160,7 +162,8 @@ L'ingestion Magic télécharge le dump `all_cards` (~375 Mo compressés) et ne
 reconstruit la base que s'il a changé (`--force` pour forcer). Les images One
 Piece ne sont servies que depuis le disque : `node scripts/mirror-images-optcg.mjs`
 les récupère toutes (7 731 visuels FR et EN, ~1,9 Go ; relancer ne télécharge que
-les manquants). En développement, `npx nuxi task run cards:refresh` enchaîne les
+les manquants) et en tire des vignettes WebP de 320 px (`.data/images/optcg/thumb`,
+~240 Mo) avec sharp. En développement, `npx nuxi task run cards:refresh` enchaîne les
 trois étapes.
 `npm run cards:verify` contrôle la base obtenue. Le miroir d'images est
 facultatif (`node scripts/mirror-images-mtg.mjs`) : sans lui, chaque image est
@@ -170,7 +173,12 @@ Tests :
 
 ```bash
 npm run test         # Vitest ; les tests d'intégration sont ignorés sans .data/cards-mtg.db
+npm run test:e2e     # parcours de bout en bout (Chrome sans interface) contre un build lancé
 ```
+
+`test:e2e` attend un serveur sur `BASE` (défaut `http://localhost:3000`, lancé
+avec `NUXT_SESSION_PASSWORD`) et Chrome à `CHROME_PATH` (défaut : l'application
+macOS). Il crée un compte jetable `…@test.invalid` par passage.
 
 ### Coach IA (Eve)
 

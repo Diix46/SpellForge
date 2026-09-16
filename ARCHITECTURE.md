@@ -10,8 +10,9 @@ decisions live in [plan.md](plan.md).
   night). Each page declares its universe in its page meta; `app.vue` stamps it on
   `<html data-universe>` and `assets/css/universes.css` re-themes the document.
 - **Nuxt 4, hybrid rendering** + **Nitro** server routes. Public pages are server-rendered
-  (`routeRules` in `nuxt.config.ts`: `/landing`, `/discover`, both libraries, card pages,
-  shared decks); the workshop (`/`, deck pages) stays a browser app. The server has two kinds
+  (`routeRules` in `nuxt.config.ts`: the home page `/`, `/discover`, both libraries, card
+  pages, shared decks); the workshop (`/decks`, deck pages) stays a browser app. Built
+  assets ship with gzip and Brotli copies (`compressPublicAssets`). The server has two kinds
   of data:
   - **User data** — accounts and decks in `.data/spellforge.db` (Drizzle + libSQL, migrated on
     boot; the file keeps the project's former name). Guests keep their decks in `localStorage`
@@ -53,8 +54,9 @@ app/
   components/optcg/           # WantedCard (poster), FilterRail, CardView + CardSheet, DeckPanel, EffectText
   components/mtg/             # GrimoireCard (library page)
   components/deck/            # ShareModal, SaveWall (shared by both games)
-  components/landing/Portal.vue  # split-screen home: One Piece left, Magic right
-  pages/                      # index (dashboard), landing, discover, deck/[id] + shared/[shareId] (redirects)
+  components/landing/        # home page: Header, Hero (split world, moving seam), Numbers,
+                              #   OmniSearch (both games), Worlds, Journey, Showcase, Finale, Footer
+  pages/                      # index (home), decks (dashboard), discover, deck/[id] + shared/[shareId] (redirects)
     one-piece/                # index (library), deck/[id], card/[number], shared/[shareId]
     magic/                    # index (grimoire), deck/[id], card/[name], shared/[shareId]
 shared/                       # pure code for app, server and tests: game.ts (ids, capabilities,
@@ -67,8 +69,11 @@ server/
     cards/prints.get.ts       # every FR/EN printing of one card, for the edition picker
     cards/card-image.get.ts   # preview image by name, for the coach's hover cards
     cards/suggestions.get.ts  # EDHREC "played with" (server/utils/edhrec.ts)
-    landing/cards.get.ts      # landing Magic art pool
-    landing/optcg.get.ts      # landing One Piece posters
+    landing/cards.get.ts      # home Magic art pool
+    landing/optcg.get.ts      # home One Piece posters
+    landing/search.get.ts     # home search: first cards of both games
+    landing/overview.get.ts   # home figures + latest public decks
+    decks/[id].put.ts         # save a whole deck (create or update), idempotent
     optcg/*                   # One Piece: browse, resolve, autocomplete, prints, sets
     images/optcg/[lang]/[file].get.ts  # One Piece image mirror, disk only, other-language fallback
     images/mtg/[size]/[face]/[file].get.ts  # serves the image mirror, back-fills missing files once
@@ -178,7 +183,10 @@ upstream URL.
 
 `/api/images/optcg/{lang}/{id}?v=` serves `.data/images/optcg` (7 731 files, French and
 English) and **never** calls Bandai: a missing file falls back to the other language, then
-404. `scripts/mirror-images-optcg.mjs` fills the mirror (only missing files are fetched).
+404. `?size=thumb` serves the 320 px WebP from `.data/images/optcg/thumb` (grids, posters,
+tiles use `OptcgCard.thumb`; the card view uses `image`). `scripts/mirror-images-optcg.mjs`
+fills the mirror and the thumbnails (sharp); both mirrors write to a `.part` file renamed
+when complete, and an unreadable image is deleted to be fetched again.
 
 Because images are same-origin, the PDF export reads them directly into data URLs; the
 former CORS image proxy is gone.
@@ -271,6 +279,16 @@ end; there is no polymorphic card provider (plan.md §6 ter).
     One Piece card anyway.
 12. **Shared decks are indexed only when listed in Discover** (`noindex` otherwise, and only
     public decks appear in the sitemap).
+13. **No deck write is lost.** Guest writes apply to what localStorage holds at that moment
+    (other tabs), and tabs refresh each other through the `storage` event. An account's
+    writes go through the outbox (`shared/deckOutbox.ts`, `prism_outbox_v1:<user>` in
+    localStorage): latest snapshot per deck, sent by `PUT /api/decks/:id` with retries,
+    replayed on the next load, and laid over the server list until sent. The server ignores a
+    snapshot older than the stored deck. Guest decks leave the browser only once the server
+    took them.
+14. **A Magic commander is chosen by name** and written in the list's `Commander` section
+    (`writeMtgDecklist`), never kept as an index into resolved cards. Tokens are printed but
+    left out of the hundred and of the buy list.
 
 ## Data flow (open a Magic deck)
 

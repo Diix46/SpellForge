@@ -294,6 +294,27 @@ l'image). Les libellés de rareté avaient été supprimés comme « clés morte
 (corrigé). Le passage au rendu hybride a fait disparaître l'appel à Iconify : les
 icônes passent désormais par la route locale `/api/_nuxt_icon`.
 
+### Passe qualité du 16/09 (soir)
+
+Demande : passe complète, correction des bugs, tous les parcours, fluidité, landing
+« de ouf », puis déploiement.
+
+- **Parcours** : 59 vérifications de bout en bout dans un Chrome sans interface
+  (`npm run test:e2e`), sans aucune erreur console ni réponse 5xx ; 178 tests Vitest.
+- **Deux audits** (atelier Magic ; tableau de bord, comptes, One Piece) : 33 défauts,
+  dont 3 critiques corrigés : import EDHREC cassé (format changé), sauvegarde d'un état
+  déjà annulé, éditions épinglées à numéro non numérique qui cassaient la carte.
+- **Aucune perte de deck** : file d'écritures persistée pour les comptes, écritures
+  fusionnées entre onglets pour les invités, migration qui garde les dates et ne retire que
+  ce que le serveur a pris.
+- **Landing** sur `/` pour tous, tableau de bord déplacé sur `/decks`.
+- **Fluidité** : JS transféré 830 → 240 Ko (Brotli), images du premier écran One Piece
+  2,6 → 0,57 Mo (vignettes), LCP < 300 ms et zéro tâche longue sur toutes les pages
+  mesurées ; mobile vérifié à 390 px sans débordement.
+- **Constat d'outillage** : l'onglet Chrome piloté à distance était masqué ; le navigateur
+  y suspend `requestAnimationFrame`, d'où des transitions figées qui ne concernaient pas
+  les utilisateurs.
+
 ---
 
 ## 7. Ce qui reste externe (assumé)
