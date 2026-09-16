@@ -4,6 +4,7 @@
 // the deck page's top-level script, well before the export button is used).
 import type { jsPDF } from 'jspdf'
 import type { ResolvedCard } from './useScryfall'
+import { assertProxyPrintable } from '#shared/game'
 import { mapPool } from './scryfall/helpers'
 
 // Bounded concurrency for the image pre-load pass: polite to the image route,
@@ -145,6 +146,7 @@ export function usePdfExport() {
     settings: PdfSettings,
     onProgress?: (p: PdfProgress) => void,
   ): Promise<jsPDF> {
+    assertProxyPrintable(cards.map(c => c.card?.game))
     const layout = computeLayout(settings)
     const imageUrls = buildImageList(cards, settings.includeBack)
 

@@ -34,6 +34,17 @@ export const CAPABILITIES: Readonly<Record<GameId, Readonly<GameCapabilities>>> 
   optcg: { proxyPdf: false, marketplace: false, coach: false, urlImport: false, suggestions: false, tokens: false },
 }
 
+/**
+ * Proxies are printed only for games that allow it. The One Piece pages never
+ * load the PDF code; this stops a One Piece card that reaches it anyway.
+ */
+export function assertProxyPrintable(games: Iterable<GameId | null | undefined>): void {
+  for (const game of games) {
+    if (game && !CAPABILITIES[game].proxyPdf)
+      throw new Error(`Proxy printing is not available for ${game}`)
+  }
+}
+
 /** URL segment of each universe. */
 export const UNIVERSE_SLUG: Readonly<Record<GameId, 'magic' | 'one-piece'>> = {
   mtg: 'magic',
@@ -50,9 +61,14 @@ export function deckPath(deck: { id: string, game?: GameId | null }): string {
   return `/${UNIVERSE_SLUG[deck.game ?? 'mtg']}/deck/${encodeURIComponent(deck.id)}`
 }
 
-/** Where a universe's card library lives. */
+/** A shared deck's read-only page, in its universe. */
+export function sharedPath(game: GameId | null | undefined, shareId: string): string {
+  return `/${UNIVERSE_SLUG[game ?? 'mtg']}/shared/${encodeURIComponent(shareId)}`
+}
+
+/** A universe's home: its card library. */
 export function libraryPath(game: GameId): string {
-  return `/${UNIVERSE_SLUG[game]}/cartes`
+  return `/${UNIVERSE_SLUG[game]}`
 }
 
 /** A rule a deck breaks, as an i18n key the page translates. */
