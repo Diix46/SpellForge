@@ -7,8 +7,10 @@ import type Anthropic from '@anthropic-ai/sdk'
 // Tool NAMES match what the front already labels (useCoach.ts TOOL_LABEL):
 // scryfall_search, edhrec_suggestions, validate_cards.
 
+import { useMtgCardsDb } from '../utils/cards/db'
+import { resolveCardsByName } from '../utils/cards/mtg-resolve'
 import { edhrecSuggestions } from '../utils/edhrec'
-import { resolveScryfallByName, SCRYFALL_SEARCH, scryfallFetch } from '../utils/scryfall'
+import { SCRYFALL_SEARCH, scryfallFetch } from '../utils/scryfall'
 import { inIdentity, legalInCommander } from '../utils/suggestValidate'
 
 export type ToolName = 'scryfall_search' | 'edhrec_suggestions' | 'validate_cards'
@@ -41,7 +43,7 @@ export const EVE_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'validate_cards',
-    description: 'Validate proposed card names against Scryfall: confirms each is a real card, whether it is within the given colour identity, and whether it is legal in Commander. ALWAYS validate ADD suggestions before presenting them.',
+    description: 'Validate proposed card names against the card database: confirms each is a real card, whether it is within the given colour identity, and whether it is legal in Commander. ALWAYS validate ADD suggestions before presenting them.',
     input_schema: {
       type: 'object',
       additionalProperties: false,
@@ -102,7 +104,7 @@ const runValidate = defineCachedFunction(async (names: string[], identity: strin
   if (!clean.length)
     return { results: [] }
   const allowed = new Set((Array.isArray(identity) ? identity : []).map(c => String(c).toLowerCase()))
-  const resolved = await resolveScryfallByName<ValCard>(clean)
+  const resolved = await resolveCardsByName<ValCard>(useMtgCardsDb(), clean)
   const results = clean.map((n) => {
     const card = resolved.get(n.toLowerCase())
     if (!card)

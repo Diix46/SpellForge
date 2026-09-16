@@ -118,6 +118,15 @@ withDb('against the real card database', () => {
     expect(r.map(x => x.name)).toContain('Sol Ring')
   })
 
+  it('autocompletes later words too, after name starts — like Scryfall', async () => {
+    // Checked against the live API: "praetor" offers "Praetor's Grasp" and then
+    // "Ebon Praetor". A prefix-only version would silently lose the latter.
+    const names = (await rows(buildAutocompleteQuery('praetor'))).map(x => String(x.name))
+    expect(names).toContain('Ebon Praetor')
+    const startsWith = names.map(n => n.toLowerCase().startsWith('praetor'))
+    expect(startsWith.lastIndexOf(true)).toBeLessThan(startsWith.indexOf(false))
+  })
+
   it('finds cards by French printed text', async () => {
     const r = await rows(buildCardQuery({ text: 'contresort' }, { identity: null, lang: 'fr' }))
     expect(r.length).toBeGreaterThan(0)

@@ -271,18 +271,45 @@ export function buildPinnedQuery(setCode: string, collectorNumber: string, lang:
  */
 const PREFIX_END = String.fromCharCode(0xFFFF)
 
-/** Name autocomplete, accent-insensitive, most-played first. */
+/**
+ * Name autocomplete, accent-insensitive.
+ *
+ * Mirrors Scryfall's behaviour, checked against the live API: names that START
+ * with the text come first, then names where the text starts a later word
+ * ("praetor" → "Praetor's Grasp", then "Ebon Praetor"). Each group is ordered
+ * by popularity.
+ *
+ * The name-start half is a binary range, not `LIKE 'prefix%'`: SQLite's LIKE is
+ * case-insensitive by default and cannot use the index on name_folded — it
+ * scanned all 38 789 cards on every keystroke. The later-word half is an FTS5
+ * prefix query on the name column.
+ */
 export function buildAutocompleteQuery(prefix: string, limit = 20) {
+  const start = fold(prefix)
+  const phrase = ftsPhrase(prefix)
+  const args: InValue[] = [start, `${start}${PREFIX_END}`]
+
+  let candidates = `
+    SELECT o.name, 0 AS grp, o.edhrec_sort FROM oracle_cards o
+     WHERE o.name_folded >= ? AND o.name_folded < ?
+       AND o.is_extra = 0 AND o.is_funny = 0`
+  if (phrase) {
+    candidates += `
+    UNION ALL
+    SELECT o.name, 1 AS grp, o.edhrec_sort FROM oracle_cards o
+     WHERE o.oracle_id IN (SELECT oracle_id FROM card_search WHERE card_search MATCH ?)
+       AND o.is_extra = 0 AND o.is_funny = 0`
+    // FTS5 marks the last token of a phrase as a prefix when `*` follows it.
+    args.push(`name_folded : ${phrase}*`)
+  }
+  args.push(limit)
+
   return {
-    sql: `SELECT o.name FROM oracle_cards o
-           WHERE o.name_folded >= ? AND o.name_folded < ?
-             AND o.is_extra = 0 AND o.is_funny = 0
-           ORDER BY o.edhrec_sort ASC
+    // A name matching both ways is kept once, ranked by its better group.
+    sql: `SELECT name FROM (${candidates})
+           GROUP BY name
+           ORDER BY MIN(grp), MIN(edhrec_sort)
            LIMIT ?`,
-    // A range, not `LIKE 'prefix%'`: SQLite's LIKE is case-insensitive by
-    // default and so cannot use the index on name_folded — it scanned all 38 789
-    // cards on every keystroke. The column is already lowercased, so a binary
-    // range expresses the same prefix and walks the index.
-    args: [fold(prefix), `${fold(prefix)}${PREFIX_END}`, limit],
+    args,
   }
 }

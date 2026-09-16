@@ -162,3 +162,31 @@ export async function resolveEntries(db: Client, entries: ResolveEntry[], lang: 
       : { card: null, lang, error: `Carte introuvable: ${entry.name}` }
   })
 }
+
+/**
+ * Drop-in local replacement for `resolveScryfallByName`: same contract, a Map
+ * of lowercased name → Scryfall-shaped card, so its callers change one line.
+ *
+ * Keyed by BOTH the name as written and the canonical name. The Scryfall
+ * version keyed only by the canonical name it returned, while callers looked
+ * up by the name the model wrote — so "Delver of Secrets" resolved to
+ * "Delver of Secrets // Insectile Aberration" and was then reported missing,
+ * silently rejecting a real card.
+ */
+export async function resolveCardsByName<T = Row>(db: Client, names: string[]): Promise<Map<string, T>> {
+  const unique = [...new Set(names.map(n => n.trim()).filter(Boolean))]
+  const byName = new Map<string, T>()
+  if (!unique.length)
+    return byName
+  // Language is irrelevant to identity and legality checks; English carries
+  // the canonical data.
+  const rows = await resolveEntries(db, unique.map(name => ({ name })), 'en')
+  rows.forEach((r, i) => {
+    if (!r.card)
+      return
+    const card = r.card as T
+    byName.set(unique[i]!.toLowerCase(), card)
+    byName.set(String(r.card.name).toLowerCase(), card)
+  })
+  return byName
+}
