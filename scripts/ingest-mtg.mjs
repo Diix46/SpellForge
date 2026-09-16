@@ -174,7 +174,14 @@ const SCHEMA = [
      printed_text     TEXT,
      price_eur        REAL,
      img_version      TEXT,
-     artist           TEXT
+     artist           TEXT,
+     -- Printing-level flags for the landing hero, which wants recognisably
+     -- Magic cards printed on paper. Universes Beyond has no dedicated field:
+     -- it is marked in promo_types, as checked on a Lord of the Rings and a
+     -- Marvel printing.
+     is_paper         INTEGER NOT NULL DEFAULT 0,
+     is_digital       INTEGER NOT NULL DEFAULT 0,
+     is_ub            INTEGER NOT NULL DEFAULT 0
    )`,
   `CREATE TABLE card_faces (
      printing_id       TEXT NOT NULL,
@@ -324,6 +331,9 @@ async function ingest(db) {
     'price_eur',
     'img_version',
     'artist',
+    'is_paper',
+    'is_digital',
+    'is_ub',
   ])
   const faces = new Batch(db, 'card_faces', [
     'printing_id',
@@ -451,6 +461,11 @@ async function ingest(db) {
       num(c.prices?.eur),
       imgVersion(c),
       c.artist || null,
+      c.games?.includes('paper') ? 1 : 0,
+      c.digital ? 1 : 0,
+      // Universes Beyond is a printing property, flagged in promo_types — a
+      // Marvel reprint of Lightning Bolt is UB even though the card is not.
+      c.promo_types?.includes('universesbeyond') ? 1 : 0,
     ])
 
     if (c.card_faces?.length) {

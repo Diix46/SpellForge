@@ -1,113 +1,93 @@
-// Random gorgeous MTG card art for the marketing landing hero. Returns a POOL of
-// art-crops; the client picks a handful at random per visit, so the hero feels
-// alive and different every time WITHOUT hitting Scryfall on every page load.
-//
-// One Scryfall /cards/search per cache-miss (not one /random per card): we ask
-// for a wide set of high-res, paper, non-token cards with real art, take a random
-// page, and slim each to { art, colors, name }. Cached ~10 min (SWR) so a burst of
-// visitors is coalesced into a single upstream request — polite to Scryfall.
-
-// Explicit import: `getImageUris` exists both here (server) and as a client
-// composable export, so the auto-import global is ambiguous — import the server
-// copy directly to bind to the right one.
-import type { ScryImg } from '~~/server/utils/scryfall'
-import { getImageUris } from '~~/server/utils/scryfall'
-
-interface ScryCard {
-  name?: string
-  printed_name?: string // localized name (e.g. French) when lang:fr is requested
-  artist?: string
-  type_line?: string
-  colors?: string[]
-  color_identity?: string[]
-  image_uris?: ScryImg
-  card_faces?: Array<{ image_uris?: ScryImg, artist?: string, printed_name?: string }>
-}
+/**
+ * Card art for the landing hero, served from the local database.
+ *
+ * Same contract as before — a pool of 90 `{ name, image, art, artist, colors }`
+ * the client scatters into its card tide — and the same selection: high-res,
+ * printed on paper, not digital-only, rare or mythic, with no tokens, emblems,
+ * basics, joke sets, art series or Universes Beyond, drawn at random from the
+ * most played cards.
+ *
+ * Scryfall served one random page of 175 among the first 25 (8 in French).
+ * Here the same depth is sampled directly. Sampling one printing per card
+ * across that depth costs ~230 ms, and this is the most visited page, so the
+ * pool is cached for two minutes per language — as the original was.
+ */
+import { useMtgCardsDb } from '../../utils/cards/db'
+import { colorsFromMask, imageUrl } from '../../utils/cards/mtg-shape'
 
 export interface LandingCard {
   name: string
-  image: string // the full bordered card (normal) — for the interactive card-pile hero
-  art: string // landscape art crop — for compact thumbnails (e.g. the steps mockups)
-  artist: string // illustrator credit (shown in the click-to-preview modal)
-  colors: string[] // WUBRG letters (empty = colourless)
+  image: string
+  art: string
+  artist: string
+  colors: string[]
 }
 
-// Iconic, varied, recognizably MAGIC: high-res paper cards, rare/mythic for the
-// best art, excluding tokens/emblems/basics, the joke "acorn" sets, art-series,
-// AND Universes Beyond (-is:ub) so the hero doesn't look like a Marvel/LOTR ad.
-// `order=edhrec` surfaces the most-played cards across Magic's whole history —
-// the staples with the most beloved art — and a random page keeps it fresh.
-const QUERY = 'is:hires game:paper -is:digital -is:ub -t:token -t:emblem -t:basic -is:funny -layout:art_series (rarity:rare or rarity:mythic)'
-// A full-screen card "tide" needs plenty of distinct cards so the pile never
-// looks repetitive; the client scatters as many as fit the viewport (capped),
-// and repeats from the pool only on very large/ultrawide screens.
 const POOL_SIZE = 90
-
-// Landscape art crop — also gates out cards whose art didn't resolve (quality bar).
-function art(c: ScryCard): string | null {
-  return getImageUris(c)?.art_crop ?? null
-}
-function image(c: ScryCard): string | null {
-  return getImageUris(c)?.normal ?? null
-}
+// The depth the old proxy drew its random page from: 25 pages of 175 in
+// English, 8 in French (the smaller pool).
+const DEPTH = { en: 25 * 175, fr: 8 * 175 }
 
 export default defineCachedEventHandler(async (event): Promise<{ cards: LandingCard[] }> => {
-  // Match the card images to the site locale: French visitors see French-printed
-  // cards (lang:fr + include_multilingual), everyone else the English printings.
   const lang = getQuery(event).lang === 'fr' ? 'fr' : 'en'
-  // Scryfall paginates 175/page; a random page over the most-played cards keeps
-  // results gorgeous + recognizable while varying the pool between cache windows.
-  // French printings are a smaller pool, so cap the random page lower to avoid
-  // landing past the last page (which Scryfall 404s).
-  const maxPage = lang === 'fr' ? 8 : 25
-  const page = 1 + Math.floor(Math.random() * maxPage)
-  const q = lang === 'fr' ? `${QUERY} lang:fr` : QUERY
-  const multilingual = lang === 'fr' ? '&include_multilingual=true' : ''
-  const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&order=edhrec&dir=asc&page=${page}${multilingual}`
+  const db = useMtgCardsDb()
 
-  const res = await scryfallFetch(url)
-  if (!res.ok)
-    throw createError({ statusCode: 502, statusMessage: `Scryfall ${res.status}` })
+  // One printing per card, as Scryfall's default `unique=cards` did. Without
+  // this, the most reprinted cards would crowd out everything else.
+  const { rows } = await db.execute({
+    sql: `SELECT * FROM (
+            SELECT * FROM (
+              SELECT p.id, p.img_version, p.artist, p.printed_name,
+                     o.name, o.colors_mask, o.edhrec_sort,
+                     ROW_NUMBER() OVER (PARTITION BY p.oracle_id ORDER BY p.released_at DESC) AS rn
+                FROM printings p
+                JOIN oracle_cards o ON o.oracle_id = p.oracle_id
+               WHERE p.lang = ?
+                 AND p.is_highres = 1 AND p.is_paper = 1
+                 AND p.is_digital = 0 AND p.is_ub = 0
+                 AND p.rarity IN ('rare', 'mythic')
+                 AND o.is_extra = 0 AND o.is_funny = 0
+                 AND o.type_line NOT LIKE '%Basic%'
+            ) WHERE rn = 1
+            ORDER BY edhrec_sort
+            LIMIT ?
+          )
+          ORDER BY random()
+          LIMIT ?`,
+    args: [lang, DEPTH[lang], POOL_SIZE],
+  })
+  // Throw rather than return an empty pool: the cache would otherwise keep
+  // serving a hero with no art for the whole window.
+  if (!rows.length)
+    throw createError({ statusCode: 503, statusMessage: 'No landing art available' })
 
-  const data = await res.json() as { data?: ScryCard[] }
-  const all = (data.data ?? [])
-    .filter(c => art(c) && image(c) && c.name)
-    .map<LandingCard>(c => ({
-      // prefer the localized printed name (French) when present
-      name: c.printed_name ?? c.card_faces?.[0]?.printed_name ?? c.name!,
-      image: image(c)!,
-      art: art(c)!,
-      artist: c.artist ?? c.card_faces?.[0]?.artist ?? '',
-      colors: (c.colors ?? c.color_identity ?? []).map(x => x.toLowerCase()),
-    }))
+  // Double-faced French printings carry their localised name on the front face.
+  const ids = rows.map(r => String(r.id))
+  const { rows: faces } = await db.execute({
+    sql: `SELECT printing_id, printed_name FROM card_faces
+           WHERE face_index = 0 AND printing_id IN (${ids.map(() => '?').join(',')})`,
+    args: ids,
+  })
+  const faceName = new Map(faces.map(f => [String(f.printing_id), f.printed_name]))
 
-  // A random page landing past the real result count (mostly the smaller FR
-  // pool) comes back empty — Scryfall returns 200+[] rather than 404 for that.
-  // Throw instead of returning {cards: []} so the cache layer never persists
-  // an empty pool: a landing visitor would otherwise see no card art for the
-  // full maxAge window on every subsequent request.
-  if (!all.length)
-    throw new Error('landing cards: empty page')
-
-  // Shuffle (Fisher–Yates) and keep a pool; the client picks N at random per visit.
-  for (let i = all.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [all[i], all[j]] = [all[j]!, all[i]!]
+  return {
+    cards: rows.map((r) => {
+      const id = String(r.id)
+      return {
+        name: String(r.printed_name ?? faceName.get(id) ?? r.name),
+        image: imageUrl('normal', 'front', id, r.img_version),
+        // The art crop is not pre-mirrored: the image route fetches each one
+        // once from Scryfall, then serves it from disk.
+        art: imageUrl('art_crop', 'front', id, r.img_version),
+        artist: String(r.artist ?? ''),
+        colors: colorsFromMask(r.colors_mask).map(c => c.toLowerCase()),
+      }
+    }),
   }
-
-  return { cards: all.slice(0, POOL_SIZE) }
 }, {
-  // Short cache (no SWR): the pool rotates to a fresh random Scryfall page every
-  // ~2 min, so the hero genuinely changes — while a burst of visits within the
-  // window is still coalesced into one upstream request (polite to Scryfall).
-  // The client shuffles + scatters this pool into the card-tide hero per visit,
-  // so even within one window two visitors rarely see the same arrangement.
+  // The pool changes every two minutes; the client shuffles and scatters it
+  // per visit, so two visitors in one window still rarely see the same hero.
   maxAge: 120,
   name: 'landing-cards',
-  // Key by locale only: the client appends a `_` cache-buster (to dodge the
-  // BROWSER's HTTP cache), but the SERVER ignores it so all visits in the window
-  // share one slot per language — one upstream Scryfall call, not one per visitor.
-  getKey: (event) => {
-    return getQuery(event).lang === 'fr' ? 'pool-fr' : 'pool-en'
-  },
+  getKey: event => (getQuery(event).lang === 'fr' ? 'pool-fr' : 'pool-en'),
 })
