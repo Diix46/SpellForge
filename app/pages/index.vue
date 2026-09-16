@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import type { GameId } from '#shared/game'
+import { computed, ref } from 'vue'
+import { deckPath } from '#shared/game'
 import { useAuth } from '~/composables/useAuth'
 import { useDashboardModals } from '~/composables/useDashboardModals'
-import { useDecklist } from '~/composables/useDecklist'
+import { useDeckFingerprints } from '~/composables/useDeckFingerprints'
 import { useDeckStore } from '~/composables/useDeckStore'
-import { useManaIdentity } from '~/composables/useManaIdentity'
 
 const { t, formatShortDate } = useLocale()
 const { loggedIn } = useAuth()
 
 const route = useRoute()
 const router = useRouter()
-const { decks, duplicateDeck } = useDeckStore()
+const { decks, duplicateDeck, getDeck } = useDeckStore()
+
+function openDeck(id: string) {
+  const deck = getDeck(id)
+  if (deck)
+    navigateTo(deckPath(deck))
+}
 
 // "/" is the landing for first-time visitors, the dashboard for everyone else.
 // No account is required to manage decks (they live in localStorage as a
@@ -23,18 +30,13 @@ useSeoMeta({
   title: () => (showLanding.value ? 'Spellforge — Deck manager & proxy printer' : t('dash.title')),
   description: () => (showLanding.value ? t('landing.subtitle') : 'Gérez vos decklists Magic: The Gathering, imprimez vos proxies en FR/EN.'),
 })
-const { parse, totalCards } = useDecklist()
-const { identity } = useManaIdentity()
+// Per-deck count, colours and Leader, for tiles of either world.
+const { fingerprints } = useDeckFingerprints(decks)
 
 // Modal state + create/import/rename/delete handlers + ?new/?import deep-link.
 const modals = useDashboardModals(route, router)
 
-function deckCardCount(raw: string): number {
-  const { mainboard, sideboard } = parse(raw)
-  return totalCards(mainboard) + totalCards(sideboard)
-}
-
-const totalCardsAll = computed(() => decks.value.reduce((sum, d) => sum + deckCardCount(d.raw), 0))
+const totalCardsAll = computed(() => decks.value.reduce((sum, d) => sum + (fingerprints.value.get(d.id)?.count ?? 0), 0))
 
 const lastUpdated = computed(() => {
   if (!decks.value.length)
@@ -42,8 +44,8 @@ const lastUpdated = computed(() => {
   return formatShortDate(Math.max(...decks.value.map(d => d.updatedAt)))
 })
 
-// Decks "ready to play" ≈ those at/over a typical Commander/Standard size.
-const readyCount = computed(() => decks.value.filter(d => deckCardCount(d.raw) >= 60).length)
+// Decks at their game's full size: 100 for Commander, Leader + 50 for One Piece.
+const readyCount = computed(() => decks.value.filter(d => fingerprints.value.get(d.id)?.complete).length)
 
 // Featured = most-recently-updated deck (drives the bento hero).
 const featured = computed(() => {
@@ -51,15 +53,21 @@ const featured = computed(() => {
     return null
   return [...decks.value].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null
 })
-const featuredCount = computed(() => featured.value ? deckCardCount(featured.value.raw) : 0)
-// The featured bento glows in the featured deck's mana identity (or neutral).
-const { themeColors: featuredColors, themeStyle: featuredAccent } = useDeckTheme(() =>
-  featured.value ? identity(featured.value.raw) : [],
-)
+const featuredPrint = computed(() => (featured.value ? fingerprints.value.get(featured.value.id) ?? null : null))
+
+// Both worlds share the grid; a filter narrows it to one.
+const worldFilter = ref<GameId | 'all'>('all')
+const worldCounts = computed(() => ({
+  optcg: decks.value.filter(d => d.game === 'optcg').length,
+  mtg: decks.value.filter(d => d.game === 'mtg').length,
+}))
 
 // Other decks (grid below the bento) — everything except the featured one.
 const restDecks = computed(() =>
-  [...decks.value].sort((a, b) => b.updatedAt - a.updatedAt).filter(d => d.id !== featured.value?.id),
+  [...decks.value]
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .filter(d => d.id !== featured.value?.id)
+    .filter(d => worldFilter.value === 'all' || d.game === worldFilter.value),
 )
 </script>
 
@@ -138,12 +146,10 @@ const restDecks = computed(() =>
         />
 
         <DashboardDeckBento
-          v-if="featured"
+          v-if="featured && featuredPrint"
           :featured="featured"
-          :count="featuredCount"
-          :colors="featuredColors"
-          :accent="featuredAccent"
-          @open="(id) => navigateTo(`/deck/${id}`)"
+          :fingerprint="featuredPrint"
+          @open="openDeck"
           @new="modals.showNewDeck.value = true"
           @import="modals.showImport.value = true"
         />
@@ -153,15 +159,27 @@ const restDecks = computed(() =>
           <h2 class="sec-title">
             {{ t('dash.allDecks') }}
           </h2>
+          <div v-if="worldCounts.optcg && worldCounts.mtg" class="world-filter" role="group">
+            <button type="button" :aria-pressed="worldFilter === 'all'" @click="worldFilter = 'all'">
+              {{ t('dash.filterAll') }}
+            </button>
+            <button type="button" :aria-pressed="worldFilter === 'optcg'" @click="worldFilter = 'optcg'">
+              One Piece · {{ worldCounts.optcg }}
+            </button>
+            <button type="button" :aria-pressed="worldFilter === 'mtg'" @click="worldFilter = 'mtg'">
+              Magic · {{ worldCounts.mtg }}
+            </button>
+          </div>
         </div>
         <div class="grid">
           <DeckTile
             v-for="(deck, i) in restDecks"
             :key="deck.id"
             :deck="deck"
+            :fingerprint="fingerprints.get(deck.id)!"
             class="stagger-item"
             :style="{ '--stagger-delay': `${i * 45}ms` }"
-            @open="(id) => navigateTo(`/deck/${id}`)"
+            @open="openDeck"
             @duplicate="(id) => duplicateDeck(id)"
             @delete="modals.requestDelete"
             @rename="modals.openRename"
@@ -177,6 +195,7 @@ const restDecks = computed(() =>
       <DashboardDeckModals
         v-model:show-new-deck="modals.showNewDeck.value"
         v-model:new-deck-name="modals.newDeckName.value"
+        v-model:new-deck-game="modals.newDeckGame.value"
         v-model:show-import="modals.showImport.value"
         v-model:import-url="modals.importUrl.value"
         v-model:show-rename="modals.showRename.value"
@@ -271,6 +290,23 @@ const restDecks = computed(() =>
   align-items: center;
   justify-content: space-between;
   margin: 4px 0 14px;
+}
+.world-filter {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-sm);
+}
+.world-filter button {
+  padding: 4px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+.world-filter button[aria-pressed='true'] {
+  background: var(--color-surface-2);
+  color: var(--color-text-high);
 }
 .sec-title {
   font-family: var(--font-display);

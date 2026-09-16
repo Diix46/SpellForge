@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
-import type { ManaColor } from '~/composables/useMtg'
 import { computed } from 'vue'
-import { useDecklist } from '~/composables/useDecklist'
-import { useManaIdentity } from '~/composables/useManaIdentity'
 
-const props = defineProps<{ deck: Deck }>()
+// A deck on the dashboard, dressed as its world whatever the page's mode: a
+// One Piece deck is a poster pinned askew, with its Leader's bounty; a Magic
+// deck is a grimoire sealed with wax. Same size, same grid, same actions.
+const props = defineProps<{ deck: Deck, fingerprint: DeckFingerprint }>()
 const emit = defineEmits<{
   open: [id: string]
   duplicate: [id: string]
@@ -13,31 +14,25 @@ const emit = defineEmits<{
   rename: [id: string]
 }>()
 
-const { parse, totalCards } = useDecklist()
-const { identity, colorVar, accentStyle } = useManaIdentity()
-const { t, formatShortDate } = useLocale()
+const { t, locale, formatShortDate } = useLocale()
 
-// Stable id so the clickable tile (role=button) borrows the deck-name heading
-// as its accessible name (visible label === accessible name).
+// The clickable tile borrows the deck name as its accessible name.
 const titleId = useId()
 
-const cardCount = computed(() => {
-  const { mainboard, sideboard } = parse(props.deck.raw)
-  return totalCards(mainboard) + totalCards(sideboard)
+const isOp = computed(() => props.deck.game === 'optcg')
+const fp = computed(() => props.fingerprint)
+const bounty = computed(() => {
+  const p = fp.value.leader?.power
+  return p == null ? null : p.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US')
 })
-
-const colors = computed<ManaColor[]>(() => identity(props.deck.raw))
-
-const sourceBadge = computed(() => {
+const progress = computed(() => (fp.value.complete ? t('tile.legalSize') : `${fp.value.count} / ${fp.value.target}`))
+const source = computed(() => {
   if (props.deck.source?.includes('edhrec'))
-    return { label: 'EDHREC', kind: 'import' as const }
-  if (props.deck.source && props.deck.source !== 'manual')
-    return { label: t('source.import'), kind: 'import' as const }
-  return { label: t('source.manual'), kind: 'manual' as const }
+    return 'EDHREC'
+  if (props.deck.source?.includes('archidekt'))
+    return 'Archidekt'
+  return null
 })
-
-// Per-tile accent from the deck's mana identity (drives the hover top-bar + glow).
-const tileAccent = computed(() => accentStyle(colors.value))
 
 const menuItems = computed(() => [
   [{ label: t('tile.open'), icon: 'i-lucide-folder-open', onSelect: () => emit('open', props.deck.id) }],
@@ -54,17 +49,18 @@ const menuItems = computed(() => [
     role="button"
     tabindex="0"
     :aria-labelledby="titleId"
-    class="deck-tile lift"
-    :style="tileAccent"
+    class="tile"
+    :class="isOp ? 'tile--op' : 'tile--mtg'"
+    :style="fp.accent"
     @click="emit('open', deck.id)"
     @keydown.enter.prevent="emit('open', deck.id)"
     @keydown.space.prevent="emit('open', deck.id)"
   >
-    <!-- header row -->
-    <div class="flex items-start justify-between gap-2">
-      <h2 :id="titleId" class="tile-name">
-        {{ deck.name }}
-      </h2>
+    <span v-if="isOp" class="pin" aria-hidden="true" />
+    <span v-else class="seal" aria-hidden="true" />
+
+    <div class="head">
+      <span class="world">{{ isOp ? 'One Piece' : 'Magic' }}</span>
       <UDropdownMenu :items="menuItems" @click.stop>
         <UButton
           icon="i-lucide-ellipsis"
@@ -72,181 +68,276 @@ const menuItems = computed(() => [
           variant="ghost"
           size="xs"
           :aria-label="t('tile.menu')"
-          class="tile-menu"
+          class="menu"
           @click.stop
         />
       </UDropdownMenu>
     </div>
 
-    <p class="tile-sub">
-      {{ t('tile.updated') }} {{ formatShortDate(deck.updatedAt) }}
-    </p>
-
-    <!-- mana fingerprint -->
-    <div class="tile-pips">
-      <template v-if="colors.length">
-        <span
-          v-for="c in colors"
-          :key="c"
-          class="pip"
-          :style="{ background: colorVar(c) }"
-        />
-      </template>
-      <span v-else class="pip pip-colorless" />
-      <span class="tile-colors">{{ colors.length ? colors.join('').toUpperCase() : t('tile.colorless') }}</span>
+    <div class="main">
+      <img v-if="isOp && fp.leader" :src="fp.leader.image" alt="" class="leader" loading="lazy">
+      <div class="min-w-0">
+        <h2 :id="titleId" class="name">
+          {{ deck.name }}
+        </h2>
+        <p class="sub">
+          <template v-if="fp.label">
+            {{ isOp ? `Leader ${fp.label}` : fp.label }} ·
+          </template>
+          {{ formatShortDate(deck.updatedAt) }}
+        </p>
+        <p v-if="isOp && bounty" class="bounty">
+          <span aria-hidden="true">฿</span> {{ bounty }}
+        </p>
+        <div v-else-if="fp.dots.length" class="dots">
+          <span v-for="(c, i) in fp.dots" :key="i" class="dot" :style="{ background: c }" />
+        </div>
+      </div>
     </div>
 
-    <!-- footer -->
-    <div class="tile-foot">
-      <span class="tile-count">{{ cardCount }} <span>{{ t('tile.cards') }}</span></span>
-      <span class="tile-badge" :class="sourceBadge.kind">{{ sourceBadge.label }}</span>
+    <div class="foot">
+      <span class="count" :class="{ ok: fp.complete }">{{ progress }}</span>
+      <span v-if="source" class="source">{{ source }}</span>
+      <span v-if="deck.public" class="source">{{ t('tile.public') }}</span>
     </div>
-
-    <!-- hover open hint -->
-    <span class="tile-open">
-      {{ t('tile.open') }}
-      <UIcon name="i-lucide-arrow-right" class="h-3 w-3" />
-    </span>
   </div>
 </template>
 
 <style scoped>
-.deck-tile {
+.tile {
   position: relative;
-  overflow: hidden;
-  cursor: pointer;
-  border: 1px solid var(--color-border-hairline);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 40%), var(--color-surface-1);
-  padding: 18px;
-  box-shadow: var(--shadow-elev-1);
-}
-/* mana-colored top bar reveals on hover */
-.deck-tile::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0;
-  transition: opacity var(--dur) var(--ease-out);
-}
-.deck-tile:hover {
-  border-color: var(--color-border-strong);
-  background: radial-gradient(360px 160px at 90% 0%, var(--accent-soft), transparent 60%), var(--color-surface-2);
-}
-.deck-tile:hover::before {
-  opacity: 0.9;
-}
-.deck-tile:focus-visible {
-  outline: none;
-}
-
-.tile-name {
-  min-width: 0;
-  flex: 1;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-  color: var(--color-text-high);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tile-menu {
-  flex-shrink: 0;
-  opacity: 0;
-  transition: opacity var(--dur) var(--ease-out);
-}
-.deck-tile:hover .tile-menu,
-.deck-tile:focus-within .tile-menu {
-  opacity: 0.7;
-}
-.tile-sub {
-  margin-top: 3px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--color-text-disabled);
-}
-
-.tile-pips {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 16px 0;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 176px;
+  padding: 16px 16px 14px;
+  cursor: pointer;
+  transition:
+    transform 0.35s cubic-bezier(0.3, 1.7, 0.5, 1),
+    box-shadow 0.3s ease;
 }
-.pip {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
+.tile:focus-visible {
+  outline: 2px solid rgb(var(--accent-rgb, 168, 178, 196));
+  outline-offset: 3px;
 }
-.pip-colorless {
-  background: var(--color-ink-500);
-}
-.tile-colors {
-  margin-left: 4px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-}
-
-.tile-foot {
+.head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-border-hairline);
+  gap: 8px;
 }
-.tile-count {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--color-text-high);
-}
-.tile-count span {
-  color: var(--color-text-disabled);
-}
-.tile-badge {
-  font-size: 10px;
-  font-weight: 600;
+.world {
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 3px 8px;
-  border-radius: var(--radius-xs);
 }
-.tile-badge.manual {
-  color: var(--color-text-mid);
-  background: var(--color-surface-3);
-  border: 1px solid var(--color-border-subtle);
+.menu {
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
-.tile-badge.import {
-  color: var(--accent-text);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
+.tile:hover .menu,
+.tile:focus-within .menu {
+  opacity: 0.8;
 }
-
-.tile-open {
-  position: absolute;
-  right: 16px;
-  bottom: 52px;
+.main {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-width: 0;
+}
+.leader {
+  flex: 0 0 auto;
+  width: 54px;
+  align-self: flex-start;
+  border: 2px solid #231708;
+  border-radius: 3px;
+  rotate: -3deg;
+  box-shadow: 2px 2px 0 #231708;
+}
+.name {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+.sub {
+  margin: 4px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.dots {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+.foot {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent-text);
-  opacity: 0;
-  transform: translateX(-6px);
-  transition:
-    opacity var(--dur) var(--ease-out),
-    transform var(--dur) var(--ease-out);
+  gap: 8px;
+  padding-top: 10px;
 }
-.deck-tile:hover .tile-open {
-  opacity: 1;
-  transform: none;
+.count {
+  margin-right: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.source {
+  padding: 1px 7px;
+  border-radius: 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ---- One Piece: a poster pinned askew ---- */
+.tile--op {
+  rotate: -0.8deg;
+  border: 1px solid rgba(58, 38, 22, 0.35);
+  border-radius: 2px;
+  background:
+    linear-gradient(180deg, rgba(201, 49, 42, 0.07), transparent 40%), linear-gradient(180deg, #fbf3e3, #efdfc0);
+  box-shadow:
+    0 1px 0 rgba(58, 38, 22, 0.1),
+    0 12px 22px -14px rgba(58, 38, 22, 0.6);
+  color: #231708;
+}
+.tile--op:nth-child(even) {
+  rotate: 0.9deg;
+}
+.tile--op:hover {
+  rotate: 0deg;
+  transform: translateY(-4px) scale(1.015);
+  box-shadow:
+    0 1px 0 rgba(58, 38, 22, 0.1),
+    0 22px 36px -18px rgba(58, 38, 22, 0.7);
+}
+.tile--op .pin {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ef6b5d, #c9312a 55%, #7a1a14);
+  box-shadow: 0 2px 3px rgba(35, 23, 8, 0.45);
+}
+.tile--op .world {
+  font-family: 'Anton', Impact, sans-serif;
+  color: #a4231d;
+}
+.tile--op .name {
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.tile--op .sub {
+  color: #6b5236;
+}
+.tile--op .bounty {
+  margin: 8px 0 0;
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+.tile--op .bounty span {
+  color: #a4231d;
+}
+.tile--op .foot {
+  border-top: 1px dashed rgba(58, 38, 22, 0.3);
+}
+.tile--op .count.ok {
+  color: #2f8a4f;
+}
+.tile--op .source {
+  background: #231708;
+  color: #fbf4e6;
+}
+
+/* ---- Magic: a grimoire sealed with wax ---- */
+.tile--mtg {
+  border: 1px solid rgba(212, 175, 95, 0.28);
+  border-radius: 4px;
+  outline: 1px solid rgba(212, 175, 95, 0.12);
+  outline-offset: -6px;
+  background:
+    radial-gradient(420px 180px at 85% -20%, rgba(var(--accent-rgb, 212, 175, 95), 0.16), transparent 60%),
+    linear-gradient(180deg, #15111c, #0b0910);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.8);
+  color: #f3ecda;
+  transition:
+    transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.6s ease;
+}
+.tile--mtg:hover {
+  transform: translateY(-3px);
+  border-color: rgba(212, 175, 95, 0.6);
+  box-shadow: 0 22px 44px -18px rgba(212, 175, 95, 0.35);
+}
+.tile--mtg .seal {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #c0392b, #7b1f16);
+  box-shadow:
+    inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+    0 2px 5px rgba(0, 0, 0, 0.5);
+}
+.tile--mtg .world {
+  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-weight: 700;
+  color: #d4af5f;
+}
+.tile--mtg .name {
+  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: 0.03em;
+}
+.tile--mtg .sub {
+  font-family: 'EB Garamond', ui-serif, Georgia, serif;
+  font-style: italic;
+  font-size: 14px;
+  color: #b3a68a;
+}
+.tile--mtg .dot {
+  border: 1px solid rgba(212, 175, 95, 0.5);
+}
+.tile--mtg .foot {
+  padding-right: 34px;
+  border-top: 1px solid rgba(212, 175, 95, 0.18);
+}
+.tile--mtg .count {
+  color: #d6cbb1;
+}
+.tile--mtg .count.ok {
+  color: #d4af5f;
+}
+.tile--mtg .source {
+  border: 1px solid rgba(212, 175, 95, 0.35);
+  color: #e2c47f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile,
+  .tile--op,
+  .tile--op:nth-child(even) {
+    rotate: 0deg;
+    transition: none;
+  }
 }
 </style>
