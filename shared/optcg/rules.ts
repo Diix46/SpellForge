@@ -57,6 +57,7 @@ export interface OptcgDeckEntry {
 export type OptcgIssue
   = | { code: 'noLeader' }
     | { code: 'notALeader', number: string }
+    | { code: 'leaderCount', number: string, count: number }
     | { code: 'leaderInDeck', number: string }
     | { code: 'deckSize', count: number, expected: number }
     | { code: 'tooManyCopies', number: string, count: number, max: number }
@@ -76,13 +77,16 @@ export interface OptcgValidation {
  * Validate a deck. Entries may repeat a card number (two alternate arts of the
  * same card): copies are counted per number, as the rules require.
  */
-export function validateOptcgDeck(leader: OptcgRuleCard | null, entries: readonly OptcgDeckEntry[]): OptcgValidation {
+export function validateOptcgDeck(leader: OptcgRuleCard | null, entries: readonly OptcgDeckEntry[], leaderCopies = 1): OptcgValidation {
   const issues: OptcgIssue[] = []
 
   if (!leader)
     issues.push({ code: 'noLeader' })
   else if (leader.category !== 'Leader')
     issues.push({ code: 'notALeader', number: leader.number })
+  // The Leader area holds one card.
+  else if (leaderCopies !== 1)
+    issues.push({ code: 'leaderCount', number: leader.number, count: leaderCopies })
 
   const copies = new Map<string, number>()
   const cards = new Map<string, OptcgRuleCard>()

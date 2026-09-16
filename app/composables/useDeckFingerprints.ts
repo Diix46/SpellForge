@@ -38,23 +38,42 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
   const { locale } = useLocale()
   const leaders = shallowRef(new Map<string, OptcgCard | null>())
 
-  const leaderNumbers = computed(() => [...new Set(decks.value
-    .filter(d => d.game === 'optcg')
-    .map(d => parseOptcgDecklist(d.raw).mainboard[0]?.name)
-    .filter((n): n is string => !!n))].sort())
+  // The Leader is written first; a list pasted elsewhere may have it further
+  // down. First lines are asked for first; a deck whose first line is not a
+  // Leader then has its other numbers looked up.
+  const numbersToKnow = computed(() => {
+    const out = new Set<string>()
+    for (const d of decks.value) {
+      if (d.game !== 'optcg')
+        continue
+      const numbers = parseOptcgDecklist(d.raw).mainboard.map(e => e.name)
+      const first = numbers[0]
+      if (!first)
+        continue
+      out.add(first)
+      const known = leaders.value.get(first)
+      if (leaders.value.has(first) && known?.category !== 'Leader')
+        numbers.forEach(n => out.add(n))
+    }
+    return [...out].sort()
+  })
 
-  watch([leaderNumbers, locale], async ([numbers, lang], old) => {
+  const BATCH = 120
+  watch([numbersToKnow, locale], async ([numbers, lang], old) => {
     const langChanged = old && old[1] !== lang
     const missing = langChanged ? numbers : numbers.filter(n => !leaders.value.has(n))
     if (!missing.length)
       return
     try {
-      const { cards } = await $fetch<{ cards: (OptcgCard | null)[] }>('/api/optcg/resolve', {
-        method: 'POST',
-        body: { lang, entries: missing.map(number => ({ number })) },
-      })
       const next = new Map(langChanged ? [] : leaders.value)
-      missing.forEach((n, i) => next.set(n, cards[i] ?? null))
+      for (let i = 0; i < missing.length; i += BATCH) {
+        const batch = missing.slice(i, i + BATCH)
+        const { cards } = await $fetch<{ cards: (OptcgCard | null)[] }>('/api/optcg/resolve', {
+          method: 'POST',
+          body: { lang, entries: batch.map(number => ({ number })) },
+        })
+        batch.forEach((n, k) => next.set(n, cards[k] ?? null))
+      }
       leaders.value = next
     }
     catch (err) {
@@ -79,10 +98,10 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
 
   function optcg(deck: Deck): DeckFingerprint {
     const entries = parseOptcgDecklist(deck.raw).mainboard
-    const first = entries[0]
-    const leader = first ? leaders.value.get(first.name) ?? null : null
-    const isLeader = leader?.category === 'Leader'
-    const count = totalCards(entries) - (isLeader ? first!.quantity : 0)
+    const line = entries.find(e => leaders.value.get(e.name)?.category === 'Leader')
+    const leader = line ? leaders.value.get(line.name) ?? null : null
+    const isLeader = !!line
+    const count = totalCards(entries) - (line ? line.quantity : 0)
     const colors = isLeader ? leader!.colors : []
     return {
       count,

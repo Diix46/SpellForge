@@ -195,7 +195,7 @@ function newDeck(leader?: OptcgCard) {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(170px, 42vw), 1fr));
   gap: 28px 20px;
 }
 .more {

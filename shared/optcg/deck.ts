@@ -56,6 +56,7 @@ export function validateLines(lines: readonly OptcgDeckLine[]): OptcgValidation 
   return validateOptcgDeck(
     leader?.card ? toRuleCard(leader.card) : null,
     rest.map(l => ({ card: toRuleCard(l.card!), quantity: l.entry.quantity })),
+    leader?.entry.quantity ?? 1,
   )
 }
 

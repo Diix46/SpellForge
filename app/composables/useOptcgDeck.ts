@@ -31,8 +31,11 @@ export function useOptcgDeck(options: {
 
   const cacheKey = (e: DeckEntry) => `${lineKey(e)}|${toValue(options.lang)}`
 
+  // While a language switch resolves, a line keeps the card it had in the
+  // other language: the Leader, the filters and the counts do not blink.
+  const otherKey = (e: DeckEntry) => `${lineKey(e)}|${toValue(options.lang) === 'fr' ? 'en' : 'fr'}`
   const lines = computed<OptcgDeckLine[]>(() =>
-    entries.value.map(entry => ({ entry, card: cards.value.get(cacheKey(entry)) ?? null })),
+    entries.value.map(entry => ({ entry, card: cards.value.get(cacheKey(entry)) ?? cards.value.get(otherKey(entry)) ?? null })),
   )
   const leader = computed(() => findLeader(lines.value))
   const validation = computed(() => validateLines(lines.value))
@@ -47,9 +50,14 @@ export function useOptcgDeck(options: {
     unreadable.value = parsed.errors
   }
 
+  /**
+   * Writes the list back, Leader first. Lines the parser could not read stay
+   * at the end, untouched, until the player fixes or removes them.
+   */
   function save() {
     const isLeader = (number: string) => lines.value.some(l => l.entry.name === number && l.card?.category === 'Leader')
-    options.raw.set(orderOptcgEntries(entries.value, isLeader).map(optcgLine).join('\n'))
+    const text = [...orderOptcgEntries(entries.value, isLeader).map(optcgLine), ...unreadable.value]
+    options.raw.set(text.join('\n'))
   }
 
   let token = 0
@@ -71,6 +79,11 @@ export function useOptcgDeck(options: {
       const next = new Map(cards.value)
       refs.forEach((e, i) => next.set(`${lineKey(e)}|${lang}`, found[i] ?? null))
       cards.value = next
+      // A pasted or older list may name its Leader further down: put it first,
+      // where the dashboard and the simulators look for it.
+      const lead = leader.value
+      if (lead && entries.value[0] !== lead.entry)
+        save()
     }
     catch (err) {
       console.error('[optcg deck] resolve failed', err)

@@ -53,8 +53,8 @@ const menuItems = computed(() => [
     :class="isOp ? 'tile--op' : 'tile--mtg'"
     :style="fp.accent"
     @click="emit('open', deck.id)"
-    @keydown.enter.prevent="emit('open', deck.id)"
-    @keydown.space.prevent="emit('open', deck.id)"
+    @keydown.enter.self.prevent="emit('open', deck.id)"
+    @keydown.space.self.prevent="emit('open', deck.id)"
   >
     <span v-if="isOp" class="pin" aria-hidden="true" />
     <span v-else class="seal" aria-hidden="true" />
@@ -75,7 +75,7 @@ const menuItems = computed(() => [
     </div>
 
     <div class="main">
-      <img v-if="isOp && fp.leader" :src="fp.leader.image" alt="" class="leader" loading="lazy">
+      <img v-if="isOp && fp.leader" :src="fp.leader.thumb" alt="" class="leader" loading="lazy">
       <div class="min-w-0">
         <h2 :id="titleId" class="name">
           {{ deck.name }}

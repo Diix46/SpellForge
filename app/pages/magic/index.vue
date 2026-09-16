@@ -200,7 +200,7 @@ function newDeck(commander?: ResolvedCard) {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 42vw), 1fr));
   gap: 22px;
 }
 .more {

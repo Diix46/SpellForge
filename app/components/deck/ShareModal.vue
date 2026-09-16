@@ -88,6 +88,7 @@ async function copy() {
           </div>
           <USwitch
             :model-value="!!deck?.shareId"
+            :aria-label="t('share.linkActive')"
             :loading="togglingShare"
             :disabled="togglingShare"
             @update:model-value="toggleShare"
@@ -110,6 +111,7 @@ async function copy() {
           </div>
           <USwitch
             :model-value="!!deck?.public"
+            :aria-label="t('share.listPublic')"
             :disabled="!deck?.shareId || togglingPublic"
             :loading="togglingPublic"
             @update:model-value="togglePublic"

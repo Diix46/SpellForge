@@ -33,7 +33,7 @@ const { t } = useLocale()
         <span class="dot" />{{ t('dash.recent') }} · {{ featured.game === 'optcg' ? 'One Piece' : 'Magic' }}
       </span>
       <div class="feature-body">
-        <img v-if="fingerprint.leader" :src="fingerprint.leader.image" alt="" class="feature-leader">
+        <img v-if="fingerprint.leader" :src="fingerprint.leader.thumb" alt="" class="feature-leader">
         <div class="min-w-0">
           <h3 class="feature-name">
             {{ featured.name }}

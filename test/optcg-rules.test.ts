@@ -52,6 +52,11 @@ describe('validateOptcgDeck', () => {
     expect(validateOptcgDeck(leader('OP09-001'), list).issues).toEqual([{ code: 'leaderInDeck', number: 'OP01-001' }])
   })
 
+  it('wants exactly one copy of the Leader', () => {
+    expect(validateOptcgDeck(leader('OP09-001'), legalList(), 4).issues).toEqual([{ code: 'leaderCount', number: 'OP09-001', count: 4 }])
+    expect(validateOptcgDeck(leader('OP09-001'), legalList(), 1).legal).toBe(true)
+  })
+
   it('flags banned and rotated cards, the leader included', () => {
     const list = legalList()
     list[0] = { card: card('OP06-116', { banned: true }), quantity: 4 }

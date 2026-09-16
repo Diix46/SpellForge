@@ -34,22 +34,27 @@ const raw = ref('')
 const name = ref('')
 
 // Edits from the builder write the text; any other change to the text (undo,
-// import) reloads the builder from it.
-let writing = false
+// import) reloads the builder from it. The builder's own write is recognised
+// by its content: writing the same text twice changes nothing and must not
+// leave a stale flag behind.
+let lastWritten: string | null = null
 const optDeck = useOptcgDeck({
   raw: {
     get: () => raw.value,
     set: (v) => {
-      writing = true
+      lastWritten = v
       raw.value = v
     },
   },
   lang,
 })
-watch(raw, () => {
-  if (writing)
-    writing = false
-  else optDeck.load()
+watch(raw, (v) => {
+  if (v === lastWritten) {
+    lastWritten = null
+    return
+  }
+  lastWritten = null
+  optDeck.load()
 })
 
 const autosave = useDeckAutosave({ deckId, raw, name })
@@ -59,7 +64,7 @@ function init(id: string) {
   const d = getDeck(id)
   if (!d) {
     if (storeReady.value)
-      navigateTo('/')
+      navigateTo('/decks')
     return
   }
   if (d.game !== 'optcg') {
@@ -72,6 +77,12 @@ function init(id: string) {
   optDeck.load()
 }
 watch([deckId, storeReady], ([id]) => init(id), { immediate: true })
+
+// Signing out, or deleting the deck in another tab, takes it away: back to the list.
+watch(() => getDeck(deckId.value), (now, before) => {
+  if (!now && before && storeReady.value)
+    navigateTo('/decks')
+})
 
 // ---- Search ----
 const { state, search, loadMore, autocomplete } = useOptcgSearch()
@@ -309,6 +320,11 @@ const summary = computed(() => {
   min-height: 0;
   grid-template-columns: minmax(300px, 400px) 1fr;
 }
+.ws-deck,
+.ws-search,
+.ws-results {
+  min-width: 0;
+}
 .ws-deck {
   min-height: 0;
 }
@@ -342,7 +358,7 @@ const summary = computed(() => {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 40vw), 1fr));
   gap: 22px 16px;
 }
 .more {

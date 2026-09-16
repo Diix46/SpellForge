@@ -85,6 +85,7 @@ function describe(i: OptcgIssue): string {
   switch (i.code) {
     case 'noLeader': return t('optcg.valid.noLeader')
     case 'notALeader': return `${t('optcg.valid.notALeader')} ${nameOf(i.number)}`
+    case 'leaderCount': return `${t('optcg.valid.leaderCount')} ${nameOf(i.number)} (${i.count})`
     case 'leaderInDeck': return `${t('optcg.valid.leaderInDeck')} ${nameOf(i.number)}`
     case 'deckSize': return `${t('optcg.valid.deckSize')} ${i.count}`
     case 'tooManyCopies': return `${t('optcg.valid.tooManyCopies')} ${nameOf(i.number)} (${i.count})`
@@ -110,7 +111,7 @@ function cardTitle(card: OptcgCard | null, entry: DeckEntry): string {
     <div class="leader" :class="{ empty: !leader?.card }">
       <template v-if="leader?.card">
         <button type="button" class="leader-art" :aria-label="leader.card.name" @click="emit('open', leader)">
-          <img :src="leader.card.image" :alt="leader.card.name">
+          <img :src="leader.card.thumb" :alt="leader.card.name">
         </button>
         <div class="leader-info">
           <p class="kicker">
@@ -191,7 +192,7 @@ function cardTitle(card: OptcgCard | null, entry: DeckEntry): string {
         <ul>
           <li v-for="line in g.lines" :key="`${line.entry.name}|${line.entry.art ?? ''}`" class="line">
             <button type="button" class="line-main" @click="emit('open', line)">
-              <img v-if="line.card" :src="line.card.image" alt="" class="thumb" loading="lazy">
+              <img v-if="line.card" :src="line.card.thumb" alt="" class="thumb" loading="lazy">
               <span v-else class="thumb thumb--empty" />
               <span class="line-name">{{ cardTitle(line.card, line.entry) }}</span>
               <span class="line-num">{{ line.entry.art ?? line.entry.name }}</span>
@@ -251,6 +252,7 @@ function cardTitle(card: OptcgCard | null, entry: DeckEntry): string {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
   min-height: 0;
   height: 100%;
   padding: 16px;

@@ -34,6 +34,13 @@ const colorOptions = computed<readonly OptcgColor[]>(() => props.leaderColors?.l
 
 const SORTS: OptcgSortOrder[] = ['number', 'cost', 'power', 'name']
 
+// Phones: filters folded until asked for; the count says how many are on.
+const openFilters = ref(false)
+const activeFilters = computed(() => {
+  const f = filters.value
+  return [f.category, f.colors.length, f.costMin != null || f.costMax != null, f.set, f.legalOnly, f.counterOnly].filter(Boolean).length
+})
+
 interface SetOption { code: string, name: string, cards: number }
 // Fetched with the page, so a server-rendered library lists the sets too.
 const { data: setsData } = useFetch<{ sets: SetOption[] }>('/api/optcg/sets', {
@@ -149,7 +156,7 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
       <ul v-if="showSuggestions" role="listbox" class="suggest">
         <li v-for="card in suggestions" :key="card.number">
           <button type="button" role="option" class="suggest-item" @mousedown.prevent="pick(card)">
-            <img :src="card.image" alt="" loading="lazy" class="suggest-thumb">
+            <img :src="card.thumb" alt="" loading="lazy" class="suggest-thumb">
             <span class="min-w-0 flex-1">
               <span class="block truncate">{{ card.name }}</span>
               <span class="block font-mono text-[10.5px] text-(--color-text-muted)">
@@ -162,93 +169,124 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
       </ul>
     </div>
 
-    <section class="grp">
-      <h4 class="grp-title">
-        {{ t('optcg.filter.category') }}
-      </h4>
-      <div class="chips">
-        <button
-          v-for="c in categoryOptions"
-          :key="c"
-          type="button"
-          class="chip"
-          :aria-pressed="filters.category === c"
-          @click="setCategory(c)"
-        >
-          {{ t(`optcg.category.${c}`) }}
+    <button type="button" class="filters-toggle" :aria-expanded="openFilters" @click="openFilters = !openFilters">
+      <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4" />
+      {{ t('filters.toggle') }}<template v-if="activeFilters">
+        ({{ activeFilters }})
+      </template>
+      <UIcon :name="openFilters ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="ml-auto h-4 w-4" />
+    </button>
+    <div class="rest" :class="{ shut: !openFilters }">
+      <section class="grp">
+        <h4 class="grp-title">
+          {{ t('optcg.filter.category') }}
+        </h4>
+        <div class="chips">
+          <button
+            v-for="c in categoryOptions"
+            :key="c"
+            type="button"
+            class="chip"
+            :aria-pressed="filters.category === c"
+            @click="setCategory(c)"
+          >
+            {{ t(`optcg.category.${c}`) }}
+          </button>
+        </div>
+      </section>
+
+      <section class="grp">
+        <h4 class="grp-title">
+          {{ leaderColors?.length ? t('optcg.filter.colorsLocked') : t('optcg.filter.colors') }}
+        </h4>
+        <div class="pips">
+          <button
+            v-for="c in colorOptions"
+            :key="c"
+            type="button"
+            class="pip"
+            :style="{ '--pip': OPTCG_COLOR_HEX[c] }"
+            :aria-pressed="filters.colors.includes(c)"
+            :aria-label="t(`optcg.color.${c}`)"
+            :title="t(`optcg.color.${c}`)"
+            @click="toggleColor(c)"
+          />
+        </div>
+      </section>
+
+      <section class="grp">
+        <h4 class="grp-title">
+          {{ t('optcg.filter.cost') }}
+          <span class="font-mono normal-case tracking-normal text-(--color-text-high)">
+            {{ filters.costMin ?? 0 }}-{{ filters.costMax ?? '10+' }}
+          </span>
+        </h4>
+        <div class="costs">
+          <label class="cost-row">
+            <span>min</span>
+            <input v-model.number="costMinModel" type="range" min="0" max="10" :aria-label="`${t('optcg.filter.cost')} min`">
+          </label>
+          <label class="cost-row">
+            <span>max</span>
+            <input v-model.number="costMaxModel" type="range" min="0" max="10" :aria-label="`${t('optcg.filter.cost')} max`">
+          </label>
+        </div>
+      </section>
+
+      <section class="grp">
+        <USelect v-model="setModel" :items="setItems" :aria-label="t('optcg.filter.set')" class="w-full" />
+      </section>
+
+      <section class="grp toggles">
+        <button type="button" class="chip" :aria-pressed="filters.legalOnly" @click="toggle('legalOnly')">
+          <UIcon name="i-lucide-shield-check" class="h-3.5 w-3.5" />
+          {{ t('optcg.filter.legal') }}
         </button>
-      </div>
-    </section>
+        <button type="button" class="chip" :aria-pressed="filters.counterOnly" @click="toggle('counterOnly')">
+          <UIcon name="i-lucide-shield" class="h-3.5 w-3.5" />
+          {{ t('optcg.filter.counter') }}
+        </button>
+      </section>
 
-    <section class="grp">
-      <h4 class="grp-title">
-        {{ leaderColors?.length ? t('optcg.filter.colorsLocked') : t('optcg.filter.colors') }}
-      </h4>
-      <div class="pips">
-        <button
-          v-for="c in colorOptions"
-          :key="c"
-          type="button"
-          class="pip"
-          :style="{ '--pip': OPTCG_COLOR_HEX[c] }"
-          :aria-pressed="filters.colors.includes(c)"
-          :aria-label="t(`optcg.color.${c}`)"
-          :title="t(`optcg.color.${c}`)"
-          @click="toggleColor(c)"
+      <section class="grp sort">
+        <label class="grp-title" for="optcg-sort">{{ t('optcg.sort') }}</label>
+        <USelect
+          id="optcg-sort"
+          v-model="sortModel"
+          :items="SORTS.map(s => ({ label: t(`optcg.sort.${s}`), value: s }))"
+          class="flex-1"
         />
-      </div>
-    </section>
-
-    <section class="grp">
-      <h4 class="grp-title">
-        {{ t('optcg.filter.cost') }}
-        <span class="font-mono normal-case tracking-normal text-(--color-text-high)">
-          {{ filters.costMin ?? 0 }}-{{ filters.costMax ?? '10+' }}
-        </span>
-      </h4>
-      <div class="costs">
-        <label class="cost-row">
-          <span>min</span>
-          <input v-model.number="costMinModel" type="range" min="0" max="10" :aria-label="`${t('optcg.filter.cost')} min`">
-        </label>
-        <label class="cost-row">
-          <span>max</span>
-          <input v-model.number="costMaxModel" type="range" min="0" max="10" :aria-label="`${t('optcg.filter.cost')} max`">
-        </label>
-      </div>
-    </section>
-
-    <section class="grp">
-      <USelect v-model="setModel" :items="setItems" :aria-label="t('optcg.filter.set')" class="w-full" />
-    </section>
-
-    <section class="grp toggles">
-      <button type="button" class="chip" :aria-pressed="filters.legalOnly" @click="toggle('legalOnly')">
-        <UIcon name="i-lucide-shield-check" class="h-3.5 w-3.5" />
-        {{ t('optcg.filter.legal') }}
-      </button>
-      <button type="button" class="chip" :aria-pressed="filters.counterOnly" @click="toggle('counterOnly')">
-        <UIcon name="i-lucide-shield" class="h-3.5 w-3.5" />
-        {{ t('optcg.filter.counter') }}
-      </button>
-    </section>
-
-    <section class="grp sort">
-      <label class="grp-title" for="optcg-sort">{{ t('optcg.sort') }}</label>
-      <USelect
-        id="optcg-sort"
-        v-model="sortModel"
-        :items="SORTS.map(s => ({ label: t(`optcg.sort.${s}`), value: s }))"
-        class="flex-1"
-      />
-      <button type="button" class="reset" @click="reset">
-        {{ t('optcg.filter.reset') }}
-      </button>
-    </section>
+        <button type="button" class="reset" @click="reset">
+          {{ t('optcg.filter.reset') }}
+        </button>
+      </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* On a phone the filters fold away under one button; the search stays. */
+.filters-toggle {
+  display: none;
+}
+@media (max-width: 900px) {
+  .filters-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 10px 0 4px;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    color: var(--color-text-high);
+  }
+  .rest.shut {
+    display: none;
+  }
+}
+
 .rail {
   display: grid;
   gap: 14px;

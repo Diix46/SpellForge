@@ -25,6 +25,7 @@ function card(number: string, over: Partial<OptcgCard> = {}): OptcgCard {
     banned: false,
     variants: 1,
     image: '',
+    thumb: '',
     ...over,
   }
 }
