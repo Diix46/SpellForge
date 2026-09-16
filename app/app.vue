@@ -80,16 +80,9 @@ useHead({
 const { open: showAuth, show: openAuth } = useAuthOverlay()
 const mobileNav = ref(false)
 
-// The app chrome (top bar + footer) is hidden only for the chrome-less, full-bleed
-// marketing landing — a first-time guest on "/", or anyone visiting /landing on
-// purpose to revisit/demo it — both bring their own minimal header. Everyone
-// else — a guest already managing local decks, or a member — gets the real app
-// chrome, including on the deck editor and shared-deck pages.
-const { decks: guestDecks } = useDeckStore()
-const isMarketingLanding = computed(() =>
-  route.path === '/landing' || (!loggedIn.value && route.path === '/' && guestDecks.value.length === 0),
-)
-const showChrome = computed(() => !isMarketingLanding.value)
+// The home page brings its own header and footer; every other page gets the
+// app chrome.
+const showChrome = computed(() => route.path !== '/')
 
 // A page can request a viewport-locked shell (no page scroll; the page fills the
 // area below the top bar and manages its own internal scroll). The deck page
@@ -112,7 +105,7 @@ const initials = computed(() => {
 // "Importer" is an ACTION (opens the import modal), not a destination, so it's
 // rendered separately below and never shows an active fill.
 const nav = computed(() => [
-  { to: '/', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
+  { to: '/decks', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
@@ -123,17 +116,15 @@ const worlds = computed(() => [
   { game: 'mtg' as const, to: libraryPath('mtg'), label: 'Magic' },
 ])
 
-// A nav link is active only when it's the current route (exact). The dashboard
-// link stays active on '/' even with a transient ?import/?new modal query.
+// A nav link is active only when it's the current route (exact); the query of
+// a transient ?import/?new modal does not count.
 function isActive(to: string) {
-  if (to === '/')
-    return route.path === '/'
   return route.path === to
 }
 
 function openImport() {
   mobileNav.value = false
-  navigateTo('/?import=1')
+  navigateTo(universe.value ? `/decks?import=${universe.value}` : '/decks?import=1')
 }
 </script>
 
@@ -198,7 +189,7 @@ function openImport() {
               <span class="kk"><kbd>⌘</kbd><kbd>K</kbd></span>
             </button>
 
-            <div class="lang">
+            <div class="lang lang--bar">
               <button :class="{ on: locale === 'fr' }" aria-label="Français" @click="setLocale('fr')">
                 FR
               </button>
@@ -211,7 +202,7 @@ function openImport() {
             <ClientOnly v-if="!universe">
               <button
                 type="button"
-                class="icon-btn"
+                class="icon-btn theme-bar"
                 :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
                 @click="toggleTheme"
               >
@@ -234,7 +225,7 @@ function openImport() {
             </button>
 
             <!-- mobile: toggle the nav row -->
-            <button type="button" class="burger" :aria-label="t('nav.decks')" @click="mobileNav = !mobileNav">
+            <button type="button" class="burger" :aria-label="t('home.nav.menu')" :aria-expanded="mobileNav" @click="mobileNav = !mobileNav">
               <UIcon :name="mobileNav ? 'i-lucide-x' : 'i-lucide-menu'" class="h-5 w-5" />
             </button>
           </div>
@@ -257,6 +248,26 @@ function openImport() {
             <UIcon name="i-lucide-download" class="ic" />
             <span>{{ t('nav.import') }}</span>
           </button>
+          <!-- on a phone the bar has no room left for these -->
+          <div class="nav-mobile-tools">
+            <div class="lang">
+              <button :class="{ on: locale === 'fr' }" aria-label="Français" @click="setLocale('fr')">
+                FR
+              </button>
+              <button :class="{ on: locale === 'en' }" aria-label="English" @click="setLocale('en')">
+                EN
+              </button>
+            </div>
+            <button
+              v-if="!universe"
+              type="button"
+              class="icon-btn"
+              :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
+              @click="toggleTheme"
+            >
+              <UIcon :name="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" class="h-[18px] w-[18px]" />
+            </button>
+          </div>
         </nav>
       </header>
 
@@ -378,6 +389,7 @@ function openImport() {
 }
 .world {
   padding: 4px 11px;
+  white-space: nowrap;
   border-radius: calc(var(--radius-sm) - 1px);
   font-size: 12.5px;
   color: var(--color-text-muted);
@@ -619,7 +631,8 @@ function openImport() {
   cursor: pointer;
   padding: 4px;
 }
-.nav-mobile {
+.nav-mobile,
+.nav-mobile-tools {
   display: none;
 }
 
@@ -703,6 +716,23 @@ function openImport() {
   }
   .content {
     padding: 22px 16px 48px;
+  }
+}
+@media (max-width: 720px) {
+  .lang--bar,
+  .theme-bar {
+    display: none;
+  }
+  .nav-mobile-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 11px 2px;
+  }
+}
+@media (max-width: 480px) {
+  .brand :deep(svg + span) {
+    display: none;
   }
 }
 </style>

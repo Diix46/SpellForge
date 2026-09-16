@@ -10,7 +10,8 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/**': { ssr: false },
-    '/landing': { ssr: true },
+    '/': { ssr: true },
+    '/landing': { redirect: { to: '/', statusCode: 301 } },
     '/discover': { ssr: true },
     '/magic': { ssr: true },
     '/magic/card/**': { ssr: true },
@@ -77,6 +78,8 @@ export default defineNuxtConfig({
   // wiped on every restart, and the slow EDHREC cold-fetch paid again after
   // each deploy. Card data itself is local and not cached.
   nitro: {
+    // Gzip and Brotli copies of the built assets, served to browsers that take them.
+    compressPublicAssets: true,
     // The card databases refresh every night (server/tasks/cards/refresh.ts).
     experimental: { tasks: true },
     scheduledTasks: { '30 4 * * *': ['cards:refresh'] },

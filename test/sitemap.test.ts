@@ -27,6 +27,7 @@ describe('sitemap', () => {
     const robots = robotsTxt('https://p.example')
     expect(robots).toContain('Disallow: /api/')
     expect(robots).toContain('Disallow: /one-piece/deck/')
+    expect(robots).toContain('Disallow: /decks')
     expect(robots).toContain('Sitemap: https://p.example/sitemap.xml')
   })
 })

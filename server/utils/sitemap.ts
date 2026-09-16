@@ -43,6 +43,7 @@ export function robotsTxt(origin: string): string {
     'User-agent: *',
     'Disallow: /api/',
     'Disallow: /deck/',
+    'Disallow: /decks',
     'Disallow: /magic/deck/',
     'Disallow: /one-piece/deck/',
     'Allow: /',

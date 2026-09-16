@@ -44,7 +44,7 @@ const { t } = useLocale()
       icon="i-lucide-arrow-left"
       color="neutral"
       variant="ghost"
-      to="/"
+      to="/decks"
       :aria-label="t('nav.backToDecks')"
       class="shrink-0"
     />
@@ -104,6 +104,7 @@ const { t } = useLocale()
         color="neutral"
         variant="subtle"
         size="sm"
+        :aria-label="t('build.importExport')"
         @click="emit('openImportExport')"
       >
         <span class="hidden lg:inline">{{ t('build.importExport') }}</span>
@@ -114,6 +115,7 @@ const { t } = useLocale()
         color="neutral"
         variant="subtle"
         size="sm"
+        :aria-label="t('share.button')"
         @click="emit('share')"
       >
         <span class="hidden lg:inline">{{ t('share.button') }}</span>
@@ -125,6 +127,7 @@ const { t } = useLocale()
         color="neutral"
         variant="subtle"
         size="sm"
+        :aria-label="t('deck.save')"
         @click="emit('save')"
       >
         <span class="hidden lg:inline">{{ t('deck.save') }}</span>

@@ -39,9 +39,11 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
 
   // ----- Static actions -----
   const actions = computed<CommandItem[]>(() => [
-    { id: 'new', label: t('cmd.newDeck'), icon: 'i-lucide-plus', kbd: 'N', group: t('cmd.grpActions'), run: () => go('/?new=1') },
-    { id: 'import', label: t('cmd.import'), icon: 'i-lucide-download', group: t('cmd.grpActions'), run: () => go('/?import=1') },
-    { id: 'home', label: t('cmd.allDecks'), icon: 'i-lucide-layout-grid', group: t('cmd.grpActions'), run: () => go('/') },
+    // Inside a universe, a new deck or an import starts in that game.
+    { id: 'new', label: t('cmd.newDeck'), icon: 'i-lucide-plus', group: t('cmd.grpActions'), run: () => go(`/decks?new=${universe.value ?? '1'}`) },
+    { id: 'import', label: t('cmd.import'), icon: 'i-lucide-download', group: t('cmd.grpActions'), run: () => go(`/decks?import=${universe.value ?? '1'}`) },
+    { id: 'home', label: t('cmd.allDecks'), icon: 'i-lucide-layout-grid', group: t('cmd.grpActions'), run: () => go('/decks') },
+    { id: 'landing', label: t('cmd.home'), icon: 'i-lucide-house', group: t('cmd.grpActions'), run: () => go('/') },
     { id: 'lib-optcg', label: t('cmd.libraryOp'), icon: 'i-lucide-anchor', group: t('cmd.grpActions'), run: () => go(libraryPath('optcg')) },
     { id: 'lib-mtg', label: t('cmd.libraryMtg'), icon: 'i-lucide-book-open', group: t('cmd.grpActions'), run: () => go(libraryPath('mtg')) },
     { id: 'discover', label: t('nav.discover'), icon: 'i-lucide-compass', group: t('cmd.grpActions'), run: () => go('/discover') },

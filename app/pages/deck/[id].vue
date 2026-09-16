@@ -15,7 +15,7 @@ watch(ready, (isReady) => {
     return
   const id = String(route.params.id)
   const deck = getDeck(id)
-  navigateTo(deck ? deckPath(deck) : '/', { replace: true })
+  navigateTo(deck ? deckPath(deck) : '/decks', { replace: true })
 }, { immediate: true })
 </script>
 
