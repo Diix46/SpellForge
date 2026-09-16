@@ -1,21 +1,23 @@
 import type { QueryContext, SearchFilters } from '../app/composables/useCardSearch'
 import { describe, expect, it } from 'vitest'
-import { browseParams, emptyFilters, isRawSyntax } from '../app/composables/useCardSearch'
+import { browseParams, emptyFilters, syntaxErrorOf } from '../app/composables/useCardSearch'
 import { parseBrowseQuery } from '../server/utils/cards/browse-params'
 
 function ctx(identity: QueryContext['identity'], lang: QueryContext['lang'] = 'fr'): QueryContext {
   return { identity, lang }
 }
 
-describe('isRawSyntax', () => {
-  it('recognises Scryfall operators', () => {
-    for (const q of ['t:instant', 'cmc<=2', 'o:"draw a card"', 'id>=wu', 'pow=3'])
-      expect(isRawSyntax(q), q).toBe(true)
+describe('syntaxErrorOf', () => {
+  it('reads the code and term the server sends with a refused query', () => {
+    // The shape $fetch throws for an h3 createError({ data }) response.
+    const err = Object.assign(new Error('400'), { data: { statusCode: 400, data: { code: 'unsupportedKeyword', term: 'usd<5' } } })
+    expect(syntaxErrorOf(err)).toEqual({ code: 'unsupportedKeyword', term: 'usd<5' })
   })
 
-  it('leaves names and plain words alone', () => {
-    for (const q of ['sol ring', 'Atraxa, Praetors\' Voice', 'draw', ''])
-      expect(isRawSyntax(q), q).toBe(false)
+  it('ignores every other failure', () => {
+    expect(syntaxErrorOf(new Error('network'))).toBeNull()
+    expect(syntaxErrorOf(Object.assign(new Error('500'), { data: { statusCode: 500 } }))).toBeNull()
+    expect(syntaxErrorOf(null)).toBeNull()
   })
 })
 
@@ -58,6 +60,12 @@ describe('browseParams ↔ parseBrowseQuery', () => {
 
   it('omits unset filters, so identical searches share one URL', () => {
     expect(browseParams(emptyFilters(), ctx(null, 'en'), 1)).toEqual({ lang: 'en', order: 'edhrec', page: '1' })
+  })
+
+  it('sends query syntax as plain text, for the server to compile', () => {
+    const p = browseParams({ ...emptyFilters(), text: 't:instant cmc<=2' }, ctx(['U']), 1)
+    expect(p.text).toBe('t:instant cmc<=2')
+    expect(parseBrowseQuery(p).filters.text).toBe('t:instant cmc<=2')
   })
 
   it('treats zero as a real bound, not as "unset"', () => {

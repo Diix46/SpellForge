@@ -165,6 +165,9 @@ onMounted(() => {
       <p v-if="!hasActiveQuery && !suggestMode && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">
         {{ t('build.searchHint') }}
       </p>
+      <p v-else-if="state.error && !state.loading && !state.cards.length" role="alert" class="py-10 text-center text-sm text-(--color-error)">
+        {{ state.error }}
+      </p>
       <p v-else-if="!state.loading && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">
         {{ t('build.noResults') }}
       </p>

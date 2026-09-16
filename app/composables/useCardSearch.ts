@@ -8,24 +8,22 @@ export interface SearchTheme {
   /** i18n key for the label. */
   labelKey: string
   icon: string
-  /** Scryfall fragment this theme contributes — used only by the raw-syntax path. */
-  query: string
 }
 
 // Predefined themes. The player picks an intention ("removal", "ramp") instead
-// of needing to know card names. The local search engine has its own
-// definition of each key; the fragment here only serves raw-syntax searches.
+// of needing to know card names. What each key matches is defined server-side,
+// in THEMES (server/utils/cards/mtg-query.ts).
 export const SEARCH_THEMES: SearchTheme[] = [
-  { key: 'draw', labelKey: 'theme.draw', icon: 'i-lucide-book-open', query: 'oracle:"draw a card"' },
-  { key: 'removal', labelKey: 'theme.removal', icon: 'i-lucide-crosshair', query: '(oracle:destroy or oracle:exile) (oracle:creature or oracle:permanent)' },
-  { key: 'ramp', labelKey: 'theme.ramp', icon: 'i-lucide-trending-up', query: '(oracle:"search your library for a" oracle:land) or oracle:"add {" type:artifact' },
-  { key: 'tokens', labelKey: 'theme.tokens', icon: 'i-lucide-copy', query: 'oracle:"create" oracle:token' },
-  { key: 'lifegain', labelKey: 'theme.lifegain', icon: 'i-lucide-heart-pulse', query: 'oracle:"gain" oracle:life' },
-  { key: 'counter', labelKey: 'theme.counter', icon: 'i-lucide-shield-x', query: 'oracle:"counter target"' },
-  { key: 'boardwipe', labelKey: 'theme.boardwipe', icon: 'i-lucide-bomb', query: 'oracle:"destroy all" or oracle:"each creature"' },
-  { key: 'tutor', labelKey: 'theme.tutor', icon: 'i-lucide-search', query: 'oracle:"search your library for a"' },
-  { key: 'graveyard', labelKey: 'theme.graveyard', icon: 'i-lucide-skull', query: 'oracle:"from your graveyard"' },
-  { key: 'flying', labelKey: 'theme.flying', icon: 'i-lucide-feather', query: 'keyword:flying' },
+  { key: 'draw', labelKey: 'theme.draw', icon: 'i-lucide-book-open' },
+  { key: 'removal', labelKey: 'theme.removal', icon: 'i-lucide-crosshair' },
+  { key: 'ramp', labelKey: 'theme.ramp', icon: 'i-lucide-trending-up' },
+  { key: 'tokens', labelKey: 'theme.tokens', icon: 'i-lucide-copy' },
+  { key: 'lifegain', labelKey: 'theme.lifegain', icon: 'i-lucide-heart-pulse' },
+  { key: 'counter', labelKey: 'theme.counter', icon: 'i-lucide-shield-x' },
+  { key: 'boardwipe', labelKey: 'theme.boardwipe', icon: 'i-lucide-bomb' },
+  { key: 'tutor', labelKey: 'theme.tutor', icon: 'i-lucide-search' },
+  { key: 'graveyard', labelKey: 'theme.graveyard', icon: 'i-lucide-skull' },
+  { key: 'flying', labelKey: 'theme.flying', icon: 'i-lucide-feather' },
 ]
 
 export type CardTypeFilter = '' | 'creature' | 'instant' | 'sorcery' | 'artifact' | 'enchantment' | 'planeswalker' | 'land'
@@ -56,62 +54,11 @@ export interface QueryContext {
 }
 
 /**
- * True when the text is written in Scryfall syntax (`t:instant`, `cmc<=2`).
- * Those queries still go to Scryfall: the local engine has no parser for them
- * yet, and silently degrading a power user's query to plain text would return
- * wrong results with no hint why.
- */
-export function isRawSyntax(text: string): boolean {
-  return /\w+[:<>=]/.test(text.trim())
-}
-
-/**
- * Build a Scryfall query string from structured filters. Only the raw-syntax
- * path uses it now; everything else is served by the local search.
- */
-export function buildScryfallQuery(filters: SearchFilters, ctx: QueryContext): string {
-  const parts: string[] = []
-
-  const text = filters.text.trim()
-  if (text) {
-    if (isRawSyntax(text)) {
-      parts.push(text)
-    }
-    else {
-      const safe = text.replace(/["()]/g, '')
-      parts.push(`("${safe}" or oracle:"${safe}")`)
-    }
-  }
-
-  for (const key of filters.themes) {
-    const theme = SEARCH_THEMES.find(t => t.key === key)
-    if (theme)
-      parts.push(`(${theme.query})`)
-  }
-
-  if (filters.type)
-    parts.push(`type:${filters.type}`)
-  if (filters.subtype.trim())
-    parts.push(`type:${filters.subtype.trim().toLowerCase()}`)
-  if (filters.colors.length)
-    parts.push(`color>=${filters.colors.join('')}`)
-  if (filters.maxCmc != null)
-    parts.push(`cmc<=${filters.maxCmc}`)
-  if (filters.maxPrice != null)
-    parts.push(`eur<=${filters.maxPrice}`)
-  if (filters.commanderOnly)
-    parts.push('is:commander')
-  if (ctx.identity)
-    parts.push(ctx.identity.length ? `id<=${ctx.identity.join('')}` : 'id:colorless')
-  parts.push(`lang:${ctx.lang}`)
-  parts.push('-is:funny legal:commander')
-
-  return parts.join(' ').trim()
-}
-
-/**
  * Query parameters for `/api/cards/browse`. Only set what is actually filtered,
  * so identical searches produce identical URLs.
+ *
+ * Text in Scryfall syntax (`t:instant cmc<=2`) travels as plain `text`: the
+ * server recognises and compiles it, then applies the other filters on top.
  */
 export function browseParams(filters: SearchFilters, ctx: QueryContext, page: number): Record<string, string> {
   const p: Record<string, string> = { lang: ctx.lang, order: filters.order, page: String(page) }
@@ -155,11 +102,20 @@ export function emptySearchState(): SearchState {
   return { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
 }
 
-type SearchRequest
-  = | { kind: 'browse', filters: SearchFilters, ctx: QueryContext }
-    | { kind: 'syntax', query: string, order: SortOrder }
+interface SearchRequest { filters: SearchFilters, ctx: QueryContext }
 
 interface SearchResponse { total: number, hasMore: boolean, cards: ScryfallCard[] }
+
+/**
+ * The server's refusal of a search query, as `{ code, term }`, or null for any
+ * other failure. Shown instead of "no results", which would hide the reason.
+ */
+export function syntaxErrorOf(err: unknown): { code: string, term: string } | null {
+  const data = (err as { data?: { data?: unknown } } | null)?.data?.data
+  if (data && typeof data === 'object' && 'code' in data && 'term' in data)
+    return { code: String(data.code), term: String(data.term) }
+  return null
+}
 
 export function useCardSearch() {
   const state = ref<SearchState>(emptySearchState())
@@ -175,9 +131,7 @@ export function useCardSearch() {
   let currentAc: AbortController | null = null
 
   function fetchPage(req: SearchRequest, page: number, signal: AbortSignal): Promise<SearchResponse> {
-    if (req.kind === 'browse')
-      return $fetch<SearchResponse>('/api/cards/browse', { params: browseParams(req.filters, req.ctx, page), signal })
-    return $fetch<SearchResponse>('/api/cards/search', { params: { q: req.query, page, order: req.order, dir: 'auto' }, signal })
+    return $fetch<SearchResponse>('/api/cards/browse', { params: browseParams(req.filters, req.ctx, page), signal })
   }
 
   async function run(req: SearchRequest | null, page = 1, append = false) {
@@ -212,9 +166,19 @@ export function useCardSearch() {
         return
       if (reqId !== seq)
         return
-      state.value.error = err instanceof Error ? err.message : t('toast.loadError')
-      if (!append)
+      // A refused query is the player's to fix, so it says which term. Anything
+      // else is ours: the panel shows a plain message, the console the detail.
+      const syntax = syntaxErrorOf(err)
+      if (!syntax)
+        console.error('[search]', err)
+      state.value.error = syntax
+        ? `${t(`search.syntax.${syntax.code}`)} ${syntax.term}`
+        : t('toast.loadError')
+      if (!append) {
         state.value.cards = []
+        state.value.total = 0
+        state.value.hasMore = false
+      }
     }
     finally {
       if (reqId === seq)
@@ -223,10 +187,8 @@ export function useCardSearch() {
   }
 
   async function search(filters: SearchFilters, ctx: QueryContext) {
-    const req: SearchRequest = isRawSyntax(filters.text)
-      ? { kind: 'syntax', query: buildScryfallQuery(filters, ctx), order: filters.order }
-      : { kind: 'browse', filters: { ...filters, themes: [...filters.themes], colors: [...filters.colors] }, ctx: { ...ctx } }
-    await run(req, 1, false)
+    // Copied, so later edits to the live filters cannot change what loadMore() pages.
+    await run({ filters: { ...filters, themes: [...filters.themes], colors: [...filters.colors] }, ctx: { ...ctx } }, 1, false)
   }
 
   async function loadMore() {
@@ -288,7 +250,8 @@ export function useCardSearch() {
     catch (err: unknown) {
       if (reqId !== seq)
         return
-      state.value.error = err instanceof Error ? err.message : t('toast.loadError')
+      console.error('[suggest]', err)
+      state.value.error = t('toast.loadError')
       state.value.cards = []
     }
     finally {
