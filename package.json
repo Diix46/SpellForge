@@ -19,7 +19,8 @@
     "cards:verify": "node scripts/verify-cards.mjs",
     "cards:verify:op": "node scripts/verify-optcg.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "node test/e2e/run.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
@@ -50,6 +51,7 @@
     "eslint": "^10.5.0",
     "eslint-plugin-format": "^2.0.1",
     "oxc-parser": "^0.133.0",
+    "playwright-core": "1.55",
     "semantic-release": "^25.0.5",
     "typescript": "^6.0.3",
     "vitest": "^5.0.1",
