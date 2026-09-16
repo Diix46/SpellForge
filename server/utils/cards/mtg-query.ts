@@ -110,7 +110,7 @@ export const PAGE_SIZE = 175
 
 const PRINTING_COLUMNS = `
   p.id AS printing_id, p.lang, p.set_code, p.set_name, p.collector_number,
-  p.rarity, p.promo, p.image_status, p.img_version, p.artist,
+  p.released_at, p.rarity, p.promo, p.image_status, p.img_version, p.artist,
   p.printed_name, p.printed_type_line, p.printed_text, p.price_eur`
 
 /**
@@ -266,9 +266,14 @@ export function buildPinnedQuery(setCode: string, collectorNumber: string, lang:
 export function buildAutocompleteQuery(prefix: string, limit = 20) {
   return {
     sql: `SELECT o.name FROM oracle_cards o
-           WHERE o.name_folded LIKE ? AND o.is_extra = 0 AND o.is_funny = 0
-           ORDER BY o.edhrec_rank IS NULL, o.edhrec_rank ASC
+           WHERE o.name_folded >= ? AND o.name_folded < ?
+             AND o.is_extra = 0 AND o.is_funny = 0
+           ORDER BY o.edhrec_sort ASC
            LIMIT ?`,
-    args: [`${fold(prefix)}%`, limit],
+    // A range, not `LIKE 'prefix%'`: SQLite's LIKE is case-insensitive by
+    // default and so cannot use the index on name_folded — it scanned all 38 789
+    // cards on every keystroke. The column is already lowercased, so a binary
+    // range expresses the same prefix and walks the index.
+    args: [fold(prefix), `${fold(prefix)}￿`, limit],
   }
 }
