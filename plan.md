@@ -337,6 +337,10 @@ Demande : passe complète, correction des bugs, tous les parcours, fluidité, la
   `NUXT_PUBLIC_SITE_URL`). « Apply » dans la fiche du conteneur ne tire l'image que si
   elle est absente (Unraid 7.3.2, `CreateDocker.php`) : il recrée avec l'image présente.
   Repli manuel sur le serveur : `/root/spellforge-deploy.sh` après un `docker build`.
+- **v0.4.0** (PR #6 fusionnée) : l'image publiée par la CI tourne en production, déployée
+  par `update_container spellforge`, le script derrière « apply update » (conteneur recréé
+  depuis le template, digest identique à ghcr, vignettes Magic fabriquées dans le
+  conteneur). 45/45 parcours invités en HTTPS après la mise à jour.
 
 ---
 
