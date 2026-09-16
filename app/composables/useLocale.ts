@@ -1,15 +1,38 @@
 import { computed } from 'vue'
-import { useState } from '#app'
+import { useCookie, useState } from '#app'
 
 export type Locale = 'fr' | 'en'
 
-const STORAGE_KEY = 'mtg_locale'
+// A cookie, so the server renders public pages in the visitor's language and
+// the browser takes over without a flash. The older localStorage choice is
+// carried over once.
+const COOKIE = 'prism_locale'
+const LEGACY_KEY = 'mtg_locale'
+const YEAR = 60 * 60 * 24 * 365
+
+export function parseLocale(value: unknown): Locale | null {
+  return value === 'fr' || value === 'en' ? value : null
+}
+
+function writeCookie(l: Locale) {
+  document.cookie = `${COOKIE}=${l}; Path=/; Max-Age=${YEAR}; SameSite=Lax`
+}
 
 function loadLocale(): Locale {
-  if (import.meta.server)
-    return 'fr'
-  const saved = localStorage.getItem(STORAGE_KEY)
-  return saved === 'en' ? 'en' : 'fr'
+  const fromCookie = parseLocale(useCookie(COOKIE).value)
+  if (fromCookie || import.meta.server)
+    return fromCookie ?? 'fr'
+  let legacy: Locale | null = null
+  try {
+    legacy = parseLocale(localStorage.getItem(LEGACY_KEY))
+    localStorage.removeItem(LEGACY_KEY)
+  }
+  catch {
+    // Storage blocked: the default stands.
+  }
+  if (legacy)
+    writeCookie(legacy)
+  return legacy ?? 'fr'
 }
 
 const messages: Record<Locale, Record<string, string>> = {
@@ -967,13 +990,14 @@ const messages: Record<Locale, Record<string, string>> = {
 }
 
 export function useLocale() {
-  // SSR-safe shared singleton; lazily hydrated from localStorage on the client.
+  // Shared singleton: read from the cookie once, by the server on a rendered
+  // page, by the browser otherwise.
   const locale = useState<Locale>('locale', loadLocale)
 
   function setLocale(l: Locale) {
     locale.value = l
     if (import.meta.client)
-      localStorage.setItem(STORAGE_KEY, l)
+      writeCookie(l)
   }
 
   function toggle() {

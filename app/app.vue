@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
+import { parseLocale } from '~/composables/useLocale'
 
 // The Prism favicon as an inline SVG data URI (matches AppLogo): the red and
 // gold facets on a dark tile, readable on light and dark tab bars alike.
@@ -31,6 +32,15 @@ const route = useRoute()
 const { universe } = useUniverse()
 const { locale, setLocale, t } = useLocale()
 
+// A link can ask for a language (?lang=en): the hreflang alternates of the
+// public pages point there. The choice is kept, so it is written even when the
+// server already rendered the page in that language.
+watch(() => route.query.lang, (lang) => {
+  const l = parseLocale(lang)
+  if (l)
+    setLocale(l)
+}, { immediate: true })
+
 // Pages give their own title; the brand closes it. The home title is the
 // brand line itself.
 useSeoMeta({
@@ -40,7 +50,6 @@ useSeoMeta({
   description: () => t('brand.description'),
   ogSiteName: 'Prism',
 })
-
 const { loggedIn, user, logout } = useAuth()
 const { show: openCmdK } = useCommandPalette()
 
