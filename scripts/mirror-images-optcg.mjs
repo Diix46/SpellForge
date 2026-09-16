@@ -7,10 +7,11 @@
  * regeneration, so a hotlinked image can 404 without warning. Mirroring is the
  * conservative choice here, not the extravagant one.
  *
- * Scope: every French image, plus the English image for any card that has no
- * French printing at all. French covers only ~63% of card numbers (Bandai is 23
- * packs behind), so without the English complement the fallback card would
- * render with no art.
+ * Scope: every image in both languages. French covers only ~63% of card
+ * numbers (Bandai is 23 packs behind), and the English site shows English art
+ * for the cards French does cover too. Mirroring English only for the cards
+ * without French left the English pages to fetch from Bandai at runtime, which
+ * the plan rules out (no runtime dependency, no caching permission).
  *
  * Resumable: a file already on disk at the right version is skipped, so an
  * interrupted run costs nothing to restart.
@@ -85,12 +86,8 @@ async function main() {
   const db = createClient({ url: `file:${DB}` })
   const rows = async sql => (await db.execute(sql)).rows
 
-  // Every French image…
   const fr = await rows(`SELECT id, img_version FROM op_cards WHERE lang='fr'`)
-  // …plus the English image for cards French does not cover at all.
-  const en = await rows(`SELECT id, img_version FROM op_cards
-                         WHERE lang='en' AND card_number NOT IN
-                           (SELECT card_number FROM op_cards WHERE lang='fr')`)
+  const en = await rows(`SELECT id, img_version FROM op_cards WHERE lang='en'`)
   db.close()
 
   const jobs = [
@@ -99,7 +96,7 @@ async function main() {
   ].slice(0, LIMIT)
 
   log(`\nMiroir d'images One Piece\n`)
-  log(`  ${fr.length} visuels FR + ${en.length} visuels EN (cartes sans VF) = ${jobs.length} à traiter`)
+  log(`  ${fr.length} visuels FR + ${en.length} visuels EN = ${jobs.length} à traiter`)
   log(`  destination : ${OUT.replace(`${ROOT}/`, '')}\n`)
 
   let done = 0
