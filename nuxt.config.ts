@@ -47,6 +47,13 @@ export default defineNuxtConfig({
   // must come after it.
   css: ['~/assets/css/main.css', '~/assets/css/universes.css'],
 
+  // Icons come from the app's own route, never from the Iconify API. Only the
+  // collection the app uses is bundled (simple-icons alone weighed 4.7 MB).
+  icon: {
+    serverBundle: { collections: ['lucide'] },
+    fallbackToApi: false,
+  },
+
   // Register custom color names so app.config.ts aliases resolve.
   ui: {
     theme: {
