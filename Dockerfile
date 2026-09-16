@@ -3,7 +3,7 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
 # Full deps + Nuxt build → produces .output (a self-contained Node server that
 # bundles its own runtime deps, incl. @libsql/client + drizzle-orm).
-FROM node:20-slim AS build
+FROM node:24-slim AS build
 WORKDIR /app
 
 # Install deps with the lockfile (cached unless package*.json changes).
@@ -19,7 +19,7 @@ RUN npm run build
 # A Nitro startup plugin (server/plugins/migrate.ts, bundled into .output) applies
 # pending migrations on boot, reading ./server/db/migrations relative to CWD — so
 # we ship that folder next to .output and run from /app.
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NUXT_PORT=3000
