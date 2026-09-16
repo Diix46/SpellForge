@@ -7,7 +7,7 @@ import { requireOwnedDeck } from '../../../utils/ownDeck'
 // body: { enabled: boolean }. Returns the current shareId (or null when off).
 // Disabling also unlists the deck from Discover (public requires a live shareId).
 export default defineEventHandler(async (event) => {
-  const id = getRouterParam(event, 'id')!
+  const id = decodeURIComponent(getRouterParam(event, 'id')!)
   const { deck } = await requireOwnedDeck(event, id)
   const body = await readBody(event).catch(() => ({})) as { enabled?: boolean }
   const enabled = body.enabled !== false // default: enable
