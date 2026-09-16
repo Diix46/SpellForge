@@ -25,8 +25,10 @@ import { createClient } from '@libsql/client'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA_DIR = resolve(ROOT, '.data')
-const FINAL_DB = resolve(DATA_DIR, 'cards-optcg.db')
-const TMP_DB = resolve(DATA_DIR, 'cards-optcg-new.db')
+// OPTCG_CARDS_DB moves the database, as it does for the server (relative to
+// the working directory). The build happens beside it: rename() needs one filesystem.
+const FINAL_DB = process.env.OPTCG_CARDS_DB ? resolve(process.env.OPTCG_CARDS_DB) : resolve(DATA_DIR, 'cards-optcg.db')
+const TMP_DB = resolve(dirname(FINAL_DB), 'cards-optcg-new.db')
 
 const BASE = 'https://raw.githubusercontent.com/buhbbl/punk-records/main'
 const LANGS = { french: 'fr', english: 'en' }

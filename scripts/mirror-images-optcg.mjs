@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url'
 import { createClient } from '@libsql/client'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const DB = resolve(ROOT, '.data/cards-optcg.db')
+const DB = process.env.OPTCG_CARDS_DB ? resolve(process.env.OPTCG_CARDS_DB) : resolve(ROOT, '.data/cards-optcg.db')
 const OUT = resolve(ROOT, '.data/images/optcg')
 
 // Bandai serves a different format per locale: WebP on the French site, PNG on
@@ -73,7 +73,7 @@ async function download(lang, id, version) {
     await pipeline(Readable.fromWeb(res.body), createWriteStream(dest))
     return { bytes: statSync(dest).size }
   }
-  return { failed: '404 sur les deux extensions' }
+  return { missing: true }
 }
 
 async function main() {
@@ -101,6 +101,7 @@ async function main() {
 
   let done = 0
   let skipped = 0
+  const missing = []
   let bytes = 0
   const failures = []
   const t0 = Date.now()
@@ -113,7 +114,10 @@ async function main() {
       let requested = true
       try {
         const r = await download(job.lang, job.id, job.version)
-        if (r.failed) {
+        if (r.missing) {
+          missing.push(`${job.lang}/${job.id}`)
+        }
+        else if (r.failed) {
           failures.push(`${job.lang}/${job.id}: ${r.failed}`)
         }
         else {
@@ -128,8 +132,9 @@ async function main() {
       catch (e) {
         failures.push(`${job.lang}/${job.id}: ${e.message}`)
       }
-      if ((done + skipped + failures.length) % 200 === 0)
-        process.stdout.write(`\r  ${done + skipped + failures.length} / ${jobs.length}`)
+      const seen = done + skipped + missing.length + failures.length
+      if (seen % 200 === 0)
+        process.stdout.write(`\r  ${seen} / ${jobs.length}`)
       if (!PAUSE_MS || !requested)
         continue
       await sleep(PAUSE_MS)
@@ -137,7 +142,11 @@ async function main() {
   }))
 
   process.stdout.write(`\r${' '.padEnd(60)}\r`)
-  log(`  ✔ ${done} téléchargés · ${skipped} déjà présents · ${failures.length} en échec`)
+  log(`  ✔ ${done} téléchargés · ${skipped} déjà présents · ${missing.length} absents chez Bandai · ${failures.length} en échec`)
+  // Absent upstream (404 on both formats): nothing a retry can fix, so it is
+  // reported but does not fail the run.
+  if (missing.length)
+    log(`    absents : ${missing.slice(0, 10).join(', ')}${missing.length > 10 ? '…' : ''}`)
   log(`    ${mb(bytes)} au total · ${((Date.now() - t0) / 1000).toFixed(1)} s`)
   if (failures.length) {
     log(`\n  Échecs (${Math.min(failures.length, 10)} premiers) :`)

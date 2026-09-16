@@ -19,7 +19,7 @@
  * and the payload is gzipped JSONL, one card object per line. Anything written
  * against the old array-JSON format is dead.
  */
-import { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs'
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import readline from 'node:readline'
@@ -33,9 +33,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA_DIR = resolve(ROOT, '.data')
 // One database per game. The ingest rebuilds from scratch and swaps atomically,
 // so a shared file would mean every Magic refresh silently wiping One Piece.
-const FINAL_DB = resolve(DATA_DIR, 'cards-mtg.db')
-const TMP_DB = resolve(DATA_DIR, 'cards-mtg-new.db')
+// MTG_CARDS_DB moves the database, as it does for the server (relative to the
+// working directory). The build happens beside it: rename() needs one filesystem.
+const FINAL_DB = process.env.MTG_CARDS_DB ? resolve(process.env.MTG_CARDS_DB) : resolve(DATA_DIR, 'cards-mtg.db')
+const TMP_DB = resolve(dirname(FINAL_DB), 'cards-mtg-new.db')
 const TMP_GZ = resolve(DATA_DIR, 'all-cards.jsonl.gz')
+// Which dump the archive holds, so a leftover from an older run is never
+// ingested as the current one.
+const TMP_GZ_TAG = `${TMP_GZ}.updated-at`
 
 // Only these are ever requested by the app (site locale is FR or EN).
 // Ingesting every language would take the DB from ~240 MB to ~700 MB.
@@ -406,12 +411,20 @@ async function alreadyCurrent(updatedAt) {
 
 // ─── step 2 — download ─────────────────────────────────────────────────────
 
-async function download(uri, expected) {
+/**
+ * Downloads to a `.part` file and renames it once complete, so an interrupted
+ * transfer never leaves an archive that looks usable: the next attempt would
+ * reuse it and fail on the truncated gzip every time.
+ */
+async function download(uri, expected, updatedAt) {
   log(`  ↓ ${uri.split('/').pop()}  (${mb(expected)})`)
   const t0 = Date.now()
   const res = await fetchRetry(uri, { headers: { 'User-Agent': UA } })
   if (!res.ok)
     throw new Error(`download: HTTP ${res.status}`)
+  // Bytes on disk match Content-Length unless the transfer itself was encoded.
+  const announced = res.headers.get('content-encoding') ? null : Number(res.headers.get('content-length')) || null
+  const part = `${TMP_GZ}.part`
 
   let got = 0
   let lastPct = -1
@@ -424,8 +437,17 @@ async function download(uri, expected) {
       process.stdout.write(`\r    ${pct}%`)
     }
   })
-  await pipeline(src, createWriteStream(TMP_GZ))
+  await pipeline(src, createWriteStream(part))
+  if (announced && got !== announced)
+    throw new Error(`download: ${got} octets reçus sur ${announced}`)
+  renameSync(part, TMP_GZ)
+  writeFileSync(TMP_GZ_TAG, updatedAt)
   process.stdout.write(`\r    100%  en ${((Date.now() - t0) / 1000).toFixed(1)} s\n`)
+}
+
+/** Drops the archive and its tag, after a success or a failure alike. */
+function dropArchive() {
+  for (const f of [TMP_GZ, `${TMP_GZ}.part`, TMP_GZ_TAG]) rmSync(f, { force: true })
 }
 
 // ─── step 3 — stream + insert ──────────────────────────────────────────────
@@ -816,9 +838,15 @@ async function main() {
     return
   }
 
-  if (!existsSync(TMP_GZ) || force)
-    await download(meta.uri, meta.size)
-  else log(`  ↓ archive déjà présente (${mb(meta.size)}), réutilisée`)
+  const reusable = !force && existsSync(TMP_GZ) && existsSync(TMP_GZ_TAG)
+    && readFileSync(TMP_GZ_TAG, 'utf8') === meta.updatedAt
+  if (reusable) {
+    log(`  ↓ archive déjà présente (${mb(meta.size)}), réutilisée`)
+  }
+  else {
+    dropArchive()
+    await download(meta.uri, meta.size, meta.updatedAt)
+  }
 
   rmSync(TMP_DB, { force: true })
   const db = createClient({ url: `file:${TMP_DB}` })
@@ -840,7 +868,7 @@ async function main() {
   for (const ext of ['', '-wal', '-shm']) rmSync(`${FINAL_DB}${ext}`, { force: true })
   renameSync(TMP_DB, FINAL_DB)
   for (const ext of ['-wal', '-shm']) rmSync(`${TMP_DB}${ext}`, { force: true })
-  rmSync(TMP_GZ, { force: true })
+  dropArchive()
 
   log(`\n  ✔ ${FINAL_DB.replace(`${ROOT}/`, '')} — ${mb(statSync(FINAL_DB).size)}`)
   log(`    ${stats.oracles.toLocaleString('fr-FR')} cartes · ${stats.kept.toLocaleString('fr-FR')} impressions · ${((Date.now() - t0) / 1000).toFixed(1)} s au total\n`)
@@ -848,5 +876,8 @@ async function main() {
 
 main().catch((e) => {
   console.error('\n✖ ingestion échouée :', causeOf(e))
+  // The next attempt starts clean: a corrupt archive would fail it the same way.
+  dropArchive()
+  for (const ext of ['', '-wal', '-shm']) rmSync(`${TMP_DB}${ext}`, { force: true })
   process.exitCode = 1
 })
