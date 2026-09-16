@@ -20,7 +20,7 @@ const { searchUrl } = useCardmarket()
 
 const name = computed(() => String(route.params.name))
 
-const { data } = await useAsyncData(
+const { data, error } = await useAsyncData(
   () => `mtg-card-${name.value}-${locale.value}`,
   async (): Promise<ResolvedCard | null> => {
     try {
@@ -31,12 +31,17 @@ const { data } = await useAsyncData(
       const resolved = toResolved({ quantity: 1, name: name.value }, cards[0], locale.value)
       return resolved.card ? resolved : null
     }
-    catch {
-      return null
+    catch (err) {
+      // An empty name is refused by the route: there is no such card.
+      if (fetchStatus(err) === 400)
+        return null
+      throw err
     }
   },
   { watch: [locale] },
 )
+if (error.value)
+  unavailable(error.value)
 
 const resolved = computed(() => data.value ?? null)
 const c = computed(() => mtgRaw(resolved.value?.card))

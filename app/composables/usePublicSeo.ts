@@ -46,7 +46,9 @@ export function usePublicSeo(seo: PublicSeo) {
   useHead({
     link: () => [
       { rel: 'canonical', href: canonical.value },
-      { rel: 'alternate', hreflang: 'fr', href: pageUrl('fr') },
+      // French is the default rendering: its alternate is the plain URL, the
+      // canonical one, or search engines ignore it.
+      { rel: 'alternate', hreflang: 'fr', href: pageUrl() },
       { rel: 'alternate', hreflang: 'en', href: pageUrl('en') },
       { rel: 'alternate', hreflang: 'x-default', href: pageUrl() },
     ],

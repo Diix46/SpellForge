@@ -14,7 +14,7 @@ const { createDeck } = useDeckStore()
 const number = computed(() => String(route.params.number).toUpperCase())
 const lang = computed<'fr' | 'en'>(() => locale.value)
 
-const { data } = await useAsyncData(
+const { data, error } = await useAsyncData(
   () => `op-card-${number.value}-${lang.value}`,
   async () => {
     try {
@@ -27,13 +27,17 @@ const { data } = await useAsyncData(
       ])
       return { card: cards[0] ?? null, prints }
     }
-    catch {
+    catch (err) {
       // A malformed number is refused by the route: the card does not exist.
-      return { card: null, prints: [] }
+      if (fetchStatus(err) === 400)
+        return { card: null, prints: [] }
+      throw err
     }
   },
   { watch: [lang] },
 )
+if (error.value)
+  unavailable(error.value)
 
 const card = computed(() => data.value?.card ?? null)
 const prints = computed(() => data.value?.prints ?? [])

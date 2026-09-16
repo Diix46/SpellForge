@@ -24,10 +24,18 @@ const { colorVar } = useManaIdentity()
 interface SharedDeck { name: string, game: GameId, raw: string, source?: string | null, public: boolean }
 
 // The deck comes with the page; its cards resolve in the browser.
-const { data, status } = await useAsyncData(
+const { data, status, error } = await useAsyncData(
   () => `shared-${shareId.value}`,
-  () => $fetch<{ deck: SharedDeck }>(`/api/shared/${encodeURIComponent(shareId.value)}`).then(r => r.deck).catch(() => null),
+  () => $fetch<{ deck: SharedDeck }>(`/api/shared/${encodeURIComponent(shareId.value)}`)
+    .then(r => r.deck)
+    .catch((err) => {
+      if (fetchStatus(err) === 404)
+        return null
+      throw err
+    }),
 )
+if (error.value)
+  unavailable(error.value)
 const deck = computed(() => data.value ?? null)
 const notFound = computed(() => status.value !== 'pending' && !deck.value)
 const resolved = ref<ResolvedCard[]>([])
