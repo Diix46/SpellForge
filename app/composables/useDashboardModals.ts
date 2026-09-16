@@ -1,5 +1,7 @@
 import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
+import type { GameId } from '#shared/game'
 import { ref, watch } from 'vue'
+import { deckPath, parseGameId } from '#shared/game'
 import { useDeckStore } from '~/composables/useDeckStore'
 
 // Owns the dashboard's four modals (new / import / rename / delete): their open
@@ -12,9 +14,10 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
   const { locale, t } = useLocale()
   const toast = useToast()
 
-  // New deck
+  // New deck: the game is chosen in the modal (or preset by ?new=optcg).
   const showNewDeck = ref(false)
   const newDeckName = ref('')
+  const newDeckGame = ref<GameId>('mtg')
 
   // Import
   const showImport = ref(false)
@@ -41,16 +44,18 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
     // open, shouldn't stack them).
     showNewDeck.value = !!q.new
     showImport.value = !q.new && !!q.import
+    if (q.new)
+      newDeckGame.value = parseGameId(q.new) ?? newDeckGame.value
     // Strip ONLY our action params, preserving any other query state.
     const { new: _new, import: _import, ...rest } = q
     router.replace({ query: rest })
   }, { immediate: true })
 
   async function handleCreate() {
-    const deck = createDeck(newDeckName.value || t('nav.newDeck'))
+    const deck = createDeck({ name: newDeckName.value || t('nav.newDeck'), game: newDeckGame.value })
     showNewDeck.value = false
     newDeckName.value = ''
-    await navigateTo(`/deck/${deck.id}`)
+    await navigateTo(deckPath(deck))
   }
 
   async function handleImport() {
@@ -62,7 +67,8 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
         method: 'POST',
         body: { url: importUrl.value.trim() },
       })
-      const deck = createDeck(result.name, result.raw, result.source)
+      // URL import reads EDHREC and Archidekt, both Magic-only.
+      const deck = createDeck({ name: result.name, game: 'mtg', raw: result.raw, source: result.source })
       toast.add({
         title: locale.value === 'fr' ? 'Deck importé' : 'Deck imported',
         description: `${result.name} — ${result.cardCount} ${t('dash.cards')}`,
@@ -71,7 +77,7 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
       })
       showImport.value = false
       importUrl.value = ''
-      await navigateTo(`/deck/${deck.id}`)
+      await navigateTo(deckPath(deck))
     }
     catch (err: unknown) {
       toast.add({
@@ -118,6 +124,7 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
   return {
     showNewDeck,
     newDeckName,
+    newDeckGame,
     showImport,
     importUrl,
     importing,

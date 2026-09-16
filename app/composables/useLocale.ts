@@ -17,6 +17,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Header / nav
     'nav.decks': 'Decks',
     'nav.newDeck': 'Nouveau deck',
+    'deck.copySuffix': '(copie)',
     'nav.backToDecks': 'Retour aux decks',
     'nav.import': 'Importer',
     'nav.myDecks': 'Mes decks',
@@ -347,6 +348,7 @@ const messages: Record<Locale, Record<string, string>> = {
   en: {
     'nav.decks': 'Decks',
     'nav.newDeck': 'New deck',
+    'deck.copySuffix': '(copy)',
     'nav.backToDecks': 'Back to decks',
     'nav.import': 'Import',
     'nav.myDecks': 'My decks',

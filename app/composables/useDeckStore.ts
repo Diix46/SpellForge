@@ -1,52 +1,55 @@
+import type { StoredDeck } from '#shared/decks'
+import type { GameId } from '#shared/game'
 import { useState } from '#app'
+import { GUEST_DECKS_V1, GUEST_DECKS_V2, normalizeDeck, readGuestDecks } from '#shared/decks'
 
-export interface Deck {
-  id: string
+export type Deck = StoredDeck
+
+export interface NewDeck {
   name: string
-  raw: string
+  game: GameId
+  raw?: string
   source?: string
-  createdAt: number
-  updatedAt: number
-  shareId?: string | null
-  public?: boolean
 }
-
-const STORAGE_KEY = 'mtg_decks_v1'
 
 function genId(): string {
   return `d_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`
 }
 
+function persistLocal(decks: Deck[]) {
+  if (import.meta.client)
+    localStorage.setItem(GUEST_DECKS_V2, JSON.stringify(decks))
+}
+
+/**
+ * Guest decks, migrating a pre-One Piece list (v1) on first read. v2 is written
+ * before v1 is removed, so an interrupted migration loses nothing.
+ */
 function loadLocal(): Deck[] {
   if (import.meta.server)
     return []
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
+    const { decks, migrate } = readGuestDecks(localStorage.getItem(GUEST_DECKS_V1), localStorage.getItem(GUEST_DECKS_V2))
+    if (migrate) {
+      persistLocal(decks)
+      localStorage.removeItem(GUEST_DECKS_V1)
+    }
+    return decks
   }
   catch {
+    // Storage blocked (private mode, site data disabled): run without it.
     return []
   }
 }
 
-function persistLocal(decks: Deck[]) {
-  if (import.meta.client)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(decks))
+function clearLocal() {
+  localStorage.removeItem(GUEST_DECKS_V2)
+  localStorage.removeItem(GUEST_DECKS_V1)
 }
 
-// Normalize a server deck row (timestamps may be ms numbers or ISO strings).
-function fromRow(r: any): Deck {
-  return {
-    id: r.id,
-    name: r.name,
-    raw: r.raw ?? '',
-    source: r.source ?? undefined,
-    createdAt: typeof r.createdAt === 'number' ? r.createdAt : new Date(r.createdAt).getTime(),
-    updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : new Date(r.updatedAt).getTime(),
-    shareId: r.shareId ?? null,
-    public: !!r.public,
-  }
+/** A server deck row; timestamps may be ms numbers or ISO strings. */
+function fromRow(r: unknown): Deck | null {
+  return normalizeDeck(r)
 }
 
 export function useDeckStore() {
@@ -106,8 +109,8 @@ export function useDeckStore() {
     if (!cloud.value)
       return
     try {
-      const { decks: rows } = await $fetch<{ decks: any[] }>('/api/decks')
-      const serverDecks = rows.map(fromRow)
+      const { decks: rows } = await $fetch<{ decks: unknown[] }>('/api/decks')
+      const serverDecks = rows.map(fromRow).filter((d): d is Deck => d !== null)
       const serverById = new Map(serverDecks.map(d => [d.id, d]))
       const localOnly = decks.value.filter((d) => {
         const server = serverById.get(d.id)
@@ -135,7 +138,9 @@ export function useDeckStore() {
     const remaining: Deck[] = []
     for (const d of local) {
       try {
-        await $fetch('/api/decks', { method: 'POST', body: { id: d.id, name: d.name, raw: d.raw, source: d.source } })
+        // The game travels with the deck: the server files a deck without one
+        // under Magic, for good.
+        await $fetch('/api/decks', { method: 'POST', body: { id: d.id, name: d.name, game: d.game, raw: d.raw, source: d.source } })
       }
       catch {
         remaining.push(d) // keep locally so a later login can retry the migration
@@ -144,7 +149,7 @@ export function useDeckStore() {
     if (remaining.length)
       persistLocal(remaining)
     else
-      localStorage.removeItem(STORAGE_KEY)
+      clearLocal()
     await syncFromCloud()
   }
 
@@ -152,13 +157,13 @@ export function useDeckStore() {
     return decks.value.find(d => d.id === id)
   }
 
-  function createDeck(name: string, raw = '', source?: string): Deck {
+  function createDeck({ name, game, raw = '', source }: NewDeck): Deck {
     const now = Date.now()
-    const deck: Deck = { id: genId(), name: name.trim() || 'Nouveau deck', raw, source, createdAt: now, updatedAt: now }
+    const deck: Deck = { id: genId(), name: name.trim() || t('nav.newDeck'), game, raw, source, createdAt: now, updatedAt: now }
     decks.value = [deck, ...decks.value]
     persist()
     if (cloud.value) {
-      $fetch('/api/decks', { method: 'POST', body: { id: deck.id, name: deck.name, raw, source } })
+      $fetch('/api/decks', { method: 'POST', body: { id: deck.id, name: deck.name, game, raw, source } })
         .catch(reportSaveFailure)
     }
     return deck
@@ -195,7 +200,7 @@ export function useDeckStore() {
     const original = getDeck(id)
     if (!original)
       return
-    return createDeck(`${original.name} (copie)`, original.raw, original.source)
+    return createDeck({ name: `${original.name} ${t('deck.copySuffix')}`, game: original.game, raw: original.raw, source: original.source })
   }
 
   /** Enable/disable a public share link; returns the share token (or null). */
