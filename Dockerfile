@@ -14,6 +14,12 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# libsql loads its native binding by a computed name (@libsql/<platform>),
+# which the build's dependency trace cannot follow: without this copy the
+# server stops at its first database access. npm installed the binding for
+# this very platform, the one the runtime stage runs on.
+RUN cp -R node_modules/@libsql/linux-* .output/server/node_modules/@libsql/
+
 # ── Runtime stage ────────────────────────────────────────────────────────────
 # Slim image: the built server + the migration SQL only. No dev deps, no source.
 # A Nitro startup plugin (server/plugins/migrate.ts, bundled into .output) applies
