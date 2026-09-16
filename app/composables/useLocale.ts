@@ -18,18 +18,30 @@ function writeCookie(l: Locale) {
   document.cookie = `${COOKIE}=${l}; Path=/; Max-Age=${YEAR}; SameSite=Lax`
 }
 
+/**
+ * The pre-cookie choice, read once and removed. Null when there is none, or
+ * when storage is blocked.
+ */
+export function takeLegacyLocale(): Locale | null {
+  try {
+    const legacy = parseLocale(localStorage.getItem(LEGACY_KEY))
+    localStorage.removeItem(LEGACY_KEY)
+    return legacy
+  }
+  catch {
+    return null
+  }
+}
+
+export function hasLocaleCookie(): boolean {
+  return document.cookie.split(';').some(c => c.trim().startsWith(`${COOKIE}=`))
+}
+
 function loadLocale(): Locale {
   const fromCookie = parseLocale(useCookie(COOKIE).value)
   if (fromCookie || import.meta.server)
     return fromCookie ?? 'fr'
-  let legacy: Locale | null = null
-  try {
-    legacy = parseLocale(localStorage.getItem(LEGACY_KEY))
-    localStorage.removeItem(LEGACY_KEY)
-  }
-  catch {
-    // Storage blocked: the default stands.
-  }
+  const legacy = takeLegacyLocale()
   if (legacy)
     writeCookie(legacy)
   return legacy ?? 'fr'
@@ -1044,8 +1056,10 @@ export function useLocale() {
 
   // Short locale-aware date (e.g. "22 juin" / "Jun 22") for deck timestamps.
   // Shared by the dashboard and deck tiles so the format stays in one place.
+  // In one fixed zone: a server-rendered page must print the same day as the
+  // browser that takes it over.
   function formatShortDate(ts: number): string {
-    return new Date(ts).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short' })
+    return new Date(ts).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short', timeZone: 'Europe/Paris' })
   }
 
   return { locale, setLocale, toggle, t, rarityLabel, isFr, formatShortDate }
