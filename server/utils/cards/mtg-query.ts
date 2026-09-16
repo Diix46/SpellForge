@@ -313,3 +313,30 @@ export function buildAutocompleteQuery(prefix: string, limit = 20) {
     args,
   }
 }
+
+/**
+ * Every printing of one card, for the edition picker: requested language
+ * first, newest first within each.
+ *
+ * Picks ONE card before listing printings. Several cards can answer to a name —
+ * "Sol Ring // Sol Ring" is an art-series card sharing Sol Ring's front face
+ * name — and listing them all would let a player pin an art card, silently
+ * swapping the deck's playable card for an unplayable one. Exact full name
+ * first, real cards before extras, then the most played.
+ */
+export function buildPrintsQuery(name: string, lang: string) {
+  const key = fold(name)
+  return {
+    sql: `SELECT p.id, p.set_code, p.set_name, p.collector_number, p.lang,
+                 p.img_version, p.price_eur, p.promo
+            FROM printings p
+           WHERE p.is_real_image = 1
+             AND p.oracle_id = (
+               SELECT o.oracle_id FROM oracle_cards o
+                WHERE o.name_folded = ? OR o.name_front = ?
+                ORDER BY (o.name_folded = ?) DESC, o.is_extra ASC, o.edhrec_sort ASC
+                LIMIT 1)
+           ORDER BY (p.lang = ?) DESC, p.released_at DESC`,
+    args: [key, key, key, lang] as InValue[],
+  }
+}

@@ -5,6 +5,7 @@ import {
   buildAutocompleteQuery,
   buildCardQuery,
   buildPinnedQuery,
+  buildPrintsQuery,
   fold,
   maskOf,
 } from '../server/utils/cards/mtg-query'
@@ -125,6 +126,25 @@ withDb('against the real card database', () => {
     expect(names).toContain('Ebon Praetor')
     const startsWith = names.map(n => n.toLowerCase().startsWith('praetor'))
     expect(startsWith.lastIndexOf(true)).toBeLessThan(startsWith.indexOf(false))
+  })
+
+  it('lists the printings of the playable card only, never its art series', async () => {
+    // "Sol Ring // Sol Ring" (art series) shares the front face name. Pinning one
+    // of its printings would swap the deck's card for an unplayable art card.
+    async function layoutsOf(name: string) {
+      const ids = (await rows(buildPrintsQuery(name, 'en'))).map(r => String(r.id))
+      expect(ids.length, name).toBeGreaterThan(0)
+      const { rows: found } = await db.execute({
+        sql: `SELECT DISTINCT o.layout FROM printings p
+                JOIN oracle_cards o ON o.oracle_id = p.oracle_id
+               WHERE p.id IN (${ids.map(() => '?').join(',')})`,
+        args: ids,
+      })
+      return found.map(x => String(x.layout))
+    }
+    expect(await layoutsOf('Sol Ring')).toEqual(['normal'])
+    // Found by its front face, and still not its art series.
+    expect(await layoutsOf('Delver of Secrets')).toEqual(['transform'])
   })
 
   it('finds cards by French printed text', async () => {
