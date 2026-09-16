@@ -1,19 +1,20 @@
+import type { ResolvedRow } from './scryfall/toResolved'
 import type { ManaColor } from './useMtg'
 import type { ScryfallCard } from './useScryfall'
 import { ref } from 'vue'
-import { sanitizeCardName } from './scryfall/helpers'
 
 export interface SearchTheme {
   key: string
   /** i18n key for the label. */
   labelKey: string
   icon: string
-  /** Scryfall fragment this theme contributes. */
+  /** Scryfall fragment this theme contributes — used only by the raw-syntax path. */
   query: string
 }
 
-// Predefined themes → battle-tested Scryfall fragments. The player picks an
-// intention ("removal", "ramp") instead of needing to know card names.
+// Predefined themes. The player picks an intention ("removal", "ramp") instead
+// of needing to know card names. The local search engine has its own
+// definition of each key; the fragment here only serves raw-syntax searches.
 export const SEARCH_THEMES: SearchTheme[] = [
   { key: 'draw', labelKey: 'theme.draw', icon: 'i-lucide-book-open', query: 'oracle:"draw a card"' },
   { key: 'removal', labelKey: 'theme.removal', icon: 'i-lucide-crosshair', query: '(oracle:destroy or oracle:exile) (oracle:creature or oracle:permanent)' },
@@ -55,21 +56,28 @@ export interface QueryContext {
 }
 
 /**
- * Build a Scryfall query string from structured filters, constrained to a
- * commander's color identity (so illegal cards never appear) and the locale.
+ * True when the text is written in Scryfall syntax (`t:instant`, `cmc<=2`).
+ * Those queries still go to Scryfall: the local engine has no parser for them
+ * yet, and silently degrading a power user's query to plain text would return
+ * wrong results with no hint why.
+ */
+export function isRawSyntax(text: string): boolean {
+  return /\w+[:<>=]/.test(text.trim())
+}
+
+/**
+ * Build a Scryfall query string from structured filters. Only the raw-syntax
+ * path uses it now; everything else is served by the local search.
  */
 export function buildScryfallQuery(filters: SearchFilters, ctx: QueryContext): string {
   const parts: string[] = []
 
   const text = filters.text.trim()
   if (text) {
-    // If it looks like raw Scryfall syntax (contains a `:`/`<`/`>` operator), pass through.
-    if (/\w+[:<>=]/.test(text)) {
+    if (isRawSyntax(text)) {
       parts.push(text)
     }
     else {
-      // Bare term: Scryfall matches the card name in the current language
-      // (so the French printed name works too with lang:fr), OR the oracle text.
       const safe = text.replace(/["()]/g, '')
       parts.push(`("${safe}" or oracle:"${safe}")`)
     }
@@ -85,29 +93,51 @@ export function buildScryfallQuery(filters: SearchFilters, ctx: QueryContext): s
     parts.push(`type:${filters.type}`)
   if (filters.subtype.trim())
     parts.push(`type:${filters.subtype.trim().toLowerCase()}`)
-  // Explicit color filter (WUBRG pips): cards that ARE those colors.
   if (filters.colors.length)
     parts.push(`color>=${filters.colors.join('')}`)
   if (filters.maxCmc != null)
     parts.push(`cmc<=${filters.maxCmc}`)
-  // Budget filter: only cards at or below the max EUR price.
   if (filters.maxPrice != null)
     parts.push(`eur<=${filters.maxPrice}`)
   if (filters.commanderOnly)
     parts.push('is:commander')
-
-  // Constrain to the commander's color identity (EDH legality).
-  if (ctx.identity) {
+  if (ctx.identity)
     parts.push(ctx.identity.length ? `id<=${ctx.identity.join('')}` : 'id:colorless')
-  }
-
-  // Return the printing matching the site locale (FR images when in French).
   parts.push(`lang:${ctx.lang}`)
-
-  // Exclude funny/un-sets by default for a cleaner pool.
   parts.push('-is:funny legal:commander')
 
   return parts.join(' ').trim()
+}
+
+/**
+ * Query parameters for `/api/cards/browse`. Only set what is actually filtered,
+ * so identical searches produce identical URLs.
+ */
+export function browseParams(filters: SearchFilters, ctx: QueryContext, page: number): Record<string, string> {
+  const p: Record<string, string> = { lang: ctx.lang, order: filters.order, page: String(page) }
+  const text = filters.text.trim()
+  if (text)
+    p.text = text
+  if (filters.themes.length)
+    p.themes = filters.themes.join(',')
+  if (filters.type)
+    p.type = filters.type
+  if (filters.subtype.trim())
+    p.subtype = filters.subtype.trim()
+  if (filters.colors.length)
+    p.colors = filters.colors.join('')
+  if (filters.maxCmc != null)
+    p.maxCmc = String(filters.maxCmc)
+  if (filters.maxPrice != null)
+    p.maxPrice = String(filters.maxPrice)
+  if (filters.commanderOnly)
+    p.commanderOnly = '1'
+  // A colourless commander is sent as "C" (Magic's notation) rather than an
+  // empty string: "no constraint" and "colourless" must never be confused, and
+  // an empty parameter may be dropped in transit.
+  if (ctx.identity)
+    p.identity = ctx.identity.length ? ctx.identity.join('') : 'C'
+  return p
 }
 
 export interface SearchState {
@@ -125,25 +155,37 @@ export function emptySearchState(): SearchState {
   return { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
 }
 
+type SearchRequest
+  = | { kind: 'browse', filters: SearchFilters, ctx: QueryContext }
+    | { kind: 'syntax', query: string, order: SortOrder }
+
+interface SearchResponse { total: number, hasMore: boolean, cards: ScryfallCard[] }
+
 export function useCardSearch() {
   const state = ref<SearchState>(emptySearchState())
   const { t } = useLocale()
 
-  let lastQuery = ''
-  let lastOrder: SortOrder = 'edhrec'
+  // The request that produced the current results, so loadMore() paginates the
+  // exact same search rather than whatever the filters say now.
+  let lastRequest: SearchRequest | null = null
   // Monotonic request id: only the most recently STARTED request may write state.
-  // (Query-string identity can't disambiguate two in-flight requests for the
-  // same query, so a slow earlier response could overwrite a fast newer one.)
   let seq = 0
   // Abort the previous in-flight request when a newer one starts, so a superseded
   // search stops downloading instead of just having its result ignored.
   let currentAc: AbortController | null = null
 
-  async function run(query: string, page = 1, append = false, order: SortOrder = 'edhrec') {
-    if (!query) {
+  function fetchPage(req: SearchRequest, page: number, signal: AbortSignal): Promise<SearchResponse> {
+    if (req.kind === 'browse')
+      return $fetch<SearchResponse>('/api/cards/browse', { params: browseParams(req.filters, req.ctx, page), signal })
+    return $fetch<SearchResponse>('/api/cards/search', { params: { q: req.query, page, order: req.order, dir: 'auto' }, signal })
+  }
+
+  async function run(req: SearchRequest | null, page = 1, append = false) {
+    if (!req) {
       seq++ // invalidate any in-flight request
       currentAc?.abort()
       currentAc = null
+      lastRequest = null
       state.value = emptySearchState()
       return
     }
@@ -151,15 +193,11 @@ export function useCardSearch() {
     currentAc?.abort()
     const ac = new AbortController()
     currentAc = ac
-    lastQuery = query
-    lastOrder = order
+    lastRequest = req
     state.value.loading = true
     state.value.error = null
     try {
-      const res = await $fetch<{ total: number, hasMore: boolean, cards: ScryfallCard[] }>('/api/cards/search', {
-        params: { q: query, page, order, dir: 'auto' },
-        signal: ac.signal,
-      })
+      const res = await fetchPage(req, page, ac.signal)
       // Ignore out-of-order responses (a newer request superseded this one).
       if (reqId !== seq)
         return
@@ -185,16 +223,16 @@ export function useCardSearch() {
   }
 
   async function search(filters: SearchFilters, ctx: QueryContext) {
-    await run(buildScryfallQuery(filters, ctx), 1, false, filters.order)
+    const req: SearchRequest = isRawSyntax(filters.text)
+      ? { kind: 'syntax', query: buildScryfallQuery(filters, ctx), order: filters.order }
+      : { kind: 'browse', filters: { ...filters, themes: [...filters.themes], colors: [...filters.colors] }, ctx: { ...ctx } }
+    await run(req, 1, false)
   }
 
   async function loadMore() {
-    if (state.value.loading || !state.value.hasMore || !lastQuery)
+    if (state.value.loading || !state.value.hasMore || !lastRequest)
       return
-    // Paginate the SAME query + order that produced the current results —
-    // rebuilding from filters could fetch page N of a query whose page 1 was
-    // never shown (e.g. filters changed but the debounced search hasn't re-run).
-    await run(lastQuery, state.value.page + 1, true, lastOrder)
+    await run(lastRequest, state.value.page + 1, true)
   }
 
   async function autocomplete(text: string): Promise<string[]> {
@@ -210,8 +248,13 @@ export function useCardSearch() {
   }
 
   /**
-   * Load EDHREC "often played with" suggestions for a commander, resolved to
-   * Scryfall cards in the requested language, and display them as results.
+   * Load EDHREC "often played with" suggestions for a commander and display
+   * them as results.
+   *
+   * Names are resolved from the local database, which keeps EDHREC's order for
+   * free — the resolver answers in input order. Suggestions with no French
+   * printing now come back in English rather than being dropped, as the old
+   * `lang:fr` query did.
    */
   async function suggest(commander: string, lang: 'fr' | 'en') {
     if (!commander)
@@ -219,7 +262,7 @@ export function useCardSearch() {
     // Share the monotonic seq gate with run(), so a search started afterwards
     // invalidates this suggestion (and vice-versa) — no cross-clobber.
     const reqId = ++seq
-    lastQuery = `suggest:${commander}`
+    lastRequest = null
     state.value.loading = true
     state.value.error = null
     try {
@@ -230,20 +273,13 @@ export function useCardSearch() {
         state.value = emptySearchState()
         return
       }
-      // Resolve the names to cards (current language) via one Scryfall query.
-      // Cap to Scryfall's friendly limit; keep EDHREC's relevance order client-side.
-      const top = names.slice(0, 40).map(sanitizeCardName).filter(Boolean)
-      const q = `(${top.map(n => `!"${n}"`).join(' or ')}) lang:${lang}`
-      const res = await $fetch<{ cards: ScryfallCard[] }>('/api/cards/search', {
-        params: { q, order: 'edhrec', dir: 'auto' },
+      const { cards: rows } = await $fetch<{ cards: ResolvedRow[] }>('/api/cards/resolve', {
+        method: 'POST',
+        body: { lang, entries: names.slice(0, 40).map(name => ({ name })) },
       })
       if (reqId !== seq)
         return
-      // Re-order results to match EDHREC ranking.
-      const rank = new Map(top.map((n, i) => [n.toLowerCase(), i]))
-      const cards = [...res.cards].sort(
-        (a, b) => (rank.get(a.name.toLowerCase()) ?? 999) - (rank.get(b.name.toLowerCase()) ?? 999),
-      )
+      const cards = rows.map(r => r.card).filter((c): c is ScryfallCard => !!c)
       state.value.cards = cards
       state.value.total = cards.length
       state.value.hasMore = false

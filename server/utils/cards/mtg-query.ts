@@ -19,6 +19,8 @@
  *    per card, collapsed into the search itself.
  */
 
+import type { InValue } from '@libsql/client'
+
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G'
 export type SortOrder = 'edhrec' | 'eur' | 'name' | 'cmc'
 export type CardTypeFilter = 'creature' | 'instant' | 'sorcery' | 'artifact' | 'enchantment' | 'planeswalker' | 'land'
@@ -126,11 +128,11 @@ const BEST_PRINTING_JOIN = `
   JOIN best_printings bp ON bp.oracle_id = page.oracle_id AND bp.lang = ?
   JOIN printings p ON p.id = bp.printing_id`
 
-interface Where { clauses: string[], args: unknown[] }
+interface Where { clauses: string[], args: InValue[] }
 
 function buildWhere(filters: SearchFilters, ctx: QueryContext): Where {
   const clauses: string[] = []
-  const args: unknown[] = []
+  const args: InValue[] = []
 
   // Always applied, mirroring the `-is:funny legal:commander` suffix the client
   // used to append to every query, plus Scryfall's own default hiding of
@@ -207,9 +209,9 @@ function buildWhere(filters: SearchFilters, ctx: QueryContext): Where {
 
 export interface BuiltQuery {
   sql: string
-  args: unknown[]
+  args: InValue[]
   countSql: string
-  countArgs: unknown[]
+  countArgs: InValue[]
 }
 
 export function buildCardQuery(
@@ -262,6 +264,13 @@ export function buildPinnedQuery(setCode: string, collectorNumber: string, lang:
   }
 }
 
+/**
+ * Highest BMP code unit: appended to a prefix, it bounds the range of every
+ * string starting with that prefix. Built from its code rather than written as
+ * an escape, so no tooling can silently turn it into an invisible character.
+ */
+const PREFIX_END = String.fromCharCode(0xFFFF)
+
 /** Name autocomplete, accent-insensitive, most-played first. */
 export function buildAutocompleteQuery(prefix: string, limit = 20) {
   return {
@@ -274,6 +283,6 @@ export function buildAutocompleteQuery(prefix: string, limit = 20) {
     // default and so cannot use the index on name_folded — it scanned all 38 789
     // cards on every keystroke. The column is already lowercased, so a binary
     // range expresses the same prefix and walks the index.
-    args: [fold(prefix), `${fold(prefix)}￿`, limit],
+    args: [fold(prefix), `${fold(prefix)}${PREFIX_END}`, limit],
   }
 }
