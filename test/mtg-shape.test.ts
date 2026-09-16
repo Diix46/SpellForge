@@ -37,6 +37,11 @@ describe('imageUrl', () => {
   it('carries the image version so a re-scan changes the URL', () => {
     expect(imageUrl('normal', 'back', 'abc', 1783910776)).toBe('/api/images/mtg/normal/back/abc.jpg?v=1783910776')
   })
+
+  it('asks for the light copy after the version', () => {
+    expect(imageUrl('normal', 'front', 'abc', 17, 'thumb')).toBe('/api/images/mtg/normal/front/abc.jpg?v=17&size=thumb')
+    expect(imageUrl('normal', 'front', 'abc', null, 'thumb')).toBe('/api/images/mtg/normal/front/abc.jpg?size=thumb')
+  })
 })
 
 // The point of these tests: the reconstructed shape must work with the app's

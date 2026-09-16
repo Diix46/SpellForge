@@ -10,14 +10,19 @@
  * `*.scryfall.io` is explicitly exempt from Scryfall's rate limits, so a cold
  * back-fill is allowed; it is still one request per image, ever.
  *
+ * `?size=thumb` on the normal size answers the 320 px WebP copy, made from the
+ * normal image on first request and kept under `thumb/`. Without sharp, the
+ * normal image is served instead.
+ *
  * SECURITY: this handler writes to disk based on URL input. Every segment is
  * checked against a strict allowlist or pattern before it touches a path or the
  * upstream URL — no traversal, no smuggled query string.
  */
 import { Buffer } from 'node:buffer'
-import { createReadStream, existsSync, mkdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { hasFile, makeThumbnail } from '../../../../../utils/images/thumbnail'
 
 const ROOT = resolve('.data/images/mtg')
 const SIZES = new Set(['small', 'normal', 'large', 'png', 'art_crop'])
@@ -49,12 +54,30 @@ export default defineEventHandler(async (event) => {
   // Safe to cache forever once found: the URL carries the image version, so a
   // re-scanned image gets a new URL. Set only on success, or a 404 or a CDN
   // hiccup would be cached by the browser for a year.
-  const found = () => {
+  const found = (type = ext === 'png' ? 'image/png' : 'image/jpeg') => {
     setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
-    setHeader(event, 'Content-Type', ext === 'png' ? 'image/png' : 'image/jpeg')
+    setHeader(event, 'Content-Type', type)
   }
 
-  if (existsSync(path) && statSync(path).size > 0) {
+  const thumb = size === 'normal' && getQuery(event).size === 'thumb'
+    ? resolve(ROOT, 'thumb', face, `${id}.webp`)
+    : null
+  if (thumb && hasFile(thumb)) {
+    found('image/webp')
+    return sendStream(event, createReadStream(thumb))
+  }
+  const withThumb = async () => {
+    const bytes = thumb ? await makeThumbnail(path, thumb) : null
+    if (!bytes)
+      return null
+    found('image/webp')
+    return bytes
+  }
+
+  if (hasFile(path)) {
+    const light = await withThumb()
+    if (light)
+      return light
     found()
     return sendStream(event, createReadStream(path))
   }
@@ -76,6 +99,9 @@ export default defineEventHandler(async (event) => {
   const tmp = `${path}.${process.pid}.${Date.now()}.tmp`
   writeFileSync(tmp, bytes)
   renameSync(tmp, path)
+  const light = await withThumb()
+  if (light)
+    return light
   found()
 
   // NOTE: a file on disk does not track the version. If Scryfall re-scans an

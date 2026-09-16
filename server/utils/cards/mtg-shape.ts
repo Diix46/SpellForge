@@ -29,12 +29,18 @@ export const IMAGE_SIZES = ['small', 'normal', 'large', 'png', 'art_crop'] as co
 export type ImageSize = typeof IMAGE_SIZES[number]
 export type ImageFace = 'front' | 'back'
 
-export function imageUrl(size: ImageSize, face: ImageFace, id: string, version: unknown): string {
+export function imageUrl(size: ImageSize, face: ImageFace, id: string, version: unknown, variant?: 'thumb'): string {
   const ext = size === 'png' ? 'png' : 'jpg'
+  const params = new URLSearchParams()
   // The version doubles as a cache buster: when Scryfall re-scans an image the
   // URL changes, so browsers may cache the old one forever without going stale.
-  const v = version ? `?v=${version}` : ''
-  return `/api/images/mtg/${size}/${face}/${id}.${ext}${v}`
+  if (version)
+    params.set('v', String(version))
+  // A 320 px WebP copy, made by the image route (normal size only).
+  if (variant)
+    params.set('size', variant)
+  const query = params.size ? `?${params}` : ''
+  return `/api/images/mtg/${size}/${face}/${id}.${ext}${query}`
 }
 
 function imageUris(face: ImageFace, id: string, version: unknown): Record<ImageSize, string> {
