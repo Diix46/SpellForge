@@ -46,7 +46,8 @@ export function parseBrowseQuery(q: Record<string, unknown>): BrowseParams {
 
   return {
     filters: {
-      text: str(q.text).slice(0, 200),
+      // Room for a query written in Scryfall syntax, which runs longer than a name.
+      text: str(q.text).slice(0, 500),
       // Object.hasOwn, not `in`: `'toString' in THEMES` is true via the prototype.
       themes: str(q.themes).split(',').map(s => s.trim()).filter(k => k && Object.hasOwn(THEMES, k)),
       type: TYPES.has(type) ? type as CardTypeFilter : '',

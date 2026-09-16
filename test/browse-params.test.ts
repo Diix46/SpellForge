@@ -58,7 +58,7 @@ describe('parseBrowseQuery', () => {
   })
 
   it('caps free text and takes the first of repeated values', () => {
-    expect(parseBrowseQuery({ text: 'a'.repeat(500) }).filters.text).toHaveLength(200)
+    expect(parseBrowseQuery({ text: 'a'.repeat(900) }).filters.text).toHaveLength(500)
     expect(parseBrowseQuery({ lang: ['fr', 'en'] }).ctx.lang).toBe('fr')
   })
 

@@ -9,8 +9,8 @@
  * printing to show in which language) was settled at ingest in `best_printings`.
  */
 import type { Client } from '@libsql/client'
-import { fold } from './mtg-query'
 import { toScryfallShape } from './mtg-shape'
+import { fold } from './text'
 
 type Row = Record<string, unknown>
 

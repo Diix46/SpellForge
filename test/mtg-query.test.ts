@@ -6,9 +6,9 @@ import {
   buildCardQuery,
   buildPinnedQuery,
   buildPrintsQuery,
-  fold,
   maskOf,
 } from '../server/utils/cards/mtg-query'
+import { fold } from '../server/utils/cards/text'
 
 const DB = '.data/cards-mtg.db'
 const hasDb = existsSync(DB)

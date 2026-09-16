@@ -13,13 +13,18 @@
  *    is dense and the test is free. This matters because the default browse
  *    query filters on colour identity on every single keystroke.
  *
- *  - **The printing is chosen inside the query.** One correlated subquery picks
- *    the best printing in the requested language and falls back to English when
- *    there is none — which is the whole five-call cascade the app used to run
- *    per card, collapsed into the search itself.
+ *  - **The printing is chosen at ingest.** `best_printings` holds the printing
+ *    to show per card and language, English fallback included — the five-call
+ *    cascade the app used to run per card, reduced to one indexed join.
+ *
+ * Text typed in Scryfall syntax (`t:instant cmc<=2`) is compiled by
+ * mtg-syntax.ts into one more clause, ANDed with the builder's filters.
  */
 
 import type { InValue } from '@libsql/client'
+import type { CompiledSyntax } from './mtg-syntax'
+import { compileSyntax, isSyntaxQuery, QuerySyntaxError } from './mtg-syntax'
+import { fold, ftsPhrase } from './text'
 
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G'
 export type SortOrder = 'edhrec' | 'eur' | 'name' | 'cmc'
@@ -49,20 +54,6 @@ export function maskOf(colors: readonly ManaColor[] | null | undefined): number 
   let m = 0
   for (const c of colors ?? []) m |= COLOR_BIT[c] ?? 0
   return m
-}
-
-/** Strip accents and lowercase — matches the `name_folded` column built at ingest. */
-export function fold(s: string): string {
-  return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
-}
-
-/**
- * FTS5 needs bare terms; it tokenizes punctuation away. Quote the phrase and
- * drop the characters that would be read as operators.
- */
-function ftsPhrase(s: string): string {
-  const cleaned = fold(s).replace(/["'()*:^-]/g, ' ').replace(/\s+/g, ' ').trim()
-  return cleaned ? `"${cleaned}"` : ''
 }
 
 /**
@@ -130,7 +121,13 @@ const BEST_PRINTING_JOIN = `
 
 interface Where { clauses: string[], args: InValue[] }
 
-function buildWhere(filters: SearchFilters, ctx: QueryContext): Where {
+/** The search box text, compiled when it is written in query syntax. */
+function syntaxOf(filters: SearchFilters): CompiledSyntax | null {
+  const text = filters.text?.trim()
+  return text && isSyntaxQuery(text) ? compileSyntax(text) : null
+}
+
+function buildWhere(filters: SearchFilters, ctx: QueryContext, syntax: CompiledSyntax | null): Where {
   const clauses: string[] = []
   const args: InValue[] = []
 
@@ -141,7 +138,13 @@ function buildWhere(filters: SearchFilters, ctx: QueryContext): Where {
 
   const ftsParts: string[] = []
 
-  if (filters.text?.trim()) {
+  // Query syntax becomes its own clause, ANDed with every other filter — a
+  // commander's identity still applies to `t:instant cmc<=2`.
+  if (syntax) {
+    clauses.push(syntax.where)
+    args.push(...syntax.args)
+  }
+  else if (filters.text?.trim()) {
     const phrase = ftsPhrase(filters.text)
     if (phrase)
       ftsParts.push(phrase)
@@ -214,17 +217,23 @@ export interface BuiltQuery {
   countArgs: InValue[]
 }
 
+/**
+ * Throws `QuerySyntaxError` when the search text is query syntax we cannot
+ * honour; the caller decides how to report it.
+ */
 export function buildCardQuery(
   filters: SearchFilters,
   ctx: QueryContext,
   order: SortOrder = 'edhrec',
   page = 1,
 ): BuiltQuery {
-  const { clauses, args } = buildWhere(filters, ctx)
+  const syntax = syntaxOf(filters)
+  const { clauses, args } = buildWhere(filters, ctx, syntax)
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
   const offset = Math.max(0, (page - 1) * PAGE_SIZE)
 
-  const orderBy = ORDER_BY[order] ?? ORDER_BY.edhrec
+  // An `order:` typed in the query wins, as it does on Scryfall.
+  const orderBy = ORDER_BY[syntax?.order ?? order] ?? ORDER_BY.edhrec
 
   return {
     // The CTE pages `oracle_cards` FIRST, then joins printings for the 175 rows
@@ -246,6 +255,31 @@ export function buildCardQuery(
 
     // The count deliberately skips the printing join: it only needs to know how
     // many cards match, and the join is the expensive half.
+    countSql: `SELECT COUNT(*) AS total FROM oracle_cards o ${where}`,
+    countArgs: args,
+  }
+}
+
+/**
+ * The coach's card search: the same filters as the builder with no commander
+ * constraint, returning only what the model reads. Throws `QuerySyntaxError`
+ * like buildCardQuery — and for an empty query, which would otherwise hand the
+ * model the 20 most played cards as if they answered something.
+ */
+export function buildCoachSearchQuery(text: string, limit = 20) {
+  if (!text.trim())
+    throw new QuerySyntaxError('badValue', text)
+  const filters: SearchFilters = { text }
+  const syntax = syntaxOf(filters)
+  const { clauses, args } = buildWhere(filters, { identity: null, lang: 'en' }, syntax)
+  const where = `WHERE ${clauses.join(' AND ')}`
+  return {
+    sql: `SELECT o.name, o.mana_cost, o.type_line, o.oracle_all, o.identity_mask, o.min_price_eur
+            FROM oracle_cards o
+           ${where}
+           ORDER BY ${(ORDER_BY[syntax?.order ?? 'edhrec'] ?? ORDER_BY.edhrec)('o')}
+           LIMIT ?`,
+    args: [...args, limit],
     countSql: `SELECT COUNT(*) AS total FROM oracle_cards o ${where}`,
     countArgs: args,
   }
