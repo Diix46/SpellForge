@@ -41,7 +41,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DB = resolve(ROOT, '.data/cards-mtg.db')
 const OUT = resolve(ROOT, '.data/images/mtg')
 
-const UA = 'SpellForge/0.3.2 (+https://github.com/Diix46/SpellForge)'
+const UA = 'Prism/0.3.2 (+https://github.com/Diix46/SpellForge)'
 const CONCURRENCY = 8
 const PAUSE_MS = 25
 

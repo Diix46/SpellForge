@@ -38,7 +38,7 @@ const HOSTS = {
   en: { host: 'https://en.onepiece-cardgame.com', ext: 'png', alt: 'webp' },
 }
 
-const UA = 'SpellForge/0.3.2 (+https://github.com/Diix46/SpellForge)'
+const UA = 'Prism/0.3.2 (+https://github.com/Diix46/SpellForge)'
 const CONCURRENCY = 4
 const PAUSE_MS = 60
 

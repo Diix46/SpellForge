@@ -191,7 +191,7 @@ function resetTilt(e: PointerEvent) {
     <footer class="lp-foot">
       <div class="lp-foot-brand">
         <AppLogo :wordmark="false" :size="18" />
-        <span class="lp-foot-name">Spellforge</span>
+        <span class="lp-foot-name">Prism</span>
       </div>
       <span class="lp-foot-sep" aria-hidden="true">·</span>
       <p class="lp-foot-copy">

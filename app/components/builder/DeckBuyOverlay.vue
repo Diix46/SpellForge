@@ -217,7 +217,7 @@ const { t } = useLocale()
                     variant="ghost"
                     size="xs"
                     class="w-8 shrink-0"
-                    :aria-label="`Cardmarket — ${row.name}`"
+                    :aria-label="`Cardmarket, ${row.name}`"
                   />
                 </div>
               </div>

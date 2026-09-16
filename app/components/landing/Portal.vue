@@ -172,6 +172,7 @@ const hovered = shallowRef<'op' | 'mtg' | null>(null)
   pointer-events: auto;
 }
 .brand {
+  --color-text-high: #f3ecda;
   display: inline-flex;
   padding: 6px 12px;
   border-radius: 6px;

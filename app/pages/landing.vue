@@ -7,8 +7,8 @@
 const { t } = useLocale()
 
 useSeoMeta({
-  title: 'Spellforge — Deck manager & proxy printer',
-  description: () => t('landing.subtitle'),
+  title: () => t('brand.title'),
+  description: () => t('brand.description'),
 })
 </script>
 

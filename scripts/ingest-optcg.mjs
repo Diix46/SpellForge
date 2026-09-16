@@ -30,7 +30,7 @@ const TMP_DB = resolve(DATA_DIR, 'cards-optcg-new.db')
 
 const BASE = 'https://raw.githubusercontent.com/buhbbl/punk-records/main'
 const LANGS = { french: 'fr', english: 'en' }
-const UA = 'SpellForge/0.3.2 (+https://github.com/Diix46/SpellForge)'
+const UA = 'Prism/0.3.2 (+https://github.com/Diix46/SpellForge)'
 
 // Banned as of the 2026-04-10 list. Pair bans (EB04-058 + OP07-115,
 // OP11-040 + OP11-067, OP11-040 + OP08-069) are deck-level constraints, not

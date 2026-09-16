@@ -3,17 +3,18 @@ import { computed, ref } from 'vue'
 import { libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 
-// Mana Prism favicon as an inline SVG data URI (matches AppLogo). Neutral bg now.
+// The Prism favicon as an inline SVG data URI (matches AppLogo): the red and
+// gold facets on a dark tile, readable on light and dark tab bars alike.
 const FAVICON = `data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">`
   + `<defs>`
-  + `<linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%237DEEFF"/><stop offset="1" stop-color="%2306C7E6"/></linearGradient>`
-  + `<linearGradient id="m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23E4E4E7"/><stop offset="1" stop-color="%238E8E96"/></linearGradient>`
+  + `<linearGradient id="r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EF6B5D"/><stop offset="1" stop-color="#B42A23"/></linearGradient>`
+  + `<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F1D994"/><stop offset="1" stop-color="#B8903F"/></linearGradient>`
   + `</defs>`
-  + `<rect width="40" height="40" rx="9" fill="%230A0A0B"/>`
-  + `<path d="M20 6 L20 34 L9 20 Z" fill="url(%23c)"/>`
-  + `<path d="M20 6 L31 20 L20 34 Z" fill="url(%23m)"/>`
-  + `<path d="M20 6 L20 34" stroke="%23FFFFFF" stroke-width="1" opacity=".4"/>`
+  + `<rect width="40" height="40" rx="9" fill="#100D14"/>`
+  + `<path d="M20 6 L20 34 L9 20 Z" fill="url(#r)"/>`
+  + `<path d="M20 6 L31 20 L20 34 Z" fill="url(#g)"/>`
+  + `<path d="M20 6 L20 34" stroke="#FFF8EC" stroke-width="1" opacity=".55"/>`
   + `</svg>`,
 )}`
 
@@ -26,16 +27,20 @@ useHead({
   ],
 })
 
-useSeoMeta({
-  title: 'Spellforge — Deck manager & proxy printer',
-  titleTemplate: (titleChunk?: string) =>
-    titleChunk && !titleChunk.startsWith('Spellforge') ? `${titleChunk} · Spellforge` : 'Spellforge — Deck manager & proxy printer',
-  description: 'Spellforge — gérez vos decks Magic: The Gathering et imprimez des proxies impeccables en français ou anglais sur A4/A3.',
-})
-
 const route = useRoute()
 const { universe } = useUniverse()
 const { locale, setLocale, t } = useLocale()
+
+// Pages give their own title; the brand closes it. The home title is the
+// brand line itself.
+useSeoMeta({
+  title: () => t('brand.title'),
+  titleTemplate: (titleChunk?: string) =>
+    titleChunk && titleChunk !== t('brand.title') ? `${titleChunk} · Prism` : t('brand.title'),
+  description: () => t('brand.description'),
+  ogSiteName: 'Prism',
+})
+
 const { loggedIn, user, logout } = useAuth()
 const { show: openCmdK } = useCommandPalette()
 

@@ -25,7 +25,7 @@ const FACES = new Set(['front', 'back'])
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const FILE = /^([0-9a-f-]{36})\.(jpg|png)$/
 const VERSION = /^\d{1,12}$/
-const UA = 'SpellForge/0.3.2 (+https://github.com/Diix46/SpellForge)'
+const UA = 'Prism/0.3.2 (+https://github.com/Diix46/SpellForge)'
 
 export default defineEventHandler(async (event) => {
   const size = getRouterParam(event, 'size') ?? ''

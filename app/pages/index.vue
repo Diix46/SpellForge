@@ -27,8 +27,8 @@ function openDeck(id: string) {
 const showLanding = computed(() => !loggedIn.value && decks.value.length === 0)
 
 useSeoMeta({
-  title: () => (showLanding.value ? 'Spellforge — Deck manager & proxy printer' : t('dash.title')),
-  description: () => (showLanding.value ? t('landing.subtitle') : 'Gérez vos decklists Magic: The Gathering, imprimez vos proxies en FR/EN.'),
+  title: () => (showLanding.value ? t('brand.title') : t('dash.title')),
+  description: () => t('brand.description'),
 })
 // Per-deck count, colours and Leader, for tiles of either world.
 const { fingerprints } = useDeckFingerprints(decks)

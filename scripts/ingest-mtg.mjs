@@ -41,7 +41,7 @@ const TMP_GZ = resolve(DATA_DIR, 'all-cards.jsonl.gz')
 // Ingesting every language would take the DB from ~240 MB to ~700 MB.
 const LANGS = new Set(['en', 'fr'])
 
-const UA = 'SpellForge/0.3.2 (+https://github.com/Diix46/SpellForge)'
+const UA = 'Prism/0.3.2 (+https://github.com/Diix46/SpellForge)'
 const COLOR_BIT = { W: 1, U: 2, B: 4, R: 8, G: 16 }
 
 // Scryfall hides these from search by default. Mirror that, or our result

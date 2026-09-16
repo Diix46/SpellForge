@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.3.2",
   "private": true,
-  "description": "Spellforge — gestionnaire de decks Magic: The Gathering & impression de proxies FR/EN (A4/A3).",
+  "description": "Prism, l'atelier de decks One Piece et Magic: The Gathering, avec impression de proxies Magic FR/EN (A4/A3).",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",

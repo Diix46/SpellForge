@@ -217,7 +217,7 @@ function hideAcSoon() {
           :class="{ 'is-active': filters.colors.includes(pip) }"
           :style="{ '--pip': colorVar(pip) }"
           :aria-pressed="filters.colors.includes(pip)"
-          :aria-label="`${colorCode(pip, isFr)} — ${colorName(pip, isFr)}`"
+          :aria-label="`${colorCode(pip, isFr)}, ${colorName(pip, isFr)}`"
           :title="colorName(pip, isFr)"
           @click="toggleColor(pip, $event)"
         >
