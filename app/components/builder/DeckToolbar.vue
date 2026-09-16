@@ -1,27 +1,32 @@
 <script setup lang="ts">
-import type { ManaColor } from '~/composables/useMtg'
 import { useLocale } from '~/composables/useLocale'
 
-// The deck page's unified toolbar: back · editable title + colour pips + card
-// count + est-cost chip · build/utility actions (Import/Export, Resolve, Share)
-// · terminal actions (Aperçu, Acheter). One row so the workspace + footer fit on
-// one screen. Pure presentation — title is v-model, everything else is props/emits.
+// The deck page's unified toolbar, for every game: back · editable title +
+// colour dots + card count (+ est. cost) · build/utility actions
+// (Import/Export, Share, or Save for a guest) · terminal actions where the game
+// has them (Aperçu, Acheter: Magic only). One row so the workspace + footer fit
+// on one screen. Pure presentation — title is v-model, the rest props/emits.
 
-defineProps<{
+withDefaults(defineProps<{
   deckName: string
-  themeColors: ManaColor[]
+  /** CSS colours of the deck's identity (commander or Leader). */
+  dots: string[]
   cardCount: number
-  priceTotal: number
+  priceTotal?: number
   loggedIn: boolean
-  colorVar: (c: ManaColor) => string
   canUndo: boolean
   canRedo: boolean
-}>()
+  /** Proxy preview and PDF: Magic only. */
+  printable?: boolean
+  /** Buying links: Magic only. */
+  buyable?: boolean
+}>(), { priceTotal: 0, printable: false, buyable: false })
 
 const emit = defineEmits<{
   'update:deckName': [value: string]
   'openImportExport': []
   'share': []
+  'save': []
   'openPreview': []
   'openBuy': []
   'undo': []
@@ -70,15 +75,15 @@ const { t } = useLocale()
         :value="deckName"
         name="deck-name"
         :aria-label="t('modal.deckName')"
-        class="min-w-0 flex-1 truncate bg-transparent font-display text-xl font-bold text-(--color-text-high) caret-(--accent) focus:outline-none"
+        class="u-display min-w-0 flex-1 truncate bg-transparent text-xl text-(--color-text-high) caret-(--accent) focus:outline-none"
         @input="emit('update:deckName', ($event.target as HTMLInputElement).value)"
       >
       <div class="flex shrink-0 items-center gap-1">
         <span
-          v-for="c in themeColors"
-          :key="c"
+          v-for="(c, i) in dots"
+          :key="i"
           class="h-2.5 w-2.5 rounded-full"
-          :style="{ background: colorVar(c), boxShadow: `0 0 6px ${colorVar(c)}` }"
+          :style="{ background: c, boxShadow: `0 0 6px ${c}` }"
         />
         <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }}</span>
       </div>
@@ -113,11 +118,23 @@ const { t } = useLocale()
       >
         <span class="hidden lg:inline">{{ t('share.button') }}</span>
       </UButton>
+      <!-- A guest's deck is already saved locally; this opens the sign-up offer. -->
+      <UButton
+        v-else
+        icon="i-lucide-save"
+        color="neutral"
+        variant="subtle"
+        size="sm"
+        @click="emit('save')"
+      >
+        <span class="hidden lg:inline">{{ t('deck.save') }}</span>
+      </UButton>
 
       <!-- Terminal actions: review & print (Aperçu), buy (Acheter). Separated
            from the build/utility actions by a hairline. -->
-      <span class="mx-0.5 h-6 w-px bg-(--color-border-subtle)" aria-hidden="true" />
+      <span v-if="printable || buyable" class="mx-0.5 h-6 w-px bg-(--color-border-subtle)" aria-hidden="true" />
       <UButton
+        v-if="printable"
         icon="i-lucide-eye"
         color="neutral"
         variant="subtle"
@@ -128,6 +145,7 @@ const { t } = useLocale()
         <span class="hidden sm:inline">{{ t('tab.preview') }}</span>
       </UButton>
       <UButton
+        v-if="buyable"
         icon="i-lucide-shopping-cart"
         color="primary"
         variant="solid"
