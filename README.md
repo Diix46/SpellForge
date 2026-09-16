@@ -262,6 +262,18 @@ Sur Unraid (template Docker) :
 - **Volume** : `/mnt/user/appdata/spellforge` → `/app/.data` (bases, images et cache persistants ; prévoir ~9 Go avec les deux miroirs d'images)
 - **Variables** : `ANTHROPIC_API_KEY`, `NUXT_SESSION_PASSWORD`, `NUXT_PUBLIC_SITE_URL` (et `DATABASE_URL` si Turso)
 
+Mettre en production une nouvelle version :
+1. fusionner dans `main` : la release publie `ghcr.io/diix46/spellforge:latest` ;
+2. dans l'onglet Docker d'Unraid, **Check for Updates** puis **apply update** sur
+   `spellforge` : Unraid tire l'image, recrée le conteneur depuis le template et
+   le redémarre. Les données du volume ne bougent pas, les migrations passent au
+   démarrage.
+
+« Apply » dans la fiche du conteneur (après une modification du template) ne
+tire l'image que si elle est absente : il recrée le conteneur avec l'image déjà
+présente. Pour revenir en arrière, choisir un tag de version (`:0.3.2`, par
+exemple) dans **Repository**, puis Apply.
+
 Le nom de l'image et le dossier de données gardent l'ancien nom (`spellforge`) :
 les changer casserait les installations existantes.
 

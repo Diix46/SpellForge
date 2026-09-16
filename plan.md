@@ -331,10 +331,12 @@ Demande : passe complète, correction des bugs, tous les parcours, fluidité, la
   bout sur un conteneur d'essai, 45/45 (parcours invités) sur https://spellforge.diixhub.fr.
 - **Retour arrière** : `/root/spellforge-rollback.sh /mnt/user/appdata/spellforge/spellforge.db.bak-20260916-214058`
   (image `spellforge:backup-0.3.2`, base d'avant migration, ancien cache).
-- **À savoir** : l'image porte le tag `ghcr.io/diix46/spellforge:latest` mais n'est pas
-  publiée. Tant que la branche n'est pas fusionnée et publiée par la CI, ne pas lancer
-  « Update » ni « Apply » sur le conteneur dans Unraid : il retirerait l'ancienne image
-  de ghcr. Redéployer à la main : `/root/spellforge-deploy.sh` après un `docker build`.
+- **Déployer ensuite** : fusion dans `main` → la release publie l'image sur ghcr → dans
+  Unraid, « Check for Updates » puis « apply update » (script `update_container` : tire
+  l'image et recrée le conteneur depuis le template, qui porte désormais
+  `NUXT_PUBLIC_SITE_URL`). « Apply » dans la fiche du conteneur ne tire l'image que si
+  elle est absente (Unraid 7.3.2, `CreateDocker.php`) : il recrée avec l'image présente.
+  Repli manuel sur le serveur : `/root/spellforge-deploy.sh` après un `docker build`.
 
 ---
 
