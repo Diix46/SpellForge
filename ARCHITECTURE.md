@@ -1,4 +1,4 @@
-# Architecture & context — Spellforge
+# Architecture & context — Prism
 
 Internal reference for fast onboarding (human or AI agent). Pairs with [README.md](README.md)
 (user-facing) — this file is the **how & why**. The roadmap, measured figures and open
@@ -6,18 +6,25 @@ decisions live in [plan.md](plan.md).
 
 ## TL;DR
 
-- **Nuxt 4 SPA** (`ssr: false`) + **Nitro** server routes. The server has two kinds of data:
+- **Two games, two universes**: One Piece Card Game (by day) and Magic: The Gathering (by
+  night). Each page declares its universe in its page meta; `app.vue` stamps it on
+  `<html data-universe>` and `assets/css/universes.css` re-themes the document.
+- **Nuxt 4, hybrid rendering** + **Nitro** server routes. Public pages are server-rendered
+  (`routeRules` in `nuxt.config.ts`: `/landing`, `/discover`, both libraries, card pages,
+  shared decks); the workshop (`/`, deck pages) stays a browser app. The server has two kinds
+  of data:
   - **User data** — accounts and decks in `.data/spellforge.db` (Drizzle + libSQL, migrated on
-    boot). Guests keep their decks in `localStorage` (`mtg_decks_v1`), locale in `mtg_locale`.
-  - **Card data** — local SQLite databases rebuilt offline from bulk dumps
-    (`.data/cards-mtg.db`, `.data/cards-optcg.db`). The app only reads them.
+    boot; the file keeps the project's former name). Guests keep their decks in `localStorage`
+    (`prism_decks_v2`, migrated from `mtg_decks_v1`), the locale is the `prism_locale` cookie.
+  - **Card data** — local SQLite databases rebuilt from bulk dumps by a nightly Nitro task
+    (`.data/cards-mtg.db`, `.data/cards-optcg.db`). Requests only read them.
 - **No runtime call to the Scryfall API.** Search, deck resolution, printings, autocomplete
   and the coach's card search all query `.data/cards-mtg.db`. Card images are served by the
   app from a disk mirror (see "Card images").
 - **External services still called at runtime**: [EDHREC](https://edhrec.com) (suggestions,
-  imports), [Archidekt](https://archidekt.com) (imports), the Anthropic API (coach),
-  `cards.scryfall.io` (once per image that is not mirrored yet) and Iconify (icons, see
-  "External dependencies").
+  imports), [Archidekt](https://archidekt.com) (imports), the Anthropic API (coach) and
+  `cards.scryfall.io` (once per Magic image that is not mirrored yet). One Piece images are
+  served from disk only.
 - The whole UI is driven by **one source of truth per deck: the raw decklist text**.
   Everything else (structured entries, resolved cards, stats) derives from it.
 
@@ -42,7 +49,16 @@ app/
   composables/                # see "Composables" below
     scryfall/                 # client-side adapters over the Scryfall-shaped JSON (helpers, toGameCard, toResolved, types)
   plugins/                    # deck-sync (guest → cloud), v-tilt directive, command palette
-  pages/                      # index (dashboard), deck/[id], landing, discover, shared/[shareId]
+  assets/css/universes.css    # per-universe tokens, fonts, cursors, textures
+  components/optcg/           # WantedCard (poster), FilterRail, CardView + CardSheet, DeckPanel, EffectText
+  components/mtg/             # GrimoireCard (library page)
+  components/deck/            # ShareModal, SaveWall (shared by both games)
+  components/landing/Portal.vue  # split-screen home: One Piece left, Magic right
+  pages/                      # index (dashboard), landing, discover, deck/[id] + shared/[shareId] (redirects)
+    one-piece/                # index (library), deck/[id], card/[number], shared/[shareId]
+    magic/                    # index (grimoire), deck/[id], card/[name], shared/[shareId]
+shared/                       # pure code for app, server and tests: game.ts (ids, capabilities,
+                              #   paths), decks.ts (guest storage v2), decklist formats, optcg rules
 server/
   api/
     cards/browse.get.ts       # card search: structured filters AND Scryfall syntax, compiled locally
@@ -51,7 +67,10 @@ server/
     cards/prints.get.ts       # every FR/EN printing of one card, for the edition picker
     cards/card-image.get.ts   # preview image by name, for the coach's hover cards
     cards/suggestions.get.ts  # EDHREC "played with" (server/utils/edhrec.ts)
-    landing/cards.get.ts      # landing hero art pool
+    landing/cards.get.ts      # landing Magic art pool
+    landing/optcg.get.ts      # landing One Piece posters
+    optcg/*                   # One Piece: browse, resolve, autocomplete, prints, sets
+    images/optcg/[lang]/[file].get.ts  # One Piece image mirror, disk only, other-language fallback
     images/mtg/[size]/[face]/[file].get.ts  # serves the image mirror, back-fills missing files once
     import.post.ts            # EDHREC / Archidekt URL → decklist
     ai/suggest.post.ts        # one-shot deck actions (complete, cut, curve, theme) on the coach engine
@@ -62,8 +81,11 @@ server/
   utils/                      # db.ts (app DB), edhrec.ts, suggestValidate.ts, rateLimit.ts, ownDeck.ts…
   eve/                        # coach: orchestrator, specialist agents, tools, in-memory runtime
   db/schema.ts, db/migrations/  # app DB schema (users, decks)
-  plugins/migrate.ts          # applies app DB migrations on boot
-scripts/                      # card ingestion, verification and image mirroring (run by hand)
+  plugins/migrate.ts          # applies app DB migrations on boot (a failure stops the server)
+  plugins/cards-bootstrap.ts  # builds missing card databases on boot
+  tasks/cards/refresh.ts      # nightly card refresh (scheduled in nuxt.config.ts)
+  routes/                     # robots.txt, sitemap.xml, sitemaps/{pages,one-piece,magic}.xml
+scripts/                      # card ingestion, verification and image mirroring (run by the task, or by hand)
 test/                         # Vitest, Node environment
 ```
 
@@ -80,8 +102,27 @@ test/                         # Vitest, Node environment
 The card databases are rebuildable caches, replaced wholesale by each ingest. Keeping them
 apart from the app DB means an ingest can never touch a deck. Keeping one file per game
 means a Magic refresh can never wipe One Piece. The app reads the Magic database through
-`useMtgCardsDb()` (`server/utils/cards/db.ts`, path overridable with `MTG_CARDS_DB`); no
-server code reads the One Piece database yet (plan.md, lot 6).
+`useMtgCardsDb()` and `useOptcgCardsDb()` (`server/utils/cards/db.ts`, paths overridable with
+`MTG_CARDS_DB` / `OPTCG_CARDS_DB`).
+
+### Refresh (`server/tasks/cards/refresh.ts`)
+
+Nitro task `cards:refresh`, scheduled at 04:30 (`nitro.scheduledTasks`). It runs
+`ingest-optcg.mjs`, `mirror-images-optcg.mjs` and `ingest-mtg.mjs` one after the other in
+**child processes**: the scripts use the synchronous libSQL client, which would freeze the
+server during a Magic rebuild. Each step gets three attempts (waits of 1 then 5 minutes;
+the mirror exits with code 2 on a partial run). After each successful step
+`reopenCardDbs()` drops the cached clients so the next request opens the swapped file; the
+old handles close 30 s later. Each script does nothing when its source has not moved, so a
+nightly run usually takes seconds. `server/plugins/cards-bootstrap.ts` starts the task at
+boot when a database is missing or empty (the server creates an empty file when a request
+opens a database that is not there; the scripts treat it as outdated).
+`CARDS_REFRESH_ON_BOOT=false` disables that. In development:
+`npx nuxi task run cards:refresh`.
+
+The Docker image ships `scripts/`, links `/app/node_modules` to the server bundle's
+`node_modules` (where the scripts find `@libsql/client`), and copies libSQL's native binding
+into the bundle: libsql loads it by a computed name the build trace cannot follow.
 
 ### Magic ingestion (`scripts/ingest-mtg.mjs`)
 
@@ -114,7 +155,10 @@ server code reads the One Piece database yet (plan.md, lot 6).
 
 | Module | Responsibility |
 |---|---|
-| `db.ts` | Lazy read-only client for `.data/cards-mtg.db`, separate from `useDb()`. |
+| `db.ts` | Lazy clients for both card databases, separate from `useDb()`; `reopenCardDbs()` after a refresh. |
+| `refresh.ts` | The refresh steps, `withRetries`, `runScript` (child process, output relayed to the log). |
+| `optcg-query.ts` | One Piece search. `op_numbers` holds one row per card number (what filters and rules need); `op_best` names the printing shown per site language, English filling what French lacks. |
+| `optcg-resolve.ts`, `optcg-shape.ts`, `optcg-params.ts` | One Piece resolution by number (and art id), row → `OptcgCard`, query parameter allowlists. |
 | `mtg-query.ts` | The search engine. Colour tests are integer masks (`id<=` → `(mask & ~allowed) = 0`, `color>=` → `(mask & wanted) = wanted`). Sorting reads the non-null `*_sort` columns: an `IS NULL` guard at the head of `ORDER BY` defeats every index. A `WITH page AS (…)` CTE filters, sorts and pages `oracle_cards` **before** joining `best_printings` (otherwise SQLite scanned all of `best_printings`). Also builds the autocomplete, pinned-printing, prints and coach queries. Always applies `legal_commander = 1`, `is_funny = 0`, `is_extra = 0`. |
 | `mtg-syntax.ts` | Scryfall query syntax → one SQL `WHERE` fragment, ANDed with the builder's filters. Tokenizer + parser (`or`, parentheses, `-` negation) + per-keyword handlers. Any filter it cannot honour throws `QuerySyntaxError` with a code (`unknownKeyword`, `unsupportedKeyword`, `badValue`, `badOperator`, `unbalanced`, `tooComplex`) and the offending term — never a silent no-op. Display options (`unique:`, `lang:`, `dir:`…) are ignored; `order:` overrides the requested sort. Printing terms (`s:`, `r:`, `a:`, `year:`, `is:promo`…) are all evaluated on **one** printing, of English printings. Power, toughness, loyalty and mana cost are tested per face. Known departures are listed in the module header. |
 | `mtg-shape.ts` | Rebuilds the Scryfall JSON shape the client consumes (`image_uris` / `card_faces`, colours from masks, `all_parts` tokens, `prices.eur`) from local rows. Image URLs point at the local image route. |
@@ -130,8 +174,11 @@ server code reads the One Piece database yet (plan.md, lot 6).
 fetched **once** from `cards.scryfall.io`, written beside the target then renamed, and served
 from disk afterwards. Responses are `immutable` for a year: the version is in the URL.
 Every path segment is validated against an allowlist before touching the disk or the
-upstream URL. One Piece images are mirrored to `.data/images/optcg` by
-`scripts/mirror-images-optcg.mjs`.
+upstream URL.
+
+`/api/images/optcg/{lang}/{id}?v=` serves `.data/images/optcg` (7 731 files, French and
+English) and **never** calls Bandai: a missing file falls back to the other language, then
+404. `scripts/mirror-images-optcg.mjs` fills the mirror (only missing files are fetched).
 
 Because images are same-origin, the PDF export reads them directly into data URLs; the
 former CORS image proxy is gone.
@@ -146,9 +193,11 @@ Listed in plan.md §7, with Archidekt added here:
 | Archidekt (`archidekt.com/api`) | Deck imports |
 | Anthropic API | The coach and the one-shot deck actions |
 | `cards.scryfall.io` | One request per image that is not on disk yet |
-| Iconify (`api.iconify.design`) | With `ssr: false`, `@nuxt/icon` downloads any icon not bundled. A fix is proposed in plan.md §7, not applied |
+| punk-records (GitHub), Bandai's site | One Piece data and images, read by the nightly task only |
 
-Links to scryfall.com (card page, command palette) are plain user-opened links, not API calls.
+Icons are served by the app (`/api/_nuxt_icon`) since hybrid rendering. Links to
+scryfall.com and Cardmarket are plain user-opened links, not API calls; the command palette
+opens cards in the local libraries.
 
 ## Composables (the core)
 
@@ -166,7 +215,11 @@ Links to scryfall.com (card page, command palette) are plain user-opened links, 
 | `useAppTheme` | `useState` singleton: active deck colours drive the app-wide accent + background tint. |
 | `useCardmarket` | `searchUrl`, `linksForResolved`, `wantsListText`, `wantsListImportUrl`. |
 | `usePdfExport` | jsPDF layout + render (A4/A3, cut guides); images fetched same-origin (8 at a time) into an LRU + negative cache. |
-| `useLocale` | FR/EN i18n dictionary (including the `search.syntax.*` error strings) + `locale`/`isFr`, `rarityLabel`. |
+| `useLocale` | FR/EN i18n dictionary (including the `search.syntax.*` error strings) + `locale`/`isFr`, `rarityLabel`. The locale is read once from the `prism_locale` cookie (by the server on a rendered page); `?lang=` changes and keeps it (`app.vue`). |
+| `useUniverse`, `useUniverseFx` | The page's universe (page meta), and the add-card burst ("DON!!" by day, a gold word by night). |
+| `useOptcgDeck`, `useOptcgSearch` | One Piece deck editing over the decklist text (rules from `shared/optcg/deck.ts`) and library search. |
+| `useDeckAutosave`, `useDeckFingerprints` | Debounced save with undo/redo shared by both deck pages; per-deck tile data for the dashboard (Leader resolved in one request). |
+| `usePublicSeo` | Title, description, canonical, hreflang alternates, Open Graph for server-rendered pages (`NUXT_PUBLIC_SITE_URL`). |
 | `useCoach`, `useCoachHistory` | Eve coach client (session + NDJSON stream, tool-call labels) and its stored conversations. |
 | `useSpotlight` | pointer-driven CSS-var effect (rAF, reduced-motion aware). The tilt effect is the `v-tilt` directive (`plugins/tilt.client.ts`). |
 | `useErrors` | error-message helpers. |
@@ -176,8 +229,8 @@ Links to scryfall.com (card page, command palette) are plain user-opened links, 
 `ResolvedCard.card` is a `GameCard`: a base with the fields every game shares (`id`, `name`,
 `cmc`, `colorIdentity`, `typeLine`) and a `game` discriminant (`'mtg' | 'optcg'`). The Magic
 variant carries the Scryfall-shaped JSON in `raw`; Magic-only code must narrow first, via
-`mtgRaw()`. The One Piece variant is declared with `raw: unknown` until its adapter exists,
-so a single-member union cannot let code reach `raw` without narrowing.
+`mtgRaw()`. One Piece screens use their own `OptcgCard` (`shared/optcg/types.ts`) end to
+end; there is no polymorphic card provider (plan.md §6 ter).
 
 ## Key invariants (don't break these)
 
@@ -200,17 +253,29 @@ so a single-member union cannot let code reach `raw` without narrowing.
 7. **Resolution preserves order.** `/api/cards/resolve` answers by index; an invalid entry
    rejects the whole request rather than shifting every card after it.
 8. **Server caching**: the local card routes are not cached (indexed queries are faster than a
-   cache round trip). Cached: the landing art pool (2 min per language), EDHREC (24 h, empty
-   results never cached) and the coach's `validate_cards` (5 min). The Nitro cache is stored
-   on disk in `.data/cache`. Cache keys must include every dimension that changes the result.
-9. **`ssr: false`** but shared state still uses `useState` (SSR-safe singleton pattern) for consistency.
+   cache round trip). Cached: the landing art pools (2 min per language), EDHREC (24 h, empty
+   results never cached), the coach's `validate_cards` (5 min) and the sitemap card lists
+   (24 h). The Nitro cache is stored on disk in `.data/cache`. Cache keys must include every
+   dimension that changes the result. A cached **handler** does not see the request's headers
+   (the host included): anything built from the request stays outside the cache, as the
+   sitemaps do with `defineCachedFunction`.
+9. **Hybrid rendering**: a server-rendered page hands over `useState` as the server saw it, so
+   the guest deck list arrives empty; `plugins/deck-sync.client.ts` reloads it from
+   `localStorage` before anything can write. Never read `localStorage`, `window` or
+   `document` at setup time in code a public page runs; load public data with
+   `useAsyncData`/`useFetch` so it is rendered, and keep library searches client-side.
 10. **Accessibility**: focus-visible neon ring everywhere; non-colour cues on status; effects respect
     `prefers-reduced-motion`.
+11. **One Piece cards are never printed.** `CAPABILITIES.optcg.proxyPdf` is false, One Piece
+    pages never load the PDF code, and `assertProxyPrintable()` makes the export throw on a
+    One Piece card anyway.
+12. **Shared decks are indexed only when listed in Discover** (`noindex` otherwise, and only
+    public decks appear in the sitemap).
 
-## Data flow (open a deck)
+## Data flow (open a Magic deck)
 
 ```
-route /deck/:id
+route /magic/deck/:id  (/deck/:id redirects to the deck's universe)
   → watch([deckId, storeReady]) → initDeck(): load raw from useDeckStore, builder.load(),
     background loadCards({silent}) on nextTick
   → useResolvedCards → fetchCollection(entries, locale)
@@ -272,5 +337,6 @@ local `npm run cards:ingest`.
 
 ## Roadmap
 
-See [plan.md](plan.md) §6: scheduled ingestion (lot 1), `CardProvider` extraction (lot 3),
-One Piece adapter (lot 6), multi-game UI (lot 7), SEO (lot 8), rebrand (lot 9).
+[plan.md](plan.md) §6 lists the delivered lots (0 to 9) and §6 ter the decisions taken along
+the way. Open points: rate limiting `/api/cards/browse` at the reverse proxy, running `npm run
+test` in CI, and whether to hide Universes Beyond reprints from the default Magic display.

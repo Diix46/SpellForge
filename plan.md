@@ -1,7 +1,7 @@
 # Plan — Prism : multi-univers & données locales
 
-> Statut : **à valider avant implémentation**. Rien n'est codé tant que ce document
-> n'est pas approuvé. Tous les chiffres ci-dessous sont **mesurés**, pas estimés
+> Statut : **validé le 16/09/2026, lots 0 à 9 livrés le même jour** (bilan au §6,
+> arbitrages au §6 ter). Tous les chiffres ci-dessous sont **mesurés**, pas estimés
 > (téléchargements réels des dumps Scryfall, base SQLite réellement construite,
 > `Content-Length` réels sur le CDN, probes FTS5 contre `@libsql/client` du projet).
 
@@ -16,7 +16,7 @@
 | One Piece | Bibliothèque + deckbuilding. **Jamais de proxy, jamais d'export imprimable** |
 | Données cartes | **Zéro dépendance API au runtime.** Tout en base locale |
 | Déploiement | L'app tourne sur **192.168.1.2** (Docker + volume nommé) |
-| Images One Piece | **Miroir complet FR local** (~260 Mio) |
+| Images One Piece | **Miroir complet FR et EN local** (7 731 visuels, ~1,9 Go ; décision révisée, cf. §6 ter) |
 | Direction visuelle | Deux mondes opposés : One Piece de jour sur papier, Magic de nuit sur obsidienne |
 
 Maquette de référence : https://claude.ai/artifact/4xdKcaNZMmijH8ExhSv3cp
@@ -177,15 +177,15 @@ comportement observable ne change qu'au lot 4.
 | # | Lot | Contenu | Sortie attendue |
 |---|---|---|---|
 | **0** ✔ | Assainissement — **fait** | jspdf 2.5.2→**4.2.1** (sécurité, cf. §8 bis), `@nuxt/ui` 4.8.2→**4.11.1**, `npm audit fix`, Renovate `pnpmDedupe`→`npmDedupe`, Dockerfile node:20→**24**, purge des 3 polices inutilisées | ✔ lint 0 · typecheck 0 · build 0 · **`npm audit --omit=dev` : 0 vulnérabilité** · build 4,32 → **4,07 Mo** |
-| **1** ~ | Ingestion MTG **et** One Piece + tests | Streaming JSONL, schéma, index, FTS5, échange atomique, **une base par jeu**, nouvelles tentatives réseau (3 essais), `ANALYZE`. Vitest en place. Reste : passer l'ingestion en tâche Nitro planifiée | ✔ MTG **168 Mo en 88 s** (38 794 cartes / 174 237 impressions) · OP **6,7 Mo en 5 s** (2 888 FR + 4 843 EN) · base de recherche = **31 830 cartes, exactement `legal:commander -is:funny`** · `npm run test` : **107/107** (61 passent et 46 sont ignorés sur un clone sans base) · version de schéma : une base plus ancienne est reconstruite d'office |
+| **1** ✔ | Ingestion MTG **et** One Piece + tests | Streaming JSONL, schéma, index, FTS5, échange atomique, **une base par jeu**, nouvelles tentatives réseau (3 essais), `ANALYZE`. Vitest en place. Tâche Nitro `cards:refresh` planifiée chaque nuit (processus enfants, 3 essais par étape, réouverture des bases), construction au premier démarrage | ✔ MTG **168 Mo en 88 s** (38 794 cartes / 174 237 impressions) · OP **6,7 Mo en 5 s** (2 888 FR + 4 843 EN) · base de recherche = **31 830 cartes, exactement `legal:commander -is:funny`** · `npm run test` : **107/107** (61 passent et 46 sont ignorés sur un clone sans base) · version de schéma : une base plus ancienne est reconstruite d'office |
 | **2** ✔ | Moteur de recherche — **fait** | `server/utils/cards/mtg-query.ts` : thèmes en FTS5, masques de couleur, budget, identité, tris, pagination, épinglage, autocomplétion | ✔ **3,4 ms** sur la navigation par défaut (168 → 66 → 3,4), page 20 à **3,6 ms** (109), résultats justes en VF · plan d'exécution sans `SCAN bp` ni tri du jeu complet |
-| **3** ~ | `GameCard` — **fait** ; `CardProvider` — reste | `ResolvedCard.card` devient une union discriminée par jeu ; `mtgRaw()` oblige chaque appel spécifique à Magic à se déclarer. Reste : extraire `providers/mtg/` depuis `useMtg` + `scryfall/*` | ✔ typecheck **42 → 0** · 23 tests (dont le repli du type-line sur la face avant) · bundle **inchangé à 4,07 Mo** |
+| **3** ✔ | `GameCard` — **fait** ; `CardProvider` — **abandonné** (cf. §6 ter) | `ResolvedCard.card` devient une union discriminée par jeu ; `mtgRaw()` oblige chaque appel spécifique à Magic à se déclarer | ✔ typecheck **42 → 0** · 23 tests (dont le repli du type-line sur la face avant) · bundle **inchangé à 4,07 Mo** |
 | **4** ✔ | Bascule — **faite**, cf. §6 bis | La base locale sert l'app ; suppression des proxies Scryfall | ✔ **zéro appel à l'API Scryfall au runtime** · proxies de recherche et d'images supprimés · syntaxe Scryfall compilée en local |
 | **5** ✔ | Images — **fait** | Miroir OP complet (FR + repli EN) ; miroir Magic `small` + `normal` des seules impressions affichables ; une route locale sert le miroir et récupère une seule fois le reste (`large`, `png`) | ✔ OP **4 374 visuels, 801 Mo** · Magic **134 226 fichiers, 6,36 Go, 19 min, 0 échec** · `large` : **217 ms** à la 1re demande, **1,5 ms** ensuite |
-| **6** ~ | Adaptateur One Piece — **serveur fait** (base enrichie, règles, recherche, résolution, images) | Ingestion punk-records, moteur de règles OPTCG (50 + leader, 4 max par numéro, couleurs ⊆ leader, rotation par bloc, paires bannies) | Un deck OP se construit et se valide |
-| **7** | UI multi-univers | Colonne `game`, migration `localStorage` v2, rail de filtres piloté par l'adaptateur, thèmes par univers, composants de coût | La maquette devient l'application |
-| **8** | SEO | Rendu hybride sur les pages publiques (bibliothèque, fiche carte, `/discover`, `/shared/:id`), robots, sitemap | Une fiche carte est indexable |
-| **9** | Rebrand | Prism : nom, logo, copies, métadonnées | — |
+| **6** ✔ | Adaptateur One Piece — **fait** (base enrichie, règles, recherche, résolution, images, bibliothèque, atelier) | Ingestion punk-records, moteur de règles OPTCG (50 + leader, 4 max par numéro, couleurs ⊆ leader, rotation par bloc, paires bannies) | ✔ Un deck OP se construit et se valide : 50/50 « légal Standard » vérifié à l'écran |
+| **7** ✔ | UI multi-univers — **faite** | Colonne `game`, migration `localStorage` v2, rail de filtres, thèmes par univers (jetons, polices, décors, curseurs, effets d'ajout), tableau de bord par monde, portail d'accueil scindé, partage et Découvrir par univers, palette ⌘K par univers, garde d'impression PDF | ✔ La maquette devient l'application, vérifiée dans Chrome (Windows) |
+| **8** ✔ | SEO — **fait** | Rendu hybride sur les pages publiques (accueil, bibliothèques, pages carte, `/discover`, decks partagés), langue en cookie + `?lang=`, canonique, hreflang, Open Graph, robots, sitemap (3 fichiers, 34 615 cartes) | ✔ `/one-piece/card/OP01-016` et `/magic/card/Sol%20Ring` rendues par le serveur (titre, h1, canonique) ; carte inconnue → 404 `noindex` |
+| **9** ✔ | Rebrand — **fait** | Prism : nom, logo à deux facettes (rouge One Piece, or Magic), favicon, copies sans tirets longs, métadonnées localisées | Dépôt, image GHCR et `.data/spellforge.db` gardent l'ancien nom (compatibilité) |
 
 Le lot 3 est le verrou : **tant que `ResolvedCard` transporte le JSON brut de
 Scryfall dans 25 fichiers, aucun second jeu n'est possible.**
@@ -275,6 +275,25 @@ Arbitrages rendus (autonomie accordée le 16/09) :
 | Échec de migration | Le serveur refuse de démarrer | Mieux que des 500 silencieux sur toutes les routes de decks |
 | Deck de Magic | La page existante est déplacée et habillée, pas réécrite | Elle fonctionne ; la réécrire en espace de travail générique est un risque sans gain pour l'utilisateur. Les pièces neutres (barre d'outils, historique, sauvegarde) sont partagées |
 
+### Arbitrages de la fin de programme (16/09, autonomie)
+
+| Question | Décision | Pourquoi |
+|---|---|---|
+| `CardProvider` (fin du lot 3) | **Abandonné** | Aucun écran n'est polymorphe : chaque univers a ses pages et ses composables (`useOptcgDeck`, `useCardSearch`…). Le contrat commun est `shared/game.ts` (capacités, chemins) et `GameCard`. Déplacer `useMtg` et `scryfall/*` dans `providers/` coûterait un gros diff sans gain |
+| Pages rendues par le serveur | Accueil `/landing`, bibliothèques, pages carte, Découvrir, decks partagés. `/` reste une SPA | `/` choisit entre accueil et tableau de bord d'après les decks du navigateur, que le serveur ne voit pas. Le document de base porte quand même titre et description |
+| Grilles des bibliothèques | Rendues dans le navigateur | Les rendre côté serveur demanderait un état de recherche partagé serveur/client ; l'indexation passe par les pages carte et le sitemap |
+| Langue | Cookie `prism_locale`, `?lang=` la change et la garde | Le serveur rend la bonne langue sans éclair ; les alternates hreflang pointent vers `?lang=` |
+| Decks partagés | Indexés seulement s'ils sont listés dans Découvrir | Un lien de partage reste un lien, pas une publication |
+| Adresse des cartes Magic | Nom anglais, face avant pour une carte double | Stable entre les langues, jamais de barre oblique dans l'adresse |
+| Rafraîchissement des cartes | Processus enfants, pas de fils de travail | Les scripts existent et sont testés ; le client libSQL synchrone bloquerait le serveur |
+| Base de cartes absente au démarrage | Construite aussitôt en tâche de fond | Une installation neuve fonctionne sans intervention |
+
+**Découvert en route (préexistant) :** l'image Docker ne démarrait pas, le binaire
+natif de libSQL n'étant pas suivi par le build (corrigé, vérifié en construisant
+l'image). Les libellés de rareté avaient été supprimés comme « clés mortes »
+(corrigé). Le passage au rendu hybride a fait disparaître l'appel à Iconify : les
+icônes passent désormais par la route locale `/api/_nuxt_icon`.
+
 ---
 
 ## 7. Ce qui reste externe (assumé)
@@ -285,7 +304,8 @@ Arbitrages rendus (autonomie accordée le 16/09) :
 | **Archidekt** | Import d'un deck public par URL (`server/api/import.post.ts`), à la demande de l'utilisateur. Comme EDHREC, ce n'est pas de la donnée carte : les noms importés sont ensuite résolus dans la base locale |
 | **API Anthropic** | Le coach. Son outil `scryfall_search` passe désormais par l'analyseur local ; une syntaxe non prise en charge renvoie au modèle un message qui nomme le terme à corriger |
 | **CDN Scryfall** (`cards.scryfall.io`) | Sollicité **une seule fois par image**, pour les tailles non mirorées (`large`, `png`) : la route locale récupère puis sert depuis le disque (217 ms la 1re fois, 1,5 ms ensuite). Explicitement exempté de limite de débit par Scryfall |
-| **Iconify** (`api.iconify.design` + 2 miroirs) | **Découvert en 4d, préexistant.** Avec `ssr: false`, `@nuxt/icon` choisit le fournisseur `iconify` et télécharge en ligne toute icône non embarquée ; la route `/api/_nuxt_icon` n'est jamais enregistrée. Correctif proposé, **non appliqué** — hors périmètre « cartes », et le rendu des icônes doit être vérifié à l'écran : `icon: { provider: 'server', serverBundle: { collections: ['lucide', 'simple-icons'] }, fallbackToApi: false }`, les deux collections étant déjà en dépendance |
+| ~~**Iconify**~~ | **Réglé par le lot 8** : avec le rendu hybride, `@nuxt/icon` sert les icônes par `/api/_nuxt_icon` depuis les collections locales (vérifié dans les requêtes réseau du navigateur) |
+| **punk-records** (GitHub) et **site Bandai** | Sources de la base et des images One Piece, lues **uniquement par la tâche nocturne**, jamais par une requête d'utilisateur |
 
 ---
 
