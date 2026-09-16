@@ -147,10 +147,11 @@ export async function toScryfallShape(db: Client, rows: Row[]): Promise<Row[]> {
       }))
     }
 
-    // Only tokens are stored — the one component the client reads.
-    if (parts.length) {
-      card.all_parts = parts.map(p => ({ id: '', component: 'token', name: p.related_name }))
-    }
+    // Only tokens are stored — the one component the client reads. Always
+    // emitted, empty when the card makes none: the data is oracle-level and
+    // complete, so "no tokens" is a known answer. Scryfall omits the field
+    // instead, which made the client re-query for every token-less card.
+    card.all_parts = parts.map(p => ({ id: '', component: 'token', name: p.related_name }))
 
     return card
   })

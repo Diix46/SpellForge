@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ResolvedRow } from '~/composables/scryfall/toResolved'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -302,20 +303,20 @@ function isWithinIdentity(card: ScryfallCard): boolean {
 // printing: token art rarely matters for a proxy sheet, and this reuses the
 // normal resolution path instead of a bespoke fetch.
 //
-// Scryfall only populates all_parts on the English/default printing — a FR
-// (or other locale) printing object omits it entirely, and this app searches
-// the site locale's printing by default. `card.name` is always the canonical
-// English oracle name regardless of printing language, so re-querying without
-// a lang filter reliably lands on the printing that actually carries the data
-// (cached server-side, so repeat adds of the same card are instant).
+// Cards served from the local database always carry `all_parts`, at oracle
+// level, whatever the printing's language. Only results of a raw Scryfall-syntax
+// search still come straight from Scryfall, which attaches the field to the
+// default printing alone — for those, look the tokens up locally by canonical
+// name.
 async function addAssociatedTokens(card: ScryfallCard) {
   let allParts = card.all_parts
   if (!allParts) {
     try {
-      const res = await $fetch<{ cards: ScryfallCard[] }>('/api/cards/search', {
-        params: { q: `!"${card.name.replace(/"/g, '')}"`, order: 'edhrec', dir: 'auto' },
+      const { cards } = await $fetch<{ cards: ResolvedRow[] }>('/api/cards/resolve', {
+        method: 'POST',
+        body: { lang: 'en', entries: [{ name: card.name }] },
       })
-      allParts = res.cards[0]?.all_parts
+      allParts = cards[0]?.card?.all_parts
     }
     catch {
       return // best-effort: skip token auto-add on a network hiccup
