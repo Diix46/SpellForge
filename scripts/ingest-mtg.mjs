@@ -50,6 +50,11 @@ const EXTRA_LAYOUTS = new Set(['art_series', 'token', 'double_faced_token', 'emb
 const EXTRA_SET_TYPES = new Set(['memorabilia', 'token', 'minigame'])
 
 const force = process.argv.includes('--force')
+
+// Bump whenever the schema changes. A database built by an older script is
+// rebuilt even when the Scryfall dump has not moved: the app would otherwise
+// query columns that do not exist yet.
+const SCHEMA_VERSION = '2'
 const log = (...a) => console.log(...a)
 const mb = n => `${(n / 1048576).toFixed(1)} MB`
 
@@ -96,6 +101,85 @@ function stripReminder(text) {
   return text ? text.replace(/\([^)]*\)/g, '') : null
 }
 
+// Produced mana can be colourless, which a colour never is: one extra bit.
+const MANA_BIT = { ...COLOR_BIT, C: 32 }
+
+function manaMask(symbols) {
+  let m = 0
+  for (const s of symbols || []) m |= MANA_BIT[s] || 0
+  return m
+}
+
+/**
+ * Rules text of every face. Multi-faced cards have no top-level oracle_text,
+ * so reading only the first face left back faces unsearchable: Delver of
+ * Secrets could not be found by its flying side.
+ */
+function oracleAll(card) {
+  const texts = (card.card_faces || []).map(f => f.oracle_text).filter(Boolean)
+  return texts.length ? texts.join('\n//\n') : (card.oracle_text || null)
+}
+
+const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Oracle text now says "this creature" where it used to repeat the card's name
+ * (the 2025 self-reference update), and Scryfall's `~` matches both forms.
+ */
+const SELF_REFERENCE = /\bthis (?:artifact|attraction|aura|background|battle|card|case|class|contraption|creature|enchantment|equipment|land|permanent|planeswalker|room|saga|siege|spell|token|vehicle)\b/gi
+
+/**
+ * The text `o:"~ …"` searches: the card's own name and its self-references
+ * written `~`. Whole words only — "Fire" from Fire // Ice must not turn
+ * "Firebreathing" into "~breathing".
+ */
+function selfText(card, text) {
+  if (!text)
+    return null
+  let out = text.replace(SELF_REFERENCE, '~')
+  const full = [card.name, ...(card.card_faces || []).map(f => f.name)].filter(Boolean)
+  // Legends call themselves by their short name: "Chandra deals 2 damage".
+  const short = full.filter(n => n.includes(', ')).map(n => n.split(', ')[0])
+  const names = new Set([...full, ...short])
+  for (const n of [...names].sort((a, b) => b.length - a.length))
+    out = out.replace(new RegExp(`(?<!\\p{L})${escapeRegExp(n)}(?!\\p{L})`, 'gu'), '~')
+  return out
+}
+
+/**
+ * Generic mana in a cost, wherever it is written: {X}{2}{U} holds 2. Null when
+ * the cost has none, so `m:1` does not match {G}.
+ */
+function genericMana(cost) {
+  const numbers = [...(cost || '').matchAll(/\{(\d+)\}/g)].map(m => Number(m[1]))
+  return numbers.length ? numbers.reduce((a, b) => a + b, 0) : null
+}
+
+/**
+ * One row per face: Scryfall checks costs, types and stats face by face, so
+ * `pow>=3` finds Delver of Secrets by its 3/2 back, and `m:{G}{G}` does not
+ * add up the two halves of "{1}{G} // {G}". A card without faces is its own.
+ */
+function faceRows(card) {
+  const sources = card.card_faces?.length ? card.card_faces : [card]
+  const rows = sources.map(f => [
+    f.mana_cost || null,
+    genericMana(f.mana_cost),
+    f.type_line ?? null,
+    f.oracle_text ? 1 : 0,
+    f.power ?? null,
+    f.toughness ?? null,
+    f.loyalty ?? null,
+  ])
+  return [...new Map(rows.map(r => [r.join('|'), r])).values()]
+}
+
+/** Formats where the card is legal, restricted or banned; "not_legal" is implied. */
+function legalityJson(card) {
+  const kept = Object.entries(card.legalities || {}).filter(([, v]) => v !== 'not_legal')
+  return kept.length ? JSON.stringify(Object.fromEntries(kept)) : null
+}
+
 // ─── batched writer ────────────────────────────────────────────────────────
 // One multi-row INSERT per flush inside an explicit transaction. Row-at-a-time
 // execute() would spend the whole run in round-trip overhead.
@@ -140,6 +224,16 @@ const SCHEMA = [
      cmc             REAL,
      layout          TEXT,
      keywords        TEXT,
+     -- Search-only columns for the query syntax (o:, fo:, f:, produces:).
+     -- oracle_all joins every face; rules_text drops reminder text, as o:
+     -- does; self_text also writes the card's self-references as ~.
+     oracle_all      TEXT,
+     rules_text      TEXT,
+     self_text       TEXT,
+     legalities      TEXT,
+     produced_mask   INTEGER NOT NULL DEFAULT 0,
+     is_reserved     INTEGER NOT NULL DEFAULT 0,
+     is_game_changer INTEGER NOT NULL DEFAULT 0,
      colors_mask     INTEGER NOT NULL DEFAULT 0,
      identity_mask   INTEGER NOT NULL DEFAULT 0,
      legal_commander INTEGER NOT NULL DEFAULT 0,
@@ -181,7 +275,10 @@ const SCHEMA = [
      -- Marvel printing.
      is_paper         INTEGER NOT NULL DEFAULT 0,
      is_digital       INTEGER NOT NULL DEFAULT 0,
-     is_ub            INTEGER NOT NULL DEFAULT 0
+     is_ub            INTEGER NOT NULL DEFAULT 0,
+     -- Memorabilia and joke sets hide a printing, not a card: a gold-bordered
+     -- reprint must not hide Demonic Tutor. Rolled up in finalize().
+     set_type         TEXT
    )`,
   `CREATE TABLE card_faces (
      printing_id       TEXT NOT NULL,
@@ -195,6 +292,18 @@ const SCHEMA = [
      printed_text      TEXT,
      img_version       TEXT,
      PRIMARY KEY (printing_id, face_index)
+   )`,
+  // One row per face, for the query syntax's face-level tests (m:, pow:,
+  // is:vanilla…). has_text stands in for the rules text already stored above.
+  `CREATE TABLE oracle_faces (
+     oracle_id TEXT NOT NULL,
+     mana_cost TEXT,
+     generic   INTEGER,
+     type_line TEXT,
+     has_text  INTEGER NOT NULL DEFAULT 0,
+     power     TEXT,
+     toughness TEXT,
+     loyalty   TEXT
    )`,
   `CREATE TABLE card_parts (
      oracle_id    TEXT NOT NULL,
@@ -236,13 +345,40 @@ const INDEXES = [
   `CREATE INDEX idx_print_best     ON printings(oracle_id, lang, is_real_image, is_highres)`,
   `CREATE UNIQUE INDEX idx_print_pin ON printings(set_code, collector_number, lang)`,
   `CREATE INDEX idx_print_released ON printings(oracle_id, released_at DESC)`,
+  // `cmc>pow` probes each card's faces; without this it rescanned all of them
+  // for every card and held the server for three minutes.
+  `CREATE INDEX idx_faces_oracle   ON oracle_faces(oracle_id)`,
+  // `r:mythic` becomes "cards with a mythic printing": a lookup, not a scan.
+  `CREATE INDEX idx_print_rarity   ON printings(rarity, oracle_id)`,
   `CREATE INDEX idx_parts_oracle   ON card_parts(oracle_id)`,
 ]
 
 // ─── step 1 — bulk metadata ────────────────────────────────────────────────
 
+/** The network cause behind undici's bare "fetch failed". */
+const causeOf = e => [e.message, e.cause?.code ?? e.cause?.message].filter(Boolean).join(' — ')
+
+/**
+ * fetch with three attempts. Connection failures here are transient and were
+ * seen twice in a row on a working network, while each attempt costs nothing
+ * next to a failed nightly refresh. HTTP errors are not retried.
+ */
+async function fetchRetry(url, init, attempts = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      return await fetch(url, init)
+    }
+    catch (e) {
+      if (i >= attempts)
+        throw new Error(`${url.split('?')[0]} : ${causeOf(e)}`)
+      log(`  ! essai ${i}/${attempts} échoué (${causeOf(e)}), nouvel essai dans ${i * 2} s`)
+      await new Promise(r => setTimeout(r, i * 2000))
+    }
+  }
+}
+
 async function fetchBulkMeta() {
-  const res = await fetch('https://api.scryfall.com/bulk-data/all_cards', {
+  const res = await fetchRetry('https://api.scryfall.com/bulk-data/all_cards', {
     headers: { 'User-Agent': UA, 'Accept': 'application/json' },
   })
   if (!res.ok)
@@ -260,8 +396,10 @@ async function alreadyCurrent(updatedAt) {
     return false
   try {
     const db = createClient({ url: `file:${FINAL_DB}` })
-    const r = await db.execute({ sql: `SELECT value FROM meta WHERE key='bulk_updated_at'`, args: [] })
-    return r.rows[0]?.value === updatedAt
+    const r = await db.execute({ sql: `SELECT key, value FROM meta WHERE key IN ('bulk_updated_at', 'schema_version')`, args: [] })
+    db.close()
+    const meta = Object.fromEntries(r.rows.map(row => [row.key, row.value]))
+    return meta.bulk_updated_at === updatedAt && meta.schema_version === SCHEMA_VERSION
   }
   catch { return false }
 }
@@ -271,7 +409,7 @@ async function alreadyCurrent(updatedAt) {
 async function download(uri, expected) {
   log(`  ↓ ${uri.split('/').pop()}  (${mb(expected)})`)
   const t0 = Date.now()
-  const res = await fetch(uri, { headers: { 'User-Agent': UA } })
+  const res = await fetchRetry(uri, { headers: { 'User-Agent': UA } })
   if (!res.ok)
     throw new Error(`download: HTTP ${res.status}`)
 
@@ -304,6 +442,13 @@ async function ingest(db) {
     'cmc',
     'layout',
     'keywords',
+    'oracle_all',
+    'rules_text',
+    'self_text',
+    'legalities',
+    'produced_mask',
+    'is_reserved',
+    'is_game_changer',
     'colors_mask',
     'identity_mask',
     'legal_commander',
@@ -334,6 +479,7 @@ async function ingest(db) {
     'is_paper',
     'is_digital',
     'is_ub',
+    'set_type',
   ])
   const faces = new Batch(db, 'card_faces', [
     'printing_id',
@@ -348,8 +494,64 @@ async function ingest(db) {
     'img_version',
   ])
   const parts = new Batch(db, 'card_parts', ['oracle_id', 'related_name'])
+  const faceStats = new Batch(db, 'oracle_faces', ['oracle_id', 'mana_cost', 'generic', 'type_line', 'has_text', 'power', 'toughness', 'loyalty'])
 
   const seenOracle = new Set()
+  const pendingOracle = new Map()
+
+  async function pushOracle(c, oracleId) {
+    const face0 = c.card_faces?.[0]
+    // Oracle-level fields are language-invariant in Scryfall (the localized
+    // text lives in printed_*), so any canonical row is authoritative.
+    const typeLine = c.type_line ?? face0?.type_line ?? null
+    const oracleText = c.oracle_text ?? face0?.oracle_text ?? null
+    const legal = c.legalities?.commander === 'legal' ? 1 : 0
+    // ~91% recall against Scryfall's own is:commander — Backgrounds and
+    // partner variants need a hand-maintained exception list on top.
+    const isCmd = legal && (/Legendary.*Creature/i.test(typeLine || '')
+      || /can be your commander/i.test(oracleText || ''))
+      ? 1
+      : 0
+    const name = c.name || ''
+    const rules = stripReminder(oracleAll(c))
+
+    await oracles.push([
+      oracleId,
+      name,
+      fold(name),
+      fold(name.split(' // ')[0]),
+      typeLine,
+      oracleText,
+      c.mana_cost ?? face0?.mana_cost ?? null,
+      num(c.cmc) ?? 0,
+      c.layout || null,
+      c.keywords?.length ? JSON.stringify(c.keywords) : null,
+      oracleAll(c),
+      rules,
+      selfText(c, rules),
+      legalityJson(c),
+      manaMask(c.produced_mana),
+      c.reserved ? 1 : 0,
+      c.game_changer ? 1 : 0,
+      mask(c.colors ?? face0?.colors),
+      mask(c.color_identity),
+      legal,
+      isCmd,
+      // Joke and memorabilia sets are rolled up from every printing in
+      // finalize(); only the layout decides here.
+      0,
+      EXTRA_LAYOUTS.has(c.layout) ? 1 : 0,
+      c.edhrec_rank ?? null,
+    ])
+
+    for (const row of faceRows(c))
+      await faceStats.push([oracleId, ...row])
+
+    for (const p of c.all_parts || []) {
+      if (p.component === 'token' && p.name)
+        await parts.push([oracleId, p.name])
+    }
+  }
   const seenPin = new Set()
   let lines = 0
   let kept = 0
@@ -395,43 +597,16 @@ async function ingest(db) {
     const face0 = c.card_faces?.[0]
 
     if (!seenOracle.has(oracleId)) {
-      seenOracle.add(oracleId)
-      // Oracle-level fields are language-invariant in Scryfall (the localized
-      // text lives in printed_*), so the first row we meet is authoritative.
-      const typeLine = c.type_line ?? face0?.type_line ?? null
-      const oracleText = c.oracle_text ?? face0?.oracle_text ?? null
-      const legal = c.legalities?.commander === 'legal' ? 1 : 0
-      // ~91% recall against Scryfall's own is:commander — Backgrounds and
-      // partner variants need a hand-maintained exception list on top.
-      const isCmd = legal && (/Legendary.*Creature/i.test(typeLine || '')
-        || /can be your commander/i.test(oracleText || ''))
-        ? 1
-        : 0
-      const name = c.name || ''
-
-      await oracles.push([
-        oracleId,
-        name,
-        fold(name),
-        fold(name.split(' // ')[0]),
-        typeLine,
-        oracleText,
-        c.mana_cost ?? face0?.mana_cost ?? null,
-        num(c.cmc) ?? 0,
-        c.layout || null,
-        c.keywords?.length ? JSON.stringify(c.keywords) : null,
-        mask(c.colors ?? face0?.colors),
-        mask(c.color_identity),
-        legal,
-        isCmd,
-        c.set_type === 'funny' ? 1 : 0,
-        (EXTRA_LAYOUTS.has(c.layout) || EXTRA_SET_TYPES.has(c.set_type)) ? 1 : 0,
-        c.edhrec_rank ?? null,
-      ])
-
-      for (const p of c.all_parts || []) {
-        if (p.component === 'token' && p.name)
-          await parts.push([oracleId, p.name])
+      // A reversible printing has no top-level card data and a doubled name
+      // ("Magmatic Hellkite // Magmatic Hellkite"). When one came first in the
+      // file it defined the card, renaming 11 of them; it is now a last resort.
+      if (c.layout === 'reversible_card' || !c.oracle_id) {
+        if (!pendingOracle.has(oracleId))
+          pendingOracle.set(oracleId, c)
+      }
+      else {
+        seenOracle.add(oracleId)
+        await pushOracle(c, oracleId)
       }
     }
 
@@ -466,6 +641,7 @@ async function ingest(db) {
       // Universes Beyond is a printing property, flagged in promo_types — a
       // Marvel reprint of Lightning Bolt is UB even though the card is not.
       c.promo_types?.includes('universesbeyond') ? 1 : 0,
+      c.set_type || null,
     ])
 
     if (c.card_faces?.length) {
@@ -489,10 +665,19 @@ async function ingest(db) {
     }
   }
 
+  // Cards known only through reversible printings still need a row.
+  for (const [oracleId, c] of pendingOracle) {
+    if (!seenOracle.has(oracleId)) {
+      seenOracle.add(oracleId)
+      await pushOracle(c, oracleId)
+    }
+  }
+
   await oracles.flush()
   await prints.flush()
   await faces.flush()
   await parts.flush()
+  await faceStats.flush()
   await db.execute('COMMIT')
 
   process.stdout.write(`${'\r'.padEnd(70)}\r`)
@@ -507,6 +692,22 @@ async function ingest(db) {
 async function finalize(db, meta) {
   log('  · index')
   for (const sql of INDEXES) await db.execute(sql)
+
+  // Scryfall hides a card as an extra only when it has no regular printing,
+  // and calls it funny only when it is printed in joke sets alone AND is
+  // playable nowhere — half of Unfinity is legal and must stay searchable.
+  log('  · cartes à part (collection, blagues)')
+  await db.execute(`UPDATE oracle_cards SET is_extra = 1
+                     WHERE is_extra = 0
+                       AND NOT EXISTS (SELECT 1 FROM printings p
+                                        WHERE p.oracle_id = oracle_cards.oracle_id
+                                          AND COALESCE(p.set_type, '') NOT IN (${[...EXTRA_SET_TYPES].map(t => `'${t}'`).join(', ')}))`)
+  await db.execute(`UPDATE oracle_cards SET is_funny = 1
+                     WHERE NOT EXISTS (SELECT 1 FROM printings p
+                                        WHERE p.oracle_id = oracle_cards.oracle_id
+                                          AND COALESCE(p.set_type, '') != 'funny')
+                       AND NOT EXISTS (SELECT 1 FROM json_each(oracle_cards.legalities)
+                                        WHERE value IN ('legal', 'restricted'))`)
 
   // Only 1.9% of French printings carry a EUR price. Filtering on the French
   // row's own price would drop 98% of the catalogue; rolling the cheapest
@@ -541,7 +742,7 @@ async function finalize(db, meta) {
   // card: Draw a card.") — 582 false hits, +22 % against Scryfall. The text
   // shown to players is untouched; only the search column is stripped.
   const { rows: sources } = await db.execute(`
-    SELECT o.oracle_id, o.name_folded, o.oracle_text, o.type_line,
+    SELECT o.oracle_id, o.name_folded, o.oracle_all, o.type_line,
            (SELECT p.printed_name FROM printings p
              WHERE p.oracle_id = o.oracle_id AND p.lang = 'fr' AND p.printed_name IS NOT NULL LIMIT 1) AS printed_name,
            (SELECT p.printed_text FROM printings p
@@ -554,7 +755,7 @@ async function finalize(db, meta) {
       r.oracle_id,
       r.name_folded,
       r.printed_name,
-      stripReminder(r.oracle_text),
+      stripReminder(r.oracle_all),
       stripReminder(r.printed_text),
       r.type_line,
     ])
@@ -573,7 +774,9 @@ async function finalize(db, meta) {
               SELECT p.oracle_id, p.id,
                      ROW_NUMBER() OVER (
                        PARTITION BY p.oracle_id
-                       ORDER BY (p.lang = ?) DESC, p.is_highres DESC, p.released_at DESC
+                       ORDER BY (p.lang = ?) DESC,
+                                COALESCE(p.set_type, '') IN (${[...EXTRA_SET_TYPES].map(t => `'${t}'`).join(', ')}) ASC,
+                                p.is_highres DESC, p.released_at DESC
                      ) AS rn
                 FROM printings p
                WHERE p.lang IN (?, 'en') AND p.is_real_image = 1
@@ -584,6 +787,13 @@ async function finalize(db, meta) {
 
   await db.execute({ sql: `INSERT OR REPLACE INTO meta (key,value) VALUES ('bulk_updated_at',?)`, args: [meta.updatedAt] })
   await db.execute({ sql: `INSERT OR REPLACE INTO meta (key,value) VALUES ('ingested_at',?)`, args: [new Date().toISOString()] })
+  await db.execute({ sql: `INSERT OR REPLACE INTO meta (key,value) VALUES ('schema_version',?)`, args: [SCHEMA_VERSION] })
+
+  // Without statistics the planner assumes every index is equally selective and
+  // picks the three default-filter columns, which match 82 % of cards: an exact
+  // name lookup walked 31 000 rows (32 ms) instead of one index probe (0.05 ms).
+  log('  · statistiques du planificateur')
+  await db.execute('ANALYZE')
 
   log('  · VACUUM')
   await db.execute('VACUUM')
@@ -637,6 +847,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('\n✖ ingestion échouée :', e.message)
+  console.error('\n✖ ingestion échouée :', causeOf(e))
   process.exitCode = 1
 })
