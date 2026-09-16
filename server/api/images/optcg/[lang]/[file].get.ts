@@ -15,6 +15,7 @@ import { resolve, sep } from 'node:path'
 import { OPTCG_ID } from '../../../../utils/cards/optcg-resolve'
 
 const ROOT = resolve('.data/images/optcg')
+const THUMBS = resolve(ROOT, 'thumb')
 
 // Bandai serves WebP on the French site and PNG on the English one; the mirror
 // keeps whichever it got, so both are looked for.
@@ -26,6 +27,18 @@ export default defineEventHandler((event) => {
   const id = getRouterParam(event, 'file') ?? ''
   if ((lang !== 'fr' && lang !== 'en') || !OPTCG_ID.test(id))
     throw createError({ statusCode: 400, statusMessage: 'Bad image path' })
+
+  // ?size=thumb: the grid-sized copy when the mirror made one, else the image.
+  if (getQuery(event).size === 'thumb') {
+    for (const l of [lang, lang === 'fr' ? 'en' : 'fr']) {
+      const path = resolve(THUMBS, l, `${id}.webp`)
+      if (path.startsWith(THUMBS + sep) && existsSync(path) && statSync(path).size > 0) {
+        setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
+        setHeader(event, 'Content-Type', 'image/webp')
+        return sendStream(event, createReadStream(path))
+      }
+    }
+  }
 
   for (const l of [lang, lang === 'fr' ? 'en' : 'fr']) {
     const dir = resolve(ROOT, l)

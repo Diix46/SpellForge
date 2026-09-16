@@ -27,7 +27,7 @@ const shownCard = computed<OptcgCard>(() => {
   const c = props.card
   if (!current.value)
     return c
-  return { ...c, id: current.value.id, image: current.value.image, rarity: current.value.rarity, set: current.value.set }
+  return { ...c, id: current.value.id, image: current.value.image, thumb: current.value.thumb, rarity: current.value.rarity, set: current.value.set }
 })
 const rotated = computed(() => props.card.block != null && props.card.block < MIN_LEGAL_BLOCK)
 
@@ -66,7 +66,7 @@ const facts = computed(() => {
             :aria-label="`${p.id} ${p.rarity ?? ''}`"
             @click="shown = p.id"
           >
-            <img :src="p.image" alt="" loading="lazy">
+            <img :src="p.thumb" alt="" loading="lazy">
           </button>
         </div>
       </div>

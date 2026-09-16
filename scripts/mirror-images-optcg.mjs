@@ -18,7 +18,7 @@
  *
  * Usage:  node scripts/mirror-images-optcg.mjs [--force] [--limit N]
  */
-import { createWriteStream, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { Readable } from 'node:stream'
@@ -29,6 +29,10 @@ import { createClient } from '@libsql/client'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DB = process.env.OPTCG_CARDS_DB ? resolve(process.env.OPTCG_CARDS_DB) : resolve(ROOT, '.data/cards-optcg.db')
 const OUT = resolve(ROOT, '.data/images/optcg')
+// Grid-sized copies (320 px WebP, about 20 KB instead of 90 to 350): the
+// library shows dozens of posters at a time.
+const THUMBS = resolve(OUT, 'thumb')
+const THUMB_WIDTH = 320
 
 // Bandai serves a different format per locale: WebP on the French site, PNG on
 // the English one. We store only the version marker in the database, so the
@@ -61,7 +65,7 @@ async function download(lang, id, version) {
   for (const ext of [cfg.ext, cfg.alt]) {
     const dest = resolve(dir, `${id}.${ext}`)
     if (!force && existsSync(dest) && statSync(dest).size > 0)
-      return { skipped: true, bytes: statSync(dest).size }
+      return { skipped: true, bytes: statSync(dest).size, path: dest }
 
     const res = await fetch(urlFor(lang, id, version, ext), { headers: { 'User-Agent': UA } })
     if (res.status === 404)
@@ -70,13 +74,43 @@ async function download(lang, id, version) {
       return { failed: `HTTP ${res.status}` }
 
     mkdirSync(dir, { recursive: true })
-    await pipeline(Readable.fromWeb(res.body), createWriteStream(dest))
-    return { bytes: statSync(dest).size }
+    // Written aside then renamed: a cut transfer never leaves a file that
+    // looks complete (the next run would skip it).
+    const part = `${dest}.part`
+    await pipeline(Readable.fromWeb(res.body), createWriteStream(part))
+    renameSync(part, dest)
+    return { bytes: statSync(dest).size, path: dest }
   }
   return { missing: true }
 }
 
+// sharp is loaded lazily: without it the mirror still runs, only without thumbnails.
+let sharp = null
+async function loadSharp() {
+  try {
+    sharp = (await import('sharp')).default
+  }
+  catch {
+    log('  (sharp absent : pas de vignettes)')
+  }
+}
+
+/** Writes the thumbnail of an image unless an up-to-date one exists. */
+async function ensureThumb(lang, id, source) {
+  if (!sharp)
+    return false
+  const dest = resolve(THUMBS, lang, `${id}.webp`)
+  if (!force && existsSync(dest) && statSync(dest).mtimeMs >= statSync(source).mtimeMs)
+    return false
+  mkdirSync(dirname(dest), { recursive: true })
+  const tmp = `${dest}.tmp`
+  await sharp(source).resize({ width: THUMB_WIDTH, withoutEnlargement: true }).webp({ quality: 72 }).toFile(tmp)
+  renameSync(tmp, dest)
+  return true
+}
+
 async function main() {
+  await loadSharp()
   if (!existsSync(DB)) {
     console.error('✖ base One Piece absente — lancez d\'abord `npm run cards:ingest:op`')
     process.exitCode = 1
@@ -101,6 +135,8 @@ async function main() {
 
   let done = 0
   let skipped = 0
+  let thumbs = 0
+  let lastShown = -1
   const missing = []
   let bytes = 0
   const failures = []
@@ -127,14 +163,26 @@ async function main() {
             skipped++
           else
             done++
+          try {
+            if (await ensureThumb(job.lang, job.id, r.path))
+              thumbs++
+          }
+          catch (e) {
+            // An unreadable image is a truncated download: drop it so this
+            // run's retry, or the next run, fetches it again.
+            rmSync(r.path, { force: true })
+            failures.push(`${job.lang}/${job.id} (image illisible, supprimée): ${e.message.split('\n')[0]}`)
+          }
         }
       }
       catch (e) {
         failures.push(`${job.lang}/${job.id}: ${e.message}`)
       }
       const seen = done + skipped + missing.length + failures.length
-      if (seen % 200 === 0)
+      if (seen % 200 === 0 && seen !== lastShown) {
+        lastShown = seen
         process.stdout.write(`\r  ${seen} / ${jobs.length}`)
+      }
       if (!PAUSE_MS || !requested)
         continue
       await sleep(PAUSE_MS)
@@ -147,7 +195,7 @@ async function main() {
   // reported but does not fail the run.
   if (missing.length)
     log(`    absents : ${missing.slice(0, 10).join(', ')}${missing.length > 10 ? '…' : ''}`)
-  log(`    ${mb(bytes)} au total · ${((Date.now() - t0) / 1000).toFixed(1)} s`)
+  log(`    ${mb(bytes)} au total · ${thumbs} vignettes créées · ${((Date.now() - t0) / 1000).toFixed(1)} s`)
   if (failures.length) {
     log(`\n  Échecs (${Math.min(failures.length, 10)} premiers) :`)
     for (const f of failures.slice(0, 10)) log(`    ${f}`)

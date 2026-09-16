@@ -49,7 +49,7 @@ function onAdd(e: MouseEvent) {
     <button type="button" class="poster-body" :aria-label="label" @click="emit('open', card)">
       <span class="wanted" aria-hidden="true">{{ t('optcg.wanted') }}</span>
       <span class="art">
-        <img :src="card.image" :alt="card.name" loading="lazy" decoding="async" width="600" height="838">
+        <img :src="card.thumb" :alt="card.name" loading="lazy" decoding="async" width="600" height="838">
       </span>
       <span class="name">{{ card.name }}</span>
       <span class="foot">

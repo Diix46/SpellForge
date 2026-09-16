@@ -8,9 +8,14 @@ import type { OptcgCard, OptcgPrint } from '../../../shared/optcg/types'
 /** Bandai publishes WebP on the French site and PNG on the English one. */
 export const OPTCG_IMAGE_EXT = { fr: 'webp', en: 'png' } as const
 
-export function optcgImageUrl(lang: string, id: string, version: unknown): string {
-  const v = typeof version === 'string' && version ? `?v=${version}` : ''
-  return `/api/images/optcg/${lang === 'fr' ? 'fr' : 'en'}/${id}${v}`
+export function optcgImageUrl(lang: string, id: string, version: unknown, size?: 'thumb'): string {
+  const params = new URLSearchParams()
+  if (typeof version === 'string' && version)
+    params.set('v', version)
+  if (size)
+    params.set('size', size)
+  const query = params.size ? `?${params}` : ''
+  return `/api/images/optcg/${lang === 'fr' ? 'fr' : 'en'}/${id}${query}`
 }
 
 function list<T = string>(json: unknown): T[] {
@@ -51,6 +56,7 @@ export function toOptcgCard(r: Row): OptcgCard {
     banned: !!r.is_banned,
     variants: Number(r.variants ?? 1),
     image: optcgImageUrl(lang, id, r.img_version),
+    thumb: optcgImageUrl(lang, id, r.img_version, 'thumb'),
   }
 }
 
@@ -63,5 +69,6 @@ export function toOptcgPrint(r: Row): OptcgPrint {
     rarity: r.rarity == null ? null : String(r.rarity),
     set: r.set_code == null ? null : String(r.set_code),
     image: optcgImageUrl(lang, id, r.img_version),
+    thumb: optcgImageUrl(lang, id, r.img_version, 'thumb'),
   }
 }

@@ -20,6 +20,13 @@ RUN npm run build
 # this very platform, the one the runtime stage runs on.
 RUN cp -R node_modules/@libsql/linux-* .output/server/node_modules/@libsql/
 
+# The image mirror makes its thumbnails with sharp, which the server never
+# imports, so the build leaves it out. It goes in with its own dependencies
+# under its folder, where they cannot replace a version the server relies on.
+RUN mkdir -p .output/server/node_modules/sharp/node_modules \
+ && cp -R node_modules/sharp/. .output/server/node_modules/sharp/ \
+ && cp -R node_modules/@img node_modules/semver node_modules/detect-libc .output/server/node_modules/sharp/node_modules/
+
 # ── Runtime stage ────────────────────────────────────────────────────────────
 # Slim image: the built server, the migration SQL and the card scripts. No dev
 # deps, no app source.

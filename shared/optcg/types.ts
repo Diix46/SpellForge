@@ -34,6 +34,8 @@ export interface OptcgCard {
   /** Number of arts for this card number, all languages together. */
   variants: number
   image: string
+  /** The same art at grid size (320 px), for lists and posters. */
+  thumb: string
 }
 
 /** One art of a card number, for the art picker. */
@@ -43,6 +45,7 @@ export interface OptcgPrint {
   rarity: string | null
   set: string | null
   image: string
+  thumb: string
 }
 
 export type OptcgSortOrder = 'number' | 'cost' | 'power' | 'name'

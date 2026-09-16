@@ -29,7 +29,7 @@
  *
  * Usage:  node scripts/mirror-images-mtg.mjs [--force] [--limit N] [--sizes small,normal]
  */
-import { createWriteStream, existsSync, mkdirSync, statSync } from 'node:fs'
+import { createWriteStream, existsSync, mkdirSync, renameSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { Readable } from 'node:stream'
@@ -76,7 +76,11 @@ async function download(size, face, id, version) {
     return { failed: `HTTP ${res.status}` }
 
   mkdirSync(dir, { recursive: true })
-  await pipeline(Readable.fromWeb(res.body), createWriteStream(dest))
+  // Written aside then renamed: a cut transfer never leaves a file that looks
+  // complete (the next run would skip it).
+  const part = `${dest}.part`
+  await pipeline(Readable.fromWeb(res.body), createWriteStream(part))
+  renameSync(part, dest)
   return { bytes: statSync(dest).size }
 }
 
