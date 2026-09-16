@@ -315,6 +315,27 @@ Demande : passe complète, correction des bugs, tous les parcours, fluidité, la
   y suspend `requestAnimationFrame`, d'où des transitions figées qui ne concernaient pas
   les utilisateurs.
 
+### Tas de cartes et mise en production (16/09, nuit)
+
+- **Tas de cartes interactif** rendu au héros, pour les deux jeux : One Piece à gauche,
+  Magic à droite, vitrine par monde avec lien vers la fiche, distribution au repos. Moteur
+  du premier héros conservé ; sa boucle ne tournait jamais à l'arrêt (vitrine et pointeur
+  la gardaient active) : elle s'arrête désormais dès que tout est posé. Le fond animé
+  global, caché sous la landing, n'y est plus monté (60 images/s économisées).
+- **Vignettes Magic** à la demande (`?size=thumb`, sharp dans le serveur) : le tas pèse
+  ~1,6 Mo d'images mesurés, contre ~9,7 Mo estimés pour l'ancien héros (90 cartes pleine taille).
+- **Production** (`root@192.168.1.2`, conteneur Unraid `spellforge`, port 3030, derrière
+  swag) : image construite sur le serveur, bases de cartes et miroirs d'images copiés
+  dans le volume (9,1 Go), migration `0002_deck_game` appliquée (3 comptes et 7 decks
+  intacts), `NUXT_PUBLIC_SITE_URL` ajoutée au modèle Unraid. Vérifié : 61/61 de bout en
+  bout sur un conteneur d'essai, 45/45 (parcours invités) sur https://spellforge.diixhub.fr.
+- **Retour arrière** : `/root/spellforge-rollback.sh /mnt/user/appdata/spellforge/spellforge.db.bak-20260916-214058`
+  (image `spellforge:backup-0.3.2`, base d'avant migration, ancien cache).
+- **À savoir** : l'image porte le tag `ghcr.io/diix46/spellforge:latest` mais n'est pas
+  publiée. Tant que la branche n'est pas fusionnée et publiée par la CI, ne pas lancer
+  « Update » ni « Apply » sur le conteneur dans Unraid : il retirerait l'ancienne image
+  de ghcr. Redéployer à la main : `/root/spellforge-deploy.sh` après un `docker build`.
+
 ---
 
 ## 7. Ce qui reste externe (assumé)
