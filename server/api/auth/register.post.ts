@@ -6,10 +6,11 @@ import { validateCredentials } from '../../utils/validateCredentials'
 // Create an account, then start a session. Display name derives from the email
 // local-part unless provided.
 export default defineEventHandler(async (event) => {
+  rateLimit(`auth:register:${getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'}`, 5, 10 * 60_000)
   const body = await readBody(event).catch(() => null)
   const { email, password } = validateCredentials(body)
   const d = (body as Record<string, unknown> | null)?.displayName
-  const displayName = typeof d === 'string' && d.trim() ? d.trim() : (email.split('@')[0] ?? 'Joueur')
+  const displayName = (typeof d === 'string' && d.trim() ? d.trim() : (email.split('@')[0] ?? 'Joueur')).slice(0, 60)
 
   const db = useDb()
   const existing = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).get()
@@ -19,12 +20,15 @@ export default defineEventHandler(async (event) => {
   }
 
   const id = genId('u_')
-  await db.insert(schema.users).values({
+  // Two sign-ups racing for one address: the second hits the unique index.
+  const created = await db.insert(schema.users).values({
     id,
     email,
     passwordHash: await hashPassword(password),
     displayName,
-  })
+  }).onConflictDoNothing().returning({ id: schema.users.id })
+  if (!created.length)
+    throw createError({ statusCode: 409, statusMessage: 'Un compte existe déjà avec cet e-mail' })
 
   await setUserSession(event, { user: { id, email, displayName } }, { cookie: { sameSite: 'lax' } })
   return { user: { id, email, displayName } }

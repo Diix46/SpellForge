@@ -24,13 +24,28 @@ function markCards(src: string): string {
   })
 }
 
+// Rendered HTML by source text: a streamed reply re-renders its bubble on every
+// token, but the settled messages above it render once.
+const cache = new Map<string, string>()
+const CACHE_MAX = 200
+
 export function useMarkdown() {
   function render(src: string): string {
     if (!src)
       return ''
     if (!import.meta.client)
       return src
-    const html = marked.parse(markCards(src), { async: false }) as string
+    const hit = cache.get(src)
+    if (hit !== undefined)
+      return hit
+    const out = sanitize(marked.parse(markCards(src), { async: false }) as string)
+    if (cache.size >= CACHE_MAX)
+      cache.delete(cache.keys().next().value!)
+    cache.set(src, out)
+    return out
+  }
+
+  function sanitize(html: string): string {
     return DOMPurify.sanitize(html, {
       ALLOWED_TAGS: [
         'p',

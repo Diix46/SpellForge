@@ -1,29 +1,20 @@
-// Proxies Scryfall's card-name autocomplete (for quick-add by name).
-//
-// Cached: card names are stable, and the same prefixes are typed constantly,
-// so a 1h cache eliminates most autocomplete round-trips. Key is the (trimmed)
-// prefix; names are language-agnostic so no locale dimension is needed.
+/**
+ * Card-name autocomplete, served from the local database.
+ *
+ * Same contract as the Scryfall proxy it replaces — `{ names }`, at most 20,
+ * nothing under two characters — and the same ordering, checked against the
+ * live API: names starting with the text first, then later-word matches. No
+ * route cache: the lookup is indexed and answers faster than a cache round trip.
+ */
+import { useMtgCardsDb } from '../../utils/cards/db'
+import { buildAutocompleteQuery } from '../../utils/cards/mtg-query'
 
-export default defineCachedEventHandler(async (event): Promise<{ names: string[] }> => {
-  const query = getQuery(event)
-  const q = typeof query.q === 'string' ? query.q.trim() : ''
-  if (q.length < 2) {
+export default defineEventHandler(async (event): Promise<{ names: string[] }> => {
+  const q = getQuery(event).q
+  const text = typeof q === 'string' ? q.trim().slice(0, 100) : ''
+  if (text.length < 2)
     return { names: [] }
-  }
 
-  const url = `${SCRYFALL_AUTOCOMPLETE}?q=${encodeURIComponent(q)}`
-  const res = await scryfallFetch(url)
-  if (!res.ok) {
-    throw createError({ statusCode: 502, statusMessage: `Scryfall ${res.status}` })
-  }
-
-  const data = await res.json() as { data?: string[] }
-  return { names: data.data ?? [] }
-}, {
-  maxAge: 3600,
-  name: 'scryfall-autocomplete',
-  getKey: (event) => {
-    const q = getQuery(event)
-    return (typeof q.q === 'string' ? q.q.trim() : '').toLowerCase()
-  },
+  const { rows } = await useMtgCardsDb().execute(buildAutocompleteQuery(text))
+  return { names: rows.map(r => String(r.name)) }
 })

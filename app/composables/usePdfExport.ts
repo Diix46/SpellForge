@@ -4,12 +4,12 @@
 // the deck page's top-level script, well before the export button is used).
 import type { jsPDF } from 'jspdf'
 import type { ResolvedCard } from './useScryfall'
+import { assertProxyPrintable } from '#shared/game'
 import { mapPool } from './scryfall/helpers'
 
-// Bounded concurrency for the image pre-load pass — same order of magnitude as
-// the FR-resolution concurrency elsewhere (useScryfall), polite to the proxy
-// route while still loading a ~100-card deck in a fraction of the previous
-// fully-sequential time.
+// Bounded concurrency for the image pre-load pass: polite to the image route,
+// which fetches a not-yet-mirrored size from Scryfall's CDN once, while still
+// loading a ~100-card deck in a fraction of the fully-sequential time.
 const IMAGE_LOAD_CONCURRENCY = 8
 
 export type PageFormat = 'a4' | 'a3'
@@ -54,7 +54,9 @@ interface ImageData {
 // LRU cache of loaded images across exports (A4 then A3). Base64 data URLs are
 // heavy (~hundreds of KB each), so cap the cache and evict the oldest. A `null`
 // entry is a negative cache so permanently-broken images aren't re-fetched.
-const IMAGE_CACHE_MAX = 300
+// A Commander deck plus its tokens and backs; base64 images weigh hundreds of
+// kilobytes each, so the cache stays at about one deck.
+const IMAGE_CACHE_MAX = 130
 const imageCache = new Map<string, ImageData | null>()
 
 function cacheImage(url: string, value: ImageData | null) {
@@ -71,10 +73,9 @@ async function loadImageAsDataUrl(url: string): Promise<ImageData | null> {
     return imageCache.get(url) ?? null
 
   try {
-    // Scryfall's image CDN has no CORS headers, so fetch through our proxy
-    // to get a same-origin response we can read into a data URL.
-    const proxied = `/api/proxy-image?url=${encodeURIComponent(url)}`
-    const res = await fetch(proxied)
+    // Card images are served by our own origin, so they can be read into a
+    // data URL directly — no CORS proxy needed any more.
+    const res = await fetch(url)
     if (!res.ok) {
       cacheImage(url, null)
       return null
@@ -147,6 +148,7 @@ export function usePdfExport() {
     settings: PdfSettings,
     onProgress?: (p: PdfProgress) => void,
   ): Promise<jsPDF> {
+    assertProxyPrintable(cards.map(c => c.card?.game))
     const layout = computeLayout(settings)
     const imageUrls = buildImageList(cards, settings.includeBack)
 

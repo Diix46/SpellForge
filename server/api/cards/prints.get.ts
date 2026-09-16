@@ -1,30 +1,24 @@
-// All printings of a card (for the print-selector gallery in the detail modal).
-// Returns a slim list with set, collector number, set name, image, price and lang
-// so the user can pin a specific edition/art to a deck entry.
-//
-// Cached 24h per (name, lang): the set of printings for a card is stable.
-
-// Explicit import: `getImageUris` exists both here (server) and as a client
-// composable export, so the auto-import global is ambiguous — import the server
-// copy directly to bind to the right one.
-import type { ScryImg } from '~~/server/utils/scryfall'
-import { getImageUris, sanitizeCardName } from '~~/server/utils/scryfall'
-
-interface ScryPrint {
-  id: string
-  name: string
-  printed_name?: string
-  set: string
-  set_name: string
-  collector_number: string
-  lang: string
-  released_at?: string
-  image_status?: string
-  image_uris?: ScryImg
-  card_faces?: Array<{ image_uris?: ScryImg }>
-  prices?: { eur?: string | null }
-  promo?: boolean
-}
+/**
+ * All printings of a card, for the edition picker in the detail view, served
+ * from the local database.
+ *
+ * Same contract as the Scryfall proxy it replaces. Deliberate differences:
+ *
+ *  - Only French and English printings exist locally, where Scryfall listed
+ *    every language. The site is bilingual, and ingesting every language would
+ *    take the card database from ~130 MB to ~700 MB.
+ *
+ *  - A double-faced card is found by its front-face name too. The detail view
+ *    sends the name of the face on display, and Scryfall's exact search for
+ *    "Delver of Secrets" returns printings named "Delver of Secrets //
+ *    Insectile Aberration" — which the old full-name filter then discarded,
+ *    all of them. The picker was empty for every double-faced card.
+ *
+ * Which card to list, and why only one, is explained in buildPrintsQuery.
+ */
+import { useMtgCardsDb } from '../../utils/cards/db'
+import { buildPrintsQuery } from '../../utils/cards/mtg-query'
+import { imageUrl } from '../../utils/cards/mtg-shape'
 
 export interface PrintOption {
   id: string
@@ -37,67 +31,27 @@ export interface PrintOption {
   promo: boolean
 }
 
-function thumb(c: ScryPrint): string | null {
-  const uris = getImageUris(c)
-  return uris?.normal ?? uris?.small ?? null
-}
-
-function hasImage(c: ScryPrint): boolean {
-  return !!thumb(c) && c.image_status !== 'missing' && c.image_status !== 'placeholder'
-}
-
-export default defineCachedEventHandler(async (event): Promise<{ prints: PrintOption[] }> => {
-  const query = getQuery(event)
-  const name = typeof query.name === 'string' ? query.name.trim() : ''
-  const lang = query.lang === 'fr' ? 'fr' : 'en'
+export default defineEventHandler(async (event): Promise<{ prints: PrintOption[] }> => {
+  const q = getQuery(event)
+  const name = typeof q.name === 'string' ? q.name.trim().slice(0, 160) : ''
+  const lang = q.lang === 'fr' ? 'fr' : 'en'
   if (!name)
     return { prints: [] }
 
-  // All printings (any language) of the exact card, newest first.
-  const q = `!"${sanitizeCardName(name)}" include:extras`
-  const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc&include_multilingual=true`
+  const { rows } = await useMtgCardsDb().execute(buildPrintsQuery(name, lang))
 
-  let data: { data?: ScryPrint[] }
-  try {
-    const res = await scryfallFetch(url)
-    if (res.status === 404)
-      return { prints: [] }
-    if (!res.ok)
-      throw createError({ statusCode: 502, statusMessage: `Scryfall ${res.status}` })
-    data = await res.json()
+  return {
+    prints: rows.map(r => ({
+      id: String(r.id),
+      set: String(r.set_code),
+      setName: String(r.set_name ?? ''),
+      collectorNumber: String(r.collector_number),
+      lang: String(r.lang),
+      // The front image version covers both single- and double-faced printings.
+      image: imageUrl('normal', 'front', String(r.id), r.img_version),
+      // Each printing shows its own price, not the card's cheapest.
+      priceEur: typeof r.price_eur === 'number' ? r.price_eur.toFixed(2) : null,
+      promo: !!r.promo,
+    })),
   }
-  catch (err) {
-    // Re-throw an already-shaped H3/createError; wrap anything else.
-    if (err instanceof Error && 'statusCode' in err)
-      throw err
-    throw createError({ statusCode: 502, statusMessage: 'Scryfall fetch failed' })
-  }
-
-  const target = name.toLowerCase()
-  const all = (data.data ?? [])
-    .filter(c => hasImage(c) && c.name.toLowerCase() === target)
-    .map<PrintOption>(c => ({
-      id: c.id,
-      set: c.set,
-      setName: c.set_name,
-      collectorNumber: c.collector_number,
-      lang: c.lang,
-      image: thumb(c),
-      priceEur: c.prices?.eur ?? null,
-      promo: !!c.promo,
-    }))
-
-  // Surface the requested language first, then the rest (released-desc within each).
-  const preferred = all.filter(p => p.lang === lang)
-  const others = all.filter(p => p.lang !== lang)
-  return { prints: [...preferred, ...others] }
-}, {
-  maxAge: 60 * 60 * 24,
-  name: 'scryfall-prints',
-  getKey: (event) => {
-    const q = getQuery(event)
-    const name = typeof q.name === 'string' ? q.name.trim().toLowerCase() : ''
-    const lang = q.lang === 'fr' ? 'fr' : 'en'
-    return `${lang}:${name}`
-  },
 })

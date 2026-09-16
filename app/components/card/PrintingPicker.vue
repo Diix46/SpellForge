@@ -59,14 +59,18 @@ async function toggle() {
   show.value = !show.value
   if (show.value && prints.value.length === 0 && props.englishName) {
     loading.value = true
+    // The modal may move to another card before the answer: keep it only if not.
+    const forCard = props.cardKey
     try {
       const res = await $fetch<{ prints: PrintOption[] }>('/api/cards/prints', {
         params: { name: props.englishName, lang: locale.value },
       })
-      prints.value = res.prints
+      if (forCard === props.cardKey)
+        prints.value = res.prints
     }
     catch {
-      prints.value = []
+      if (forCard === props.cardKey)
+        prints.value = []
     }
     finally {
       loading.value = false

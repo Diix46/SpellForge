@@ -4,13 +4,13 @@ import { runStructured } from '../../eve/orchestrator'
 // AI deck-assistance — returns structured, actionable suggestions (NOT a chat).
 //
 // Powered by the same Eve engine as the conversational Coach (non-streaming
-// mode): the model can look up REAL cards via Scryfall/EDHREC and validate them
+// mode): the model can look up REAL cards (local card database, EDHREC) and validate them
 // before answering, then emits one structured `deck_suggestions` tool call.
 //
 // It REASONS over the deck's real, computed data (curve, types, colours, price,
 // role counts, EDHREC ground-truth names) — it does not recall stats. Any card
 // name it returns is then VALIDATED server-side before reaching the client:
-//   - adds must resolve to a real Scryfall card, be within the commander's colour
+//   - adds must resolve to a real card in the database, be within the commander's colour
 //     identity, and be legal in Commander;
 //   - cuts must already be in the submitted decklist.
 // Anything that fails is dropped and counted, so the UI never shows a card the

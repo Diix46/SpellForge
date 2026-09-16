@@ -2,9 +2,30 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@nuxt/fonts', 'nuxt-auth-utils'],
 
-  // This is a client-side, localStorage-driven app (deck manager + proxy printer).
-  // Disable SSR to avoid hydration mismatches from client-only persisted state.
-  ssr: false,
+  // Hybrid rendering. The workshop (dashboard, deck pages) lives in the
+  // browser: decks are in localStorage for guests, so the server has nothing to
+  // render there. The public, indexable pages (libraries, card pages, Discover,
+  // shared decks, the landing) are rendered on the server. See routeRules.
+  ssr: true,
+
+  routeRules: {
+    '/**': { ssr: false },
+    '/': { ssr: true },
+    '/landing': { redirect: { to: '/', statusCode: 301 } },
+    '/discover': { ssr: true },
+    '/magic': { ssr: true },
+    '/magic/card/**': { ssr: true },
+    '/magic/shared/**': { ssr: true },
+    '/one-piece': { ssr: true },
+    '/one-piece/card/**': { ssr: true },
+    '/one-piece/shared/**': { ssr: true },
+  },
+
+  // The public address, for canonical links and the sitemap
+  // (NUXT_PUBLIC_SITE_URL). Empty: the address of the request.
+  runtimeConfig: {
+    public: { siteUrl: '' },
+  },
 
   devtools: {
     enabled: true,
@@ -13,9 +34,26 @@ export default defineNuxtConfig({
   // Cinematic page transitions.
   app: {
     pageTransition: { name: 'cine', mode: 'out-in' },
+    // What the browser-rendered pages carry before the app starts; pages then
+    // set their own.
+    head: {
+      title: 'Prism, l\'atelier de decks One Piece et Magic',
+      meta: [
+        { name: 'description', content: 'Construisez vos decks One Piece et Magic sans créer de compte : toutes les cartes en local, règles vérifiées, partage en un lien, proxies Magic en PDF.' },
+      ],
+    },
   },
 
-  css: ['~/assets/css/main.css'],
+  // universes.css redefines the tokens of main.css per game universe, so it
+  // must come after it.
+  css: ['~/assets/css/main.css', '~/assets/css/universes.css'],
+
+  // Icons come from the app's own route, never from the Iconify API. Only the
+  // collection the app uses is bundled (simple-icons alone weighed 4.7 MB).
+  icon: {
+    serverBundle: { collections: ['lucide'] },
+    fallbackToApi: false,
+  },
 
   // Register custom color names so app.config.ts aliases resolve.
   ui: {
@@ -35,13 +73,16 @@ export default defineNuxtConfig({
   },
 
   // Persist the Nitro route cache (defineCachedEventHandler) to disk instead of
-  // the default in-memory store. The cached Scryfall/EDHREC proxies hold data
-  // that's stable for hours-to-days (a card's printings/images never change),
-  // but an in-memory cache is wiped on every server restart — so every deploy
-  // made the first deck-open slow again. A filesystem-backed cache survives
-  // restarts (and is shared across all users), so the slow Scryfall cold-fetch
-  // is paid once, ever, per key — not once per process lifetime.
+  // the default in-memory store. What is still cached — EDHREC suggestions,
+  // the coach's card validation, the landing art pool — would otherwise be
+  // wiped on every restart, and the slow EDHREC cold-fetch paid again after
+  // each deploy. Card data itself is local and not cached.
   nitro: {
+    // Gzip and Brotli copies of the built assets, served to browsers that take them.
+    compressPublicAssets: true,
+    // The card databases refresh every night (server/tasks/cards/refresh.ts).
+    experimental: { tasks: true },
+    scheduledTasks: { '30 4 * * *': ['cards:refresh'] },
     storage: {
       cache: { driver: 'fs', base: './.data/cache' },
     },
@@ -55,15 +96,18 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-01-15',
 
   // Self-host fonts (no render-blocking @import, works offline).
-  // Geist (+ Geist Mono) is the new primary type system (modern-SaaS redesign);
-  // Orbitron/Sora/JetBrains kept during the page-by-page migration.
+  // Geist (+ Geist Mono) is the neutral type system. Each universe adds its
+  // own voice: Anton and Bangers for One Piece's posters and sound effects,
+  // Cinzel and EB Garamond for Magic's grimoire. A face is only downloaded on a
+  // page that uses it.
   fonts: {
     families: [
       { name: 'Geist', provider: 'google', weights: [400, 500, 600, 700] },
       { name: 'Geist Mono', provider: 'google', weights: [400, 500] },
-      { name: 'Orbitron', provider: 'google', weights: [600, 700, 800] },
-      { name: 'Sora', provider: 'google', weights: [300, 400, 500, 600, 700] },
-      { name: 'JetBrains Mono', provider: 'google', weights: [400, 500, 600] },
+      { name: 'Anton', provider: 'google', weights: [400] },
+      { name: 'Bangers', provider: 'google', weights: [400] },
+      { name: 'Cinzel', provider: 'google', weights: [500, 700] },
+      { name: 'EB Garamond', provider: 'google', weights: [400, 500], styles: ['normal', 'italic'] },
     ],
   },
 })

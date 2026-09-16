@@ -1,30 +1,29 @@
+import type { ResolvedRow } from './scryfall/toResolved'
 import type { ManaColor } from './useMtg'
 import type { ScryfallCard } from './useScryfall'
 import { ref } from 'vue'
-import { sanitizeCardName } from './scryfall/helpers'
 
 export interface SearchTheme {
   key: string
   /** i18n key for the label. */
   labelKey: string
   icon: string
-  /** Scryfall fragment this theme contributes. */
-  query: string
 }
 
-// Predefined themes → battle-tested Scryfall fragments. The player picks an
-// intention ("removal", "ramp") instead of needing to know card names.
+// Predefined themes. The player picks an intention ("removal", "ramp") instead
+// of needing to know card names. What each key matches is defined server-side,
+// in THEMES (server/utils/cards/mtg-query.ts).
 export const SEARCH_THEMES: SearchTheme[] = [
-  { key: 'draw', labelKey: 'theme.draw', icon: 'i-lucide-book-open', query: 'oracle:"draw a card"' },
-  { key: 'removal', labelKey: 'theme.removal', icon: 'i-lucide-crosshair', query: '(oracle:destroy or oracle:exile) (oracle:creature or oracle:permanent)' },
-  { key: 'ramp', labelKey: 'theme.ramp', icon: 'i-lucide-trending-up', query: '(oracle:"search your library for a" oracle:land) or oracle:"add {" type:artifact' },
-  { key: 'tokens', labelKey: 'theme.tokens', icon: 'i-lucide-copy', query: 'oracle:"create" oracle:token' },
-  { key: 'lifegain', labelKey: 'theme.lifegain', icon: 'i-lucide-heart-pulse', query: 'oracle:"gain" oracle:life' },
-  { key: 'counter', labelKey: 'theme.counter', icon: 'i-lucide-shield-x', query: 'oracle:"counter target"' },
-  { key: 'boardwipe', labelKey: 'theme.boardwipe', icon: 'i-lucide-bomb', query: 'oracle:"destroy all" or oracle:"each creature"' },
-  { key: 'tutor', labelKey: 'theme.tutor', icon: 'i-lucide-search', query: 'oracle:"search your library for a"' },
-  { key: 'graveyard', labelKey: 'theme.graveyard', icon: 'i-lucide-skull', query: 'oracle:"from your graveyard"' },
-  { key: 'flying', labelKey: 'theme.flying', icon: 'i-lucide-feather', query: 'keyword:flying' },
+  { key: 'draw', labelKey: 'theme.draw', icon: 'i-lucide-book-open' },
+  { key: 'removal', labelKey: 'theme.removal', icon: 'i-lucide-crosshair' },
+  { key: 'ramp', labelKey: 'theme.ramp', icon: 'i-lucide-trending-up' },
+  { key: 'tokens', labelKey: 'theme.tokens', icon: 'i-lucide-copy' },
+  { key: 'lifegain', labelKey: 'theme.lifegain', icon: 'i-lucide-heart-pulse' },
+  { key: 'counter', labelKey: 'theme.counter', icon: 'i-lucide-shield-x' },
+  { key: 'boardwipe', labelKey: 'theme.boardwipe', icon: 'i-lucide-bomb' },
+  { key: 'tutor', labelKey: 'theme.tutor', icon: 'i-lucide-search' },
+  { key: 'graveyard', labelKey: 'theme.graveyard', icon: 'i-lucide-skull' },
+  { key: 'flying', labelKey: 'theme.flying', icon: 'i-lucide-feather' },
 ]
 
 export type CardTypeFilter = '' | 'creature' | 'instant' | 'sorcery' | 'artifact' | 'enchantment' | 'planeswalker' | 'land'
@@ -55,59 +54,37 @@ export interface QueryContext {
 }
 
 /**
- * Build a Scryfall query string from structured filters, constrained to a
- * commander's color identity (so illegal cards never appear) and the locale.
+ * Query parameters for `/api/cards/browse`. Only set what is actually filtered,
+ * so identical searches produce identical URLs.
+ *
+ * Text in Scryfall syntax (`t:instant cmc<=2`) travels as plain `text`: the
+ * server recognises and compiles it, then applies the other filters on top.
  */
-export function buildScryfallQuery(filters: SearchFilters, ctx: QueryContext): string {
-  const parts: string[] = []
-
+export function browseParams(filters: SearchFilters, ctx: QueryContext, page: number): Record<string, string> {
+  const p: Record<string, string> = { lang: ctx.lang, order: filters.order, page: String(page) }
   const text = filters.text.trim()
-  if (text) {
-    // If it looks like raw Scryfall syntax (contains a `:`/`<`/`>` operator), pass through.
-    if (/\w+[:<>=]/.test(text)) {
-      parts.push(text)
-    }
-    else {
-      // Bare term: Scryfall matches the card name in the current language
-      // (so the French printed name works too with lang:fr), OR the oracle text.
-      const safe = text.replace(/["()]/g, '')
-      parts.push(`("${safe}" or oracle:"${safe}")`)
-    }
-  }
-
-  for (const key of filters.themes) {
-    const theme = SEARCH_THEMES.find(t => t.key === key)
-    if (theme)
-      parts.push(`(${theme.query})`)
-  }
-
+  if (text)
+    p.text = text
+  if (filters.themes.length)
+    p.themes = filters.themes.join(',')
   if (filters.type)
-    parts.push(`type:${filters.type}`)
+    p.type = filters.type
   if (filters.subtype.trim())
-    parts.push(`type:${filters.subtype.trim().toLowerCase()}`)
-  // Explicit color filter (WUBRG pips): cards that ARE those colors.
+    p.subtype = filters.subtype.trim()
   if (filters.colors.length)
-    parts.push(`color>=${filters.colors.join('')}`)
+    p.colors = filters.colors.join('')
   if (filters.maxCmc != null)
-    parts.push(`cmc<=${filters.maxCmc}`)
-  // Budget filter: only cards at or below the max EUR price.
+    p.maxCmc = String(filters.maxCmc)
   if (filters.maxPrice != null)
-    parts.push(`eur<=${filters.maxPrice}`)
+    p.maxPrice = String(filters.maxPrice)
   if (filters.commanderOnly)
-    parts.push('is:commander')
-
-  // Constrain to the commander's color identity (EDH legality).
-  if (ctx.identity) {
-    parts.push(ctx.identity.length ? `id<=${ctx.identity.join('')}` : 'id:colorless')
-  }
-
-  // Return the printing matching the site locale (FR images when in French).
-  parts.push(`lang:${ctx.lang}`)
-
-  // Exclude funny/un-sets by default for a cleaner pool.
-  parts.push('-is:funny legal:commander')
-
-  return parts.join(' ').trim()
+    p.commanderOnly = '1'
+  // A colourless commander is sent as "C" (Magic's notation) rather than an
+  // empty string: "no constraint" and "colourless" must never be confused, and
+  // an empty parameter may be dropped in transit.
+  if (ctx.identity)
+    p.identity = ctx.identity.length ? ctx.identity.join('') : 'C'
+  return p
 }
 
 export interface SearchState {
@@ -125,25 +102,44 @@ export function emptySearchState(): SearchState {
   return { loading: false, error: null, total: 0, hasMore: false, page: 1, cards: [] }
 }
 
+interface SearchRequest { filters: SearchFilters, ctx: QueryContext }
+
+export interface SearchResponse { total: number, hasMore: boolean, cards: ScryfallCard[] }
+
+/**
+ * The server's refusal of a search query, as `{ code, term }`, or null for any
+ * other failure. Shown instead of "no results", which would hide the reason.
+ */
+export function syntaxErrorOf(err: unknown): { code: string, term: string } | null {
+  const data = (err as { data?: { data?: unknown } } | null)?.data?.data
+  if (data && typeof data === 'object' && 'code' in data && 'term' in data)
+    return { code: String(data.code), term: String(data.term) }
+  return null
+}
+
 export function useCardSearch() {
   const state = ref<SearchState>(emptySearchState())
   const { t } = useLocale()
 
-  let lastQuery = ''
-  let lastOrder: SortOrder = 'edhrec'
+  // The request that produced the current results, so loadMore() paginates the
+  // exact same search rather than whatever the filters say now.
+  let lastRequest: SearchRequest | null = null
   // Monotonic request id: only the most recently STARTED request may write state.
-  // (Query-string identity can't disambiguate two in-flight requests for the
-  // same query, so a slow earlier response could overwrite a fast newer one.)
   let seq = 0
   // Abort the previous in-flight request when a newer one starts, so a superseded
   // search stops downloading instead of just having its result ignored.
   let currentAc: AbortController | null = null
 
-  async function run(query: string, page = 1, append = false, order: SortOrder = 'edhrec') {
-    if (!query) {
+  function fetchPage(req: SearchRequest, page: number, signal: AbortSignal): Promise<SearchResponse> {
+    return $fetch<SearchResponse>('/api/cards/browse', { params: browseParams(req.filters, req.ctx, page), signal })
+  }
+
+  async function run(req: SearchRequest | null, page = 1, append = false) {
+    if (!req) {
       seq++ // invalidate any in-flight request
       currentAc?.abort()
       currentAc = null
+      lastRequest = null
       state.value = emptySearchState()
       return
     }
@@ -151,15 +147,11 @@ export function useCardSearch() {
     currentAc?.abort()
     const ac = new AbortController()
     currentAc = ac
-    lastQuery = query
-    lastOrder = order
+    lastRequest = req
     state.value.loading = true
     state.value.error = null
     try {
-      const res = await $fetch<{ total: number, hasMore: boolean, cards: ScryfallCard[] }>('/api/cards/search', {
-        params: { q: query, page, order, dir: 'auto' },
-        signal: ac.signal,
-      })
+      const res = await fetchPage(req, page, ac.signal)
       // Ignore out-of-order responses (a newer request superseded this one).
       if (reqId !== seq)
         return
@@ -174,9 +166,19 @@ export function useCardSearch() {
         return
       if (reqId !== seq)
         return
-      state.value.error = err instanceof Error ? err.message : t('toast.loadError')
-      if (!append)
+      // A refused query is the player's to fix, so it says which term. Anything
+      // else is ours: the panel shows a plain message, the console the detail.
+      const syntax = syntaxErrorOf(err)
+      if (!syntax)
+        console.error('[search]', err)
+      state.value.error = syntax
+        ? `${t(`search.syntax.${syntax.code}`)} ${syntax.term}`
+        : t('toast.loadError')
+      if (!append) {
         state.value.cards = []
+        state.value.total = 0
+        state.value.hasMore = false
+      }
     }
     finally {
       if (reqId === seq)
@@ -185,16 +187,14 @@ export function useCardSearch() {
   }
 
   async function search(filters: SearchFilters, ctx: QueryContext) {
-    await run(buildScryfallQuery(filters, ctx), 1, false, filters.order)
+    // Copied, so later edits to the live filters cannot change what loadMore() pages.
+    await run({ filters: { ...filters, themes: [...filters.themes], colors: [...filters.colors] }, ctx: { ...ctx } }, 1, false)
   }
 
   async function loadMore() {
-    if (state.value.loading || !state.value.hasMore || !lastQuery)
+    if (state.value.loading || !state.value.hasMore || !lastRequest)
       return
-    // Paginate the SAME query + order that produced the current results —
-    // rebuilding from filters could fetch page N of a query whose page 1 was
-    // never shown (e.g. filters changed but the debounced search hasn't re-run).
-    await run(lastQuery, state.value.page + 1, true, lastOrder)
+    await run(lastRequest, state.value.page + 1, true)
   }
 
   async function autocomplete(text: string): Promise<string[]> {
@@ -210,8 +210,13 @@ export function useCardSearch() {
   }
 
   /**
-   * Load EDHREC "often played with" suggestions for a commander, resolved to
-   * Scryfall cards in the requested language, and display them as results.
+   * Load EDHREC "often played with" suggestions for a commander and display
+   * them as results.
+   *
+   * Names are resolved from the local database, which keeps EDHREC's order for
+   * free — the resolver answers in input order. Suggestions with no French
+   * printing now come back in English rather than being dropped, as the old
+   * `lang:fr` query did.
    */
   async function suggest(commander: string, lang: 'fr' | 'en') {
     if (!commander)
@@ -219,7 +224,7 @@ export function useCardSearch() {
     // Share the monotonic seq gate with run(), so a search started afterwards
     // invalidates this suggestion (and vice-versa) — no cross-clobber.
     const reqId = ++seq
-    lastQuery = `suggest:${commander}`
+    lastRequest = null
     state.value.loading = true
     state.value.error = null
     try {
@@ -230,20 +235,13 @@ export function useCardSearch() {
         state.value = emptySearchState()
         return
       }
-      // Resolve the names to cards (current language) via one Scryfall query.
-      // Cap to Scryfall's friendly limit; keep EDHREC's relevance order client-side.
-      const top = names.slice(0, 40).map(sanitizeCardName).filter(Boolean)
-      const q = `(${top.map(n => `!"${n}"`).join(' or ')}) lang:${lang}`
-      const res = await $fetch<{ cards: ScryfallCard[] }>('/api/cards/search', {
-        params: { q, order: 'edhrec', dir: 'auto' },
+      const { cards: rows } = await $fetch<{ cards: ResolvedRow[] }>('/api/cards/resolve', {
+        method: 'POST',
+        body: { lang, entries: names.slice(0, 40).map(name => ({ name })) },
       })
       if (reqId !== seq)
         return
-      // Re-order results to match EDHREC ranking.
-      const rank = new Map(top.map((n, i) => [n.toLowerCase(), i]))
-      const cards = [...res.cards].sort(
-        (a, b) => (rank.get(a.name.toLowerCase()) ?? 999) - (rank.get(b.name.toLowerCase()) ?? 999),
-      )
+      const cards = rows.map(r => r.card).filter((c): c is ScryfallCard => !!c)
       state.value.cards = cards
       state.value.total = cards.length
       state.value.hasMore = false
@@ -252,7 +250,8 @@ export function useCardSearch() {
     catch (err: unknown) {
       if (reqId !== seq)
         return
-      state.value.error = err instanceof Error ? err.message : t('toast.loadError')
+      console.error('[suggest]', err)
+      state.value.error = t('toast.loadError')
       state.value.cards = []
     }
     finally {
@@ -261,5 +260,18 @@ export function useCardSearch() {
     }
   }
 
-  return { state, search, loadMore, autocomplete, suggest }
+  /**
+   * Take a first page fetched with the page (useAsyncData) as the current
+   * results, so the server renders them and the browser starts from the same
+   * state. Null: that fetch failed.
+   */
+  function prime(res: SearchResponse | null, filters: SearchFilters, ctx: QueryContext) {
+    seq++
+    lastRequest = { filters: { ...filters, themes: [...filters.themes], colors: [...filters.colors] }, ctx: { ...ctx } }
+    state.value = res
+      ? { ...emptySearchState(), total: res.total, hasMore: res.hasMore, cards: res.cards }
+      : { ...emptySearchState(), error: t('toast.loadError') }
+  }
+
+  return { state, search, prime, loadMore, autocomplete, suggest }
 }

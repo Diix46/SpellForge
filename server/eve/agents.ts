@@ -1,7 +1,7 @@
 // Eve domain agents — seven MTG specialists the orchestrator consults. Each is
 // a focused system prompt; the orchestrator exposes them as consult_<key> tools.
 // When consulted, the agent runs ONE bounded Claude call with its own expert
-// brief + the shared real-data tools (Scryfall/EDHREC/validate), and returns a
+// brief + the shared real-data tools (card search/EDHREC/validate), and returns a
 // concise expert opinion the orchestrator weaves into the player's answer.
 
 export type EveLocale = 'fr' | 'en'
@@ -18,7 +18,7 @@ export interface DomainAgent {
 // (threaded in from the orchestrator, which gets it from the client's locale).
 function common(locale: EveLocale): string {
   const lang = locale === 'fr' ? 'FRENCH' : 'ENGLISH'
-  return `You are a specialist consultant on a Magic: The Gathering Commander (EDH) deckbuilding team. Reason ONLY about your specialty. Use the provided tools to ground every card claim in real Scryfall/EDHREC data — never invent card names, costs or text. Stay strictly within the deck's commander colour identity. Answer in ${lang}, concise (a few sentences + a short bulleted list of concrete cards when relevant), each card tied to THIS deck's plan. You are advising the head coach, not the player directly.`
+  return `You are a specialist consultant on a Magic: The Gathering Commander (EDH) deckbuilding team. Reason ONLY about your specialty. Use the provided tools to ground every card claim in real card-database/EDHREC data — never invent card names, costs or text. Stay strictly within the deck's commander colour identity. Answer in ${lang}, concise (a few sentences + a short bulleted list of concrete cards when relevant), each card tied to THIS deck's plan. You are advising the head coach, not the player directly.`
 }
 
 export const DOMAIN_AGENTS: DomainAgent[] = [

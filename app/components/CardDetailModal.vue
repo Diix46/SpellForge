@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref, watch } from 'vue'
+import { cardPath } from '#shared/game'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
-import { displayName, displayOracle, displayType, englishTypeLine, isCommanderType } from '~/composables/useMtg'
+import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
+import { mtgRaw } from '~/composables/useScryfall'
 
 const props = defineProps<{
   open: boolean
   card: ResolvedCard | null
   isCommander?: boolean
+  /** Opened from the card library: no deck to pin a printing on, and the
+   *  commander action starts a new deck instead. */
+  library?: boolean
+  /** The card is in the deck: only then can a printing be pinned on it. */
+  inDeck?: boolean
 }>()
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -20,7 +27,7 @@ const emit = defineEmits<{
 const { t, rarityLabel, isFr } = useLocale()
 
 // Only legendary creatures / planeswalkers can be commanders.
-const canBeCommander = computed(() => isCommanderType(englishTypeLine(props.card?.card ?? null)))
+const canBeCommander = computed(() => isCommanderType(props.card?.card?.typeLine ?? ''))
 
 const { searchUrl } = useCardmarket()
 
@@ -29,7 +36,9 @@ watch(() => props.card, () => {
   showBack.value = false
 })
 
-const c = computed(() => props.card?.card ?? null)
+// This view is Magic-specific: faces, set line, oracle segments all read
+// Scryfall's shape. Narrowing once here keeps the rest of the component as is.
+const c = computed(() => mtgRaw(props.card?.card))
 const isDfc = computed(() => !!props.card?.backImageUrl)
 
 const displayImage = computed(() => {
@@ -97,7 +106,9 @@ const pinnedKey = computed(() => {
 const cardKey = computed(() => props.card?.card?.id ?? props.card?.entry.name ?? '')
 
 function onPickPrint(p: { set: string, collectorNumber: string }) {
-  const name = englishName.value || props.card?.entry.name
+  // The deck line's own name: a double-faced card is listed by its full name,
+  // not by the face on show.
+  const name = props.card?.entry.name || englishName.value
   if (!name)
     return
   emit('setPrinting', { name, set: p.set, collectorNumber: p.collectorNumber })
@@ -277,6 +288,15 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
                 Cardmarket
               </UButton>
               <UButton
+                v-if="library && c"
+                :to="cardPath('mtg', c.name)"
+                icon="i-lucide-link"
+                size="sm"
+                class="border border-(--color-border-strong) bg-(--color-surface-2) text-(--color-text-high) hover:bg-(--color-surface-3)"
+              >
+                {{ t('card.page') }}
+              </UButton>
+              <UButton
                 v-if="scryUrl"
                 :to="scryUrl"
                 target="_blank"
@@ -291,6 +311,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 
           <!-- Printings selector -->
           <CardPrintingPicker
+            v-if="!library && inDeck"
             class="mt-4"
             :open="open"
             :english-name="englishName"
@@ -309,7 +330,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
               name="i-lucide-crown"
               class="h-4 w-4"
             />
-            {{ t('commander.set') }}
+            {{ library ? t('mtg.library.startWith') : t('commander.set') }}
           </button>
         </div>
       </div>

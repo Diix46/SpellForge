@@ -1,4 +1,5 @@
-import type { DeckEntry } from '../useDecklist'
+import type { DeckEntry } from '#shared/decklist'
+import type { GameCard } from '../../types/cards'
 
 export interface ImageUris {
   small: string
@@ -17,6 +18,10 @@ export interface ScryfallCard {
   set_name: string
   collector_number: string
   rarity?: string
+  artist?: string
+  released_at?: string
+  /** The local database keeps Commander's only. */
+  legalities?: Record<string, string>
   scryfall_uri?: string
   type_line?: string
   printed_type_line?: string
@@ -63,7 +68,9 @@ export interface ScryfallCard {
 
 export interface ResolvedCard {
   entry: DeckEntry
-  card: ScryfallCard | null
+  // Game-neutral. Magic-only code narrows on `card.game === 'mtg'` to reach the
+  // Scryfall payload in `card.raw`; everything else reads the shared fields.
+  card: GameCard | null
   imageUrl: string | null
   backImageUrl: string | null
   lang: string
@@ -71,6 +78,8 @@ export interface ResolvedCard {
   // are often priceless on Cardmarket, so we keep the default as a fallback).
   priceEur?: string | null
   error?: string
+  /** The server could not be reached: worth asking again, unlike "not found". */
+  transient?: boolean
 }
 
 export interface FetchProgress {

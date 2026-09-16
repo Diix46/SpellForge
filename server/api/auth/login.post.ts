@@ -5,6 +5,10 @@ import { validateCredentials } from '../../utils/validateCredentials'
 export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => null)
   const { email, password } = validateCredentials(body)
+  // Guessing is slowed per address and per account.
+  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'
+  rateLimit(`auth:login:ip:${ip}`, 30, 10 * 60_000)
+  rateLimit(`auth:login:email:${email}`, 10, 10 * 60_000)
 
   const db = useDb()
   const user = await db.select().from(schema.users).where(eq(schema.users.email, email)).get()

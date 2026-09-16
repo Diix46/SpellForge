@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// Prism: one stone, two faces. The left facet is One Piece's red, the right
+// one Magic's gold, split by a line of light, as on the landing portal.
 withDefaults(defineProps<{
   wordmark?: boolean
   size?: number
@@ -6,6 +8,9 @@ withDefaults(defineProps<{
   wordmark: true,
   size: 28,
 })
+
+// Gradient ids must be unique per instance: the logo appears several times.
+const uid = useId()
 </script>
 
 <template>
@@ -16,77 +21,34 @@ withDefaults(defineProps<{
       viewBox="0 0 40 40"
       class="shrink-0"
       role="img"
-      aria-label="Spellforge"
+      aria-label="Prism"
     >
       <defs>
-        <linearGradient
-          id="prismCyan"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="1"
-        >
-          <stop
-            offset="0"
-            stop-color="#7DEEFF"
-          />
-          <stop
-            offset="1"
-            stop-color="#06C7E6"
-          />
+        <linearGradient :id="`${uid}-red`" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#EF6B5D" />
+          <stop offset="1" stop-color="#B42A23" />
         </linearGradient>
-        <linearGradient
-          id="prismSilver"
-          x1="0"
-          y1="0"
-          x2="1"
-          y2="1"
-        >
-          <stop
-            offset="0"
-            stop-color="#EBEDF3"
-          />
-          <stop
-            offset="1"
-            stop-color="#8A93A6"
-          />
+        <linearGradient :id="`${uid}-gold`" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#F1D994" />
+          <stop offset="1" stop-color="#B8903F" />
         </linearGradient>
       </defs>
-      <!-- duplicate-blur halo -->
+      <!-- halo -->
       <path
         d="M20 3 L34 20 L20 37 L6 20 Z"
-        fill="url(#prismCyan)"
-        opacity=".35"
+        :fill="`url(#${uid}-gold)`"
+        opacity=".3"
         style="filter: blur(6px)"
-        class="transition-opacity duration-300 group-hover:opacity-70"
+        class="transition-opacity duration-300 group-hover:opacity-60"
       />
-      <!-- left (cyan) facet -->
-      <path
-        d="M20 3 L20 37 L6 20 Z"
-        fill="url(#prismCyan)"
-      />
-      <!-- right (silver) facet -->
-      <path
-        d="M20 3 L34 20 L20 37 Z"
-        fill="url(#prismSilver)"
-      />
-      <!-- specular seam -->
-      <path
-        d="M20 3 L20 37"
-        stroke="#FFFFFF"
-        stroke-width="1"
-        opacity=".4"
-      />
+      <path d="M20 3 L20 37 L6 20 Z" :fill="`url(#${uid}-red)`" />
+      <path d="M20 3 L34 20 L20 37 Z" :fill="`url(#${uid}-gold)`" />
+      <path d="M20 3 L20 37" stroke="#FFF8EC" stroke-width="1" opacity=".55" />
     </svg>
 
     <span
       v-if="wordmark"
-      class="font-display text-lg font-bold tracking-[2px] leading-none"
-    >
-      <span class="text-(--color-text-high)">SPELL</span><span
-        class="text-gradient"
-        style="--accent-rgb: 125, 238, 255; --accent-rgb-2: 235, 237, 243;"
-      >FORGE</span>
-    </span>
+      class="font-display text-lg font-bold tracking-[4px] leading-none text-(--color-text-high)"
+    >PRISM</span>
   </span>
 </template>

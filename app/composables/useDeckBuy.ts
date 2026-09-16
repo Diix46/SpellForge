@@ -6,7 +6,7 @@ import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref, watch } from 'vue'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { displayName } from '~/composables/useMtg'
-import { getImageUris } from '~/composables/useScryfall'
+import { getImageUris, mtgRaw } from '~/composables/useScryfall'
 
 // Buy/checkout concerns for the deck page: per-card Cardmarket pricing rows, the
 // cost summary, the marketplace-language toggle, and the one-step "buy the whole
@@ -24,7 +24,7 @@ export interface BuyRow {
 }
 
 interface BuyCtx {
-  resolvedCards: Ref<ResolvedCard[]>
+  resolvedCards: Ref<ResolvedCard[]> | ComputedRef<ResolvedCard[]>
   allEntries: ComputedRef<DeckEntry[]>
   price: ComputedRef<PriceSummary>
   /** Resolve a (possibly localized) entry name to its ResolvedCard, if loaded. */
@@ -62,17 +62,17 @@ export function useDeckBuy(ctx: BuyCtx) {
     const isFr = locale.value === 'fr'
     const rows: BuyRow[] = cardsOrFallback.value.map((rc) => {
       const enName = rc.card?.name ?? rc.entry.name
-      const eur = rc.priceEur ?? rc.card?.prices?.eur
+      const eur = rc.priceEur
       const unit = eur ? Number.parseFloat(eur) : Number.NaN
       const hasPrice = Number.isFinite(unit)
       return {
-        name: displayName(rc.card, isFr) || rc.entry.name,
+        name: displayName(mtgRaw(rc.card), isFr) || rc.entry.name,
         enName,
         quantity: rc.entry.quantity,
         unit: hasPrice ? unit : null,
         lineTotal: hasPrice ? Math.round(unit * rc.entry.quantity * 100) / 100 : null,
         url: searchUrl(enName, buyLang.value),
-        thumb: getImageUris(rc.card)?.small ?? null,
+        thumb: getImageUris(mtgRaw(rc.card))?.small ?? null,
       }
     })
     // Priced cards first (most expensive on top), then unknown-price cards by name.

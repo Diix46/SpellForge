@@ -15,6 +15,13 @@
       "when": 1783602351525,
       "tag": "0001_parched_tyger_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789557557843,
+      "tag": "0002_deck_game",
+      "breakpoints": true
     }
   ]
 }

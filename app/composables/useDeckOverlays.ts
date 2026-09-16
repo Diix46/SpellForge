@@ -14,39 +14,32 @@ export function useDeckOverlays(route: RouteLocationNormalizedLoaded, router: Ro
   // widget, not a terminal overlay).
   const coachOpen = ref(false)
 
-  // Esc closes whichever terminal overlay is open (a div's @keydown.esc won't fire
-  // unless focused, so bind at the window while one is open).
-  function onOverlayEsc(e: KeyboardEvent) {
-    if (e.key !== 'Escape')
+  // Esc closes the topmost layer only: a dialog, menu or popover of the UI
+  // library handles its own Esc (it carries data-dismissable-layer), then
+  // Preview or Buy, then the Coach. One window listener while any is open (a
+  // div's @keydown.esc won't fire unless focused).
+  function onEsc(e: KeyboardEvent) {
+    if (e.key !== 'Escape' || document.querySelector('[data-dismissable-layer]'))
       return
     if (previewOpen.value)
       previewOpen.value = false
     else if (buyOpen.value)
       buyOpen.value = false
-  }
-  watch([previewOpen, buyOpen], ([p, b]) => {
-    if (!import.meta.client)
-      return
-    if (p || b)
-      window.addEventListener('keydown', onOverlayEsc)
-    else
-      window.removeEventListener('keydown', onOverlayEsc)
-  })
-
-  function onCoachEsc(e: KeyboardEvent) {
-    if (e.key === 'Escape')
+    else if (coachOpen.value)
       coachOpen.value = false
   }
-  watch(coachOpen, (open) => {
-    if (import.meta.client)
-      open ? window.addEventListener('keydown', onCoachEsc) : window.removeEventListener('keydown', onCoachEsc)
+  watch([previewOpen, buyOpen, coachOpen], (open) => {
+    if (!import.meta.client)
+      return
+    if (open.some(Boolean))
+      window.addEventListener('keydown', onEsc)
+    else
+      window.removeEventListener('keydown', onEsc)
   })
 
   onBeforeUnmount(() => {
-    if (import.meta.client) {
-      window.removeEventListener('keydown', onOverlayEsc)
-      window.removeEventListener('keydown', onCoachEsc)
-    }
+    if (import.meta.client)
+      window.removeEventListener('keydown', onEsc)
   })
 
   // Deep-link: keep ?preview / ?buy in sync with the overlays. Only one at a time.

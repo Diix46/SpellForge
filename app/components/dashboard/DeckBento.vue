@@ -1,18 +1,15 @@
 <script setup lang="ts">
+import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
-import type { ManaColor } from '~/composables/useMtg'
 import { useLocale } from '~/composables/useLocale'
-import { useManaIdentity } from '~/composables/useManaIdentity'
 
 // Bento hero: the featured (most-recent) deck + two quick-start tiles. Pure
-// presentation; the page supplies the featured deck and its derived bits and
+// presentation; the page supplies the featured deck and its fingerprint and
 // listens for open/new/import. Extracted from index.vue.
 
 defineProps<{
   featured: Deck
-  count: number
-  colors: ManaColor[]
-  accent: Record<string, string>
+  fingerprint: DeckFingerprint
 }>()
 
 const emit = defineEmits<{
@@ -22,7 +19,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useLocale()
-const { colorVar } = useManaIdentity()
 </script>
 
 <template>
@@ -30,27 +26,30 @@ const { colorVar } = useManaIdentity()
     <button
       type="button"
       class="feature"
-      :style="accent"
+      :style="fingerprint.accent"
       @click="emit('open', featured.id)"
     >
       <span class="feature-tag">
-        <span class="dot" />{{ t('dash.recent') }}
+        <span class="dot" />{{ t('dash.recent') }} · {{ featured.game === 'optcg' ? 'One Piece' : 'Magic' }}
       </span>
-      <div>
-        <h3 class="feature-name">
-          {{ featured.name }}
-        </h3>
-        <div class="feature-meta">
-          <span><b>{{ count }}</b> {{ t('dash.cards') }}</span>
-          <span v-if="colors.length"><b>{{ colors.join('').toUpperCase() }}</b></span>
-        </div>
-        <div class="feature-pips">
-          <span
-            v-for="c in colors"
-            :key="c"
-            class="pip"
-            :style="{ background: colorVar(c) }"
-          />
+      <div class="feature-body">
+        <img v-if="fingerprint.leader" :src="fingerprint.leader.thumb" alt="" class="feature-leader">
+        <div class="min-w-0">
+          <h3 class="feature-name">
+            {{ featured.name }}
+          </h3>
+          <div class="feature-meta">
+            <span><b>{{ fingerprint.count }}</b> / {{ fingerprint.target }} {{ t('dash.cards') }}</span>
+            <span v-if="fingerprint.label"><b>{{ fingerprint.label }}</b></span>
+          </div>
+          <div class="feature-pips">
+            <span
+              v-for="(c, i) in fingerprint.dots"
+              :key="i"
+              class="pip"
+              :style="{ background: c }"
+            />
+          </div>
         </div>
       </div>
       <span class="feature-cta">
@@ -153,6 +152,17 @@ const { colorVar } = useManaIdentity()
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 8px var(--accent);
+}
+.feature-body {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.feature-leader {
+  width: 76px;
+  border-radius: 4px;
+  rotate: -3deg;
+  box-shadow: var(--shadow-elev-2);
 }
 .feature-name {
   font-family: var(--font-display);

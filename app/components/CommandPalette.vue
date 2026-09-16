@@ -17,13 +17,9 @@ function go(path: string) {
   hide()
   router.push(path)
 }
-function openScryfall(name: string) {
-  hide()
-  window.open(`https://scryfall.com/search?q=${encodeURIComponent(`!"${name}"`)}`, '_blank')
-}
 
 // Data layer (actions / decks / live card autocomplete / filter + group).
-const { results, grouped, reset } = useCommandPaletteSearch(q, { go, openScryfall })
+const { results, grouped, reset } = useCommandPaletteSearch(q, { go })
 
 watch(results, () => {
   sel.value = 0

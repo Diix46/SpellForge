@@ -1,15 +1,12 @@
-import type { DeckEntry } from './useDecklist'
+import type { DeckEntry } from '#shared/decklist'
+import type { ValidationIssue } from '#shared/game'
 import type { ScryfallCard } from './useScryfall'
 import { computed, ref } from 'vue'
+import { writeMtgDecklist } from '#shared/mtg/decklist'
 import { useDecklist } from './useDecklist'
 import { allowsAnyQuantity, isBasicLand } from './useMtg'
 
-export interface ValidationIssue {
-  level: 'error' | 'warning'
-  /** i18n key + optional interpolation value. */
-  key: string
-  value?: string | number
-}
+export type { ValidationIssue } from '#shared/game'
 
 /**
  * Stateful deck-editing layer on top of the raw decklist text.
@@ -20,29 +17,22 @@ export interface ValidationIssue {
 export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) => void }) {
   const { parse } = useDecklist()
 
-  // Working list of entries (mainboard + commander). Sideboard is preserved verbatim.
+  // Working list of entries (mainboard + commander). The sideboard is kept as
+  // is, pinned printings included. The chosen commander is read from, and
+  // written back to, the list's "Commander" section.
   const entries = ref<DeckEntry[]>([])
   const commanderName = ref<string>('')
-  let sideboardRaw = ''
+  let sideboard: DeckEntry[] = []
 
   function load() {
-    const raw = rawModel.get()
-    const parsed = parse(raw)
+    const parsed = parse(rawModel.get())
     entries.value = parsed.mainboard.map(e => ({ ...e }))
-    // Preserve sideboard lines verbatim when serialising.
-    sideboardRaw = parsed.sideboard.length
-      ? `\nSideboard\n${parsed.sideboard.map(e => `${e.quantity} ${e.name}`).join('\n')}`
-      : ''
+    sideboard = parsed.sideboard
+    commanderName.value = parsed.commanders?.[0] ?? ''
   }
 
   function serialise() {
-    const lines = entries.value.map((e) => {
-      // Preserve a pinned printing as the Arena "(SET) NUM" suffix so it
-      // round-trips through the raw decklist and survives reloads.
-      const suffix = e.set && e.collectorNumber ? ` (${e.set.toUpperCase()}) ${e.collectorNumber}` : ''
-      return `${e.quantity} ${e.name}${suffix}`
-    })
-    rawModel.set(lines.join('\n') + sideboardRaw)
+    rawModel.set(writeMtgDecklist(entries.value, sideboard, commanderName.value))
   }
 
   function findIndex(name: string): number {
@@ -68,10 +58,17 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     addCard(card.name)
   }
 
+  // Removing the chosen commander drops the choice too.
+  function dropCommanderIf(name: string) {
+    if (commanderName.value.trim().toLowerCase() === name.trim().toLowerCase())
+      commanderName.value = ''
+  }
+
   function removeCard(name: string) {
     const idx = findIndex(name)
     if (idx >= 0) {
       entries.value.splice(idx, 1)
+      dropCommanderIf(name)
       serialise()
     }
   }
@@ -82,6 +79,7 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
       return
     if (qty <= 0) {
       entries.value.splice(idx, 1)
+      dropCommanderIf(name)
     }
     else {
       entries.value[idx]!.quantity = qty
@@ -97,14 +95,18 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     else serialise()
   }
 
-  /** Pin a specific printing (set + collector number) on a card, or clear it. */
-  function setPrinting(name: string, set?: string, collectorNumber?: string) {
+  /**
+   * Pin a specific printing (set + collector number) on a card, or clear it.
+   * False when the card is not in the deck.
+   */
+  function setPrinting(name: string, set?: string, collectorNumber?: string): boolean {
     const idx = findIndex(name)
     if (idx < 0)
-      return
+      return false
     entries.value[idx]!.set = set
     entries.value[idx]!.collectorNumber = collectorNumber
     serialise()
+    return true
   }
 
   const totalCards = computed(() => entries.value.reduce((s, e) => s + e.quantity, 0))
@@ -136,6 +138,8 @@ export function validateCommander(
   entries: DeckEntry[],
   opts: {
     commanderName?: string
+    /** name(lower) of entries that are tokens: printed, never counted. */
+    tokenNames?: Set<string>
     /** name(lower) → color identity letters, when known (from Scryfall). */
     identityByName?: Map<string, string[]>
     /** the commander's own color identity, when known. */
@@ -143,7 +147,8 @@ export function validateCommander(
   } = {},
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = []
-  const total = entries.reduce((s, e) => s + e.quantity, 0)
+  const counted = opts.tokenNames?.size ? entries.filter(e => !opts.tokenNames!.has(e.name.trim().toLowerCase())) : entries
+  const total = counted.reduce((s, e) => s + e.quantity, 0)
 
   if (total !== 100)
     issues.push({ level: total > 100 ? 'error' : 'warning', key: 'valid.size', value: total })

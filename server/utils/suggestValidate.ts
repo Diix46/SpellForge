@@ -4,6 +4,9 @@
 // function; suggest.post.ts composes them so its handler stays a linear
 // parse → AI → validate → return flow. Auto-imported by Nitro (server/utils).
 
+import { useMtgCardsDb } from './cards/db'
+import { resolveCardsByName } from './cards/mtg-resolve'
+
 export interface Suggestion { name: string, reason: string }
 export interface ScryCard { name?: string, color_identity?: string[], legalities?: Record<string, string> }
 
@@ -26,7 +29,7 @@ export function filterValidCuts(rawCut: Suggestion[], inDeck: Set<string>): { cu
 }
 
 /**
- * ADDs must resolve to a real Scryfall card, sit within the commander's colour
+ * ADDs must resolve to a real card, sit within the commander's colour
  * identity, be Commander-legal, not already be in the deck, and be unique. Each
  * proposal that fails any rule is dropped and counted, so `dropped` reflects the
  * full gap between what the model proposed and what the UI shows.
@@ -39,7 +42,7 @@ export async function validateAdds(
   if (!rawAdd.length)
     return { add: [], dropped: 0 }
 
-  const resolved = await resolveScryfallByName<ScryCard>(rawAdd.map(s => s.name))
+  const resolved = await resolveCardsByName<ScryCard>(useMtgCardsDb(), rawAdd.map(s => s.name))
   const add: Suggestion[] = []
   let dropped = 0
   const seen = new Set<string>()

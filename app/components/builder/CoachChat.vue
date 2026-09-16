@@ -246,7 +246,7 @@ watch(messages, async () => {
           type="button"
           class="flex items-center gap-2 rounded-[var(--radius-md)] border border-(--color-border-subtle) px-3 py-2 text-left text-sm text-(--color-text-mid) transition-all hover:-translate-y-px hover:border-(--accent-border) hover:bg-(--color-surface-2) hover:text-(--color-text-high) disabled:opacity-50"
           :disabled="!ready"
-          :aria-label="ready ? t(s.key) : `${t(s.key)} — ${t('coach.needDeck')}`"
+          :aria-label="ready ? t(s.key) : `${t(s.key)}, ${t('coach.needDeck')}`"
           @click="submit(t(s.key))"
         >
           <UIcon :name="s.icon" class="h-4 w-4 shrink-0 text-(--accent-text)" />

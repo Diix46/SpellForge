@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
+import { parseLocale } from '~/composables/useLocale'
 
-// Mana Prism favicon as an inline SVG data URI (matches AppLogo). Neutral bg now.
+// The Prism favicon as an inline SVG data URI (matches AppLogo): the red and
+// gold facets on a dark tile, readable on light and dark tab bars alike.
 const FAVICON = `data:image/svg+xml,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">`
   + `<defs>`
-  + `<linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%237DEEFF"/><stop offset="1" stop-color="%2306C7E6"/></linearGradient>`
-  + `<linearGradient id="m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23E4E4E7"/><stop offset="1" stop-color="%238E8E96"/></linearGradient>`
+  + `<linearGradient id="r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EF6B5D"/><stop offset="1" stop-color="#B42A23"/></linearGradient>`
+  + `<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F1D994"/><stop offset="1" stop-color="#B8903F"/></linearGradient>`
   + `</defs>`
-  + `<rect width="40" height="40" rx="9" fill="%230A0A0B"/>`
-  + `<path d="M20 6 L20 34 L9 20 Z" fill="url(%23c)"/>`
-  + `<path d="M20 6 L31 20 L20 34 Z" fill="url(%23m)"/>`
-  + `<path d="M20 6 L20 34" stroke="%23FFFFFF" stroke-width="1" opacity=".4"/>`
+  + `<rect width="40" height="40" rx="9" fill="#100D14"/>`
+  + `<path d="M20 6 L20 34 L9 20 Z" fill="url(#r)"/>`
+  + `<path d="M20 6 L31 20 L20 34 Z" fill="url(#g)"/>`
+  + `<path d="M20 6 L20 34" stroke="#FFF8EC" stroke-width="1" opacity=".55"/>`
   + `</svg>`,
 )}`
 
@@ -25,15 +28,28 @@ useHead({
   ],
 })
 
-useSeoMeta({
-  title: 'Spellforge — Deck manager & proxy printer',
-  titleTemplate: (titleChunk?: string) =>
-    titleChunk && !titleChunk.startsWith('Spellforge') ? `${titleChunk} · Spellforge` : 'Spellforge — Deck manager & proxy printer',
-  description: 'Spellforge — gérez vos decks Magic: The Gathering et imprimez des proxies impeccables en français ou anglais sur A4/A3.',
-})
-
 const route = useRoute()
+const { universe } = useUniverse()
 const { locale, setLocale, t } = useLocale()
+
+// A link can ask for a language (?lang=en): the hreflang alternates of the
+// public pages point there. The choice is kept, so it is written even when the
+// server already rendered the page in that language.
+watch(() => route.query.lang, (lang) => {
+  const l = parseLocale(lang)
+  if (l)
+    setLocale(l)
+}, { immediate: true })
+
+// Pages give their own title; the brand closes it. The home title is the
+// brand line itself.
+useSeoMeta({
+  title: () => t('brand.title'),
+  titleTemplate: (titleChunk?: string) =>
+    titleChunk && titleChunk !== t('brand.title') ? `${titleChunk} · Prism` : t('brand.title'),
+  description: () => t('brand.description'),
+  ogSiteName: 'Prism',
+})
 const { loggedIn, user, logout } = useAuth()
 const { show: openCmdK } = useCommandPalette()
 
@@ -46,9 +62,17 @@ function toggleTheme() {
 }
 // Browser chrome (mobile address bar) follows the active theme. The document
 // language follows the site locale (reactive — switches with the FR/EN toggle).
+// The universe re-themes the whole document (assets/css/universes.css).
+const THEME_COLOR = { optcg: '#efdfc0', mtg: '#07060b' } as const
 useHead({
-  htmlAttrs: { lang: () => locale.value },
-  meta: [{ name: 'theme-color', content: () => (isDark.value ? '#0a0a0b' : '#fafafa') }],
+  htmlAttrs: {
+    'lang': () => locale.value,
+    'data-universe': () => universe.value ?? undefined,
+  },
+  meta: [{
+    name: 'theme-color',
+    content: () => (universe.value ? THEME_COLOR[universe.value] : isDark.value ? '#0a0a0b' : '#fafafa'),
+  }],
 })
 
 // Auth modal is driven by shared overlay state so the (chrome-less) landing page
@@ -56,16 +80,9 @@ useHead({
 const { open: showAuth, show: openAuth } = useAuthOverlay()
 const mobileNav = ref(false)
 
-// The app chrome (top bar + footer) is hidden only for the chrome-less, full-bleed
-// marketing landing — a first-time guest on "/", or anyone visiting /landing on
-// purpose to revisit/demo it — both bring their own minimal header. Everyone
-// else — a guest already managing local decks, or a member — gets the real app
-// chrome, including on the deck editor and shared-deck pages.
-const { decks: guestDecks } = useDeckStore()
-const isMarketingLanding = computed(() =>
-  route.path === '/landing' || (!loggedIn.value && route.path === '/' && guestDecks.value.length === 0),
-)
-const showChrome = computed(() => !isMarketingLanding.value)
+// The home page brings its own header and footer; every other page gets the
+// app chrome.
+const showChrome = computed(() => route.path !== '/')
 
 // A page can request a viewport-locked shell (no page scroll; the page fills the
 // area below the top bar and manages its own internal scroll). The deck page
@@ -88,27 +105,35 @@ const initials = computed(() => {
 // "Importer" is an ACTION (opens the import modal), not a destination, so it's
 // rendered separately below and never shows an active fill.
 const nav = computed(() => [
-  { to: '/', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
+  { to: '/decks', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
-// A nav link is active only when it's the current route (exact). The dashboard
-// link stays active on '/' even with a transient ?import/?new modal query.
+// The two worlds, always one click away. Inside a universe its library is
+// the active entry; its decks live under it too.
+const worlds = computed(() => [
+  { game: 'optcg' as const, to: libraryPath('optcg'), label: 'One Piece' },
+  { game: 'mtg' as const, to: libraryPath('mtg'), label: 'Magic' },
+])
+
+// A nav link is active only when it's the current route (exact); the query of
+// a transient ?import/?new modal does not count.
 function isActive(to: string) {
-  if (to === '/')
-    return route.path === '/'
   return route.path === to
 }
 
 function openImport() {
   mobileNav.value = false
-  navigateTo('/?import=1')
+  navigateTo(universe.value ? `/decks?import=${universe.value}` : '/decks?import=1')
 }
 </script>
 
 <template>
   <UApp>
-    <FxAppBackground />
+    <FxOnePieceSea v-if="universe === 'optcg'" />
+    <FxMagicSanctum v-else-if="universe === 'mtg'" />
+    <!-- The home page paints its own ground over it: no hidden animation there. -->
+    <FxAppBackground v-else-if="showChrome" />
 
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
@@ -140,6 +165,20 @@ function openImport() {
             </button>
           </nav>
 
+          <!-- the two worlds -->
+          <nav class="worlds" :aria-label="t('nav.worlds')">
+            <NuxtLink
+              v-for="w in worlds"
+              :key="w.game"
+              :to="w.to"
+              class="world"
+              :class="[`world--${w.game}`, { on: universe === w.game }]"
+              :aria-current="universe === w.game ? 'page' : undefined"
+            >
+              {{ w.label }}
+            </NuxtLink>
+          </nav>
+
           <!-- page-specific actions injected here by the active page -->
           <div id="topbar-actions" class="topbar-actions" />
 
@@ -151,7 +190,7 @@ function openImport() {
               <span class="kk"><kbd>⌘</kbd><kbd>K</kbd></span>
             </button>
 
-            <div class="lang">
+            <div class="lang lang--bar">
               <button :class="{ on: locale === 'fr' }" aria-label="Français" @click="setLocale('fr')">
                 FR
               </button>
@@ -160,10 +199,11 @@ function openImport() {
               </button>
             </div>
 
-            <ClientOnly>
+            <!-- A universe sets its own light: One Piece by day, Magic by night. -->
+            <ClientOnly v-if="!universe">
               <button
                 type="button"
-                class="icon-btn"
+                class="icon-btn theme-bar"
                 :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
                 @click="toggleTheme"
               >
@@ -186,7 +226,7 @@ function openImport() {
             </button>
 
             <!-- mobile: toggle the nav row -->
-            <button type="button" class="burger" :aria-label="t('nav.decks')" @click="mobileNav = !mobileNav">
+            <button type="button" class="burger" :aria-label="t('home.nav.menu')" :aria-expanded="mobileNav" @click="mobileNav = !mobileNav">
               <UIcon :name="mobileNav ? 'i-lucide-x' : 'i-lucide-menu'" class="h-5 w-5" />
             </button>
           </div>
@@ -209,6 +249,26 @@ function openImport() {
             <UIcon name="i-lucide-download" class="ic" />
             <span>{{ t('nav.import') }}</span>
           </button>
+          <!-- on a phone the bar has no room left for these -->
+          <div class="nav-mobile-tools">
+            <div class="lang">
+              <button :class="{ on: locale === 'fr' }" aria-label="Français" @click="setLocale('fr')">
+                FR
+              </button>
+              <button :class="{ on: locale === 'en' }" aria-label="English" @click="setLocale('en')">
+                EN
+              </button>
+            </div>
+            <button
+              v-if="!universe"
+              type="button"
+              class="icon-btn"
+              :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
+              @click="toggleTheme"
+            >
+              <UIcon :name="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" class="h-[18px] w-[18px]" />
+            </button>
+          </div>
         </nav>
       </header>
 
@@ -221,13 +281,17 @@ function openImport() {
         <div class="foot-inner">
           <div class="foot-brand">
             <AppLogo :wordmark="false" :size="20" />
-            <span>{{ t('footer.tagline') }}</span>
+            <span>{{ universe === 'optcg' ? t('footer.taglineOp') : t('footer.tagline') }}</span>
           </div>
-          <p>
+          <p v-if="universe !== 'optcg'">
             {{ t('footer.dataVia') }}
-            <a href="https://scryfall.com" target="_blank">Scryfall</a>
+            <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>
             • {{ t('footer.importsVia') }}
-            <a href="https://edhrec.com" target="_blank">EDHREC</a>
+            <a href="https://edhrec.com" target="_blank" rel="noopener">EDHREC</a>
+            • {{ t('footer.wotc') }}
+          </p>
+          <p v-if="universe !== 'mtg'">
+            {{ t('footer.bandai') }}
           </p>
         </div>
       </footer>
@@ -313,6 +377,58 @@ function openImport() {
   flex-shrink: 0;
   padding: 4px;
   border-radius: var(--radius-sm);
+}
+
+/* the two worlds: each pill wears its own universe, even outside it */
+.worlds {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 3px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-sm);
+}
+.world {
+  padding: 4px 11px;
+  white-space: nowrap;
+  border-radius: calc(var(--radius-sm) - 1px);
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.world:hover {
+  color: var(--color-text-high);
+  transform: translateY(-1px);
+}
+.world--optcg {
+  font-family: 'Anton', Impact, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.world--mtg {
+  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.world--optcg.on {
+  color: #fff8ec;
+  background: #c9312a;
+}
+.world--mtg.on {
+  color: #100c06;
+  background: #d4af5f;
+}
+@media (max-width: 720px) {
+  .worlds {
+    margin-left: 4px;
+  }
+  .world {
+    padding: 4px 8px;
+  }
 }
 
 /* primary nav (destinations) */
@@ -516,7 +632,8 @@ function openImport() {
   cursor: pointer;
   padding: 4px;
 }
-.nav-mobile {
+.nav-mobile,
+.nav-mobile-tools {
   display: none;
 }
 
@@ -600,6 +717,23 @@ function openImport() {
   }
   .content {
     padding: 22px 16px 48px;
+  }
+}
+@media (max-width: 720px) {
+  .lang--bar,
+  .theme-bar {
+    display: none;
+  }
+  .nav-mobile-tools {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 11px 2px;
+  }
+}
+@media (max-width: 480px) {
+  .brand :deep(svg + span) {
+    display: none;
   }
 }
 </style>
