@@ -1,7 +1,9 @@
 import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 import type { GameId } from '#shared/game'
 import { ref, watch } from 'vue'
+import { totalCards } from '#shared/decklist'
 import { deckPath, parseGameId } from '#shared/game'
+import { optcgLine, orderOptcgEntries, parseOptcgDecklist } from '#shared/optcg/decklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 
 // Owns the dashboard's four modals (new / import / rename / delete): their open
@@ -22,6 +24,9 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
   // Import
   const showImport = ref(false)
   const importUrl = ref('')
+  // Magic imports a public URL; One Piece a pasted list.
+  const importGame = ref<GameId>('mtg')
+  const importText = ref('')
   const importing = ref(false)
 
   // Rename
@@ -46,12 +51,17 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
     showImport.value = !q.new && !!q.import
     if (q.new)
       newDeckGame.value = parseGameId(q.new) ?? newDeckGame.value
+    else if (q.import)
+      importGame.value = parseGameId(q.import) ?? importGame.value
     // Strip ONLY our action params, preserving any other query state.
     const { new: _new, import: _import, ...rest } = q
     router.replace({ query: rest })
   }, { immediate: true })
 
   async function handleCreate() {
+    // A second Enter while the page changes must not create a second deck.
+    if (!showNewDeck.value)
+      return
     const deck = createDeck({ name: newDeckName.value || t('nav.newDeck'), game: newDeckGame.value })
     showNewDeck.value = false
     newDeckName.value = ''
@@ -59,6 +69,10 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
   }
 
   async function handleImport() {
+    if (importing.value)
+      return
+    if (importGame.value === 'optcg')
+      return importOptcg()
     if (!importUrl.value.trim())
       return
     importing.value = true
@@ -70,8 +84,8 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
       // URL import reads EDHREC and Archidekt, both Magic-only.
       const deck = createDeck({ name: result.name, game: 'mtg', raw: result.raw, source: result.source })
       toast.add({
-        title: locale.value === 'fr' ? 'Deck importé' : 'Deck imported',
-        description: `${result.name} — ${result.cardCount} ${t('dash.cards')}`,
+        title: t('modal.imported'),
+        description: `${result.name} · ${result.cardCount} ${t('dash.cards')}`,
         color: 'success',
         icon: 'i-lucide-check',
       })
@@ -80,12 +94,52 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
       await navigateTo(deckPath(deck))
     }
     catch (err: unknown) {
+      // The server names the case; the message is ours to write.
+      const code = (err as { data?: { data?: { code?: unknown } } } | null)?.data?.data?.code
+      const known = typeof code === 'string' ? t(`modal.importError.${code}`) : ''
       toast.add({
-        title: locale.value === 'fr' ? 'Import échoué' : 'Import failed',
-        description: errMessage(err) || (locale.value === 'fr' ? 'Erreur inconnue' : 'Unknown error'),
+        title: t('modal.importFailed'),
+        description: known && !known.startsWith('modal.') ? known : errMessage(err) || t('modal.unknownError'),
         color: 'error',
         icon: 'i-lucide-x',
       })
+    }
+    finally {
+      importing.value = false
+    }
+  }
+
+  /**
+   * A pasted One Piece list becomes a deck, its Leader moved first (the
+   * dashboard tile and the rules read it there). Unreadable lines are kept at
+   * the end so the workshop can show them.
+   */
+  async function importOptcg() {
+    const { mainboard, errors } = parseOptcgDecklist(importText.value)
+    if (!mainboard.length) {
+      toast.add({ title: t('modal.importFailed'), description: t('modal.importListEmpty'), color: 'error', icon: 'i-lucide-x' })
+      return
+    }
+    importing.value = true
+    try {
+      const { cards } = await $fetch<{ cards: ({ category: string } | null)[] }>('/api/optcg/resolve', {
+        method: 'POST',
+        body: { lang: locale.value, entries: mainboard.map(e => ({ number: e.name })) },
+      })
+      const leaders = new Set(mainboard.filter((_, i) => cards[i]?.category === 'Leader').map(e => e.name))
+      const ordered = orderOptcgEntries(mainboard, n => leaders.has(n)).map(optcgLine)
+      const leaderIndex = mainboard.findIndex(e => leaders.has(e.name))
+      const name = leaderIndex >= 0 && cards[leaderIndex]
+        ? `${t('optcg.library.newDeckName')} ${(cards[leaderIndex] as { name?: string }).name ?? ''}`.trim()
+        : t('nav.newDeck')
+      const deck = createDeck({ name, game: 'optcg', raw: [...ordered, ...errors].join('\n') })
+      toast.add({ title: t('modal.imported'), description: `${name} · ${totalCards(mainboard)} ${t('dash.cards')}`, color: 'success', icon: 'i-lucide-check' })
+      showImport.value = false
+      importText.value = ''
+      await navigateTo(deckPath(deck))
+    }
+    catch (err: unknown) {
+      toast.add({ title: t('modal.importFailed'), description: errMessage(err) || t('modal.unknownError'), color: 'error', icon: 'i-lucide-x' })
     }
     finally {
       importing.value = false
@@ -127,6 +181,8 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
     newDeckGame,
     showImport,
     importUrl,
+    importGame,
+    importText,
     importing,
     showRename,
     renameValue,

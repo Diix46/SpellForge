@@ -13,6 +13,8 @@ defineProps<{
   newDeckGame: GameId
   showImport: boolean
   importUrl: string
+  importGame: GameId
+  importText: string
   importing: boolean
   showRename: boolean
   renameValue: string
@@ -26,6 +28,8 @@ const emit = defineEmits<{
   'update:newDeckGame': [v: GameId]
   'update:showImport': [v: boolean]
   'update:importUrl': [v: string]
+  'update:importGame': [v: GameId]
+  'update:importText': [v: string]
   'update:showRename': [v: boolean]
   'update:renameValue': [v: string]
   'update:showDelete': [v: boolean]
@@ -110,7 +114,7 @@ const modalUi = {
     <template #body>
       <p class="text-(--color-text-mid)">
         {{ t('modal.deleteBody') }}
-        <span class="font-semibold text-(--color-text-high)">{{ deleteName }}</span> ?
+        <span class="font-semibold text-(--color-text-high)">{{ deleteName }}</span>{{ t('modal.deleteEnd') }}
       </p>
     </template>
     <template #footer>
@@ -164,7 +168,30 @@ const modalUi = {
     @update:open="emit('update:showImport', $event)"
   >
     <template #body>
-      <div class="space-y-3">
+      <fieldset class="worlds">
+        <legend class="worlds-legend">
+          {{ t('modal.chooseWorld') }}
+        </legend>
+        <button
+          type="button"
+          class="world world--op"
+          :aria-pressed="importGame === 'optcg'"
+          @click="emit('update:importGame', 'optcg')"
+        >
+          <span class="world-name">One Piece</span>
+          <span class="world-rule">{{ t('modal.importOpRule') }}</span>
+        </button>
+        <button
+          type="button"
+          class="world world--mtg"
+          :aria-pressed="importGame === 'mtg'"
+          @click="emit('update:importGame', 'mtg')"
+        >
+          <span class="world-name">Magic</span>
+          <span class="world-rule">{{ t('modal.importMtgRule') }}</span>
+        </button>
+      </fieldset>
+      <div v-if="importGame === 'mtg'" class="space-y-3">
         <UFormField :label="t('modal.importUrl')" :help="t('modal.importUrlHelp')">
           <UInput
             :model-value="importUrl"
@@ -181,9 +208,20 @@ const modalUi = {
           variant="soft"
           icon="i-lucide-info"
           :title="t('modal.examples')"
-          description="edhrec.com/commanders/<nom> • edhrec.com/average-decks/<nom> • edhrec.com/deckpreview/<id> • archidekt.com/decks/<id>"
+          :description="t('modal.importExamples')"
         />
       </div>
+      <UFormField v-else :label="t('modal.importList')" :help="t('modal.importListHelp')">
+        <UTextarea
+          :model-value="importText"
+          name="import-list"
+          :rows="9"
+          autoresize
+          placeholder="1xOP05-060&#10;4xOP05-067&#10;4xOP05-069"
+          class="w-full font-mono text-sm"
+          @update:model-value="emit('update:importText', String($event))"
+        />
+      </UFormField>
     </template>
     <template #footer>
       <div class="flex w-full justify-end gap-2">

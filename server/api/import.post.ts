@@ -1,10 +1,7 @@
 // Server route to import decklists from external sites (bypasses browser CORS).
 // Supports EDHREC (commander average decks + deckpreview pages) and Archidekt
 // (public deck pages, via Archidekt's public read API).
-
-interface ImportRequest {
-  url: string
-}
+import { readEdhrecDeck } from '../utils/edhrecDeck'
 
 interface ImportResponse {
   name: string
@@ -60,70 +57,58 @@ function parseEdhrecUrl(url: string): { type: 'average' | 'deckpreview', slug: s
   }
 }
 
-// Minimal shape of the EDHREC JSON endpoints we read.
-interface EdhrecJson {
-  deck?: unknown
-  header?: unknown
-  cards?: unknown
-  commanders?: unknown
+/** A refusal the dashboard translates: `data.code` names the case. */
+export type ImportErrorCode = 'missingUrl' | 'unsupported' | 'notFound' | 'empty' | 'upstream'
+
+class ImportFailure extends Error {
+  constructor(readonly code: ImportErrorCode, detail: string) {
+    super(detail)
+  }
 }
 
-async function fetchJson(url: string): Promise<EdhrecJson> {
-  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
-  if (!res.ok) {
-    throw new Error(`Upstream ${res.status} for ${url}`)
-  }
-  return res.json() as Promise<EdhrecJson>
+async function fetchJson(url: string): Promise<unknown> {
+  const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' }, signal: AbortSignal.timeout(15_000) })
+  if (res.status === 404)
+    throw new ImportFailure('notFound', `404 for ${url}`)
+  if (!res.ok)
+    throw new ImportFailure('upstream', `${res.status} for ${url}`)
+  return res.json()
+}
+
+function headerName(data: unknown, fallback: string): string {
+  const header = (data as { header?: unknown } | null)?.header
+  if (typeof header !== 'string')
+    return fallback
+  // "Average Deck for Atraxa, Praetors' Voice" / "Deck with …" → the commander.
+  return header.replace(/^(?:average deck for|deck with)\s+/i, '').replace(/\s*\(.*?\)\s*$/, '').trim() || fallback
 }
 
 async function importEdhrecAverage(slug: string): Promise<ImportResponse> {
-  // Try the dedicated average-decks endpoint first (clean "1 Card Name" list).
   const data = await fetchJson(`https://json.edhrec.com/pages/average-decks/${slug}.json`)
-
-  const deckArr: string[] = Array.isArray(data?.deck) ? data.deck : []
-  if (!deckArr.length) {
-    throw new Error('Aucune liste de cartes trouvée pour ce commandant.')
-  }
-
-  const name: string = data?.header
-    ? String(data.header).replace(/\s*\(.*?\)\s*$/, '').trim()
-    : slug.replace(/-/g, ' ')
-
-  const raw = deckArr.join('\n')
-  const cardCount = deckArr.reduce((sum, line) => {
-    const m = line.match(/^(\d+)\s+/)
-    return sum + (m?.[1] ? Number.parseInt(m[1]) : 1)
-  }, 0)
-
+  const deck = readEdhrecDeck(data)
+  if (!deck)
+    throw new ImportFailure('empty', `no cards for ${slug}`)
+  const name = deck.commanders[0] ?? headerName(data, slug.replace(/-/g, ' '))
   return {
     name: `${name} (EDHREC)`,
-    raw,
+    raw: deck.lines.join('\n'),
     source: `https://edhrec.com/average-decks/${slug}`,
-    cardCount,
+    cardCount: deck.cardCount,
   }
 }
 
 async function importEdhrecDeckpreview(hash: string): Promise<ImportResponse> {
-  // Deckpreview pages expose their list at json.edhrec.com/pages/deckpreview/<hash>.json
-  const data = await fetchJson(`https://json.edhrec.com/pages/deckpreview/${hash}.json`)
-
-  const cards: string[] = Array.isArray(data?.cards) ? data.cards : []
-  const commander: string | undefined = Array.isArray(data?.commanders) ? data.commanders[0] : undefined
-
-  if (!cards.length) {
-    throw new Error('Deck introuvable sur EDHREC.')
-  }
-
-  const lines: string[] = []
-  if (commander)
-    lines.push(`1 ${commander}`)
-  for (const c of cards) lines.push(`1 ${c}`)
-
+  // The json.edhrec.com mirror refuses deck previews; the site's own API serves them.
+  const data = await fetchJson(`https://edhrec.com/api/deckpreview/${hash}`)
+  const deck = readEdhrecDeck(data)
+  if (!deck)
+    throw new ImportFailure('empty', `no cards for ${hash}`)
+  const name = deck.commanders[0] ?? headerName(data, 'EDHREC')
   return {
-    name: commander ? `${commander} (EDHREC)` : 'Deck EDHREC',
-    raw: lines.join('\n'),
+    name: `${name} (EDHREC)`,
+    raw: deck.lines.join('\n'),
     source: `https://edhrec.com/deckpreview/${hash}`,
-    cardCount: lines.length,
+    cardCount: deck.cardCount,
   }
 }
 
@@ -160,17 +145,10 @@ interface ArchidektDeck {
 }
 
 async function importArchidekt(id: number): Promise<ImportResponse> {
-  const res = await fetch(`https://archidekt.com/api/decks/${id}/`, {
-    headers: { 'User-Agent': UA, 'Accept': 'application/json' },
-  })
-  if (!res.ok) {
-    throw new Error(res.status === 404 ? 'Deck introuvable ou privé.' : `Archidekt ${res.status}`)
-  }
-  const data = await res.json() as ArchidektDeck
+  const data = await fetchJson(`https://archidekt.com/api/decks/${id}/`) as ArchidektDeck
   const entries = Array.isArray(data.cards) ? data.cards : []
-  if (!entries.length) {
-    throw new Error('Deck vide ou introuvable.')
-  }
+  if (!entries.length)
+    throw new ImportFailure('empty', `deck ${id} is empty`)
 
   const commanderLines: string[] = []
   const sideboardLines: string[] = []
@@ -197,9 +175,8 @@ async function importArchidekt(id: number): Promise<ImportResponse> {
       mainLines.push(line)
   }
 
-  if (!commanderLines.length && !mainLines.length) {
-    throw new Error('Aucune carte importable trouvée dans ce deck.')
-  }
+  if (!commanderLines.length && !mainLines.length)
+    throw new ImportFailure('empty', `deck ${id} has nothing to import`)
 
   // Commander first (detectCommanderIndex finds it by type, but this matches
   // the EDHREC importer's convention and reads naturally either way), then the
@@ -216,46 +193,35 @@ async function importArchidekt(id: number): Promise<ImportResponse> {
   }
 }
 
+function refuse(statusCode: number, code: ImportErrorCode): never {
+  throw createError({ statusCode, statusMessage: 'Import failed', data: { code } })
+}
+
 export default defineEventHandler(async (event): Promise<ImportResponse> => {
+  // An open door to two sites: bounded per address.
+  rateLimit(`import:${getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'}`, 20, 60_000)
+
   // readBody throws on a malformed/non-JSON body — treat that as a missing URL.
-  const body = await readBody<ImportRequest>(event).catch(() => null)
-  const url = body?.url?.trim()
+  const body = await readBody<{ url?: unknown }>(event).catch(() => null)
+  const url = typeof body?.url === 'string' ? body.url.trim().slice(0, 500) : ''
+  if (!url)
+    refuse(400, 'missingUrl')
 
-  if (!url) {
-    throw createError({ statusCode: 400, statusMessage: 'URL manquante' })
-  }
-
-  const edhrec = parseEdhrecUrl(url)
-  if (edhrec) {
-    try {
-      if (edhrec.type === 'deckpreview') {
-        return await importEdhrecDeckpreview(edhrec.slug)
-      }
-      return await importEdhrecAverage(edhrec.slug)
-    }
-    catch (err) {
-      throw createError({
-        statusCode: 502,
-        statusMessage: `Import EDHREC échoué: ${err instanceof Error ? err.message : 'erreur inconnue'}`,
-      })
-    }
-  }
-
-  const archidektId = parseArchidektUrl(url)
-  if (archidektId) {
-    try {
+  try {
+    const edhrec = parseEdhrecUrl(url)
+    if (edhrec)
+      return edhrec.type === 'deckpreview' ? await importEdhrecDeckpreview(edhrec.slug) : await importEdhrecAverage(edhrec.slug)
+    const archidektId = parseArchidektUrl(url)
+    if (archidektId)
       return await importArchidekt(archidektId)
-    }
-    catch (err) {
-      throw createError({
-        statusCode: 502,
-        statusMessage: `Import Archidekt échoué: ${err instanceof Error ? err.message : 'erreur inconnue'}`,
-      })
-    }
   }
-
-  throw createError({
-    statusCode: 400,
-    statusMessage: 'Site non supporté. URLs EDHREC ou Archidekt supportées.',
-  })
+  catch (err) {
+    if (err instanceof ImportFailure) {
+      console.warn('[import]', err.code, err.message)
+      refuse(err.code === 'notFound' ? 404 : err.code === 'empty' ? 422 : 502, err.code)
+    }
+    console.warn('[import] upstream failure', err)
+    refuse(502, 'upstream')
+  }
+  refuse(400, 'unsupported')
 })
