@@ -3,6 +3,7 @@ import type { ResolvedRow } from '~/composables/scryfall/toResolved'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { deckPath } from '#shared/game'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDeckBuilder, validateCommander } from '~/composables/useDeckBuilder'
 import { useDeckBuy } from '~/composables/useDeckBuy'
@@ -20,12 +21,14 @@ import { isCardWithinIdentity } from '~/utils/mtgValidation'
 // transition + Nuxt's Suspense, SPA navigation here resolved the component but
 // never MOUNTED it (blank page, onMounted never fired). Opting this route out of
 // the page transition fixes it — the deck opens reliably on client navigation.
-definePageMeta({ pageTransition: false })
+//
+// Magic lives at night: the universe and its forced dark mode are page meta.
+definePageMeta({ pageTransition: false, universe: 'mtg', colorMode: 'dark' })
 const route = useRoute()
 const router = useRouter()
 const deckId = computed(() => route.params.id as string)
 
-const { getDeck, updateDeck, setShare, setPublic, ready: storeReady } = useDeckStore()
+const { getDeck, updateDeck, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
 const { identity, colorVar } = useManaIdentity()
@@ -122,63 +125,10 @@ async function copyDecklistText() {
   }
 }
 
-// Share modal: two independent toggles (private link, public listing). Both
-// read/write through the store so decks.value stays the single source of truth.
+// Share settings (DeckShareModal) and, for a guest, the sign-up offer.
 const showShareModal = ref(false)
-const togglingShare = ref(false)
-const togglingPublic = ref(false)
+const showSaveWall = ref(false)
 
-const shareUrl = computed(() => {
-  if (!deck.value?.shareId || !import.meta.client)
-    return ''
-  return `${window.location.origin}/shared/${deck.value.shareId}`
-})
-
-async function onToggleShare(enabled: boolean) {
-  togglingShare.value = true
-  try {
-    const shareId = await setShare(deckId.value, enabled)
-    // setShare() resolves to null both on legitimate disable and when the deck
-    // is a guest/local deck (no-op, cloud.value is false). Disabling always
-    // resolving to null is expected; enabling resolving to null means the call
-    // never reached the API and must surface as an error.
-    if (enabled && !shareId)
-      throw new Error('no share id')
-  }
-  catch {
-    toast.add({ title: t('share.error'), color: 'error', icon: 'i-lucide-x' })
-  }
-  finally {
-    togglingShare.value = false
-  }
-}
-
-async function onTogglePublic(enabled: boolean) {
-  togglingPublic.value = true
-  try {
-    const isPublic = await setPublic(deckId.value, enabled)
-    // Same guest/local-deck guard as onToggleShare: setPublic() also resolves
-    // to false both on legitimate disable and on a guest-mode no-op.
-    if (enabled && !isPublic)
-      throw new Error('no public flag')
-  }
-  catch {
-    toast.add({ title: t('share.error'), color: 'error', icon: 'i-lucide-x' })
-  }
-  finally {
-    togglingPublic.value = false
-  }
-}
-
-async function copyShareUrl() {
-  try {
-    await navigator.clipboard.writeText(shareUrl.value)
-    toast.add({ title: t('share.copied'), description: shareUrl.value, color: 'success', icon: 'i-lucide-link' })
-  }
-  catch {
-    toast.add({ title: t('share.copyError'), color: 'error', icon: 'i-lucide-x' })
-  }
-}
 // Download the current decklist as a .txt file.
 function downloadDecklist() {
   const safeName = (deckName.value || 'deck').replace(/[^a-z0-9]+/gi, '_').toLowerCase()
@@ -505,6 +455,11 @@ function initDeck(id: string) {
       navigateTo('/')
     return
   }
+  // A One Piece deck opened through a Magic URL goes to its own universe.
+  if (d.game !== 'mtg') {
+    navigateTo(deckPath(d), { replace: true })
+    return
+  }
   rawDecklist.value = d.raw
   deckName.value = d.name
   history.reset({ raw: d.raw, name: d.name })
@@ -603,6 +558,13 @@ const commanderType = computed(() => displayType(mtgRaw(commander.value?.card), 
 const { themeColors, themeStyle } = useDeckTheme(() =>
   commander.value?.card ? commanderColors(commander.value.card) : identity(rawDecklist.value),
 )
+
+// Toolbar dots in the commander's colours, and the guest save summary.
+const toolbarDots = computed(() => themeColors.value.map(colorVar))
+const saveSummary = computed(() => {
+  const head = commanderName.value || builder.commanderName.value
+  return head ? `${cardCount.value} ${t('dash.cards')} · ${head}` : `${cardCount.value} ${t('dash.cards')}`
+})
 
 // Drive the app-wide theme (background aurora + accents) from this deck's colours.
 const appTheme = useAppTheme()
@@ -753,15 +715,17 @@ const {
     <!-- UNIFIED TOOLBAR — back · title + pips + cost · actions (see DeckToolbar). -->
     <BuilderDeckToolbar
       v-model:deck-name="deckName"
-      :theme-colors="themeColors"
+      :dots="toolbarDots"
       :card-count="cardCount"
       :price-total="price.total"
       :logged-in="loggedIn"
-      :color-var="colorVar"
       :can-undo="history.canUndo.value"
       :can-redo="history.canRedo.value"
+      printable
+      buyable
       @open-import-export="openImportExport"
       @share="showShareModal = true"
+      @save="showSaveWall = true"
       @open-preview="previewOpen = true"
       @open-buy="buyOpen = true"
       @undo="undoDeck"
@@ -978,61 +942,15 @@ const {
     </UModal>
 
     <!-- Share settings: private link + public Discover listing -->
-    <UModal
-      v-model:open="showShareModal"
-      :title="t('share.button')"
-      :ui="{ overlay: 'bg-ink-950/70 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)]' }"
-    >
-      <template #body>
-        <div class="space-y-4">
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <div class="text-sm font-medium text-(--color-text-high)">
-                {{ t('share.linkActive') }}
-              </div>
-              <p class="text-xs text-(--color-text-muted)">
-                {{ t('share.linkActiveHint') }}
-              </p>
-            </div>
-            <USwitch
-              :model-value="!!deck?.shareId"
-              :loading="togglingShare"
-              :disabled="togglingShare"
-              @update:model-value="onToggleShare"
-            />
-          </div>
+    <DeckShareModal v-model:open="showShareModal" :deck="deck" />
 
-          <div v-if="deck?.shareId" class="flex items-center gap-2">
-            <UInput :model-value="shareUrl" readonly class="w-full font-mono text-xs" />
-            <UButton icon="i-lucide-clipboard-copy" color="neutral" variant="subtle" @click="copyShareUrl" />
-          </div>
-
-          <div class="flex items-center justify-between gap-4" :class="{ 'opacity-50': !deck?.shareId }">
-            <div>
-              <div class="text-sm font-medium text-(--color-text-high)">
-                {{ t('share.listPublic') }}
-              </div>
-              <p class="text-xs text-(--color-text-muted)">
-                {{ t('share.listPublicHint') }}
-              </p>
-            </div>
-            <USwitch
-              :model-value="!!deck?.public"
-              :disabled="!deck?.shareId || togglingPublic"
-              :loading="togglingPublic"
-              @update:model-value="onTogglePublic"
-            />
-          </div>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex w-full justify-end">
-          <UButton color="neutral" variant="subtle" @click="showShareModal = false">
-            {{ t('modal.close') }}
-          </UButton>
-        </div>
-      </template>
-    </UModal>
+    <!-- A guest's save: the deck is already local, the account is offered. -->
+    <DeckSaveWall
+      v-model:open="showSaveWall"
+      :deck-name="deckName"
+      :summary="saveSummary"
+      universe="mtg"
+    />
 
     <!-- Card detail modal -->
     <CardDetailModal

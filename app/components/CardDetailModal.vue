@@ -11,6 +11,9 @@ const props = defineProps<{
   open: boolean
   card: ResolvedCard | null
   isCommander?: boolean
+  /** Opened from the card library: no deck to pin a printing on, and the
+   *  commander action starts a new deck instead. */
+  library?: boolean
 }>()
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -294,6 +297,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 
           <!-- Printings selector -->
           <CardPrintingPicker
+            v-if="!library"
             class="mt-4"
             :open="open"
             :english-name="englishName"
@@ -312,7 +316,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
               name="i-lucide-crown"
               class="h-4 w-4"
             />
-            {{ t('commander.set') }}
+            {{ library ? t('mtg.library.startWith') : t('commander.set') }}
           </button>
         </div>
       </div>
