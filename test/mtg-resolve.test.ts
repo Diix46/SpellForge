@@ -1,13 +1,13 @@
 import { existsSync } from 'node:fs'
-import { createClient } from '@libsql/client'
 import { afterAll, describe, expect, it } from 'vitest'
 import { resolveEntries } from '../server/utils/cards/mtg-resolve'
+import { openCardDb } from './support/card-db'
 
 const DB = '.data/cards-mtg.db'
 const withDb = existsSync(DB) ? describe : describe.skip
 
 withDb('resolveEntries', () => {
-  const db = createClient({ url: `file:${DB}` })
+  const db = openCardDb()
   afterAll(() => db.close())
 
   it('resolves by canonical name, whatever the case', async () => {

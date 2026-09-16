@@ -1,5 +1,4 @@
 import { existsSync } from 'node:fs'
-import { createClient } from '@libsql/client'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
   buildAutocompleteQuery,
@@ -9,6 +8,7 @@ import {
   maskOf,
 } from '../server/utils/cards/mtg-query'
 import { fold } from '../server/utils/cards/text'
+import { openCardDb } from './support/card-db'
 
 const DB = '.data/cards-mtg.db'
 const hasDb = existsSync(DB)
@@ -80,7 +80,7 @@ describe('query shape', () => {
 })
 
 withDb('against the real card database', () => {
-  const db = createClient({ url: `file:${DB}` })
+  const db = openCardDb()
   const rows = async (q: { sql: string, args: unknown[] }) => (await db.execute(q)).rows
   afterAll(() => db.close())
 

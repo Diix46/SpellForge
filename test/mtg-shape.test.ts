@@ -1,5 +1,4 @@
 import { existsSync } from 'node:fs'
-import { createClient } from '@libsql/client'
 import { afterAll, describe, expect, it } from 'vitest'
 import {
   backImage,
@@ -12,6 +11,7 @@ import {
 import { displayName, englishTypeLine } from '../app/composables/useMtg'
 import { buildCardQuery, buildPinnedQuery } from '../server/utils/cards/mtg-query'
 import { colorsFromMask, imageUrl, toScryfallShape } from '../server/utils/cards/mtg-shape'
+import { openCardDb } from './support/card-db'
 
 const DB = '.data/cards-mtg.db'
 const withDb = existsSync(DB) ? describe : describe.skip
@@ -42,7 +42,7 @@ describe('imageUrl', () => {
 // The point of these tests: the reconstructed shape must work with the app's
 // OWN helpers, unchanged. That is what makes the backend swap a drop-in.
 withDb('reconstructed cards against the app\'s own helpers', () => {
-  const db = createClient({ url: `file:${DB}` })
+  const db = openCardDb()
   afterAll(() => db.close())
 
   async function shaped(q: { sql: string, args: unknown[] }) {

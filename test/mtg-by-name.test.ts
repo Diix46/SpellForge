@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs'
-import { createClient } from '@libsql/client'
 import { afterAll, describe, expect, it } from 'vitest'
 import { resolveCardsByName } from '../server/utils/cards/mtg-resolve'
 import { validateAdds } from '../server/utils/suggestValidate'
+import { openCardDb } from './support/card-db'
 
 const DB = '.data/cards-mtg.db'
 const withDb = existsSync(DB) ? describe : describe.skip
@@ -10,7 +10,7 @@ const withDb = existsSync(DB) ? describe : describe.skip
 interface Card { name: string, color_identity: string[], legalities: Record<string, string> }
 
 withDb('resolveCardsByName', () => {
-  const db = createClient({ url: `file:${DB}` })
+  const db = openCardDb()
   afterAll(() => db.close())
 
   it('finds a card by the name as written AND by its canonical name', async () => {

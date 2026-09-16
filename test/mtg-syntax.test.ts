@@ -1,9 +1,9 @@
 import type { SyntaxErrorCode } from '../server/utils/cards/mtg-syntax'
 import { existsSync } from 'node:fs'
-import { createClient } from '@libsql/client'
 import { afterAll, describe, expect, it } from 'vitest'
 import { buildCardQuery, buildCoachSearchQuery } from '../server/utils/cards/mtg-query'
 import { compileSyntax, isSyntaxQuery, QuerySyntaxError } from '../server/utils/cards/mtg-syntax'
+import { openCardDb } from './support/card-db'
 
 function refusal(text: string): { code: SyntaxErrorCode, term: string } | null {
   try {
@@ -169,7 +169,7 @@ const DB = '.data/cards-mtg.db'
 const withDb = existsSync(DB) ? describe : describe.skip
 
 withDb('query syntax against the real card database', () => {
-  const db = createClient({ url: `file:${DB}` })
+  const db = openCardDb()
   afterAll(() => db.close())
 
   async function names(text: string, identity: ('W' | 'U' | 'B' | 'R' | 'G')[] | null = null) {
