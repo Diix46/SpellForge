@@ -1,16 +1,18 @@
 import type Anthropic from '@anthropic-ai/sdk'
 // Eve coach tools — the real-data capabilities every agent can call. Each tool is
 // an Anthropic tool definition + a server-side executor that reuses the existing
-// Nitro utils (Scryfall search, EDHREC suggestions, the identity/legality gate),
+// Nitro utils (local card search, EDHREC suggestions, the identity/legality gate),
 // so the agents reason over ground truth instead of hallucinating card data.
 //
 // Tool NAMES match what the front already labels (useCoach.ts TOOL_LABEL):
 // scryfall_search, edhrec_suggestions, validate_cards.
 
 import { useMtgCardsDb } from '../utils/cards/db'
+import { buildCoachSearchQuery } from '../utils/cards/mtg-query'
 import { resolveCardsByName } from '../utils/cards/mtg-resolve'
+import { colorsFromMask } from '../utils/cards/mtg-shape'
+import { QuerySyntaxError } from '../utils/cards/mtg-syntax'
 import { edhrecSuggestions } from '../utils/edhrec'
-import { SCRYFALL_SEARCH, scryfallFetch } from '../utils/scryfall'
 import { inIdentity, legalInCommander } from '../utils/suggestValidate'
 
 export type ToolName = 'scryfall_search' | 'edhrec_suggestions' | 'validate_cards'
@@ -19,13 +21,14 @@ export type ToolName = 'scryfall_search' | 'edhrec_suggestions' | 'validate_card
 export const EVE_TOOLS: Anthropic.Tool[] = [
   {
     name: 'scryfall_search',
-    description: 'Search Magic: The Gathering cards via Scryfall query syntax (e.g. "id<=wubrg t:instant cmc<=2"). Returns up to 20 matching real cards with name, mana cost, type, oracle text, colour identity and price. Use this to find REAL cards instead of recalling them.',
+    // The name stays: the front labels tool calls by it, and the syntax is still Scryfall's.
+    description: 'Search Commander-legal Magic: The Gathering cards with Scryfall query syntax (e.g. "id<=wubg t:instant cmc<=2 o:\"draw a card\""), most played first. Supported: bare words (name), t:, o:, fo:, kw:, c:, id:, produces:, m:, cmc:/mv:, pow:, tou:, loy:, eur:, r:, s:, a:, year:, f:/legal:/banned:, is:/not: (commander, gamechanger, reserved, dfc, permanent, historic, vanilla…), order:, "or", parentheses and "-" for negation. No usd:/tix: (prices are EUR) and no regex. Returns up to 20 real cards with name, mana cost, type, oracle text, colour identity and EUR price. Use this to find REAL cards instead of recalling them.',
     input_schema: {
       type: 'object',
       additionalProperties: false,
       required: ['query'],
       properties: {
-        query: { type: 'string', description: 'A Scryfall search query.' },
+        query: { type: 'string', description: 'A search query in Scryfall syntax.' },
       },
     },
   },
@@ -57,41 +60,33 @@ export const EVE_TOOLS: Anthropic.Tool[] = [
 ]
 
 // ── Executors ───────────────────────────────────────────────────────────────
-interface ScrySearchCard {
-  name?: string
-  mana_cost?: string
-  type_line?: string
-  oracle_text?: string
-  color_identity?: string[]
-  prices?: { eur?: string | null, usd?: string | null }
-}
-
-// Cached like every other Scryfall path in the app (defineCachedEventHandler /
-// defineCachedFunction) — these two were the one place still hitting Scryfall
-// raw on every call, including repeat lookups across turns of the same
-// conversation (the model often re-searches/re-validates similar cards).
-const runScryfallSearch = defineCachedFunction(async (query: string): Promise<unknown> => {
-  const url = `${SCRYFALL_SEARCH}?q=${encodeURIComponent(query)}&order=edhrec&dir=auto`
-  const res = await scryfallFetch(url)
-  if (res.status === 404)
-    return { count: 0, cards: [] }
-  if (!res.ok)
-    return { error: `Scryfall ${res.status}`, cards: [] }
-  const data = await res.json() as { total_cards?: number, data?: ScrySearchCard[] }
-  const cards = (data.data ?? []).slice(0, 20).map(c => ({
-    name: c.name,
-    manaCost: c.mana_cost ?? '',
-    type: c.type_line ?? '',
-    text: (c.oracle_text ?? '').slice(0, 240),
-    identity: (c.color_identity ?? []).map(x => x.toLowerCase()),
-    priceEur: c.prices?.eur ?? null,
+// Local and fast, so no cache: the network calls this once saved are gone.
+async function runCardSearch(query: string): Promise<unknown> {
+  let q: ReturnType<typeof buildCoachSearchQuery>
+  try {
+    q = buildCoachSearchQuery(query)
+  }
+  catch (err) {
+    // Tell the model what to fix; it usually retries with plain syntax.
+    if (err instanceof QuerySyntaxError)
+      return { error: `Invalid search syntax (${err.code}): ${err.term}`, cards: [] }
+    throw err
+  }
+  const db = useMtgCardsDb()
+  const [result, count] = await Promise.all([
+    db.execute({ sql: q.sql, args: q.args }),
+    db.execute({ sql: q.countSql, args: q.countArgs }),
+  ])
+  const cards = result.rows.map(r => ({
+    name: String(r.name),
+    manaCost: String(r.mana_cost ?? ''),
+    type: String(r.type_line ?? ''),
+    text: String(r.oracle_all ?? '').slice(0, 240),
+    identity: colorsFromMask(r.identity_mask).map(c => c.toLowerCase()),
+    priceEur: typeof r.min_price_eur === 'number' ? r.min_price_eur.toFixed(2) : null,
   }))
-  return { count: data.total_cards ?? cards.length, cards }
-}, {
-  maxAge: 300,
-  name: 'eve-scryfall-search',
-  getKey: (query: string) => query,
-})
+  return { count: Number(count.rows[0]?.total ?? cards.length), cards }
+}
 
 async function runEdhrec(commander: string): Promise<unknown> {
   const names = await edhrecSuggestions(commander)
@@ -131,7 +126,7 @@ export async function runTool(name: string, input: unknown): Promise<unknown> {
     const args = (input ?? {}) as Record<string, unknown>
     switch (name) {
       case 'scryfall_search':
-        return await runScryfallSearch(String(args.query ?? ''))
+        return await runCardSearch(String(args.query ?? ''))
       case 'edhrec_suggestions':
         return await runEdhrec(String(args.commander ?? ''))
       case 'validate_cards':

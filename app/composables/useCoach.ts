@@ -26,7 +26,7 @@ export interface CoachMessage {
 // one of the Coach's specialists, so the player sees the expert team at work.
 const TOOL_LABEL: Record<'fr' | 'en', Record<string, string>> = {
   fr: {
-    scryfall_search: '🔍 Recherche de cartes (Scryfall)',
+    scryfall_search: '🔍 Recherche de cartes',
     edhrec_suggestions: '📊 Cartes populaires (EDHREC)',
     validate_cards: '✅ Vérification des cartes',
     consult_ramp: '🌿 Spécialiste rampe & mana',
@@ -38,7 +38,7 @@ const TOOL_LABEL: Record<'fr' | 'en', Record<string, string>> = {
     consult_bracket: '🎚️ Spécialiste power level',
   },
   en: {
-    scryfall_search: '🔍 Card search (Scryfall)',
+    scryfall_search: '🔍 Card search',
     edhrec_suggestions: '📊 Popular cards (EDHREC)',
     validate_cards: '✅ Card validation',
     consult_ramp: '🌿 Ramp & mana specialist',

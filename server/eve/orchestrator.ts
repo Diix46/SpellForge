@@ -1,7 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 // Eve orchestrator — the head coach. Runs a streaming tool-use loop on the
 // Anthropic Messages API, with two kinds of tools:
-//   • real-data tools (Scryfall / EDHREC / validate) — see tools.ts
+//   • real-data tools (card search / EDHREC / validate) — see tools.ts
 //   • consult_<domain> tools — each delegates to a specialist agent (agents.ts),
 //     which itself runs a bounded Claude call with the same real-data tools.
 // The orchestrator synthesises the specialists' opinions into one answer for the
@@ -26,7 +26,7 @@ export type EveEmit = (ev:
 // as a transient status line so the chat never looks frozen between turns.
 const TOOL_STATUS: Record<EveLocale, Record<string, string>> = {
   fr: {
-    scryfall_search: 'Recherche de cartes sur Scryfall…',
+    scryfall_search: 'Recherche de cartes…',
     edhrec_suggestions: 'Consultation des données EDHREC…',
     validate_cards: 'Vérification des cartes…',
     consult_ramp: 'Consultation du spécialiste rampe…',
@@ -38,7 +38,7 @@ const TOOL_STATUS: Record<EveLocale, Record<string, string>> = {
     consult_bracket: 'Évaluation du niveau de puissance…',
   },
   en: {
-    scryfall_search: 'Searching cards on Scryfall…',
+    scryfall_search: 'Searching cards…',
     edhrec_suggestions: 'Checking EDHREC data…',
     validate_cards: 'Validating cards…',
     consult_ramp: 'Consulting the ramp specialist…',
@@ -203,7 +203,7 @@ export async function runOrchestrator(
 }
 
 /**
- * Non-streaming Eve run that grounds itself in real data (Scryfall/EDHREC/
+ * Non-streaming Eve run that grounds itself in real data (card database/EDHREC/
  * validate) then emits ONE structured tool call. Used by the one-shot
  * suggestion buttons: the model may take a few tool-use rounds to look up real
  * cards, after which we force it to call `finalTool` and return that input.
