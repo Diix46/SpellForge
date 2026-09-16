@@ -46,19 +46,26 @@ export default defineEventHandler(async (event) => {
   if (!path.startsWith(ROOT + sep))
     throw createError({ statusCode: 400, statusMessage: 'Bad image path' })
 
-  // Safe to cache forever: the URL carries the image version, so a re-scanned
-  // image gets a new URL rather than a stale hit.
-  setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
-  setHeader(event, 'Content-Type', ext === 'png' ? 'image/png' : 'image/jpeg')
+  // Safe to cache forever once found: the URL carries the image version, so a
+  // re-scanned image gets a new URL. Set only on success, or a 404 or a CDN
+  // hiccup would be cached by the browser for a year.
+  const found = () => {
+    setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
+    setHeader(event, 'Content-Type', ext === 'png' ? 'image/png' : 'image/jpeg')
+  }
 
-  if (existsSync(path) && statSync(path).size > 0)
+  if (existsSync(path) && statSync(path).size > 0) {
+    found()
     return sendStream(event, createReadStream(path))
+  }
 
   const rawVersion = getQuery(event).v
   const version = typeof rawVersion === 'string' && VERSION.test(rawVersion) ? rawVersion : ''
   const upstream = `https://cards.scryfall.io/${size}/${face}/${id[0]}/${id[1]}/${id}.${ext}${version ? `?${version}` : ''}`
 
-  const res = await fetch(upstream, { headers: { 'User-Agent': UA } })
+  // A hung CDN must not hold the request open indefinitely.
+  const res = await fetch(upstream, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10_000) })
+    .catch(() => { throw createError({ statusCode: 504, statusMessage: 'Image upstream timeout' }) })
   if (!res.ok)
     throw createError({ statusCode: res.status === 404 ? 404 : 502, statusMessage: 'Image unavailable' })
 
@@ -69,6 +76,7 @@ export default defineEventHandler(async (event) => {
   const tmp = `${path}.${process.pid}.${Date.now()}.tmp`
   writeFileSync(tmp, bytes)
   renameSync(tmp, path)
+  found()
 
   // NOTE: a file on disk does not track the version. If Scryfall re-scans an
   // image, the local copy stays as it was until the mirror is re-run with
