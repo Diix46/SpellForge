@@ -203,12 +203,12 @@ const { t } = useLocale()
                     class="w-14 text-right font-mono text-xs"
                     :class="row.unit == null ? 'text-(--color-text-disabled)' : 'text-(--color-text-mid)'"
                     :title="row.unit == null ? t('buy.notListed') : undefined"
-                  >{{ row.unit == null ? '—' : fmtEur(row.unit) }}</span>
+                  >{{ row.unit == null ? '?' : fmtEur(row.unit) }}</span>
                   <span class="w-10 text-center font-mono text-xs text-(--color-text-muted)">×{{ row.quantity }}</span>
                   <span
                     class="w-16 text-right font-mono text-sm font-semibold"
                     :class="row.lineTotal == null ? 'text-(--color-text-disabled)' : 'text-(--accent-text)'"
-                  >{{ row.lineTotal == null ? '—' : fmtEur(row.lineTotal) }}</span>
+                  >{{ row.lineTotal == null ? '?' : fmtEur(row.lineTotal) }}</span>
                   <UButton
                     :to="row.url"
                     target="_blank"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { entryKey, totalCards } from '../shared/decklist'
-import { mtgLine, parseMtgDecklist } from '../shared/mtg/decklist'
+import { mtgLine, parseMtgDecklist, writeMtgDecklist } from '../shared/mtg/decklist'
 import { optcgLine, orderOptcgEntries, parseOptcgDecklist } from '../shared/optcg/decklist'
 
 describe('magic decklists', () => {
@@ -23,6 +23,39 @@ describe('magic decklists', () => {
     ])
     expect(r.sideboard.map(e => e.name)).toEqual(['Duress'])
     expect(r.errors).toEqual(['not a card line'])
+  })
+
+  it('keeps the chosen commander in its own section', () => {
+    const main = [
+      { quantity: 1, name: 'Sol Ring' },
+      { quantity: 1, name: 'Atraxa, Praetors\' Voice', set: 'ONE', collectorNumber: '196' },
+      { quantity: 30, name: 'Forest' },
+    ]
+    const text = writeMtgDecklist(main, [{ quantity: 1, name: 'Duress', set: 'M21', collectorNumber: '96' }], 'atraxa, praetors\' voice')
+    expect(text).toBe(['Commander', '1 Atraxa, Praetors\' Voice (ONE) 196', '', 'Deck', '1 Sol Ring', '30 Forest', '', 'Sideboard', '1 Duress (M21) 96'].join('\n'))
+    const back = parseMtgDecklist(text)
+    expect(back.commanders).toEqual(['Atraxa, Praetors\' Voice'])
+    expect(back.mainboard.map(e => e.name)).toEqual(['Atraxa, Praetors\' Voice', 'Sol Ring', 'Forest'])
+    expect(back.sideboard[0]).toEqual({ quantity: 1, name: 'Duress', set: 'M21', collectorNumber: '96' })
+    // No choice, or a commander no longer in the list: a plain list.
+    expect(writeMtgDecklist(main, [], 'Kenrith')).toBe('1 Sol Ring\n1 Atraxa, Praetors\' Voice (ONE) 196\n30 Forest')
+  })
+
+  it('keeps the companion out of the hundred', () => {
+    const r = parseMtgDecklist('Companion\n1 Lurrus of the Dream-Den\nDeck\n1 Sol Ring')
+    expect(r.sideboard.map(e => e.name)).toEqual(['Lurrus of the Dream-Den'])
+    expect(r.mainboard.map(e => e.name)).toEqual(['Sol Ring'])
+  })
+
+  it('pins printings whose collector number is not only digits', () => {
+    const r = parseMtgDecklist(['1 Sol Ring (plst) BLC-129', '1 Forest (SLD) 1494★', '1 Island (THB) 251a', '1 Card (Named) Thing'].join('\n'))
+    expect(r.mainboard).toEqual([
+      { quantity: 1, name: 'Sol Ring', set: 'PLST', collectorNumber: 'BLC-129' },
+      { quantity: 1, name: 'Forest', set: 'SLD', collectorNumber: '1494★' },
+      { quantity: 1, name: 'Island', set: 'THB', collectorNumber: '251a' },
+      { quantity: 1, name: 'Card (Named) Thing', set: undefined, collectorNumber: undefined },
+    ])
+    expect(r.mainboard.map(mtgLine)).toEqual(['1 Sol Ring (PLST) BLC-129', '1 Forest (SLD) 1494★', '1 Island (THB) 251a', '1 Card (Named) Thing'])
   })
 
   it('writes a pinned printing back as the Arena suffix', () => {

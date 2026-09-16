@@ -78,6 +78,8 @@ export interface ResolvedCard {
   // are often priceless on Cardmarket, so we keep the default as a fallback).
   priceEur?: string | null
   error?: string
+  /** The server could not be reached: worth asking again, unlike "not found". */
+  transient?: boolean
 }
 
 export interface FetchProgress {

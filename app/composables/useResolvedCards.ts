@@ -6,7 +6,7 @@ import { useScryfall } from '~/composables/useScryfall'
 
 // The card-resolution engine for the deck page. Owns the resolved cards, the
 // in-flight/progress state, the dirty flag, and the monotonic-token loadCards()
-// machinery. Extracted from deck/[id].vue with ZERO behaviour change.
+// machinery. Resolution is incremental: only cards not seen yet are fetched.
 //
 // Reactive deps are injected as plain getters (read lazily inside loadCards), so
 // the composable can be created BEFORE the page's allEntries/cardCount computeds
@@ -64,40 +64,94 @@ export function useResolvedCards(ctx: ResolvedCardsCtx) {
     return resolvedByName.value.get(name.trim().toLowerCase())
   }
 
-  async function loadCards(opts: { silent?: boolean } = {}) {
-    if (cardCount() === 0)
+  // Resolved cards by entry (name, pinned printing, language), so an edit only
+  // asks the server for the cards it has not seen. A card the server could not
+  // be reached for is never kept: the next load asks again.
+  const cache = new Map<string, ResolvedCard>()
+  const CACHE_MAX = 3000
+  const keyOf = (e: DeckEntry, l: string) => `${l}|${e.name.trim().toLowerCase()}|${e.set ?? ''}|${e.collectorNumber ?? ''}`
+  function remember(key: string, rc: ResolvedCard) {
+    if (rc.transient)
       return
-    // Claim this resolve and snapshot the inputs. Don't bail when another resolve
-    // is running — supersede it: the older one's token is now stale and its result
-    // will be discarded below, so switching decks mid-resolve still loads the new one.
+    if (cache.size >= CACHE_MAX)
+      cache.delete(cache.keys().next().value!)
+    cache.set(key, rc)
+  }
+
+  async function loadCards(opts: { silent?: boolean } = {}) {
+    // Claim this resolve. A slower older one (deck A still loading when B
+    // opens) finds its token stale and drops its result.
     const token = ++loadToken
     const entries = allEntries()
     const reqLang = lang()
+    // An empty deck shows nothing, even if a load for its previous content is
+    // still on its way.
+    if (cardCount() === 0 || !entries.length) {
+      resolvedCards.value = []
+      resolvedDirty.value = false
+      fetching.value = false
+      return
+    }
+    const firstLoad = resolvedCards.value.length === 0
+    const assemble = (fresh = new Map<string, ResolvedCard>()) => entries.map((entry) => {
+      const hit = cache.get(keyOf(entry, reqLang)) ?? fresh.get(keyOf(entry, reqLang))
+      return hit ? { ...hit, entry } : null
+    })
+
+    const unknown = [...new Map(entries
+      .filter(e => !cache.has(keyOf(e, reqLang)))
+      .map(e => [keyOf(e, reqLang), e])).values()]
+
+    if (!unknown.length) {
+      resolvedCards.value = assemble() as ResolvedCard[]
+      resolvedDirty.value = false
+      fetching.value = false
+      return
+    }
+
     fetching.value = true
-    fetchProgress.value = { loaded: 0, total: cardCount() }
-    onLoadStart?.()
+    fetchProgress.value = { loaded: 0, total: unknown.length }
+    if (firstLoad)
+      onLoadStart?.()
     try {
+      const fresh = new Map<string, ResolvedCard>()
       const result = await fetchCollection(
-        entries,
+        unknown,
         reqLang,
         (p) => {
           if (token === loadToken)
             fetchProgress.value = p
         },
-        // Instant first paint: show default-image thumbnails as soon as the
-        // collection call returns, before the slower FR art resolves. The token
-        // check alone guards against deck-switch races; we deliberately repaint
-        // even when cards are already shown so a same-deck re-resolve (after an
-        // edit) refreshes the thumbnails instead of leaving stale art.
-        (preliminary) => {
-          if (token === loadToken)
-            resolvedCards.value = preliminary
+        // First paint as soon as a batch lands: what is known, plus the new cards
+        // resolved so far.
+        (partial) => {
+          if (token !== loadToken)
+            return
+          partial.forEach((rc, i) => fresh.set(keyOf(unknown[i]!, reqLang), rc))
+          resolvedCards.value = assemble(fresh).filter((rc): rc is ResolvedCard => rc !== null)
         },
       )
+      result.forEach((rc, i) => {
+        const key = keyOf(unknown[i]!, reqLang)
+        fresh.set(key, rc)
+        remember(key, rc)
+      })
       if (token !== loadToken)
-        return // superseded by a newer load (deck switched) — drop these cards
-      resolvedCards.value = result
-      resolvedDirty.value = false
+        return // superseded by a newer load (deck switched): drop these cards
+      resolvedCards.value = assemble(fresh) as ResolvedCard[]
+      const failed = result.some(rc => rc.transient)
+      // Unreachable server: keep the list stale so the next open retries.
+      resolvedDirty.value = failed
+      if (failed) {
+        toast.add({
+          title: t('toast.loadError'),
+          description: t('toast.loadRetry'),
+          color: 'error',
+          icon: 'i-lucide-wifi-off',
+          actions: [{ label: t('toast.retry'), onClick: () => { void loadCards({ silent: true }) } }],
+        })
+        return
+      }
       if (opts.silent)
         return
       const ok = resolvedCards.value.filter(c => c.imageUrl).length

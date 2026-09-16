@@ -110,8 +110,8 @@ const groups = computed(() => {
           @mouseenter="showPreview(entry.name, $event)"
           @mouseleave="hidePreview"
           @click="emit('details', entry.name)"
-          @keydown.enter.prevent="emit('details', entry.name)"
-          @keydown.space.prevent="emit('details', entry.name)"
+          @keydown.enter.self.prevent="emit('details', entry.name)"
+          @keydown.space.self.prevent="emit('details', entry.name)"
         >
           <!-- thumbnail: brightens + accent ring on hover; the big card pops up as
              a floating preview (teleported, below) so it isn't clipped by scroll.
@@ -131,8 +131,8 @@ const groups = computed(() => {
           <div class="flex shrink-0 items-center">
             <button
               type="button"
-              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100"
-              aria-label="-"
+              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100 group-focus-within/row:opacity-100"
+              :aria-label="`- ${displayNameOf(entry.name)}`"
               @click.stop="emit('setQty', entry.name, entry.quantity - 1)"
             >
               <UIcon name="i-lucide-minus" class="h-3 w-3" />
@@ -140,8 +140,8 @@ const groups = computed(() => {
             <span class="w-4 text-center font-mono text-xs text-(--color-text-high)">{{ entry.quantity }}</span>
             <button
               type="button"
-              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100"
-              aria-label="+"
+              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100 group-focus-within/row:opacity-100"
+              :aria-label="`+ ${displayNameOf(entry.name)}`"
               @click.stop="emit('setQty', entry.name, entry.quantity + 1)"
             >
               <UIcon name="i-lucide-plus" class="h-3 w-3" />
@@ -174,11 +174,12 @@ const groups = computed(() => {
           <!-- actions (hover only, overlay the pips). A left-fading solid backing
              masks the truncated card name beneath so the buttons never appear to
              sit on top of text (no see-through "empiètement"). -->
-          <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-[var(--radius-sm)] pl-6 pr-1.5 opacity-0 transition-opacity bg-gradient-to-l from-(--color-surface-2) from-65% to-transparent group-hover/row:opacity-100">
+          <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-[var(--radius-sm)] pl-6 pr-1.5 opacity-0 transition-opacity bg-gradient-to-l from-(--color-surface-2) from-65% to-transparent group-hover/row:opacity-100 group-focus-within/row:opacity-100">
             <button
               type="button"
               class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
               :title="t('build.setCommander')"
+              :aria-label="`${t('build.setCommander')}, ${displayNameOf(entry.name)}`"
               @click.stop="emit('setCommander', entry.name)"
             >
               <UIcon name="i-lucide-crown" class="h-3 w-3" />
@@ -186,7 +187,7 @@ const groups = computed(() => {
             <button
               type="button"
               class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
-              :aria-label="t('build.removeFromDeck')"
+              :aria-label="`${t('build.removeFromDeck')}, ${displayNameOf(entry.name)}`"
               @click.stop="emit('remove', entry.name)"
             >
               <UIcon name="i-lucide-trash-2" class="h-3 w-3" />

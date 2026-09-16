@@ -97,6 +97,11 @@ function newConvId(): string {
   return `c_${Date.now().toString(36)}_${convCounter.toString(36)}`
 }
 
+/** The coach's large-panel toggle alone, for pages that only size the panel. */
+export function useCoachExpanded() {
+  return useState('coach-expanded', loadExpanded)
+}
+
 export function useCoach() {
   const { locale, t } = useLocale()
   // Shared across every component that calls useCoach() in this session.
@@ -155,11 +160,8 @@ export function useCoach() {
     })
   }
 
-  // Mirror settled changes into the store as they happen (covers edits the
-  // explicit persist() calls might miss, e.g. a late deep mutation).
-  if (import.meta.client) {
-    watch(messages, () => persist(), { deep: true })
-  }
+  // No deep watcher here: persisting on every streamed token rewrote the whole
+  // history in localStorage per token. send() persists at its settle points.
 
   /** Cancel any in-flight stream without surfacing an error. */
   function stop() {
@@ -206,7 +208,10 @@ export function useCoach() {
     if (streaming.value || !userText.trim())
       return
     error.value = ''
-    // First message of a new conversation → bind it to the current deck.
+    // A conversation belongs to one deck: asking from another deck starts a new
+    // one (the previous stays in history).
+    if (deckMeta && activeDeck.value.id && activeDeck.value.id !== deckMeta.id)
+      newConversation()
     const isFirst = !continuationToken
     if (isFirst && deckMeta)
       activeDeck.value = { id: deckMeta.id, name: deckMeta.name }
@@ -220,12 +225,12 @@ export function useCoach() {
     controller = new AbortController()
     const signal = controller.signal
 
-    // Only the first turn carries the deck context preamble. The deck data is
-    // user-controlled (deck/card names), so fence it in an explicit data block
-    // the agent is told to treat as data, never as instructions — defuses
-    // prompt-injection via a crafted deck/card name. (`isFirst` computed above,
-    // before the deck binding, so a fresh conversation always carries context.)
-    const message = isFirst && deckContext
+    // Every turn carries the deck as it is now, so edits made during the
+    // conversation reach the coach. The deck data is user-controlled
+    // (deck/card names), so it is fenced in an explicit data block the agent is
+    // told to treat as data, never as instructions: this defuses prompt
+    // injection via a crafted deck or card name.
+    const message = deckContext
       ? `<deck_data>\n${deckContext}\n</deck_data>\n\nQuestion du joueur: ${userText}`
       : userText
 
@@ -350,7 +355,7 @@ export function useCoach() {
       case 'turn.failed':
       case 'session.failed': {
         if (!assistant.value.text)
-          throw new Error(ev.data?.message || 'Coach: échec')
+          throw new Error(ev.data?.message || t('coach.unavailable'))
         break
       }
     }

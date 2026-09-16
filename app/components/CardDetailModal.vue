@@ -15,6 +15,8 @@ const props = defineProps<{
   /** Opened from the card library: no deck to pin a printing on, and the
    *  commander action starts a new deck instead. */
   library?: boolean
+  /** The card is in the deck: only then can a printing be pinned on it. */
+  inDeck?: boolean
 }>()
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -104,7 +106,9 @@ const pinnedKey = computed(() => {
 const cardKey = computed(() => props.card?.card?.id ?? props.card?.entry.name ?? '')
 
 function onPickPrint(p: { set: string, collectorNumber: string }) {
-  const name = englishName.value || props.card?.entry.name
+  // The deck line's own name: a double-faced card is listed by its full name,
+  // not by the face on show.
+  const name = props.card?.entry.name || englishName.value
   if (!name)
     return
   emit('setPrinting', { name, set: p.set, collectorNumber: p.collectorNumber })
@@ -307,7 +311,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 
           <!-- Printings selector -->
           <CardPrintingPicker
-            v-if="!library"
+            v-if="!library && inDeck"
             class="mt-4"
             :open="open"
             :english-name="englishName"

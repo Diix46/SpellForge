@@ -50,9 +50,10 @@ export function useScryfall() {
         })
         rows = res.cards
       }
-      catch (err) {
-        const reason = err instanceof Error ? err.message : t('toast.loadError')
-        rows = batch.map(() => ({ card: null, lang, error: `Erreur réseau: ${reason}` }))
+      catch {
+        batch.forEach(entry => results.push({ ...toResolved(entry, undefined, lang), error: t('toast.loadError'), transient: true }))
+        onProgress?.({ loaded: results.length, total: entries.length })
+        continue
       }
 
       batch.forEach((entry, k) => results.push(toResolved(entry, rows[k], lang)))

@@ -20,6 +20,8 @@ export interface DeckEntry {
 export interface ParseResult {
   mainboard: DeckEntry[]
   sideboard: DeckEntry[]
+  /** Magic: names listed under a "Commander" header (they stay in the mainboard). */
+  commanders?: string[]
   /** Lines that could not be read, as typed. */
   errors: string[]
 }

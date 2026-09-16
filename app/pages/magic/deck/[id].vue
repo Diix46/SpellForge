@@ -11,10 +11,9 @@ import { useDeckExport } from '~/composables/useDeckExport'
 import { useDecklist } from '~/composables/useDecklist'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
-import { classifyType, displayName, displayType } from '~/composables/useMtg'
+import { classifyType, displayName, displayType, isTokenType } from '~/composables/useMtg'
 import { useResolvedCards } from '~/composables/useResolvedCards'
 import { getImageUris, mtgRaw, toMtgCard } from '~/composables/useScryfall'
-import { useUndoHistory } from '~/composables/useUndoHistory'
 import { isCardWithinIdentity } from '~/utils/mtgValidation'
 
 // The deck page has heavy async setup; with the global `cine` out-in page
@@ -28,7 +27,7 @@ const route = useRoute()
 const router = useRouter()
 const deckId = computed(() => route.params.id as string)
 
-const { getDeck, updateDeck, ready: storeReady } = useDeckStore()
+const { getDeck, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
 const { parse, totalCards } = useDecklist()
 const { identity, colorVar } = useManaIdentity()
@@ -91,7 +90,7 @@ watch(lang, () => {
 // useDeckOverlays.
 const { previewOpen, buyOpen, coachOpen } = useDeckOverlays(route, router)
 // Coach large-panel toggle (shared state; the header button lives in CoachChat).
-const { expanded: coachExpanded } = useCoach()
+const coachExpanded = useCoachExpanded()
 
 // The Preview overlay pulls in jsPDF/html2canvas/canvg/marked/dompurify (~590 KB
 // gzip ~190 KB) — load that chunk only once the panel is actually opened, not on
@@ -154,9 +153,6 @@ async function onImportFile(e: Event) {
   input.value = '' // allow re-picking the same file
 }
 
-// Commander override (index into resolvedCards), -1 = auto
-const commanderOverride = ref(-1)
-
 // Pagination state (declared early: builder ops reset the page on commander change).
 const PAGE_SIZE = 24
 const page = ref(1)
@@ -173,14 +169,20 @@ const builder = useDeckBuilder({
 // before the nextTick flush) each inc/dec, so the guard can't be cleared early
 // by a sibling op while another is still pending.
 let writeDepth = 0
+// Cards added, removed or re-pinned are resolved shortly after the edit (only
+// the ones not seen yet reach the server), so thumbnails, groups, prices and
+// the curve follow every change.
+let resolveTimer: ReturnType<typeof setTimeout> | null = null
 watch(rawDecklist, () => {
-  // Any decklist change makes the resolved preview stale (covers builder ops,
-  // textarea edits, import). The auto-load watcher re-resolves on next preview.
   resolvedDirty.value = true
+  if (resolveTimer)
+    clearTimeout(resolveTimer)
+  resolveTimer = setTimeout(loadCards, 350, { silent: true })
   if (writeDepth > 0)
     return
   builder.load()
 })
+onBeforeUnmount(() => resolveTimer && clearTimeout(resolveTimer))
 function builderOp(fn: () => void) {
   writeDepth++
   fn()
@@ -312,14 +314,29 @@ function builderRemove(name: string) {
 // Drop a SEARCH card onto the deck → add it (by canonical English name). If the
 // dragged card resolves to a known Scryfall card that's out of identity, reuse
 // the identity gate; otherwise add by name.
-function onDropAdd(name: string) {
-  const card = mtgRaw(resolvedByName.value.get(name.trim().toLowerCase())?.card)
+async function onDropAdd(name: string) {
+  const key = name.trim().toLowerCase()
+  if (inDeckNames.value.has(key))
+    return
+  // A search card is not resolved yet: fetch it, so the identity lock and the
+  // tokens apply as they do for the add button.
+  let card = mtgRaw(resolvedByName.value.get(key)?.card)
+  if (!card) {
+    try {
+      const { cards } = await $fetch<{ cards: ResolvedRow[] }>('/api/cards/resolve', {
+        method: 'POST',
+        body: { lang: lang.value, entries: [{ name }] },
+      })
+      card = cards[0]?.card ?? null
+    }
+    catch {
+      // Unreachable server: the card is added by name below.
+    }
+  }
   if (card) {
     addSearchCard(card)
     return
   }
-  if (inDeckNames.value.has(name.trim().toLowerCase()))
-    return
   builderOp(() => builder.addCard(name))
   toast.add({ title: t('toast.added'), description: name, color: 'success', icon: 'i-lucide-plus' })
 }
@@ -336,9 +353,9 @@ const aiCardNames = computed(() => builder.entries.value.map(e => resolvedFor(e.
 // Single entry point for picking a commander: keep the builder's commander name
 // and the resolved-card override in sync so theme/featured/validation all agree.
 function chooseCommander(name: string) {
+  // Stored by name in the list's Commander section (see useDeckBuilder), so it
+  // survives edits above it, a reload and a deck switch.
   builderOp(() => builder.setCommander(name))
-  const rc = resolvedFor(name)
-  commanderOverride.value = rc ? resolvedCards.value.indexOf(rc) : -1 // -1 = auto-detect until resolved
   page.value = 1
 }
 
@@ -375,69 +392,10 @@ function openDeckEntryDetail(name: string) {
   openDetail(rc ?? { entry: { quantity: 1, name }, card: null, imageUrl: null, backImageUrl: null, lang: lang.value })
 }
 
-// ---- Undo/redo ----
-// One snapshot per debounced settle of the raw decklist + name — covers every
-// kind of edit (cards, quantities, commander, rename) since both derive from
-// these two refs (see the rawDecklist watcher above). Piggybacks on the save
-// debounce below so a burst of typing becomes one undo step, not one per keystroke.
-interface DeckSnapshot { raw: string, name: string }
-const history = useUndoHistory<DeckSnapshot>()
-// Set by applyHistorySnapshot() so the save it triggers doesn't ALSO record a
-// new history entry — that would immediately overwrite the redo branch we just
-// navigated to.
-let skipNextHistoryPush = false
-
-// Debounced autosave. The pending write is bound to the deck that was being
-// edited (captured at schedule time), NOT to whatever deck the route points at
-// when the timer fires — otherwise switching A→B mid-debounce would save A's
-// last edits into B. `pendingSave` holds the captured id + content.
-let saveTimer: ReturnType<typeof setTimeout> | null = null
-let pendingSave: { id: string, raw: string, name: string } | null = null
-function flushSave() {
-  if (saveTimer) {
-    clearTimeout(saveTimer)
-    saveTimer = null
-  }
-  if (pendingSave) {
-    const { id, raw, name } = pendingSave
-    pendingSave = null
-    if (getDeck(id))
-      updateDeck(id, { raw, name })
-    if (skipNextHistoryPush)
-      skipNextHistoryPush = false
-    else
-      history.push({ raw, name })
-  }
-}
-function applyHistorySnapshot(snap: DeckSnapshot | null) {
-  if (!snap)
-    return
-  skipNextHistoryPush = true
-  rawDecklist.value = snap.raw
-  deckName.value = snap.name
-}
-function undoDeck() {
-  flushSave() // commit any in-flight edit as its own step first, so it isn't lost
-  applyHistorySnapshot(history.undo())
-}
-function redoDeck() {
-  flushSave()
-  applyHistorySnapshot(history.redo())
-}
-function scheduleSave() {
-  const id = deckId.value
-  const raw = rawDecklist.value
-  const name = deckName.value
-  // initDeck assigns the loaded deck into these refs, which trips this watcher.
-  // Skip when nothing actually changed so opening a deck doesn't POST a no-op.
-  const current = getDeck(id)
-  if (current && current.raw === raw && current.name === name)
-    return
-  pendingSave = { id, raw, name }
-  if (saveTimer)
-    clearTimeout(saveTimer)
-  saveTimer = setTimeout(flushSave, 600)
-}
+// ---- Undo/redo and autosave ----
+// Shared with the One Piece page: one snapshot per settled edit of the list
+// and the name, bound to the deck being edited, Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z.
+const autosave = useDeckAutosave({ deckId, raw: rawDecklist, name: deckName })
 
 // Init / re-init per deck. Vue Router REUSES this component when only the
 // :id param changes, so a watch (not onMounted) is required — otherwise
@@ -445,14 +403,14 @@ function scheduleSave() {
 function initDeck(id: string) {
   // Persist any edits to the deck we're leaving BEFORE we overwrite the refs
   // below; otherwise a fast A→B switch drops A's last (still-debounced) changes.
-  flushSave()
+  autosave.flush()
   const d = getDeck(id)
   if (!d) {
     // Only redirect once the store has finished loading. For a signed-in user
     // arriving via direct navigation/refresh, the cloud decks load async — bailing
     // before storeReady would bounce them home before their deck even arrives.
     if (storeReady.value)
-      navigateTo('/')
+      navigateTo('/decks')
     return
   }
   // A One Piece deck opened through a Magic URL goes to its own universe.
@@ -460,11 +418,10 @@ function initDeck(id: string) {
     navigateTo(deckPath(d), { replace: true })
     return
   }
+  autosave.reset({ raw: d.raw, name: d.name })
   rawDecklist.value = d.raw
   deckName.value = d.name
-  history.reset({ raw: d.raw, name: d.name })
   resolvedCards.value = []
-  commanderOverride.value = -1
   page.value = 1
   resolvedDirty.value = false
   // Reset overlays on deck (re)init, then honour a deep-link (?preview / ?buy)
@@ -491,50 +448,46 @@ function initDeck(id: string) {
 // finally materializes (or redirect if it truly doesn't exist).
 watch([deckId, storeReady], ([id]) => initDeck(id), { immediate: true })
 
-// Schedule a save whenever the user edits the name or list. Skips the
-// programmatic resets done by initDeck (those set pendingSave to the value we
-// just loaded, which flushSave then no-ops as an identical write — harmless).
-watch([rawDecklist, deckName], scheduleSave)
+// Signing out, or deleting the deck in another tab, takes it away: back to the list.
+watch(() => getDeck(deckId.value), (now, before) => {
+  if (!now && before && storeReady.value)
+    navigateTo('/decks')
+})
+
+// Schedule a save whenever the user edits the name or list; the programmatic
+// assignment done by initDeck changes nothing and is skipped.
+watch([rawDecklist, deckName], autosave.schedule)
 
 // Flush any pending save when leaving the page entirely.
-onBeforeUnmount(flushSave)
-
-// Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl+Y) for undo/redo — but not while
-// focused in a text field, where the browser's own native undo should win
-// (editing the deck name or the raw decklist textarea in Import/Export).
-function isTextEntry(el: EventTarget | null): boolean {
-  if (!(el instanceof HTMLElement))
-    return false
-  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
-}
-function onHistoryKeydown(e: KeyboardEvent) {
-  const key = e.key.toLowerCase()
-  const hasModifier = e.metaKey || e.ctrlKey
-  if (!hasModifier || (key !== 'z' && key !== 'y') || isTextEntry(e.target))
-    return
-  const isRedo = key === 'y' || (key === 'z' && e.shiftKey)
-  e.preventDefault()
-  if (isRedo)
-    redoDeck()
-  else
-    undoDeck()
-}
-onMounted(() => window.addEventListener('keydown', onHistoryKeydown))
-onBeforeUnmount(() => window.removeEventListener('keydown', onHistoryKeydown))
 
 const parsed = computed(() => rawDecklist.value.trim() ? parse(rawDecklist.value) : null)
 const allEntries = computed(() => parsed.value ? [...parsed.value.mainboard, ...parsed.value.sideboard] : [])
 const cardCount = computed(() => parsed.value ? totalCards(parsed.value.mainboard) + totalCards(parsed.value.sideboard) : 0)
+
+// Tokens are printed with the deck but are not part of the hundred, nor bought.
+const tokenNames = computed(() => new Set(resolvedCards.value
+  .filter(rc => isTokenType(rc.card?.typeLine ?? ''))
+  .map(rc => rc.entry.name.trim().toLowerCase())))
+const tokenCount = computed(() => builder.entries.value
+  .filter(e => tokenNames.value.has(e.name.trim().toLowerCase()))
+  .reduce((n, e) => n + e.quantity, 0))
+const deckSize = computed(() => cardCount.value - tokenCount.value)
+const buyableCards = computed(() => resolvedCards.value.filter(rc => !tokenNames.value.has(rc.entry.name.trim().toLowerCase())))
+const buyableEntries = computed(() => allEntries.value.filter(e => !tokenNames.value.has(e.name.trim().toLowerCase())))
 
 const successCards = computed(() => resolvedCards.value.filter(c => c.imageUrl))
 const errorCards = computed(() => resolvedCards.value.filter(c => !c.imageUrl))
 const frCount = computed(() => resolvedCards.value.filter(c => c.lang === 'fr').length)
 
 // ---- Commander + dynamic theme ----
+// The chosen commander, found by name; without a choice, the first card that
+// can lead. A chosen card still resolving has no card to show yet.
 const commanderIndex = computed(() => {
-  if (commanderOverride.value >= 0 && resolvedCards.value[commanderOverride.value])
-    return commanderOverride.value
-  return detectCommanderIndex(resolvedCards.value)
+  const chosen = builder.commanderName.value.trim().toLowerCase()
+  if (!chosen)
+    return detectCommanderIndex(resolvedCards.value)
+  return resolvedCards.value.findIndex(rc =>
+    rc.entry.name.trim().toLowerCase() === chosen || rc.card?.name.trim().toLowerCase() === chosen)
 })
 const commander = computed(() =>
   commanderIndex.value >= 0 ? resolvedCards.value[commanderIndex.value] : null,
@@ -563,7 +516,7 @@ const { themeColors, themeStyle } = useDeckTheme(() =>
 const toolbarDots = computed(() => themeColors.value.map(colorVar))
 const saveSummary = computed(() => {
   const head = commanderName.value || builder.commanderName.value
-  return head ? `${cardCount.value} ${t('dash.cards')} · ${head}` : `${cardCount.value} ${t('dash.cards')}`
+  return head ? `${deckSize.value} ${t('dash.cards')} · ${head}` : `${deckSize.value} ${t('dash.cards')}`
 })
 
 // Drive the app-wide theme (background aurora + accents) from this deck's colours.
@@ -583,6 +536,7 @@ const builderIdentity = computed<ManaColor[] | null>(() => {
 
 const validation = computed(() => validateCommander(builder.entries.value, {
   commanderName: builder.commanderName.value || commanderName.value,
+  tokenNames: tokenNames.value,
   identityByName: identityByName.value,
   commanderIdentity: commander.value?.card?.colorIdentity,
 }))
@@ -678,11 +632,14 @@ function setCommander(card: ResolvedCard) {
 
 // Pin a specific printing on a deck entry, then re-resolve so the chosen art
 // (and its price) replaces the auto-picked one across preview/buy/PDF.
-async function onSetPrinting(payload: { name: string, set: string, collectorNumber: string }) {
-  builderOp(() => builder.setPrinting(payload.name, payload.set, payload.collectorNumber))
+function onSetPrinting(payload: { name: string, set: string, collectorNumber: string }) {
+  let pinned = false
+  builderOp(() => {
+    pinned = builder.setPrinting(payload.name, payload.set, payload.collectorNumber)
+  })
   showDetail.value = false
-  toast.add({ title: t('toast.printSet'), description: `${payload.set.toUpperCase()} #${payload.collectorNumber}`, icon: 'i-lucide-layers', color: 'success' })
-  await loadCards({ silent: true })
+  if (pinned)
+    toast.add({ title: t('toast.printSet'), description: `${payload.set.toUpperCase()} #${payload.collectorNumber}`, icon: 'i-lucide-layers', color: 'success' })
 }
 
 // PDF proxy export (settings, progress, action, page estimate). See useDeckExport.
@@ -703,7 +660,7 @@ const {
   openAllCardmarket,
   copyWantsList,
   buyWholeDeck,
-} = useDeckBuy({ resolvedCards, allEntries, price, resolvedFor, locale: lang })
+} = useDeckBuy({ resolvedCards: buyableCards, allEntries: buyableEntries, price, resolvedFor, locale: lang })
 </script>
 
 <template>
@@ -716,11 +673,11 @@ const {
     <BuilderDeckToolbar
       v-model:deck-name="deckName"
       :dots="toolbarDots"
-      :card-count="cardCount"
+      :card-count="deckSize"
       :price-total="price.total"
       :logged-in="loggedIn"
-      :can-undo="history.canUndo.value"
-      :can-redo="history.canRedo.value"
+      :can-undo="autosave.canUndo.value"
+      :can-redo="autosave.canRedo.value"
       printable
       buyable
       @open-import-export="openImportExport"
@@ -728,8 +685,8 @@ const {
       @save="showSaveWall = true"
       @open-preview="previewOpen = true"
       @open-buy="buyOpen = true"
-      @undo="undoDeck"
-      @redo="redoDeck"
+      @undo="autosave.undo"
+      @redo="autosave.redo"
     />
 
     <!-- DECK WORKSPACE (the one primary surface; Preview/Buy are overlays) -->
@@ -742,7 +699,7 @@ const {
         <div class="ws-col">
           <BuilderDeckListPanel
             :entries="builder.entries.value"
-            :total="builder.totalCards.value"
+            :total="builder.totalCards.value - tokenCount"
             :commander-name="commanderName || builder.commanderName.value"
             :commander-raw-name="commanderEnName"
             :commander-image="commander?.imageUrl ?? null"
@@ -956,7 +913,8 @@ const {
     <CardDetailModal
       v-model:open="showDetail"
       :card="detailCard"
-      :is-commander="!!detailCard && detailCard === commander"
+      :is-commander="!!detailCard && !!commander && detailCard.entry.name === commander.entry.name"
+      :in-deck="!!detailCard && inDeckNames.has(detailCard.entry.name.trim().toLowerCase())"
       @set-commander="(c) => { setCommander(c); showDetail = false }"
       @set-printing="onSetPrinting"
     />

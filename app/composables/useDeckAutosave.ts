@@ -22,8 +22,11 @@ export function useDeckAutosave(options: {
 
   let timer: ReturnType<typeof setTimeout> | null = null
   let pending: { id: string } & Snapshot | null = null
-  // An undo/redo writes the refs too; that write must not become a new step.
-  let restoring = false
+  // An undo/redo writes the refs too; saving that exact snapshot must not
+  // become a new step. Any other content saved after it is a real edit.
+  let restored: Snapshot | null = null
+
+  const same = (a: Snapshot | null, b: Snapshot) => !!a && a.raw === b.raw && a.name === b.name
 
   function flush() {
     if (timer) {
@@ -36,19 +39,25 @@ export function useDeckAutosave(options: {
     pending = null
     if (getDeck(id))
       updateDeck(id, { raw: r, name: n })
-    if (restoring)
-      restoring = false
-    else
-      history.push({ raw: r, name: n })
+    const snapshot = { raw: r, name: n }
+    if (!same(restored, snapshot))
+      history.push(snapshot)
+    restored = null
   }
 
   function schedule() {
     const id = deckId.value
     const current = getDeck(id)
-    // Loading a deck assigns the refs: nothing changed, nothing to save. A
-    // restore that changed nothing must not swallow the next real edit either.
+    // Back to what is saved (a deck just loaded, or an edit undone by hand
+    // before the delay): drop the pending write, or the intermediate state
+    // would be saved after all.
     if (current && current.raw === raw.value && current.name === name.value) {
-      restoring = false
+      pending = null
+      if (timer) {
+        clearTimeout(timer)
+        timer = null
+      }
+      restored = null
       return
     }
     pending = { id, raw: raw.value, name: name.value }
@@ -60,13 +69,14 @@ export function useDeckAutosave(options: {
   /** Start fresh on a deck; flushes the previous deck's pending edit first. */
   function reset(snapshot: Snapshot) {
     flush()
+    restored = null
     history.reset(snapshot)
   }
 
   function apply(snapshot: Snapshot | null) {
     if (!snapshot)
       return
-    restoring = true
+    restored = snapshot
     raw.value = snapshot.raw
     name.value = snapshot.name
   }

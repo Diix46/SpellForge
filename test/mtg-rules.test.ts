@@ -19,6 +19,11 @@ describe('validateCommander', () => {
     expect(validateCommander(deck(), { commanderName: 'Atraxa, Praetors\' Voice' })).toEqual([])
   })
 
+  it('leaves tokens out of the hundred', () => {
+    const list = [...deck(), entry('Goblin')]
+    expect(validateCommander(list, { commanderName: 'x', tokenNames: new Set(['goblin']) })).toEqual([])
+  })
+
   it('warns under 100 cards and errors over', () => {
     expect(validateCommander(deck().slice(1), { commanderName: 'x' })).toEqual([
       { level: 'warning', key: 'valid.size', value: 99 },

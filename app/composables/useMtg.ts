@@ -71,6 +71,11 @@ export const CATEGORY_ORDER: readonly (CategoryKey | 'commander')[] = [
   'other',
 ]
 
+/** A token's type line ("Token Creature — Goblin", "Jeton créature"). */
+export function isTokenType(typeLine: string): boolean {
+  return /\b(?:token|jeton)\b/i.test(typeLine)
+}
+
 /** A type line that can be a commander (legendary creature or planeswalker). */
 export function isCommanderType(typeLine: string): boolean {
   const tl = typeLine.toLowerCase()

@@ -24,7 +24,7 @@ export interface BuyRow {
 }
 
 interface BuyCtx {
-  resolvedCards: Ref<ResolvedCard[]>
+  resolvedCards: Ref<ResolvedCard[]> | ComputedRef<ResolvedCard[]>
   allEntries: ComputedRef<DeckEntry[]>
   price: ComputedRef<PriceSummary>
   /** Resolve a (possibly localized) entry name to its ResolvedCard, if loaded. */

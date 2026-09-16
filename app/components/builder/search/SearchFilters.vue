@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CardTypeFilter, SearchFilters, SortOrder } from '~/composables/useCardSearch'
 import type { ManaColor } from '~/composables/useMtg'
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { SEARCH_THEMES } from '~/composables/useCardSearch'
 import { useLocale } from '~/composables/useLocale'
 import { useManaIdentity } from '~/composables/useManaIdentity'
@@ -65,18 +65,32 @@ const typeModel = computed({
     emit('change')
   },
 })
+// Phones: filters folded until asked for; the count says how many are on.
+const openFilters = ref(false)
+const activeFilters = computed(() => {
+  const f = filters.value
+  return [f.colors.length, f.themes.length, f.type, f.subtype.trim(), f.maxCmc != null, f.maxPrice != null, f.commanderOnly].filter(Boolean).length
+})
+
+// A slider moves through many values while dragged: search once it rests.
+let slideTimer: number | undefined
+function changeSoon() {
+  window.clearTimeout(slideTimer)
+  slideTimer = window.setTimeout(emit, 250, 'change')
+}
+onBeforeUnmount(() => window.clearTimeout(slideTimer))
 const maxCmcModel = computed({
   get: () => filters.value.maxCmc ?? 0,
   set: (v: number) => {
     filters.value.maxCmc = v > 0 ? v : null
-    emit('change')
+    changeSoon()
   },
 })
 const maxPriceModel = computed({
   get: () => filters.value.maxPrice ?? 0,
   set: (v: number) => {
     filters.value.maxPrice = v > 0 ? v : null
-    emit('change')
+    changeSoon()
   },
 })
 const sortModel = computed({
@@ -206,150 +220,181 @@ function hideAcSoon() {
     <!-- Color pips: real mana symbols. Selected = full pip + accent ring + glow;
          unselected = dimmed & desaturated (still readable by colour). Hover lifts
          and lights up in the pip's own colour. -->
-    <div class="mb-3 flex items-center gap-2">
-      <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">{{ t('build.colors') }}</span>
-      <div class="flex gap-1.5">
+    <button type="button" class="filters-toggle" :aria-expanded="openFilters" @click="openFilters = !openFilters">
+      <UIcon name="i-lucide-sliders-horizontal" class="h-4 w-4" />
+      {{ t('filters.toggle') }}<template v-if="activeFilters">
+        ({{ activeFilters }})
+      </template>
+      <UIcon :name="openFilters ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'" class="ml-auto h-4 w-4" />
+    </button>
+    <div class="rest" :class="{ shut: !openFilters }">
+      <div class="mb-3 flex items-center gap-2">
+        <span class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">{{ t('build.colors') }}</span>
+        <div class="flex gap-1.5">
+          <button
+            v-for="pip in WUBRG"
+            :key="pip"
+            type="button"
+            class="mana-toggle"
+            :class="{ 'is-active': filters.colors.includes(pip) }"
+            :style="{ '--pip': colorVar(pip) }"
+            :aria-pressed="filters.colors.includes(pip)"
+            :aria-label="`${colorCode(pip, isFr)}, ${colorName(pip, isFr)}`"
+            :title="colorName(pip, isFr)"
+            @click="toggleColor(pip, $event)"
+          >
+            <ManaSymbol :sym="pip" :size="22" />
+            <UIcon
+              v-if="filters.colors.includes(pip)"
+              name="i-lucide-check"
+              class="pointer-events-none absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-(--accent) p-px text-(--color-bg-base)"
+            />
+          </button>
+        </div>
+      </div>
+
+      <!-- Themes -->
+      <div class="mb-3 flex flex-wrap gap-1.5">
         <button
-          v-for="pip in WUBRG"
-          :key="pip"
+          v-for="theme in SEARCH_THEMES"
+          :key="theme.key"
           type="button"
-          class="mana-toggle"
-          :class="{ 'is-active': filters.colors.includes(pip) }"
-          :style="{ '--pip': colorVar(pip) }"
-          :aria-pressed="filters.colors.includes(pip)"
-          :aria-label="`${colorCode(pip, isFr)}, ${colorName(pip, isFr)}`"
-          :title="colorName(pip, isFr)"
-          @click="toggleColor(pip, $event)"
+          class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all hover:-translate-y-px"
+          :class="filters.themes.includes(theme.key)
+            ? 'accent-border-c accent-soft-bg text-(--accent-text)'
+            : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:bg-(--color-surface-2) hover:text-(--color-text-high)'"
+          @click="toggleTheme(theme.key)"
         >
-          <ManaSymbol :sym="pip" :size="22" />
-          <UIcon
-            v-if="filters.colors.includes(pip)"
-            name="i-lucide-check"
-            class="pointer-events-none absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-(--accent) p-px text-(--color-bg-base)"
-          />
+          <UIcon :name="theme.icon" class="h-3.5 w-3.5" />
+          {{ t(theme.labelKey) }}
         </button>
       </div>
-    </div>
 
-    <!-- Themes -->
-    <div class="mb-3 flex flex-wrap gap-1.5">
-      <button
-        v-for="theme in SEARCH_THEMES"
-        :key="theme.key"
-        type="button"
-        class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all hover:-translate-y-px"
-        :class="filters.themes.includes(theme.key)
-          ? 'accent-border-c accent-soft-bg text-(--accent-text)'
-          : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:bg-(--color-surface-2) hover:text-(--color-text-high)'"
-        @click="toggleTheme(theme.key)"
-      >
-        <UIcon :name="theme.icon" class="h-3.5 w-3.5" />
-        {{ t(theme.labelKey) }}
-      </button>
-    </div>
+      <!-- EDHREC suggestions + commanders-only -->
+      <div class="mb-3 flex flex-wrap gap-2">
+        <button
+          v-if="commanderName"
+          type="button"
+          class="flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-all"
+          :class="suggestMode
+            ? 'accent-border-c accent-soft-bg text-(--accent-text)'
+            : 'border-(--accent-border) text-(--accent-text) hover:bg-(--accent-soft)'"
+          @click="emit('suggest')"
+        >
+          <UIcon name="i-lucide-wand-sparkles" class="h-3.5 w-3.5" />
+          {{ t('build.suggestions') }}
+        </button>
+        <button
+          type="button"
+          class="flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-all"
+          :class="filters.commanderOnly
+            ? 'accent-border-c accent-soft-bg text-(--accent-text)'
+            : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:text-(--accent-text)'"
+          :aria-pressed="filters.commanderOnly"
+          @click="toggleCommanderOnly"
+        >
+          <UIcon name="i-lucide-crown" class="h-3.5 w-3.5" />
+          {{ t('build.commanderOnly') }}
+        </button>
+      </div>
 
-    <!-- EDHREC suggestions + commanders-only -->
-    <div class="mb-3 flex flex-wrap gap-2">
-      <button
-        v-if="commanderName"
-        type="button"
-        class="flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-all"
-        :class="suggestMode
-          ? 'accent-border-c accent-soft-bg text-(--accent-text)'
-          : 'border-(--accent-border) text-(--accent-text) hover:bg-(--accent-soft)'"
-        @click="emit('suggest')"
-      >
-        <UIcon name="i-lucide-wand-sparkles" class="h-3.5 w-3.5" />
-        {{ t('build.suggestions') }}
-      </button>
-      <button
-        type="button"
-        class="flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-all"
-        :class="filters.commanderOnly
-          ? 'accent-border-c accent-soft-bg text-(--accent-text)'
-          : 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:text-(--accent-text)'"
-        :aria-pressed="filters.commanderOnly"
-        @click="toggleCommanderOnly"
-      >
-        <UIcon name="i-lucide-crown" class="h-3.5 w-3.5" />
-        {{ t('build.commanderOnly') }}
-      </button>
-    </div>
+      <!-- Filters row -->
+      <div class="mb-3 grid grid-cols-2 gap-2">
+        <USelect
+          v-model="typeModel"
+          :items="TYPE_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
+        />
+        <UInput
+          :model-value="filters.subtype"
+          name="subtype"
+          :aria-label="t('build.subtypeAria')"
+          :placeholder="t('build.subtype')"
+          @update:model-value="onSubtypeInput(String($event))"
+        />
+      </div>
 
-    <!-- Filters row -->
-    <div class="mb-3 grid grid-cols-2 gap-2">
-      <USelect
-        v-model="typeModel"
-        :items="TYPE_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
-      />
-      <UInput
-        :model-value="filters.subtype"
-        name="subtype"
-        :aria-label="t('build.subtypeAria')"
-        :placeholder="t('build.subtype')"
-        @update:model-value="onSubtypeInput(String($event))"
-      />
-    </div>
+      <div class="mb-3 flex items-center gap-3">
+        <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+          {{ t('build.maxCmc') }}
+        </label>
+        <input
+          v-model.number="maxCmcModel"
+          type="range"
+          min="0"
+          max="10"
+          step="1"
+          class="flex-1 accent-(--accent)"
+          :aria-label="t('build.maxCmc')"
+        >
+        <span class="w-6 text-center font-mono text-sm text-(--color-text-high)">
+          {{ filters.maxCmc ?? '∞' }}
+        </span>
+      </div>
 
-    <div class="mb-3 flex items-center gap-3">
-      <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-        {{ t('build.maxCmc') }}
-      </label>
-      <input
-        v-model.number="maxCmcModel"
-        type="range"
-        min="0"
-        max="10"
-        step="1"
-        class="flex-1 accent-(--accent)"
-        :aria-label="t('build.maxCmc')"
-      >
-      <span class="w-6 text-center font-mono text-sm text-(--color-text-high)">
-        {{ filters.maxCmc ?? '∞' }}
-      </span>
-    </div>
+      <!-- Budget filter: max € per card -->
+      <div class="mb-3 flex items-center gap-3">
+        <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+          {{ t('build.maxPrice') }}
+        </label>
+        <input
+          v-model.number="maxPriceModel"
+          type="range"
+          min="0"
+          max="50"
+          step="1"
+          class="flex-1 accent-(--accent)"
+          :aria-label="t('build.maxPrice')"
+        >
+        <span class="w-10 text-center font-mono text-sm text-(--color-text-high)">
+          {{ filters.maxPrice != null ? `${filters.maxPrice}€` : '∞' }}
+        </span>
+      </div>
 
-    <!-- Budget filter: max € per card -->
-    <div class="mb-3 flex items-center gap-3">
-      <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-        {{ t('build.maxPrice') }}
-      </label>
-      <input
-        v-model.number="maxPriceModel"
-        type="range"
-        min="0"
-        max="50"
-        step="1"
-        class="flex-1 accent-(--accent)"
-        :aria-label="t('build.maxPrice')"
-      >
-      <span class="w-10 text-center font-mono text-sm text-(--color-text-high)">
-        {{ filters.maxPrice != null ? `${filters.maxPrice}€` : '∞' }}
-      </span>
-    </div>
+      <!-- Sort order -->
+      <div class="mb-4 flex items-center gap-2">
+        <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
+          {{ t('build.sortBy') }}
+        </label>
+        <USelect
+          v-model="sortModel"
+          size="xs"
+          :items="SORT_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
+          class="flex-1"
+        />
+      </div>
 
-    <!-- Sort order -->
-    <div class="mb-4 flex items-center gap-2">
-      <label class="font-mono text-[10px] uppercase tracking-wider text-(--color-text-muted)">
-        {{ t('build.sortBy') }}
-      </label>
-      <USelect
-        v-model="sortModel"
-        size="xs"
-        :items="SORT_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
-        class="flex-1"
-      />
+      <!-- Identity note -->
+      <p v-if="identity" class="mb-3 flex items-center gap-1.5 font-mono text-[10px] text-(--color-text-muted)">
+        <UIcon name="i-lucide-shield-check" class="h-3 w-3 text-(--accent-text)" />
+        {{ t('build.identityNote') }}
+      </p>
     </div>
-
-    <!-- Identity note -->
-    <p v-if="identity" class="mb-3 flex items-center gap-1.5 font-mono text-[10px] text-(--color-text-muted)">
-      <UIcon name="i-lucide-shield-check" class="h-3 w-3 text-(--accent-text)" />
-      {{ t('build.identityNote') }}
-    </p>
   </div>
 </template>
 
 <style scoped>
+/* On a phone the filters fold away under one button; the search stays. */
+.filters-toggle {
+  display: none;
+}
+@media (max-width: 900px) {
+  .filters-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 10px 0 4px;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    color: var(--color-text-high);
+  }
+  .rest.shut {
+    display: none;
+  }
+}
+
 /* WUBRG colour toggles built on real mana pips. --pip = the colour's CSS var. */
 .mana-toggle {
   position: relative;

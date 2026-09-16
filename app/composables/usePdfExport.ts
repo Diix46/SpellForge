@@ -54,7 +54,9 @@ interface ImageData {
 // LRU cache of loaded images across exports (A4 then A3). Base64 data URLs are
 // heavy (~hundreds of KB each), so cap the cache and evict the oldest. A `null`
 // entry is a negative cache so permanently-broken images aren't re-fetched.
-const IMAGE_CACHE_MAX = 300
+// A Commander deck plus its tokens and backs; base64 images weigh hundreds of
+// kilobytes each, so the cache stays at about one deck.
+const IMAGE_CACHE_MAX = 130
 const imageCache = new Map<string, ImageData | null>()
 
 function cacheImage(url: string, value: ImageData | null) {
