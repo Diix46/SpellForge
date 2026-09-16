@@ -21,11 +21,13 @@ RUN npm run build
 RUN cp -R node_modules/@libsql/linux-* .output/server/node_modules/@libsql/
 
 # sharp makes the image thumbnails: the mirror script runs it, and so does the
-# Magic image route, which the build traces. The full package goes in anyway,
-# with its own dependencies under its folder (where they cannot replace a
-# version the server relies on), so the script never depends on what the
-# trace happened to keep.
-RUN mkdir -p .output/server/node_modules/sharp/node_modules \
+# Magic image route. The build traces sharp for the route, keeping only what
+# the route loads (its dependencies as links into .nitro). The traced copy is
+# replaced by the full package, with its own dependencies under its folder
+# (where they cannot replace a version the server relies on), so the script
+# never depends on what the trace happened to keep.
+RUN rm -rf .output/server/node_modules/sharp \
+ && mkdir -p .output/server/node_modules/sharp/node_modules \
  && cp -R node_modules/sharp/. .output/server/node_modules/sharp/ \
  && cp -R node_modules/@img node_modules/semver node_modules/detect-libc .output/server/node_modules/sharp/node_modules/
 
