@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { OptcgCard } from '#shared/optcg/types'
-import { computed, shallowRef, watch } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { libraryPath } from '#shared/game'
 
 // The landing portal: no default game. The screen is cut in two and the halves
@@ -12,15 +12,13 @@ const { t, locale, setLocale } = useLocale()
 const { show: openAuth } = useAuthOverlay()
 const { pool: magicPool } = useLandingCards()
 
-const posters = shallowRef<OptcgCard[]>([])
-watch(locale, async (lang) => {
-  try {
-    posters.value = (await $fetch<{ cards: OptcgCard[] }>('/api/landing/optcg', { query: { lang } })).cards.slice(0, 3)
-  }
-  catch {
-    posters.value = []
-  }
-}, { immediate: true })
+// Rendered with the page, so the posters are there from the first frame.
+const { data: opPool } = await useAsyncData(
+  () => `portal-optcg-${locale.value}`,
+  () => $fetch<{ cards: OptcgCard[] }>('/api/landing/optcg', { query: { lang: locale.value } }).catch(() => ({ cards: [] })),
+  { watch: [locale] },
+)
+const posters = computed(() => opPool.value?.cards.slice(0, 3) ?? [])
 
 const grimoire = computed(() => magicPool.value.slice(0, 3))
 

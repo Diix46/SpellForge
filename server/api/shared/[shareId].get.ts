@@ -10,6 +10,7 @@ export default defineEventHandler(async (event) => {
     game: schema.decks.game,
     raw: schema.decks.raw,
     source: schema.decks.source,
+    public: schema.decks.public,
     updatedAt: schema.decks.updatedAt,
   }).from(schema.decks).where(eq(schema.decks.shareId, shareId)).get()
 

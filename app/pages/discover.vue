@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
-import { onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { sharedPath } from '#shared/game'
 
 interface DiscoverDeck {
@@ -11,12 +11,12 @@ interface DiscoverDeck {
   shareId: string
 }
 
+// The public gallery, rendered by the server: the decks are what a search
+// engine should find here.
 const { t, formatShortDate } = useLocale()
 
-const decks = ref<DiscoverDeck[]>([])
-const loading = ref(true)
-const errored = ref(false)
 const query = ref('')
+const search = ref('')
 const game = ref<GameId | 'all'>('all')
 const GAMES = [
   { value: 'all', label: () => t('discover.all') },
@@ -24,39 +24,28 @@ const GAMES = [
   { value: 'mtg', label: () => 'Magic' },
 ] as const
 
-useSeoMeta({
+usePublicSeo({
   title: () => t('discover.title'),
   description: () => t('discover.subtitle'),
 })
 
-async function load() {
-  loading.value = true
-  errored.value = false
-  try {
-    decks.value = (await $fetch<{ decks: DiscoverDeck[] }>('/api/decks/discover', {
-      query: {
-        ...(query.value ? { q: query.value } : {}),
-        ...(game.value !== 'all' ? { game: game.value } : {}),
-      },
-    })).decks
-  }
-  catch {
-    errored.value = true
-  }
-  finally {
-    loading.value = false
-  }
-}
-
+// The text filter waits for a pause in typing.
 let searchDebounce: ReturnType<typeof setTimeout> | null = null
-watch(query, () => {
+watch(query, (q) => {
   if (searchDebounce)
     clearTimeout(searchDebounce)
-  searchDebounce = setTimeout(load, 300)
+  searchDebounce = setTimeout(() => (search.value = q.trim()), 300)
 })
 
-watch(game, load)
-onMounted(load)
+const { data, status, error, refresh } = await useFetch<{ decks: DiscoverDeck[] }>('/api/decks/discover', {
+  query: computed(() => ({
+    ...(search.value ? { q: search.value } : {}),
+    ...(game.value !== 'all' ? { game: game.value } : {}),
+  })),
+})
+const decks = computed(() => data.value?.decks ?? [])
+const loading = computed(() => status.value === 'pending')
+const errored = computed(() => !!error.value)
 </script>
 
 <template>
@@ -98,7 +87,7 @@ onMounted(load)
       <p class="text-(--color-text-muted)">
         {{ t('discover.error') }}
       </p>
-      <UButton color="neutral" variant="subtle" icon="i-lucide-refresh-cw" @click="load">
+      <UButton color="neutral" variant="subtle" icon="i-lucide-refresh-cw" @click="refresh()">
         {{ t('discover.retry') }}
       </UButton>
     </div>

@@ -6,6 +6,12 @@ export default defineNuxtPlugin(() => {
   const { loggedIn } = useUserSession()
   const store = useDeckStore()
 
+  // A server-rendered page hands over the store as the server saw it: no
+  // guest decks, since they live in this browser. Read them before anything
+  // can write that empty list back.
+  if (!loggedIn.value)
+    store.refresh()
+
   watch(loggedIn, async (isIn, was) => {
     if (isIn) {
       // Block the deck-page guard until the cloud set has actually loaded.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
 import type { ResolvedCard } from '~/composables/useScryfall'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { deckPath, sharedPath } from '#shared/game'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDecklist } from '~/composables/useDecklist'
@@ -21,11 +21,22 @@ const { fetchCollection } = useScryfall()
 const { typeStats, detectCommanderIndex, commanderColors } = useDeckAnalysis()
 const { colorVar } = useManaIdentity()
 
-interface SharedDeck { name: string, game: GameId, raw: string, source?: string | null }
-const deck = ref<SharedDeck | null>(null)
-const notFound = ref(false)
+interface SharedDeck { name: string, game: GameId, raw: string, source?: string | null, public: boolean }
+
+// The deck comes with the page; its cards resolve in the browser.
+const { data, status } = await useAsyncData(
+  () => `shared-${shareId.value}`,
+  () => $fetch<{ deck: SharedDeck }>(`/api/shared/${encodeURIComponent(shareId.value)}`).then(r => r.deck).catch(() => null),
+)
+const deck = computed(() => data.value ?? null)
+const notFound = computed(() => status.value !== 'pending' && !deck.value)
 const resolved = ref<ResolvedCard[]>([])
-const loading = ref(true)
+const loading = computed(() => status.value === 'pending')
+
+if (deck.value && deck.value.game !== 'mtg')
+  await navigateTo(sharedPath(deck.value.game, shareId.value), { replace: true, redirectCode: 301 })
+if (import.meta.server && !deck.value)
+  setResponseStatus(useRequestEvent()!, 404)
 
 const cardCount = computed(() => {
   if (!deck.value)
@@ -42,26 +53,19 @@ const { themeColors, themeStyle } = useDeckTheme(() => commander.value?.card ? c
 // Read-only: never the commander, just all cards.
 const gridCards = computed(() => resolved.value.filter(c => c.imageUrl))
 
-useSeoMeta({ title: () => deck.value ? `${deck.value.name} · ${t('share.sharedDeck')}` : t('share.sharedDeck') })
-
-onMounted(async () => {
-  try {
-    const res = await $fetch<{ deck: SharedDeck }>(`/api/shared/${encodeURIComponent(shareId.value)}`)
-    if (res.deck.game !== 'mtg') {
-      await navigateTo(sharedPath(res.deck.game, shareId.value), { replace: true })
-      return
-    }
-    deck.value = res.deck
-    const { mainboard, sideboard } = parse(res.deck.raw)
-    resolved.value = await fetchCollection([...mainboard, ...sideboard], locale.value)
-  }
-  catch {
-    notFound.value = true
-  }
-  finally {
-    loading.value = false
-  }
+// Only decks listed in Discover are meant to be found; a link stays a link.
+usePublicSeo({
+  title: () => (deck.value ? `${deck.value.name} · ${t('share.sharedDeck')}` : t('share.notFound')),
+  description: () => t('share.metaMtg'),
+  noindex: () => !deck.value?.public,
 })
+
+onMounted(() => watch([() => deck.value?.raw, locale], async ([raw, lang]) => {
+  if (raw == null)
+    return
+  const { mainboard, sideboard } = parse(raw)
+  resolved.value = await fetchCollection([...mainboard, ...sideboard], lang)
+}, { immediate: true }))
 
 // The visitor keeps a copy among their own decks, account or not.
 function copyToMine() {

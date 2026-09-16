@@ -6,7 +6,7 @@
 // the landing page can still be revisited/demoed on purpose.
 const { t } = useLocale()
 
-useSeoMeta({
+usePublicSeo({
   title: () => t('brand.title'),
   description: () => t('brand.description'),
 })

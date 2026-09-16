@@ -12,7 +12,7 @@ definePageMeta({ universe: 'mtg', colorMode: 'dark' })
 const { t, locale } = useLocale()
 const { createDeck } = useDeckStore()
 
-useSeoMeta({
+usePublicSeo({
   title: () => `Magic · ${t('mtg.library.title')}`,
   description: () => t('mtg.library.sub'),
 })
@@ -36,7 +36,8 @@ watch(() => route.query.q, (q) => {
   if (typeof q === 'string')
     filters.text = q
 }, { immediate: true })
-watch([locale, () => route.query.q], runSearch, { immediate: true })
+// The server renders the page around the search; the browser runs it.
+watch([locale, () => route.query.q], runSearch, { immediate: import.meta.client })
 onBeforeUnmount(() => debounce && clearTimeout(debounce))
 
 const detailOpen = ref(false)

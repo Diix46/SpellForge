@@ -2,9 +2,29 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@nuxt/fonts', 'nuxt-auth-utils'],
 
-  // This is a client-side, localStorage-driven app (deck manager + proxy printer).
-  // Disable SSR to avoid hydration mismatches from client-only persisted state.
-  ssr: false,
+  // Hybrid rendering. The workshop (dashboard, deck pages) lives in the
+  // browser: decks are in localStorage for guests, so the server has nothing to
+  // render there. The public, indexable pages (libraries, card pages, Discover,
+  // shared decks, the landing) are rendered on the server. See routeRules.
+  ssr: true,
+
+  routeRules: {
+    '/**': { ssr: false },
+    '/landing': { ssr: true },
+    '/discover': { ssr: true },
+    '/magic': { ssr: true },
+    '/magic/card/**': { ssr: true },
+    '/magic/shared/**': { ssr: true },
+    '/one-piece': { ssr: true },
+    '/one-piece/card/**': { ssr: true },
+    '/one-piece/shared/**': { ssr: true },
+  },
+
+  // The public address, for canonical links and the sitemap
+  // (NUXT_PUBLIC_SITE_URL). Empty: the address of the request.
+  runtimeConfig: {
+    public: { siteUrl: '' },
+  },
 
   devtools: {
     enabled: true,
@@ -13,6 +33,14 @@ export default defineNuxtConfig({
   // Cinematic page transitions.
   app: {
     pageTransition: { name: 'cine', mode: 'out-in' },
+    // What the browser-rendered pages carry before the app starts; pages then
+    // set their own.
+    head: {
+      title: 'Prism, l\'atelier de decks One Piece et Magic',
+      meta: [
+        { name: 'description', content: 'Construisez vos decks One Piece et Magic sans créer de compte : toutes les cartes en local, règles vérifiées, partage en un lien, proxies Magic en PDF.' },
+      ],
+    },
   },
 
   // universes.css redefines the tokens of main.css per game universe, so it

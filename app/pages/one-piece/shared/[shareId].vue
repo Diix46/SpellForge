@@ -2,7 +2,7 @@
 import type { GameId } from '#shared/game'
 import type { OptcgDeckLine } from '#shared/optcg/deck'
 import type { OptcgCard } from '#shared/optcg/types'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { deckPath, sharedPath } from '#shared/game'
 
 // A shared One Piece deck, read-only, by day. The same deck panel as the
@@ -10,41 +10,39 @@ import { deckPath, sharedPath } from '#shared/game'
 // visitor can take a copy: it lands among their decks, account or not.
 definePageMeta({ universe: 'optcg', colorMode: 'light' })
 
-interface SharedDeck { name: string, game: GameId, raw: string, source?: string | null }
+interface SharedDeck { name: string, game: GameId, raw: string, source?: string | null, public: boolean }
 
 const route = useRoute()
 const shareId = computed(() => String(route.params.shareId))
 const { t, locale } = useLocale()
 const { createDeck } = useDeckStore()
 
-const deck = ref<SharedDeck | null>(null)
-const notFound = ref(false)
-const loading = ref(true)
+// The deck comes with the page; its cards resolve in the browser.
+const { data, status } = await useAsyncData(
+  () => `shared-${shareId.value}`,
+  () => $fetch<{ deck: SharedDeck }>(`/api/shared/${encodeURIComponent(shareId.value)}`).then(r => r.deck).catch(() => null),
+)
+const deck = computed(() => data.value ?? null)
+const loading = computed(() => status.value === 'pending')
+const notFound = computed(() => !loading.value && !deck.value)
+
+if (deck.value && deck.value.game !== 'optcg')
+  await navigateTo(sharedPath(deck.value.game, shareId.value), { replace: true, redirectCode: 301 })
+if (import.meta.server && !deck.value)
+  setResponseStatus(useRequestEvent()!, 404)
 
 const lang = computed<'fr' | 'en'>(() => locale.value)
 const optDeck = useOptcgDeck({
   raw: { get: () => deck.value?.raw ?? '', set: () => {} },
   lang,
 })
+onMounted(() => watch(() => deck.value?.raw, () => optDeck.load(), { immediate: true }))
 
-useSeoMeta({ title: () => (deck.value ? `${deck.value.name} · ${t('share.sharedDeck')}` : t('share.sharedDeck')) })
-
-onMounted(async () => {
-  try {
-    const res = await $fetch<{ deck: SharedDeck }>(`/api/shared/${encodeURIComponent(shareId.value)}`)
-    if (res.deck.game !== 'optcg') {
-      await navigateTo(sharedPath(res.deck.game, shareId.value), { replace: true })
-      return
-    }
-    deck.value = res.deck
-    optDeck.load()
-  }
-  catch {
-    notFound.value = true
-  }
-  finally {
-    loading.value = false
-  }
+// Only decks listed in Discover are meant to be found; a link stays a link.
+usePublicSeo({
+  title: () => (deck.value ? `${deck.value.name} · ${t('share.sharedDeck')}` : t('share.notFound')),
+  description: () => t('share.metaOp'),
+  noindex: () => !deck.value?.public,
 })
 
 /** Each card once, with its copies, cheapest first as a player reads a list. */
