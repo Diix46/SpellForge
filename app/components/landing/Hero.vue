@@ -304,6 +304,8 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
 /* ---- the card on show, named in its world's corner ---- */
 .caption {
   --glow: 212, 175, 95;
+  /* The card's colour, lifted toward the text so a black card stays readable. */
+  --ink: color-mix(in srgb, rgb(var(--glow)) 50%, #f4ecdc);
   position: absolute;
   bottom: clamp(20px, 4.5vh, 44px);
   display: grid;
@@ -312,7 +314,7 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   gap: 2px 10px;
   max-width: min(300px, 24vw);
   padding: 10px 16px 12px;
-  border: 1px solid rgba(var(--glow), 0.35);
+  border: 1px solid color-mix(in srgb, var(--ink) 40%, transparent);
   border-radius: 12px;
   background: rgba(12, 10, 16, 0.72);
   box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.85);
@@ -334,7 +336,9 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 0 0 1px rgba(244, 236, 220, 0.45),
+    0 0 6px rgba(0, 0, 0, 0.6);
 }
 .caption-name {
   overflow: hidden;
@@ -360,7 +364,7 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   gap: 4px;
   width: fit-content;
   margin-top: 4px;
-  color: rgb(var(--glow));
+  color: var(--ink);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
