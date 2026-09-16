@@ -2,7 +2,7 @@ import type { LandingCard } from '~~/server/api/landing/cards.get'
 import { watch } from 'vue'
 import { useState } from '#app'
 
-// Shared pool of marketing-landing card art (CinematicHero's card tide +
+// Shared pool of marketing-landing card art (the portal's Magic pages +
 // Page's step mockups both derive from this). A single fetch, cached as a
 // useState singleton, instead of each component independently hitting
 // /api/landing/cards on mount — and re-fetched whenever the site locale

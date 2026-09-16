@@ -468,14 +468,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'footer.bandai': 'One Piece Card Game © Eiichiro Oda/Shueisha, Toei Animation, Bandai Namco. Site non officiel, sans lien avec Bandai. Aucune impression de cartes One Piece.',
     'footer.importsVia': 'Imports via',
     // Landing (guests)
-    'landing.badge': 'Deck manager · imprimeur de proxies',
-    'landing.title1': 'Construisez des decks',
-    'landing.title2': 'légendaires',
     'landing.subtitle': 'Gérez vos decks Magic, affûtez-les avec le Coach IA, et imprimez vos proxies en PDF (FR ou EN).',
-    'landing.ctaPrimary': 'Commencer gratuitement',
-    'landing.ctaSecondary': 'J\'ai déjà un compte',
     'landing.copyright': 'Outil non officiel · Magic: The Gathering est © Wizards of the Coast.',
-    'landing.illus': 'Illustration', // showcase-card credit prefix (e.g. "Illustration · John Avon")
     'landing.featuresTitle': 'Côté Magic, de l\'idée à la table',
     'landing.f1Title': 'Coach IA',
     'landing.f1Body': 'Un coach qui analyse votre deck — courbe, rôles, identité — et propose de vraies cartes, vérifiées sur Scryfall.',
@@ -935,14 +929,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'footer.bandai': 'One Piece Card Game © Eiichiro Oda/Shueisha, Toei Animation, Bandai Namco. Unofficial site, not affiliated with Bandai. No One Piece card printing.',
     'footer.importsVia': 'Imports via',
     // Landing (guests)
-    'landing.badge': 'Deck manager · proxy printer',
-    'landing.title1': 'Build',
-    'landing.title2': 'legendary decks',
     'landing.subtitle': 'Manage your Magic decks, sharpen them with the AI Coach, and print your proxies as PDF (EN or FR).',
-    'landing.ctaPrimary': 'Start for free',
-    'landing.ctaSecondary': 'I already have an account',
     'landing.copyright': 'Unofficial fan tool · Magic: The Gathering is © Wizards of the Coast.',
-    'landing.illus': 'Art by', // showcase-card credit prefix (e.g. "Art by · John Avon")
     'landing.featuresTitle': 'On the Magic side, from idea to the table',
     'landing.f1Title': 'AI Coach',
     'landing.f1Body': 'A coach that analyses your deck — curve, roles, identity — and suggests real cards, verified against Scryfall.',
