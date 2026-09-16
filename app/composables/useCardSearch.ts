@@ -104,7 +104,7 @@ export function emptySearchState(): SearchState {
 
 interface SearchRequest { filters: SearchFilters, ctx: QueryContext }
 
-interface SearchResponse { total: number, hasMore: boolean, cards: ScryfallCard[] }
+export interface SearchResponse { total: number, hasMore: boolean, cards: ScryfallCard[] }
 
 /**
  * The server's refusal of a search query, as `{ code, term }`, or null for any
@@ -260,5 +260,18 @@ export function useCardSearch() {
     }
   }
 
-  return { state, search, loadMore, autocomplete, suggest }
+  /**
+   * Take a first page fetched with the page (useAsyncData) as the current
+   * results, so the server renders them and the browser starts from the same
+   * state. Null: that fetch failed.
+   */
+  function prime(res: SearchResponse | null, filters: SearchFilters, ctx: QueryContext) {
+    seq++
+    lastRequest = { filters: { ...filters, themes: [...filters.themes], colors: [...filters.colors] }, ctx: { ...ctx } }
+    state.value = res
+      ? { ...emptySearchState(), total: res.total, hasMore: res.hasMore, cards: res.cards }
+      : { ...emptySearchState(), error: t('toast.loadError') }
+  }
+
+  return { state, search, prime, loadMore, autocomplete, suggest }
 }

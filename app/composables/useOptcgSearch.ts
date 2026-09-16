@@ -48,7 +48,7 @@ export function optcgBrowseParams(f: OptcgFilters, ctx: OptcgSearchContext, page
   return p
 }
 
-interface BrowseResponse { total: number, hasMore: boolean, cards: OptcgCard[] }
+export interface OptcgBrowseResponse { total: number, hasMore: boolean, cards: OptcgCard[] }
 
 export interface OptcgSearchState {
   loading: boolean
@@ -80,7 +80,7 @@ export function useOptcgSearch() {
     last = { filters: { ...filters, colors: [...filters.colors] }, ctx: { ...ctx } }
     state.value = { ...state.value, loading: true, failed: false }
     try {
-      const res = await $fetch<BrowseResponse>('/api/optcg/browse', {
+      const res = await $fetch<OptcgBrowseResponse>('/api/optcg/browse', {
         params: optcgBrowseParams(filters, ctx, page),
         signal: ac.signal,
       })
@@ -107,6 +107,19 @@ export function useOptcgSearch() {
     return run(filters, ctx, 1, false)
   }
 
+  /**
+   * Take a first page fetched with the page (useAsyncData) as the current
+   * results, so the server renders them and the browser starts from the same
+   * state. Null: that fetch failed.
+   */
+  function prime(res: OptcgBrowseResponse | null, filters: OptcgFilters, ctx: OptcgSearchContext) {
+    seq++
+    last = { filters: { ...filters, colors: [...filters.colors] }, ctx: { ...ctx } }
+    state.value = res
+      ? { loading: false, failed: false, total: res.total, hasMore: res.hasMore, page: 1, cards: res.cards }
+      : { ...EMPTY, failed: true }
+  }
+
   function loadMore() {
     const s = state.value
     if (!last || s.loading || !s.hasMore)
@@ -125,5 +138,5 @@ export function useOptcgSearch() {
     }
   }
 
-  return { state, search, loadMore, autocomplete }
+  return { state, search, prime, loadMore, autocomplete }
 }

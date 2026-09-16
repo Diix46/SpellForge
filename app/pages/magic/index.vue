@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import type { SearchResponse } from '~/composables/useCardSearch'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { deckPath } from '#shared/game'
-import { emptyFilters, useCardSearch } from '~/composables/useCardSearch'
+import { browseParams, emptyFilters, useCardSearch } from '~/composables/useCardSearch'
 import { toMtgCard } from '~/composables/useScryfall'
 
 // The Magic library: every Commander-legal card, as pages of a grimoire.
@@ -17,7 +18,7 @@ usePublicSeo({
   description: () => t('mtg.library.sub'),
 })
 
-const { state, search, loadMore, autocomplete } = useCardSearch()
+const { state, search, prime, loadMore, autocomplete } = useCardSearch()
 const filters = reactive(emptyFilters())
 const ctx = computed(() => ({ identity: null, lang: locale.value }))
 
@@ -30,14 +31,24 @@ function onTextInput() {
     clearTimeout(debounce)
   debounce = setTimeout(runSearch, 320)
 }
-// The command palette opens a card here as ?q=.
+// The first page comes with the page: rendered by the server, taken over as is
+// by the browser. The command palette opens a card here as ?q=.
 const route = useRoute()
-watch(() => route.query.q, (q) => {
-  if (typeof q === 'string')
-    filters.text = q
-}, { immediate: true })
-// The server renders the page around the search; the browser runs it.
-watch([locale, () => route.query.q], runSearch, { immediate: import.meta.client })
+const queryText = () => (typeof route.query.q === 'string' ? route.query.q : '')
+filters.text = queryText()
+const { data: firstPage } = await useAsyncData(
+  `mtg-library-${locale.value}-${filters.text}`,
+  () => $fetch<SearchResponse>('/api/cards/browse', { params: browseParams(filters, ctx.value, 1) }).catch(() => null),
+)
+prime(firstPage.value ?? null, filters, ctx.value)
+// A failed first page is shown as such, but not handed to search engines.
+if (import.meta.server && !firstPage.value)
+  setResponseStatus(useRequestEvent()!, 503)
+watch(queryText, (q) => {
+  filters.text = q
+  runSearch()
+})
+watch(locale, runSearch)
 onBeforeUnmount(() => debounce && clearTimeout(debounce))
 
 const detailOpen = ref(false)

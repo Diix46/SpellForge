@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { OptcgCard } from '#shared/optcg/types'
-import type { OptcgFilters } from '~/composables/useOptcgSearch'
+import type { OptcgBrowseResponse, OptcgFilters } from '~/composables/useOptcgSearch'
 import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { deckPath } from '#shared/game'
 
@@ -16,7 +16,7 @@ usePublicSeo({
   description: () => t('optcg.library.sub'),
 })
 
-const { state, search, loadMore, autocomplete } = useOptcgSearch()
+const { state, search, prime, loadMore, autocomplete } = useOptcgSearch()
 const filters = reactive<OptcgFilters>(emptyOptcgFilters())
 const ctx = () => ({ lang: locale.value, leaderColors: null })
 
@@ -29,14 +29,24 @@ function onTextInput() {
     clearTimeout(debounce)
   debounce = setTimeout(runSearch, 280)
 }
-// The command palette opens a card here as ?q=.
+// The first page comes with the page: rendered by the server, taken over as is
+// by the browser. The command palette opens a card here as ?q=.
 const route = useRoute()
-watch(() => route.query.q, (q) => {
-  if (typeof q === 'string')
-    filters.text = q
-}, { immediate: true })
-// The server renders the page around the search; the browser runs it.
-watch([locale, () => route.query.q], runSearch, { immediate: import.meta.client })
+const queryText = () => (typeof route.query.q === 'string' ? route.query.q : '')
+filters.text = queryText()
+const { data: firstPage } = await useAsyncData(
+  `op-library-${locale.value}-${filters.text}`,
+  () => $fetch<OptcgBrowseResponse>('/api/optcg/browse', { params: optcgBrowseParams(filters, ctx(), 1) }).catch(() => null),
+)
+prime(firstPage.value ?? null, filters, ctx())
+// A failed first page is shown as such, but not handed to search engines.
+if (import.meta.server && !firstPage.value)
+  setResponseStatus(useRequestEvent()!, 503)
+watch(queryText, (q) => {
+  filters.text = q
+  runSearch()
+})
+watch(locale, runSearch)
 onBeforeUnmount(() => debounce && clearTimeout(debounce))
 
 const sheetOpen = ref(false)

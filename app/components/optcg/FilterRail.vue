@@ -2,7 +2,7 @@
 import type { OptcgCategory, OptcgColor } from '#shared/optcg/rules'
 import type { OptcgCard, OptcgSortOrder } from '#shared/optcg/types'
 import type { OptcgFilters } from '~/composables/useOptcgSearch'
-import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { OPTCG_COLORS } from '#shared/optcg/rules'
 import { OPTCG_COLOR_HEX, optcgColorFill } from '~/utils/optcgColors'
 
@@ -35,19 +35,17 @@ const colorOptions = computed<readonly OptcgColor[]>(() => props.leaderColors?.l
 const SORTS: OptcgSortOrder[] = ['number', 'cost', 'power', 'name']
 
 interface SetOption { code: string, name: string, cards: number }
-const sets = shallowRef<SetOption[]>([])
-watch(() => props.lang, async (lang) => {
-  try {
-    sets.value = (await $fetch<{ sets: SetOption[] }>('/api/optcg/sets', { params: { lang } })).sets
-  }
-  catch {
-    sets.value = []
-  }
-}, { immediate: true })
+// Fetched with the page, so a server-rendered library lists the sets too.
+const { data: setsData } = useFetch<{ sets: SetOption[] }>('/api/optcg/sets', {
+  query: computed(() => ({ lang: props.lang })),
+  default: () => ({ sets: [] }),
+})
+const sets = computed(() => setsData.value?.sets ?? [])
 
 const setItems = computed(() => [
   { label: t('optcg.filter.anySet'), value: 'any' },
-  ...sets.value.map(s => ({ label: `${s.code} · ${s.name}`, value: s.code })),
+  // A set without a readable name shows its code once.
+  ...sets.value.map(s => ({ label: s.name && s.name !== s.code ? `${s.code} · ${s.name}` : s.code, value: s.code })),
 ])
 const setModel = computed({
   get: () => filters.value.set || 'any',
