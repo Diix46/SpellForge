@@ -44,7 +44,7 @@ const log = (...a) => console.log(...a)
 
 // Bump whenever the schema changes: an older database is rebuilt even when the
 // dataset has not moved, since the app would query tables it does not have.
-const SCHEMA_VERSION = '4'
+const SCHEMA_VERSION = '5'
 
 /** The network cause behind undici's bare "fetch failed". */
 const causeOf = e => [e.message, e.cause?.code ?? e.cause?.message].filter(Boolean).join(' — ')
@@ -186,9 +186,7 @@ const fold = s => (s || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase(
 // and the app always renders this text as text. The no-break space is built
 // from its code so no tooling can turn it into an invisible literal.
 const NAMED_ENTITIES = { amp: '&', nbsp: String.fromCharCode(0xA0), quot: '"', apos: '\'', lt: '<', gt: '>' }
-function decodeEntities(text) {
-  if (typeof text !== 'string')
-    return text
+function decodeOnce(text) {
   return text.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
     if (entity[0] === '#') {
       const code = entity[1] === 'x' || entity[1] === 'X' ? Number.parseInt(entity.slice(2), 16) : Number(entity.slice(1))
@@ -196,6 +194,19 @@ function decodeEntities(text) {
     }
     return NAMED_ENTITIES[entity.toLowerCase()] ?? match
   })
+}
+// Pack titles come encoded twice ("&amp;apos;"): decode until the text settles.
+function decodeEntities(text) {
+  if (typeof text !== 'string')
+    return text
+  let out = text
+  for (let i = 0; i < 3; i++) {
+    const next = decodeOnce(out)
+    if (next === out)
+      break
+    out = next
+  }
+  return out
 }
 
 async function ingestLang(db, lang, code) {
