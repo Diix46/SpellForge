@@ -11,6 +11,37 @@ export async function run() {
   let t0 = Date.now()
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle' })
   rec.check('landing loads', (await page.locator('h1').first().textContent()).includes('Deux mondes'), `${Date.now() - t0} ms`)
+
+  // The card tide: One Piece on the left, Magic on the right, and a click
+  // puts a card on show in its own world's corner.
+  const tide = await page.evaluate(() => {
+    const mid = document.querySelector('.tide').getBoundingClientRect().width / 2
+    const cards = [...document.querySelectorAll('[data-tide-card]')].map((el) => {
+      const r = el.getBoundingClientRect()
+      return { op: el.classList.contains('card--op'), left: r.left + r.width / 2 < mid }
+    })
+    return { total: cards.length, misplaced: cards.filter(c => c.op !== c.left).length }
+  })
+  rec.check('card tide splits the two worlds', tide.total >= 60 && tide.misplaced <= tide.total * 0.1, `${tide.total} cards, ${tide.misplaced} across the seam`)
+  const pick = await page.evaluate(() => {
+    for (const el of document.querySelectorAll('[data-tide-card].card--mtg')) {
+      const r = el.getBoundingClientRect()
+      const x = r.left + r.width / 2
+      const y = r.top + r.height / 2
+      if (x > 1150 && x < 1420 && y > 120 && y < 760 && Number(el.style.zIndex) < 9000
+        && document.elementFromPoint(x, y)?.closest('[data-tide-card]') === el) {
+        return { x, y, i: el.dataset.tideCard }
+      }
+    }
+    return null
+  })
+  if (pick) {
+    await page.mouse.click(pick.x, pick.y)
+    await page.waitForTimeout(1200)
+  }
+  const shown = pick && await page.evaluate(i => Number(document.querySelector(`[data-tide-card="${i}"]`).style.zIndex) >= 9000, pick.i)
+  rec.check('a clicked card goes on show with its name', !!shown && (await page.locator('.caption--mtg .caption-link').count()) === 1)
+
   await page.getByRole('button', { name: 'Luffy' }).click()
   await page.waitForTimeout(800)
   const opHits = await page.locator('.col--op .hit').count()

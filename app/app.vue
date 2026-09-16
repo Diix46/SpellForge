@@ -132,7 +132,8 @@ function openImport() {
   <UApp>
     <FxOnePieceSea v-if="universe === 'optcg'" />
     <FxMagicSanctum v-else-if="universe === 'mtg'" />
-    <FxAppBackground v-else />
+    <!-- The home page paints its own ground over it: no hidden animation there. -->
+    <FxAppBackground v-else-if="showChrome" />
 
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 

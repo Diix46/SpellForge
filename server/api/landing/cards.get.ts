@@ -1,8 +1,8 @@
 /**
  * Card art for the landing hero, served from the local database.
  *
- * Same contract as before — a pool of 90 `{ name, image, art, artist, colors }`
- * the client scatters into its card tide — and the same selection: high-res,
+ * A pool of 90 cards the client scatters into its card tide, each with its
+ * page, its image and a lighter copy of it. The selection is the original one: high-res,
  * printed on paper, not digital-only, rare or mythic, with no tokens, emblems,
  * basics, joke sets, art series or Universes Beyond, drawn at random from the
  * most played cards.
@@ -12,16 +12,10 @@
  * across that depth costs ~230 ms, and this is the most visited page, so the
  * pool is cached for two minutes per language — as the original was.
  */
+import type { LandingCard } from '../../../shared/landing'
+import { cardPath } from '../../../shared/game'
 import { useMtgCardsDb } from '../../utils/cards/db'
 import { colorsFromMask, imageUrl } from '../../utils/cards/mtg-shape'
-
-export interface LandingCard {
-  name: string
-  image: string
-  art: string
-  artist: string
-  colors: string[]
-}
 
 const POOL_SIZE = 90
 // The depth the old proxy drew its random page from: 25 pages of 175 in
@@ -75,7 +69,9 @@ export default defineCachedEventHandler(async (event): Promise<{ cards: LandingC
       const id = String(r.id)
       return {
         name: String(r.printed_name ?? faceName.get(id) ?? r.name),
+        path: cardPath('mtg', String(r.name)),
         image: imageUrl('normal', 'front', id, r.img_version),
+        thumb: imageUrl('normal', 'front', id, r.img_version, 'thumb'),
         // The art crop is not pre-mirrored: the image route fetches each one
         // once from Scryfall, then serves it from disk.
         art: imageUrl('art_crop', 'front', id, r.img_version),
@@ -88,6 +84,7 @@ export default defineCachedEventHandler(async (event): Promise<{ cards: LandingC
   // The pool changes every two minutes; the client shuffles and scatters it
   // per visit, so two visitors in one window still rarely see the same hero.
   maxAge: 120,
-  name: 'landing-cards',
+  // Renamed when the shape changes, so a cached pool of the old shape is never served.
+  name: 'landing-cards-v2',
   getKey: event => (getQuery(event).lang === 'fr' ? 'pool-fr' : 'pool-en'),
 })

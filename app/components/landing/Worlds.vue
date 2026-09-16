@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { LandingCard } from '~~/server/api/landing/cards.get'
-import type { OptcgCard } from '#shared/optcg/types'
+import type { LandingCard, LandingPoster } from '#shared/landing'
 import { computed } from 'vue'
 import { libraryPath } from '#shared/game'
 import { OPTCG_COLOR_HEX } from '~/utils/optcgColors'
@@ -9,7 +8,7 @@ import { OPTCG_COLOR_HEX } from '~/utils/optcgColors'
 // rules being checked on a live-looking deck panel; Magic shows a card fan, a
 // printed sheet and the coach. Real card art from the landing pools.
 const props = defineProps<{
-  posters: OptcgCard[]
+  posters: LandingPoster[]
   cards: LandingCard[]
 }>()
 

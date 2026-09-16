@@ -91,7 +91,7 @@ app/                       # code applicatif (srcDir Nuxt 4)
     useSpotlight, useErrors  # (l'effet tilt est la directive v-tilt, plugins/tilt.client.ts)
     useUniverse, useOptcgDeck, useOptcgSearch, usePublicSeo, useDeckFingerprints
   components/optcg/        # affiches, rail de filtres, fiche carte, panneau de deck
-  components/landing/      # portail scindé + sections
+  components/landing/      # tas de cartes interactif (One Piece / Magic) + sections
   pages/                   # index (landing), decks (tableau de bord), discover,
                            #   one-piece/{index,deck/[id],card/[number],shared/[shareId]}
                            #   magic/{index,deck/[id],card/[name],shared/[shareId]}
@@ -167,7 +167,9 @@ les manquants) et en tire des vignettes WebP de 320 px (`.data/images/optcg/thum
 trois étapes.
 `npm run cards:verify` contrôle la base obtenue. Le miroir d'images est
 facultatif (`node scripts/mirror-images-mtg.mjs`) : sans lui, chaque image est
-récupérée une fois sur le CDN Scryfall puis servie depuis `.data/images`.
+récupérée une fois sur le CDN Scryfall puis servie depuis `.data/images`. Les
+vignettes Magic (`?size=thumb`) sont fabriquées à la première demande et gardées
+dans `.data/images/mtg/thumb`.
 
 Tests :
 

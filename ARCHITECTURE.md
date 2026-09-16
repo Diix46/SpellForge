@@ -54,8 +54,10 @@ app/
   components/optcg/           # WantedCard (poster), FilterRail, CardView + CardSheet, DeckPanel, EffectText
   components/mtg/             # GrimoireCard (library page)
   components/deck/            # ShareModal, SaveWall (shared by both games)
-  components/landing/        # home page: Header, Hero (split world, moving seam), Numbers,
-                              #   OmniSearch (both games), Worlds, Journey, Showcase, Finale, Footer
+  components/landing/        # home page: Header, Hero (card tide + reading panel), CardTide,
+                              #   Numbers, OmniSearch (both games), Worlds, Journey, Showcase,
+                              #   Finale, Footer. The tide's motion is useCardTide, its pure
+                              #   layout (grid, deal by world, showcase slots) utils/cardTide.ts
   pages/                      # index (home), decks (dashboard), discover, deck/[id] + shared/[shareId] (redirects)
     one-piece/                # index (library), deck/[id], card/[number], shared/[shareId]
     magic/                    # index (grimoire), deck/[id], card/[name], shared/[shareId]
@@ -179,7 +181,9 @@ into the bundle: libsql loads it by a computed name the build trace cannot follo
 fetched **once** from `cards.scryfall.io`, written beside the target then renamed, and served
 from disk afterwards. Responses are `immutable` for a year: the version is in the URL.
 Every path segment is validated against an allowlist before touching the disk or the
-upstream URL.
+upstream URL. `?size=thumb` on `normal` answers a 320 px WebP made from the normal image on
+first request (sharp, imported lazily) and kept in `.data/images/mtg/thumb`; without sharp
+the normal image is served. The home page's card tide draws Magic cards from it.
 
 `/api/images/optcg/{lang}/{id}?v=` serves `.data/images/optcg` (7 731 files, French and
 English) and **never** calls Bandai: a missing file falls back to the other language, then

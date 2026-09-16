@@ -1,17 +1,18 @@
 /**
- * One Piece posters for the landing portal: a handful of striking cards —
- * Leaders and the higher rarities — drawn at random, in the site language
- * where the art exists. Cached for two minutes per language, like the Magic
- * pool next door.
+ * One Piece cards for the landing: striking cards (Leaders and the higher
+ * rarities) drawn at random, in the site language where the art exists. The
+ * hero's card tide shows about half of them, so the pool is larger than the
+ * other sections need, and each card carries only what the page shows.
+ * Cached for two minutes per language, like the Magic pool next door.
  */
-import type { OptcgCard } from '../../../shared/optcg/types'
+import type { LandingPoster } from '../../../shared/landing'
 import { useOptcgCardsDb } from '../../utils/cards/db'
 import { OPTCG_CARD_COLUMNS } from '../../utils/cards/optcg-query'
 import { toOptcgCard } from '../../utils/cards/optcg-shape'
 
-const POOL_SIZE = 12
+const POOL_SIZE = 48
 
-export default defineCachedEventHandler(async (event): Promise<{ cards: OptcgCard[] }> => {
+export default defineCachedEventHandler(async (event): Promise<{ cards: LandingPoster[] }> => {
   const lang = getQuery(event).lang === 'fr' ? 'fr' : 'en'
   const { rows } = await useOptcgCardsDb().execute({
     sql: `SELECT ${OPTCG_CARD_COLUMNS}
@@ -27,9 +28,19 @@ export default defineCachedEventHandler(async (event): Promise<{ cards: OptcgCar
   })
   if (!rows.length)
     throw createError({ statusCode: 503, statusMessage: 'No landing art available' })
-  return { cards: rows.map(toOptcgCard) }
+  return {
+    cards: rows.map(toOptcgCard).map(c => ({
+      number: c.number,
+      name: c.name,
+      category: c.category,
+      colors: c.colors,
+      power: c.power,
+      image: c.image,
+      thumb: c.thumb,
+    })),
+  }
 }, {
   maxAge: 120,
-  name: 'landing-optcg',
+  name: 'landing-optcg-v2',
   getKey: event => (getQuery(event).lang === 'fr' ? 'pool-fr' : 'pool-en'),
 })
