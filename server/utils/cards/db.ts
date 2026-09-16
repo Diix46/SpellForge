@@ -10,6 +10,7 @@ import process from 'node:process'
 import { createClient } from '@libsql/client'
 
 let mtg: Client | null = null
+let optcg: Client | null = null
 
 export function useMtgCardsDb(): Client {
   // The ingest swaps the file with an atomic rename(). A client opened before
@@ -17,4 +18,10 @@ export function useMtgCardsDb(): Client {
   // a manual refresh, to revisit once ingestion runs as a scheduled task.
   mtg ??= createClient({ url: `file:${process.env.MTG_CARDS_DB || '.data/cards-mtg.db'}` })
   return mtg
+}
+
+/** The One Piece card database — same lifecycle as the Magic one. */
+export function useOptcgCardsDb(): Client {
+  optcg ??= createClient({ url: `file:${process.env.OPTCG_CARDS_DB || '.data/cards-optcg.db'}` })
+  return optcg
 }
