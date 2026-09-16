@@ -1,13 +1,19 @@
 <script setup lang="ts">
+import type { GameId } from '#shared/game'
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, onMounted, ref } from 'vue'
+import { deckPath, sharedPath } from '#shared/game'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDecklist } from '~/composables/useDecklist'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { useScryfall } from '~/composables/useScryfall'
 
+// A shared Magic deck, read-only, at night like the rest of Magic.
+definePageMeta({ universe: 'mtg', colorMode: 'dark' })
+
 const route = useRoute()
 const shareId = computed(() => route.params.shareId as string)
+const { createDeck } = useDeckStore()
 
 const { locale, t } = useLocale()
 const { parse, totalCards } = useDecklist()
@@ -15,7 +21,8 @@ const { fetchCollection } = useScryfall()
 const { typeStats, detectCommanderIndex, commanderColors } = useDeckAnalysis()
 const { colorVar } = useManaIdentity()
 
-const deck = ref<{ name: string, raw: string, source?: string | null } | null>(null)
+interface SharedDeck { name: string, game: GameId, raw: string, source?: string | null }
+const deck = ref<SharedDeck | null>(null)
 const notFound = ref(false)
 const resolved = ref<ResolvedCard[]>([])
 const loading = ref(true)
@@ -35,11 +42,15 @@ const { themeColors, themeStyle } = useDeckTheme(() => commander.value?.card ? c
 // Read-only: never the commander, just all cards.
 const gridCards = computed(() => resolved.value.filter(c => c.imageUrl))
 
-useSeoMeta({ title: () => deck.value ? `${deck.value.name} — ${t('share.sharedDeck')}` : t('share.sharedDeck') })
+useSeoMeta({ title: () => deck.value ? `${deck.value.name} · ${t('share.sharedDeck')}` : t('share.sharedDeck') })
 
 onMounted(async () => {
   try {
-    const res = await $fetch<{ deck: { name: string, raw: string, source?: string | null } }>(`/api/shared/${shareId.value}`)
+    const res = await $fetch<{ deck: SharedDeck }>(`/api/shared/${encodeURIComponent(shareId.value)}`)
+    if (res.deck.game !== 'mtg') {
+      await navigateTo(sharedPath(res.deck.game, shareId.value), { replace: true })
+      return
+    }
     deck.value = res.deck
     const { mainboard, sideboard } = parse(res.deck.raw)
     resolved.value = await fetchCollection([...mainboard, ...sideboard], locale.value)
@@ -51,6 +62,14 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+// The visitor keeps a copy among their own decks, account or not.
+function copyToMine() {
+  if (!deck.value)
+    return
+  const copy = createDeck({ name: deck.value.name, game: 'mtg', raw: deck.value.raw, source: deck.value.source ?? undefined })
+  navigateTo(deckPath(copy))
+}
 </script>
 
 <template>
@@ -66,8 +85,8 @@ onMounted(async () => {
       <p class="text-(--color-text-muted)">
         {{ t('share.notFound') }}
       </p>
-      <UButton to="/" color="primary" icon="i-lucide-home">
-        Spellforge
+      <UButton to="/magic" color="primary" icon="i-lucide-book-open">
+        {{ t('share.home') }}
       </UButton>
     </div>
 
@@ -92,8 +111,8 @@ onMounted(async () => {
             <span class="ml-1 font-mono text-xs text-(--color-text-muted)">{{ cardCount }} {{ t('editor.cardsWord') }}</span>
           </div>
         </div>
-        <UButton to="/" color="primary" variant="subtle" icon="i-lucide-arrow-up-right" class="shrink-0">
-          {{ t('share.openInApp') }}
+        <UButton color="primary" icon="i-lucide-copy-plus" class="shrink-0" @click="copyToMine">
+          {{ t('share.copyToMine') }}
         </UButton>
       </div>
 
