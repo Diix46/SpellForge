@@ -20,6 +20,10 @@ export const decks = sqliteTable('decks', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
+  // Which game the decklist belongs to. Set at creation and never changed:
+  // the two games' decklist formats are incompatible. Existing rows predate
+  // One Piece, hence the default.
+  game: text('game', { enum: ['mtg', 'optcg'] }).notNull().default('mtg'),
   raw: text('raw').notNull().default(''),
   source: text('source'),
   // Public read-only share token (null = private). Indexed for lookup.
@@ -31,6 +35,8 @@ export const decks = sqliteTable('decks', {
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
 }, t => [
   index('decks_user_idx').on(t.userId),
+  // Discover lists public decks, optionally for one game.
+  index('decks_public_game_idx').on(t.public, t.game),
 ])
 
 export type UserRow = typeof users.$inferSelect

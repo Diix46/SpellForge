@@ -1,8 +1,9 @@
+import { parseGameId } from '../../../shared/game'
 import { requireAppUser } from '../../utils/appUser'
 import { schema, useDb } from '../../utils/db'
 import { genId } from '../../utils/id'
 
-interface CreateDeckBody { id?: string, name?: string, raw?: string, source?: string | null }
+interface CreateDeckBody { id?: string, name?: string, game?: string, raw?: string, source?: string | null }
 
 // Create a deck for the signed-in user. Optionally accepts a client id (to
 // preserve local deck ids when migrating guest decks on first login).
@@ -14,17 +15,20 @@ export default defineEventHandler(async (event) => {
   const name = (typeof body.name === 'string' && body.name.trim()) || 'Nouveau deck'
   const raw = typeof body.raw === 'string' ? body.raw : ''
   const source = typeof body.source === 'string' ? body.source : null
+  // An older client sends no game: its decks can only be Magic.
+  const game = parseGameId(body.game) ?? 'mtg'
   const now = Date.now()
 
   await useDb().insert(schema.decks).values({
     id,
     userId: user.id,
     name,
+    game,
     raw,
     source,
     createdAt: new Date(now),
     updatedAt: new Date(now),
   }).onConflictDoNothing()
 
-  return { deck: { id, userId: user.id, name, raw, source, shareId: null, createdAt: now, updatedAt: now } }
+  return { deck: { id, userId: user.id, name, game, raw, source, shareId: null, createdAt: now, updatedAt: now } }
 })

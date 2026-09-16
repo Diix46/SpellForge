@@ -4,7 +4,9 @@ import { requireOwnedDeck } from '../../utils/ownDeck'
 
 interface UpdateDeckBody { name?: string, raw?: string, source?: string | null }
 
-// Update a deck's name/raw/source. Only provided fields change.
+// Update a deck's name/raw/source. Only provided fields change; `game` is
+// fixed at creation, since a decklist in one game's format means nothing in
+// another's, and is ignored here.
 export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')!
   await requireOwnedDeck(event, id)

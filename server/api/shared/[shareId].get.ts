@@ -7,6 +7,7 @@ export default defineEventHandler(async (event) => {
   const shareId = getRouterParam(event, 'shareId')!
   const deck = await useDb().select({
     name: schema.decks.name,
+    game: schema.decks.game,
     raw: schema.decks.raw,
     source: schema.decks.source,
     updatedAt: schema.decks.updatedAt,
