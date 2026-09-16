@@ -177,7 +177,7 @@ comportement observable ne change qu'au lot 4.
 | # | Lot | Contenu | Sortie attendue |
 |---|---|---|---|
 | **0** ✔ | Assainissement — **fait** | jspdf 2.5.2→**4.2.1** (sécurité, cf. §8 bis), `@nuxt/ui` 4.8.2→**4.11.1**, `npm audit fix`, Renovate `pnpmDedupe`→`npmDedupe`, Dockerfile node:20→**24**, purge des 3 polices inutilisées | ✔ lint 0 · typecheck 0 · build 0 · **`npm audit --omit=dev` : 0 vulnérabilité** · build 4,32 → **4,07 Mo** |
-| **1** ~ | Ingestion MTG **et** One Piece + tests | Streaming JSONL, schéma, index, FTS5, échange atomique, **une base par jeu**, nouvelles tentatives réseau (3 essais), `ANALYZE`. Vitest en place. Reste : passer l'ingestion en tâche Nitro planifiée | ✔ MTG **168 Mo en 88 s** (38 794 cartes / 174 237 impressions) · OP **6,7 Mo en 5 s** (2 888 FR + 4 843 EN) · base de recherche = **31 830 cartes, exactement `legal:commander -is:funny`** · `npm run test` : **98/98** |
+| **1** ~ | Ingestion MTG **et** One Piece + tests | Streaming JSONL, schéma, index, FTS5, échange atomique, **une base par jeu**, nouvelles tentatives réseau (3 essais), `ANALYZE`. Vitest en place. Reste : passer l'ingestion en tâche Nitro planifiée | ✔ MTG **168 Mo en 88 s** (38 794 cartes / 174 237 impressions) · OP **6,7 Mo en 5 s** (2 888 FR + 4 843 EN) · base de recherche = **31 830 cartes, exactement `legal:commander -is:funny`** · `npm run test` : **107/107** (61 passent et 46 sont ignorés sur un clone sans base) · version de schéma : une base plus ancienne est reconstruite d'office |
 | **2** ✔ | Moteur de recherche — **fait** | `server/utils/cards/mtg-query.ts` : thèmes en FTS5, masques de couleur, budget, identité, tris, pagination, épinglage, autocomplétion | ✔ **3,4 ms** sur la navigation par défaut (168 → 66 → 3,4), page 20 à **3,6 ms** (109), résultats justes en VF · plan d'exécution sans `SCAN bp` ni tri du jeu complet |
 | **3** ~ | `GameCard` — **fait** ; `CardProvider` — reste | `ResolvedCard.card` devient une union discriminée par jeu ; `mtgRaw()` oblige chaque appel spécifique à Magic à se déclarer. Reste : extraire `providers/mtg/` depuis `useMtg` + `scryfall/*` | ✔ typecheck **42 → 0** · 23 tests (dont le repli du type-line sur la face avant) · bundle **inchangé à 4,07 Mo** |
 | **4** ✔ | Bascule — **faite**, cf. §6 bis | La base locale sert l'app ; suppression des proxies Scryfall | ✔ **zéro appel à l'API Scryfall au runtime** · proxies de recherche et d'images supprimés · syntaxe Scryfall compilée en local |
@@ -227,6 +227,19 @@ antérieurs, qui faussaient **toute** la recherche de −1 à −2 % :
    11 cartes renommées « Magmatic Hellkite // Magmatic Hellkite ».
 3. Sans statistiques, le planificateur choisissait l'index des filtres par défaut
    (82 % des cartes) : recherche par nom exact 32 ms → **0,05 ms** après `ANALYZE`.
+
+**Relecture (agent `reviewer`), corrigée avant commit :** `cmc>pow` bloquait le
+serveur 3 min (sous-requête sans index) ; `-( … )` était ignoré et renvoyait
+l'inverse ; `m:0`, `is:constructor` et 250 `-` d'affilée donnaient des 500 ;
+les erreurs techniques s'affichaient brutes ; une base de l'ancien schéma
+aurait cassé la recherche sans être reconstruite. Tous couverts par des tests.
+
+**Suites à décider :**
+- **Impression affichée.** La « meilleure » impression est la plus récente en
+  haute résolution : la recherche montre souvent une réimpression Universes
+  Beyond (Marvel, etc.). La page d'accueil les exclut déjà ; faut-il les
+  écarter aussi de l'affichage par défaut ?
+- **La CI ne lance pas `npm run test`** (ni `ci.yml` ni `release.yml`).
 
 Écarts restants, assumés et documentés dans `mtg-syntax.ts` : mots nus en début de
 mot plutôt qu'en sous-chaîne (`goblin` −2,5 %), `pow>tou` −2,9 %, termes
@@ -308,3 +321,4 @@ dépendances incohérent (`deduped invalid`).
 | Couverture FR structurellement partielle | OP FR : 37 packs sur 60. Magic FR : `printed_type_line` à 78 %. Le repli EN par carte se conçoit dès le départ, pas après |
 | Prix périmés | Scryfall : « dangerously stale after 24 hours ». Ré-ingestion quotidienne si on affiche des prix, hebdomadaire sinon |
 | Régression silencieuse à la bascule | Le lot 3 impose zéro changement de comportement, et le lot 2 est couvert par des tests comparés aux comptes Scryfall |
+| **Une requête lente bloque tout le serveur** | Le client libSQL local est **synchrone** : pendant qu'une requête tourne, Nitro ne sert personne. La relecture du lot 4 l'a prouvé (`cmc>pow` : 181 s, zéro tick de la boucle d'évènements). Chaque forme de requête de l'analyseur est désormais bornée (pire cas mesuré ~200 ms à 40 termes). **Reste à faire :** limite de débit sur `/api/cards/browse` au niveau du proxy inverse (l'utilitaire `rateLimit` ne purge pas ses entrées et ne convient pas à une clé par IP) ; à terme, requêtes de cartes hors du fil principal |
