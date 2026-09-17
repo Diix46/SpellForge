@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   }).from(schema.decks).where(eq(schema.decks.shareId, shareId)).get()
 
   if (!deck)
-    throw createError({ statusCode: 404, statusMessage: 'Deck partagé introuvable' })
+    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Deck partagé introuvable' })
 
   return { deck }
 })

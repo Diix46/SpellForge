@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   // (don't leak which emails are registered).
   if (!user?.passwordHash || !(await verifyPassword(user.passwordHash, password))) {
     console.warn('[auth:login] échec', email)
-    throw createError({ statusCode: 401, statusMessage: 'E-mail ou mot de passe incorrect' })
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized', message: 'E-mail ou mot de passe incorrect' })
   }
 
   await setUserSession(event, { user: { id: user.id, email: user.email, displayName: user.displayName } }, { cookie: { sameSite: 'lax' } })

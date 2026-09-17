@@ -10,12 +10,12 @@ export function validateCredentials(body: unknown): Credentials {
   const password = typeof b.password === 'string' ? b.password : ''
 
   if (email.length > 254 || !EMAIL_RE.test(email))
-    throw createError({ statusCode: 400, statusMessage: 'Adresse e-mail invalide' })
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Adresse e-mail invalide' })
   if (password.length < 8)
-    throw createError({ statusCode: 400, statusMessage: 'Le mot de passe doit faire au moins 8 caractères' })
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Le mot de passe doit faire au moins 8 caractères' })
   // Hashing is deliberately slow: an endless password must not make it slower.
   if (password.length > 256)
-    throw createError({ statusCode: 400, statusMessage: 'Le mot de passe doit faire au plus 256 caractères' })
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Le mot de passe doit faire au plus 256 caractères' })
 
   return { email, password }
 }

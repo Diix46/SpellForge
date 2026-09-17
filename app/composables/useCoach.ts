@@ -254,8 +254,12 @@ export function useCoach() {
           messages.value = messages.value.filter(m => m !== assistant.value)
         return
       }
-      const err = e as { data?: { statusMessage?: string }, statusMessage?: string, message?: string } | null
-      error.value = err?.data?.statusMessage || err?.statusMessage || err?.message || t('coach.unavailable')
+      // A refused request carries the server's words in its body; an error the
+      // stream raised carries its own message; anything else is generic.
+      const err = e as { data?: { message?: string, statusMessage?: string } | null, message?: string } | null
+      const fromServer = err?.data?.message || err?.data?.statusMessage
+      const fromStream = err && !('data' in err) ? err.message : ''
+      error.value = fromServer || fromStream || t('coach.unavailable')
       // Drop the empty pending bubble on hard failure.
       if (!assistant.value.text)
         messages.value = messages.value.filter(m => m !== assistant.value)

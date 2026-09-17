@@ -131,7 +131,7 @@ export default defineEventHandler(async (event) => {
   const joinedLen = [...cards, ...edhrec].join('').length
   const tooLongName = [...cards, ...edhrec].some(c => typeof c === 'string' && c.length > 200)
   if (joinedLen > 5000 || identity.join('').length > 10 || tooLongName)
-    throw createError({ statusCode: 400, statusMessage: 'Données du deck trop volumineuses' })
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Données du deck trop volumineuses' })
 
   const prompt = buildPrompt(body ?? {}, action)
 
