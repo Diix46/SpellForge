@@ -329,18 +329,23 @@ Demande : passe complète, correction des bugs, tous les parcours, fluidité, la
   dans le volume (9,1 Go), migration `0002_deck_game` appliquée (3 comptes et 7 decks
   intacts), `NUXT_PUBLIC_SITE_URL` ajoutée au modèle Unraid. Vérifié : 61/61 de bout en
   bout sur un conteneur d'essai, 45/45 (parcours invités) sur https://spellforge.diixhub.fr.
-- **Retour arrière** : `/root/spellforge-rollback.sh /mnt/user/appdata/spellforge/spellforge.db.bak-20260916-214058`
-  (image `spellforge:backup-0.3.2`, base d'avant migration, ancien cache).
+- **Retour arrière** : `:0.3.2` dans « Repository » puis Apply ; la base d'avant migration
+  reste dans le volume (`spellforge.db.bak-20260916-214058`).
 - **Déployer ensuite** : fusion dans `main` → la release publie l'image sur ghcr → dans
   Unraid, « Check for Updates » puis « apply update » (script `update_container` : tire
   l'image et recrée le conteneur depuis le template, qui porte désormais
   `NUXT_PUBLIC_SITE_URL`). « Apply » dans la fiche du conteneur ne tire l'image que si
   elle est absente (Unraid 7.3.2, `CreateDocker.php`) : il recrée avec l'image présente.
-  Repli manuel sur le serveur : `/root/spellforge-deploy.sh` après un `docker build`.
 - **v0.4.0** (PR #6 fusionnée) : l'image publiée par la CI tourne en production, déployée
   par `update_container spellforge`, le script derrière « apply update » (conteneur recréé
   depuis le template, digest identique à ghcr, vignettes Magic fabriquées dans le
   conteneur). 45/45 parcours invités en HTTPS après la mise à jour.
+- **Rangement (17/09)** : scripts manuels et fichier de secrets retirés de `/root`, images
+  locales remplacées supprimées, ancien cache et sauvegarde redondante effacés, cache de
+  build des images manuelles vidé (1,48 → 0,27 Go). Le rafraîchissement nocturne du 17 a
+  tourné en production (One Piece, images, Magic : OK). Les messages d'erreur affichés
+  passent par `message` : h3 retire déjà les accents de la ligne de statut HTTP et prévoit
+  de nettoyer `statusMessage` aussi dans le corps de la réponse.
 
 ---
 
