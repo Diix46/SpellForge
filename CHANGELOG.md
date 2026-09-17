@@ -1,3 +1,9 @@
+## [0.4.1](https://github.com/Diix46/SpellForge/compare/v0.4.0...v0.4.1) (2026-09-17)
+
+### Bug Fixes
+
+* **api:** messages d'erreur en français transmis dans message ([b64c65b](https://github.com/Diix46/SpellForge/commit/b64c65b4660c9587a446cdbad42dfb7293614803))
+
 ## [0.4.0](https://github.com/Diix46/SpellForge/compare/v0.3.2...v0.4.0) (2026-09-16)
 
 ### Features
