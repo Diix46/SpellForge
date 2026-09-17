@@ -27,5 +27,5 @@ export function rateLimit(key: string, max: number, windowMs: number): void {
 
   bucket.count++
   if (bucket.count > max)
-    throw createError({ statusCode: 429, statusMessage: 'Trop de requêtes, réessayez dans un instant' })
+    throw createError({ statusCode: 429, statusMessage: 'Too Many Requests', message: 'Trop de requêtes, réessayez dans un instant' })
 }

@@ -10,11 +10,11 @@ export default defineEventHandler(async (event) => {
   const id = getRouterParam(event, 'id')
   // Session ids are opaque tokens — validate the shape so junk fails fast.
   if (!id || !/^[\w-]{1,128}$/.test(id))
-    throw createError({ statusCode: 400, statusMessage: 'session id invalide' })
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'session id invalide' })
 
   const stream = streamSession(id)
   if (!stream)
-    throw createError({ statusCode: 404, statusMessage: 'session introuvable ou déjà consommée' })
+    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'session introuvable ou déjà consommée' })
 
   // NDJSON, unbuffered so events arrive incrementally.
   setHeader(event, 'content-type', 'application/x-ndjson')

@@ -52,7 +52,8 @@ async function submit() {
     form.password = ''
   }
   catch (e: any) {
-    error.value = e?.data?.statusMessage || e?.statusMessage || e?.message || t('auth.error')
+    // The server's own words; a request that got no answer gets the generic one.
+    error.value = e?.data?.message || e?.data?.statusMessage || t('auth.error')
   }
   finally {
     loading.value = false

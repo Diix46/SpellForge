@@ -14,7 +14,7 @@ export function getAnthropic(): Anthropic {
     return client
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey)
-    throw createError({ statusCode: 503, statusMessage: 'Coach IA non configuré (clé API manquante)' })
+    throw createError({ statusCode: 503, statusMessage: 'Service Unavailable', message: 'Coach IA non configuré (clé API manquante)' })
   client = new Anthropic({ apiKey })
   return client
 }

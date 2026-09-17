@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   const existing = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email)).get()
   if (existing) {
     console.warn('[auth:register] e-mail déjà utilisé', email)
-    throw createError({ statusCode: 409, statusMessage: 'Un compte existe déjà avec cet e-mail' })
+    throw createError({ statusCode: 409, statusMessage: 'Conflict', message: 'Un compte existe déjà avec cet e-mail' })
   }
 
   const id = genId('u_')
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
     displayName,
   }).onConflictDoNothing().returning({ id: schema.users.id })
   if (!created.length)
-    throw createError({ statusCode: 409, statusMessage: 'Un compte existe déjà avec cet e-mail' })
+    throw createError({ statusCode: 409, statusMessage: 'Conflict', message: 'Un compte existe déjà avec cet e-mail' })
 
   await setUserSession(event, { user: { id, email, displayName } }, { cookie: { sameSite: 'lax' } })
   return { user: { id, email, displayName } }
