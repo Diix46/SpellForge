@@ -379,6 +379,30 @@ Quatre remarques après usage, trois arbitrages pris avec lui avant d'écrire.
   la machine. Ils gardent leurs bornes serrées mais s'effacent au-dessus d'une charge
   moyenne (`itPerf`, `test/support/perf.ts`) ; `PERF=1` les force.
 
+### Magic en plein jour (21/09, soir)
+
+Viktor : « Pas très fan des couleurs. Pourquoi tu restes sur du sombre pour Magic ? »
+Bonne question — rien ne l'imposait : `universes.css` forçait un mode par univers (One
+Piece clair, Magic sombre), reste de l'identité « de nuit ». Le bouton clair/sombre
+n'avait donc aucun effet sur les pages Magic.
+
+Direction retenue avec lui : **atelier en plein jour**, accent **bleu encre**, panneau
+d'accueil **clair des deux côtés**.
+
+- Tokens Magic réécrits en clair (papier `#f7f7f5`, surfaces blanches, encre graphite,
+  accent `45, 79, 124`), ombres douces, grain de papier au lieu de la feutrine.
+- Le tapis de fond garde ses zones mais passe en plein jour, et sa poussière se dépose
+  (`source-over`) au lieu d'éclaircir : en `lighter`, elle disparaissait sur fond clair.
+- Landing : le panneau devient parchemin à gauche, papier à droite, avec de l'encre
+  sombre ; les sections Magic (chiffres, recherche, mondes, parcours, portes, pied de
+  page) passent au papier. **Ce qui flotte au-dessus du tas de cartes garde son encre
+  claire** : barre du haut, légendes des cartes en vitrine, pastille de défilement.
+- Tuile de deck Magic, fiche carte, carte de bibliothèque : surfaces claires et bordures
+  neutres, jeton bleu à la place du jeton laiton.
+- Contrôle : une sonde de contraste parcourt la page et relève tout texte sous 3:1. Elle a
+  trouvé les vrais oublis (plaques sombres restées sous du texte devenu sombre) et deux
+  faux positifs (texte sombre sur un bleu à 7 % posé sur blanc).
+
 ---
 
 ## 7. Ce qui reste externe (assumé)

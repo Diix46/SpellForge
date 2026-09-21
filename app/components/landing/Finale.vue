@@ -15,7 +15,7 @@ const { t } = useLocale()
     <div class="middle">
       <svg class="prism" viewBox="0 0 40 40" aria-hidden="true">
         <path d="M20 3 L20 37 L6 20 Z" fill="#c9312a" />
-        <path d="M20 3 L34 20 L20 37 Z" fill="#c9a24e" />
+        <path d="M20 3 L34 20 L20 37 Z" fill="#2d4f7c" />
         <path d="M20 3 L20 37" stroke="#fff8ec" stroke-width="1" opacity=".6" />
       </svg>
       <h2 class="title">
@@ -50,7 +50,7 @@ const { t } = useLocale()
   transition: background 0.6s ease;
 }
 .door:focus-visible {
-  outline: 3px solid #f1d994;
+  outline: 3px solid #2d4f7c;
   outline-offset: -8px;
 }
 .door-kicker {
@@ -94,28 +94,28 @@ const { t } = useLocale()
 .door--mtg {
   align-items: flex-end;
   padding-left: 190px;
-  background: linear-gradient(180deg, #0b0910, #07060b);
-  color: #f3ecda;
+  background: linear-gradient(180deg, #f7f7f5, #eceeea);
+  color: #1b1f22;
   text-align: right;
 }
 .door--mtg:hover {
-  background: linear-gradient(180deg, #120e1a, #0a0810);
+  background: linear-gradient(180deg, #ffffff, #f2f3f0);
 }
 .door--mtg .door-kicker {
   font-family: var(--mtg-face);
   font-weight: 700;
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .door--mtg .door-title {
   font-family: var(--mtg-face);
   font-weight: 700;
-  background: linear-gradient(180deg, #fff3cf, #c9a24e);
+  background: linear-gradient(180deg, #37608f, #1d3555);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 .door--mtg .door-arrow {
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .door--mtg:hover .door-arrow {
   translate: 8px 0;
@@ -134,9 +134,9 @@ const { t } = useLocale()
   border: 1px solid transparent;
   border-radius: 10px;
   background:
-    linear-gradient(#100d14, #100d14) padding-box,
-    linear-gradient(90deg, #c9312a, #c9a24e) border-box;
-  color: #f3ecda;
+    linear-gradient(#f7f7f5, #f7f7f5) padding-box,
+    linear-gradient(90deg, #c9312a, #2d4f7c) border-box;
+  color: #1b1f22;
   text-align: center;
   box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.85);
   pointer-events: none;
@@ -155,7 +155,7 @@ const { t } = useLocale()
 }
 .sub {
   margin: 0;
-  color: #b9ac8e;
+  color: #616a6f;
   font-size: 14px;
 }
 @media (max-width: 900px) {

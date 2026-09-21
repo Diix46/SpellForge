@@ -19,7 +19,7 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
 
 <template>
   <button type="button" class="page" :aria-label="name" @click="emit('open', card)">
-    <span class="gilt">
+    <span class="frame">
       <img v-if="image" :src="image" :alt="name" loading="lazy" decoding="async" width="488" height="680">
       <span v-else class="missing">{{ name }}</span>
     </span>
@@ -36,9 +36,10 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
   align-items: stretch;
   gap: 6px;
   padding: 10px 10px 12px;
-  border: 1px solid rgba(201, 162, 78, 0.18);
-  border-radius: 3px;
-  background: linear-gradient(180deg, rgba(201, 162, 78, 0.05), transparent 30%), var(--color-surface-1);
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-elev-1);
   text-align: center;
   transition:
     border-color var(--dur-slow) var(--ease-out),
@@ -47,22 +48,18 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
 }
 .page:hover,
 .page:focus-visible {
-  border-color: rgba(201, 162, 78, 0.55);
-  box-shadow:
-    0 0 0 1px rgba(201, 162, 78, 0.2),
-    0 18px 40px -18px rgba(201, 162, 78, 0.45);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: var(--shadow-elev-2);
   transform: translateY(-3px);
 }
-.gilt {
+.frame {
   position: relative;
   display: block;
   padding: 4px;
-  border: 1px solid rgba(201, 162, 78, 0.45);
-  outline: 1px solid rgba(201, 162, 78, 0.15);
-  outline-offset: 3px;
-  border-radius: 2px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
 }
-.gilt img {
+.frame img {
   display: block;
   width: 100%;
   aspect-ratio: 63 / 88;
@@ -100,7 +97,7 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
 .price {
   align-self: center;
   padding: 0 6px;
-  border-top: 1px solid rgba(201, 162, 78, 0.25);
+  border-top: 1px solid var(--color-border-hairline);
   font-family: var(--font-mono);
   font-size: 10.5px;
   color: var(--accent-text);

@@ -32,7 +32,7 @@ const decks = computed(() => overview.value?.decks ?? [])
 <style scoped>
 .home {
   min-height: 100vh;
-  background: #07060b;
+  background: #f2f2ef;
   overflow-x: clip;
 }
 </style>

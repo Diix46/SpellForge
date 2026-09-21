@@ -129,8 +129,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   font-weight: 700;
 }
 .link--mtg:hover {
-  background: #c9a24e;
-  color: #100c06;
+  background: #2d4f7c;
+  color: #f4f7fb;
 }
 .right {
   display: flex;
@@ -150,8 +150,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   font-size: 12px;
 }
 .lang button[aria-pressed='true'] {
-  background: #c9a24e;
-  color: #100c06;
+  background: #2d4f7c;
+  color: #f4f7fb;
 }
 .action {
   display: inline-flex;
@@ -166,7 +166,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   text-decoration: none;
 }
 .action:hover {
-  border-color: #c9a24e;
+  border-color: #7ea6d6;
 }
 .action--decks {
   border-color: transparent;

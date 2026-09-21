@@ -100,7 +100,7 @@ function pick(s: string) {
 <style scoped>
 .search {
   position: relative;
-  background: linear-gradient(90deg, #f3e6c9 50%, #0b0910 50%);
+  background: linear-gradient(90deg, #f3e6c9 50%, #eceeea 50%);
 }
 .head {
   display: flex;
@@ -114,8 +114,8 @@ function pick(s: string) {
   margin: 0;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #100d14;
-  color: #f1d994;
+  background: #f7f7f5;
+  color: #2d4f7c;
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -140,7 +140,7 @@ function pick(s: string) {
 }
 .ink--mtg {
   clip-path: inset(-20% 0 -20% 50%);
-  background: linear-gradient(180deg, #fff3cf, #c9a24e);
+  background: linear-gradient(180deg, #dce6f2, #2d4f7c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -150,8 +150,8 @@ function pick(s: string) {
   margin: 0;
   padding: 10px 18px;
   border-radius: 8px;
-  background: rgba(16, 13, 20, 0.88);
-  color: #efe6d0;
+  background: rgba(255, 255, 255, 0.86);
+  color: #1b1f22;
   font-size: 15px;
   line-height: 1.5;
   text-wrap: balance;
@@ -166,7 +166,7 @@ function pick(s: string) {
   border-radius: 14px;
   background:
     linear-gradient(#fffaf0, #fffaf0) padding-box,
-    linear-gradient(90deg, #c9312a, #c9a24e) border-box;
+    linear-gradient(90deg, #c9312a, #2d4f7c) border-box;
   box-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
 .field input {
@@ -184,7 +184,7 @@ function pick(s: string) {
 }
 .field:focus-within {
   box-shadow:
-    0 0 0 4px rgba(201, 162, 78, 0.35),
+    0 0 0 4px rgba(45, 79, 124, 0.3),
     0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
 .field-icon {
@@ -212,25 +212,25 @@ function pick(s: string) {
 .try span {
   padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(16, 13, 20, 0.88);
-  color: #b9ac8e;
+  background: rgba(27, 31, 34, 0.06);
+  color: #616a6f;
 }
 .try button {
   padding: 4px 11px;
-  border: 1px solid rgba(201, 162, 78, 0.45);
+  border: 1px solid rgba(27, 31, 34, 0.16);
   border-radius: 999px;
-  background: rgba(16, 13, 20, 0.88);
-  color: #f3ecda;
+  background: #ffffff;
+  color: #1b1f22;
   transition:
     border-color 0.2s ease,
     transform 0.2s ease;
 }
 .try button:hover {
-  border-color: #f1d994;
+  border-color: #2d4f7c;
   transform: translateY(-1px);
 }
 .try button:focus-visible {
-  outline: 2px solid #f1d994;
+  outline: 2px solid #2d4f7c;
   outline-offset: 2px;
 }
 
@@ -326,7 +326,7 @@ function pick(s: string) {
   color: #6b5236;
 }
 .col--mtg .hit {
-  color: #f3ecda;
+  color: #1b1f22;
 }
 .col--mtg .hit img {
   border-radius: 4.5% / 3.2%;
@@ -346,7 +346,7 @@ function pick(s: string) {
 .col--mtg .hit-meta {
   font-family: var(--mtg-face);
   font-size: 13px;
-  color: #a3afac;
+  color: #616a6f;
 }
 .results {
   justify-items: stretch;
@@ -362,13 +362,13 @@ function pick(s: string) {
   color: #6b5236;
 }
 .col--mtg .none {
-  color: #b3a68a;
+  color: #616a6f;
 }
 @media (max-width: 900px) {
   .search {
     background:
-      linear-gradient(90deg, #f3e6c9 50%, #0b0910 50%) top / 100% 480px no-repeat,
-      #0b0910;
+      linear-gradient(90deg, #f3e6c9 50%, #eceeea 50%) top / 100% 480px no-repeat,
+      #eceeea;
   }
   .results {
     grid-template-columns: 1fr;
@@ -387,7 +387,7 @@ function pick(s: string) {
     background: #f3e6c9;
   }
   .col--mtg {
-    background: #0b0910;
+    background: #eceeea;
   }
 }
 @media (prefers-reduced-motion: reduce) {
