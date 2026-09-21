@@ -1,3 +1,9 @@
+## [0.6.0](https://github.com/Diix46/SpellForge/compare/v0.5.0...v0.6.0) (2026-09-21)
+
+### Features
+
+* **mtg:** Magic passe en plein jour, à l'encre bleue ([2a7328d](https://github.com/Diix46/SpellForge/commit/2a7328d58476f7aa802110bcf81468aa225a5dc3))
+
 ## [0.5.0](https://github.com/Diix46/SpellForge/compare/v0.4.1...v0.5.0) (2026-09-21)
 
 ### Features
