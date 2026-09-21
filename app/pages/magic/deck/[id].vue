@@ -708,7 +708,9 @@ const {
            deck stays fully visible and interactive while you chat. The
            conversation lives in useState + localStorage, so it persists across
            minimise, tab switches, and reloads. -->
-      <Teleport to="body">
+      <!-- Members only: the Coach needs an account (the route refuses a
+           guest), so a visitor is never shown a chat they cannot use. -->
+      <Teleport v-if="loggedIn" to="body">
         <div class="coach-fab">
           <!-- Panel stays mounted (v-show) so minimising never interrupts an
                in-flight reply or loses scroll position; only its visibility
