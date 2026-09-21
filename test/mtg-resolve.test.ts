@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { afterAll, describe, expect, it } from 'vitest'
 import { resolveEntries } from '../server/utils/cards/mtg-resolve'
 import { openCardDb } from './support/card-db'
+import { itPerf } from './support/perf'
 
 const DB = '.data/cards-mtg.db'
 const withDb = existsSync(DB) ? describe : describe.skip
@@ -91,18 +92,22 @@ withDb('resolveEntries', () => {
     expect(out.map(r => r.card?.name ?? null)).toEqual(['Sol Ring', null, 'Cultivate', 'Command Tower'])
   })
 
-  it('resolves a whole Commander deck in one fast pass', async () => {
+  itPerf('resolves a whole Commander deck in one fast pass', async () => {
     const { rows } = await db.execute(`
       SELECT name FROM oracle_cards
        WHERE legal_commander = 1 AND is_extra = 0
        ORDER BY edhrec_sort LIMIT 100`)
     const entries = rows.map(r => ({ name: String(r.name) }))
-    await resolveEntries(db, entries, 'fr') // warm the page cache
-    const t = performance.now()
-    const out = await resolveEntries(db, entries, 'fr')
-    const ms = performance.now() - t
+    const out = await resolveEntries(db, entries, 'fr') // warm the page cache
     expect(out.every(r => r.card)).toBe(true)
+    // The best of three: a busy machine can stall one run, never all three.
+    let best = Infinity
+    for (let run = 0; run < 3; run++) {
+      const t = performance.now()
+      await resolveEntries(db, entries, 'fr')
+      best = Math.min(best, performance.now() - t)
+    }
     // The client cascade needed up to five network calls per card.
-    expect(ms).toBeLessThan(150)
+    expect(best).toBeLessThan(150)
   })
 })

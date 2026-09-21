@@ -148,26 +148,18 @@ function setArt(card: OptcgCard) {
   sheetOpen.value = false
 }
 
-// ---- Import / export (text only: One Piece cards are never printed) ----
-const showText = ref(false)
-const textDraft = ref('')
-function openText() {
-  textDraft.value = raw.value
-  showText.value = true
-}
-function applyText() {
-  raw.value = textDraft.value
-  showText.value = false
-}
-async function copyText() {
-  try {
-    await navigator.clipboard.writeText(raw.value)
-    toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
-  }
-  catch {
-    toast.add({ title: t('toast.copyError'), color: 'error', icon: 'i-lucide-x' })
-  }
-}
+// ---- Import / export ----
+// The shell's dialog (DeckIoModal) does it for both games; this deck registers
+// itself as its target while it is on screen. One Piece cards are never
+// printed: only the list leaves.
+const importOverlay = useImportOverlay()
+onMounted(() => importOverlay.registerTarget({
+  game: 'optcg',
+  name: () => name.value,
+  read: () => raw.value,
+  write: (list) => { raw.value = list },
+}))
+onBeforeUnmount(() => importOverlay.clearTarget())
 
 // ---- Share, save ----
 const showShare = ref(false)
@@ -188,7 +180,7 @@ const summary = computed(() => {
       :logged-in="loggedIn"
       :can-undo="autosave.canUndo.value"
       :can-redo="autosave.canRedo.value"
-      @open-import-export="openText"
+      @open-import-export="importOverlay.show({ fromTarget: true })"
       @share="showShare = true"
       @save="showWall = true"
       @undo="autosave.undo"
@@ -267,39 +259,6 @@ const summary = computed(() => {
       @remove="removeOne"
       @set-art="setArt"
     />
-
-    <UModal v-model:open="showText" :title="t('build.importExportTitle')">
-      <template #body>
-        <div class="space-y-3">
-          <p class="text-sm text-(--color-text-muted)">
-            {{ t('optcg.export.hint') }}
-          </p>
-          <textarea
-            v-model="textDraft"
-            name="optcg-list"
-            aria-label="Decklist"
-            rows="14"
-            spellcheck="false"
-            placeholder="1xOP01-001&#10;4xOP01-016"
-            class="w-full resize-y rounded-[var(--radius-md)] border border-(--color-border-subtle) bg-(--color-surface-1) p-3 font-mono text-sm text-(--color-text-high) focus:border-(--accent-border) focus:outline-none"
-          />
-          <p class="text-xs text-(--color-text-muted)">
-            <UIcon name="i-lucide-printer-check" class="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
-            {{ t('optcg.export.noPrint') }}
-          </p>
-        </div>
-      </template>
-      <template #footer>
-        <div class="flex w-full justify-end gap-2">
-          <UButton color="neutral" variant="ghost" icon="i-lucide-clipboard-copy" @click="copyText">
-            {{ t('build.copy') }}
-          </UButton>
-          <UButton color="primary" icon="i-lucide-check" @click="applyText">
-            {{ t('build.apply') }}
-          </UButton>
-        </div>
-      </template>
-    </UModal>
 
     <DeckShareModal v-model:open="showShare" :deck="deck" />
     <DeckSaveWall v-model:open="showWall" :deck-name="name" :summary="summary" universe="optcg" />

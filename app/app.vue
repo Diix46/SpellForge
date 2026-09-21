@@ -122,16 +122,19 @@ function isActive(to: string) {
   return route.path === to
 }
 
+// The same dialog everywhere, without leaving the page: inside a universe it
+// opens on that game, and on a deck page it offers to replace the open list.
+const importOverlay = useImportOverlay()
 function openImport() {
   mobileNav.value = false
-  navigateTo(universe.value ? `/decks?import=${universe.value}` : '/decks?import=1')
+  importOverlay.show({ game: universe.value ?? undefined })
 }
 </script>
 
 <template>
   <UApp>
     <FxOnePieceSea v-if="universe === 'optcg'" />
-    <FxMagicSanctum v-else-if="universe === 'mtg'" />
+    <FxMagicTable v-else-if="universe === 'mtg'" />
     <!-- The home page paints its own ground over it: no hidden animation there. -->
     <FxAppBackground v-else-if="showChrome" />
 
@@ -298,6 +301,7 @@ function openImport() {
     </div>
 
     <AuthModal v-model:open="showAuth" />
+    <DeckIoModal />
     <CommandPalette />
   </UApp>
 </template>
@@ -410,7 +414,7 @@ function openImport() {
   text-transform: uppercase;
 }
 .world--mtg {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -420,7 +424,7 @@ function openImport() {
 }
 .world--mtg.on {
   color: #100c06;
-  background: #d4af5f;
+  background: #c9a24e;
 }
 @media (max-width: 720px) {
   .worlds {

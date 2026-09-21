@@ -29,6 +29,8 @@ const { fingerprints } = useDeckFingerprints(decks)
 
 // Modal state + create/import/rename/delete handlers + ?new/?import deep-link.
 const modals = useDashboardModals(route, router)
+// Importing goes through the shell's dialog, the same one the top bar opens.
+const importOverlay = useImportOverlay()
 
 const totalCardsAll = computed(() => decks.value.reduce((sum, d) => sum + (fingerprints.value.get(d.id)?.count ?? 0), 0))
 
@@ -88,7 +90,7 @@ const restDecks = computed(() =>
             icon="i-lucide-download"
             color="neutral"
             variant="subtle"
-            @click="modals.showImport.value = true"
+            @click="importOverlay.show()"
           >
             {{ t('nav.import') }}
           </UButton>
@@ -135,7 +137,7 @@ const restDecks = computed(() =>
           <UButton icon="i-lucide-plus" color="primary" variant="solid" size="lg" @click="modals.showNewDeck.value = true">
             {{ t('dash.empty.create') }}
           </UButton>
-          <UButton icon="i-lucide-download" color="neutral" variant="subtle" size="lg" @click="modals.showImport.value = true">
+          <UButton icon="i-lucide-download" color="neutral" variant="subtle" size="lg" @click="importOverlay.show()">
             {{ t('dash.empty.import') }}
           </UButton>
         </div>
@@ -155,7 +157,7 @@ const restDecks = computed(() =>
           :fingerprint="featuredPrint"
           @open="openDeck"
           @new="modals.showNewDeck.value = true"
-          @import="modals.showImport.value = true"
+          @import="importOverlay.show()"
         />
 
         <!-- DECK GRID -->
@@ -200,17 +202,11 @@ const restDecks = computed(() =>
         v-model:show-new-deck="modals.showNewDeck.value"
         v-model:new-deck-name="modals.newDeckName.value"
         v-model:new-deck-game="modals.newDeckGame.value"
-        v-model:show-import="modals.showImport.value"
-        v-model:import-url="modals.importUrl.value"
-        v-model:import-game="modals.importGame.value"
-        v-model:import-text="modals.importText.value"
         v-model:show-rename="modals.showRename.value"
         v-model:rename-value="modals.renameValue.value"
         v-model:show-delete="modals.showDelete.value"
-        :importing="modals.importing.value"
         :delete-name="modals.deleteName.value"
         @create="modals.handleCreate"
-        @import="modals.handleImport"
         @rename="modals.handleRename"
         @confirm-delete="modals.confirmDelete"
       />

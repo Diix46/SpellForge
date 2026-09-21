@@ -15,7 +15,7 @@ const { t } = useLocale()
     <div class="middle">
       <svg class="prism" viewBox="0 0 40 40" aria-hidden="true">
         <path d="M20 3 L20 37 L6 20 Z" fill="#c9312a" />
-        <path d="M20 3 L34 20 L20 37 Z" fill="#d4af5f" />
+        <path d="M20 3 L34 20 L20 37 Z" fill="#c9a24e" />
         <path d="M20 3 L20 37" stroke="#fff8ec" stroke-width="1" opacity=".6" />
       </svg>
       <h2 class="title">
@@ -102,12 +102,12 @@ const { t } = useLocale()
   background: linear-gradient(180deg, #120e1a, #0a0810);
 }
 .door--mtg .door-kicker {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
-  color: #d4af5f;
+  color: #c9a24e;
 }
 .door--mtg .door-title {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
   background: linear-gradient(180deg, #fff3cf, #c9a24e);
   -webkit-background-clip: text;
@@ -115,7 +115,7 @@ const { t } = useLocale()
   color: transparent;
 }
 .door--mtg .door-arrow {
-  color: #d4af5f;
+  color: #c9a24e;
 }
 .door--mtg:hover .door-arrow {
   translate: 8px 0;
@@ -135,7 +135,7 @@ const { t } = useLocale()
   border-radius: 10px;
   background:
     linear-gradient(#100d14, #100d14) padding-box,
-    linear-gradient(90deg, #c9312a, #d4af5f) border-box;
+    linear-gradient(90deg, #c9312a, #c9a24e) border-box;
   color: #f3ecda;
   text-align: center;
   box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.85);

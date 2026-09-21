@@ -6,7 +6,7 @@ import { deckPath } from '#shared/game'
 import { browseParams, emptyFilters, useCardSearch } from '~/composables/useCardSearch'
 import { toMtgCard } from '~/composables/useScryfall'
 
-// The Magic library: every Commander-legal card, as pages of a grimoire.
+// The Magic library: every Commander-legal card, laid out on the mat.
 // Reading only: a card opens its sheet; a possible commander can start a deck.
 definePageMeta({ universe: 'mtg', colorMode: 'dark' })
 
@@ -119,7 +119,7 @@ function newDeck(commander?: ResolvedCard) {
           {{ t('build.noResults') }}
         </p>
         <div class="grid">
-          <MtgGrimoireCard v-for="card in state.cards" :key="card.id" :card="card" @open="openCard" />
+          <MtgLibraryCard v-for="card in state.cards" :key="card.id" :card="card" @open="openCard" />
         </div>
         <div v-if="state.hasMore" class="more">
           <UButton color="neutral" variant="subtle" size="lg" :loading="state.loading" @click="loadMore">
@@ -169,7 +169,6 @@ function newDeck(commander?: ResolvedCard) {
 .sub {
   max-width: 62ch;
   margin: 10px 0 0;
-  font-style: italic;
   color: var(--color-text-mid);
 }
 .body {

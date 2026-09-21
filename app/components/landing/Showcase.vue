@@ -144,18 +144,18 @@ const { t, formatShortDate } = useLocale()
   color: #6b5236;
 }
 .deck--mtg {
-  border: 1px solid rgba(212, 175, 95, 0.3);
+  border: 1px solid rgba(201, 162, 78, 0.3);
   border-radius: 4px;
   background: linear-gradient(180deg, #15111c, #0b0910);
   color: #f3ecda;
 }
 .deck--mtg .world {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
-  color: #d4af5f;
+  color: #c9a24e;
 }
 .deck--mtg .name {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
 }
 .deck--mtg .meta {
   color: #b3a68a;

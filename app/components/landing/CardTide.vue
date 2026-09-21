@@ -81,11 +81,11 @@ function reveal(e: Event) {
   display: grid;
   overflow: hidden;
   isolation: isolate;
-  /* Before the cards arrive: sunlit sand on the left, night on the right. */
+  /* Before the cards arrive: sunlit sand on the left, dark felt on the right. */
   background:
     radial-gradient(60% 70% at 0% 30%, rgba(233, 167, 44, 0.22), transparent 70%),
-    radial-gradient(60% 70% at 100% 80%, rgba(138, 106, 212, 0.2), transparent 70%),
-    linear-gradient(90deg, #1b120a 0%, #0f0b0d 50%, #09080f 100%);
+    radial-gradient(60% 70% at 100% 80%, rgba(90, 122, 112, 0.22), transparent 70%),
+    linear-gradient(90deg, #1b120a 0%, #12100e 50%, #0d1012 100%);
   user-select: none;
 }
 
@@ -132,7 +132,7 @@ function reveal(e: Event) {
 .card img.is-in {
   opacity: 1;
 }
-/* One Piece cards read as printed stock under daylight, Magic ones as foil at night. */
+/* One Piece cards read as printed stock in daylight, Magic ones as sleeved cards on felt. */
 .card--op img {
   box-shadow:
     0 1px 1px rgba(40, 20, 6, 0.55),
@@ -140,7 +140,7 @@ function reveal(e: Event) {
 }
 .card--mtg img {
   box-shadow:
-    0 0 0 1px rgba(212, 175, 95, 0.18),
+    0 0 0 1px rgba(201, 162, 78, 0.18),
     0 14px 34px -12px rgba(0, 0, 0, 0.85);
 }
 @keyframes breathe {
@@ -149,7 +149,7 @@ function reveal(e: Event) {
   }
 }
 
-/* ---- light: a warm day on the left, a cool night on the right, a calm pocket in the middle ---- */
+/* ---- light: daylight on the left, a table lamp on the right, a calm pocket in the middle ---- */
 .wash {
   --op-glow: transparent;
   --mtg-glow: transparent;
@@ -163,7 +163,7 @@ function reveal(e: Event) {
     radial-gradient(56% 50% at 50% 52%, rgba(9, 7, 12, 0.84) 0%, rgba(9, 7, 12, 0.38) 58%, transparent 80%),
     linear-gradient(0deg, rgba(9, 7, 12, 0.9) 0%, transparent 22%),
     linear-gradient(180deg, rgba(9, 7, 12, 0.72) 0%, transparent 16%),
-    linear-gradient(90deg, rgba(255, 214, 150, 0.1) 0%, transparent 46%, transparent 54%, rgba(22, 14, 48, 0.3) 100%);
+    linear-gradient(90deg, rgba(255, 214, 150, 0.1) 0%, transparent 46%, transparent 54%, rgba(13, 20, 20, 0.34) 100%);
   transition:
     --op-glow 1.2s ease,
     --mtg-glow 1.2s ease;
@@ -192,7 +192,7 @@ function reveal(e: Event) {
   bottom: 0;
   left: calc(50% - 1px);
   width: 2px;
-  background: linear-gradient(180deg, transparent 0%, #c9312a 20%, #f1d994 50%, #d4af5f 80%, transparent 100%);
+  background: linear-gradient(180deg, transparent 0%, #c9312a 20%, #f1d994 50%, #c9a24e 80%, transparent 100%);
   box-shadow: 0 0 18px rgba(241, 217, 148, 0.5);
   opacity: 0.75;
 }

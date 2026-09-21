@@ -5,7 +5,8 @@ import { computed } from 'vue'
 
 // A deck on the dashboard, dressed as its world whatever the page's mode: a
 // One Piece deck is a poster pinned askew, with its Leader's bounty; a Magic
-// deck is a grimoire sealed with wax. Same size, same grid, same actions.
+// deck is a sleeved deck on the mat, with its counter. Same size, same grid,
+// same actions.
 const props = defineProps<{ deck: Deck, fingerprint: DeckFingerprint }>()
 const emit = defineEmits<{
   open: [id: string]
@@ -57,7 +58,7 @@ const menuItems = computed(() => [
     @keydown.space.self.prevent="emit('open', deck.id)"
   >
     <span v-if="isOp" class="pin" aria-hidden="true" />
-    <span v-else class="seal" aria-hidden="true" />
+    <span v-else class="token" aria-hidden="true" />
 
     <div class="head">
       <span class="world">{{ isOp ? 'One Piece' : 'Magic' }}</span>
@@ -264,71 +265,77 @@ const menuItems = computed(() => [
   color: #fbf4e6;
 }
 
-/* ---- Magic: a grimoire sealed with wax ---- */
+/* ---- Magic: a sleeved deck resting on the felt ---- */
 .tile--mtg {
-  border: 1px solid rgba(212, 175, 95, 0.28);
-  border-radius: 4px;
-  outline: 1px solid rgba(212, 175, 95, 0.12);
+  border: 1px solid rgba(201, 162, 78, 0.24);
+  border-radius: 10px;
+  /* The stitched edge of the mat it sits on. */
+  outline: 1px dashed rgba(201, 162, 78, 0.14);
   outline-offset: -6px;
   background:
-    radial-gradient(420px 180px at 85% -20%, rgba(var(--accent-rgb, 212, 175, 95), 0.16), transparent 60%),
-    linear-gradient(180deg, #15111c, #0b0910);
-  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.8);
-  color: #f3ecda;
+    radial-gradient(420px 180px at 85% -20%, rgba(var(--accent-rgb, 201, 162, 78), 0.14), transparent 60%),
+    linear-gradient(180deg, #1a2224, #101718);
+  box-shadow:
+    0 10px 24px -16px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #f1f5f3;
   transition:
-    transform 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.6s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.6s ease;
+    transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.26s ease;
 }
 .tile--mtg:hover {
   transform: translateY(-3px);
-  border-color: rgba(212, 175, 95, 0.6);
-  box-shadow: 0 22px 44px -18px rgba(212, 175, 95, 0.35);
+  border-color: rgba(201, 162, 78, 0.5);
+  box-shadow:
+    0 18px 34px -20px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
-.tile--mtg .seal {
+/* A brass counter, the kind that tracks life beside the deck. */
+.tile--mtg .token {
   position: absolute;
   right: 14px;
   bottom: 12px;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #c0392b, #7b1f16);
+  background: radial-gradient(circle at 36% 30%, #e0c07a, #a8823a 62%, #6d5322);
   box-shadow:
-    inset 0 -2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.45),
     0 2px 5px rgba(0, 0, 0, 0.5);
 }
 .tile--mtg .world {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
-  color: #d4af5f;
+  color: #c9a24e;
 }
 .tile--mtg .name {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
   font-size: 19px;
   letter-spacing: 0.03em;
 }
 .tile--mtg .sub {
-  font-family: 'EB Garamond', ui-serif, Georgia, serif;
-  font-style: italic;
+  font-family: var(--mtg-face);
   font-size: 14px;
-  color: #b3a68a;
+  color: #a3afac;
 }
 .tile--mtg .dot {
-  border: 1px solid rgba(212, 175, 95, 0.5);
+  border: 1px solid rgba(201, 162, 78, 0.5);
 }
 .tile--mtg .foot {
   padding-right: 34px;
-  border-top: 1px solid rgba(212, 175, 95, 0.18);
+  border-top: 1px solid rgba(201, 162, 78, 0.18);
 }
 .tile--mtg .count {
-  color: #d6cbb1;
+  color: #c6d0cd;
 }
 .tile--mtg .count.ok {
-  color: #d4af5f;
+  color: #c9a24e;
 }
 .tile--mtg .source {
-  border: 1px solid rgba(212, 175, 95, 0.35);
+  border: 1px solid rgba(201, 162, 78, 0.35);
   color: #e2c47f;
 }
 

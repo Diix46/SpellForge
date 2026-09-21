@@ -44,7 +44,7 @@ const { t } = useLocale()
   grid-template-columns: 1.2fr 0.8fr 2fr;
   gap: 32px;
   padding: 56px clamp(20px, 5vw, 88px) calc(40px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(212, 175, 95, 0.2);
+  border-top: 1px solid rgba(201, 162, 78, 0.2);
   background: #07060b;
   color: #b9ac8e;
   font-size: 13px;

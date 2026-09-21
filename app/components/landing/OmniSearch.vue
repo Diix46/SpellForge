@@ -166,7 +166,7 @@ function pick(s: string) {
   border-radius: 14px;
   background:
     linear-gradient(#fffaf0, #fffaf0) padding-box,
-    linear-gradient(90deg, #c9312a, #d4af5f) border-box;
+    linear-gradient(90deg, #c9312a, #c9a24e) border-box;
   box-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
 .field input {
@@ -184,7 +184,7 @@ function pick(s: string) {
 }
 .field:focus-within {
   box-shadow:
-    0 0 0 4px rgba(212, 175, 95, 0.35),
+    0 0 0 4px rgba(201, 162, 78, 0.35),
     0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
 .field-icon {
@@ -217,7 +217,7 @@ function pick(s: string) {
 }
 .try button {
   padding: 4px 11px;
-  border: 1px solid rgba(212, 175, 95, 0.45);
+  border: 1px solid rgba(201, 162, 78, 0.45);
   border-radius: 999px;
   background: rgba(16, 13, 20, 0.88);
   color: #f3ecda;
@@ -331,23 +331,22 @@ function pick(s: string) {
 .col--mtg .hit img {
   border-radius: 4.5% / 3.2%;
   box-shadow:
-    0 0 0 1px rgba(212, 175, 95, 0.3),
+    0 0 0 1px rgba(201, 162, 78, 0.3),
     0 18px 34px -18px rgba(0, 0, 0, 0.9);
 }
 .col--mtg .hit:hover img {
   transform: translateY(-4px);
   box-shadow:
-    0 0 0 1px rgba(212, 175, 95, 0.7),
-    0 22px 40px -16px rgba(212, 175, 95, 0.4);
+    0 0 0 1px rgba(201, 162, 78, 0.7),
+    0 22px 40px -16px rgba(201, 162, 78, 0.4);
 }
 .col--mtg .hit-name {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
 }
 .col--mtg .hit-meta {
-  font-family: 'EB Garamond', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-size: 13px;
-  font-style: italic;
-  color: #b3a68a;
+  color: #a3afac;
 }
 .results {
   justify-items: stretch;

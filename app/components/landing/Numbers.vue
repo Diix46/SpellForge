@@ -76,7 +76,7 @@ onBeforeUnmount(() => {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   background: linear-gradient(90deg, #e6d2aa 50%, #0c0a12 50%);
-  border-block: 1px solid rgba(212, 175, 95, 0.25);
+  border-block: 1px solid rgba(201, 162, 78, 0.25);
 }
 .half {
   display: flex;
@@ -109,7 +109,7 @@ onBeforeUnmount(() => {
   color: #231708;
 }
 .half--mtg strong {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
   background: linear-gradient(180deg, #fff3cf, #c9a24e);
   -webkit-background-clip: text;
@@ -137,7 +137,7 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background:
     linear-gradient(#100d14, #100d14) padding-box,
-    linear-gradient(90deg, #c9312a, #d4af5f) border-box;
+    linear-gradient(90deg, #c9312a, #c9a24e) border-box;
   color: #f3ecda;
   text-align: center;
   box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.8);

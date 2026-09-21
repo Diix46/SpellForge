@@ -347,6 +347,38 @@ Demande : passe complète, correction des bugs, tous les parcours, fluidité, la
   passent par `message` : h3 retire déjà les accents de la ligne de statut HTTP et prévoit
   de nettoyer `statusMessage` aussi dans le corps de la réponse.
 
+### Retours de Viktor (21/09)
+
+Quatre remarques après usage, trois arbitrages pris avec lui avant d'écrire.
+
+- **Import confus** : deux boutons portaient le même mot pour deux choses différentes
+  (l'en-tête créait un deck depuis une URL, la page de deck remplaçait la liste collée),
+  et Magic n'acceptait qu'une URL, One Piece qu'une liste. Désormais **une seule fenêtre**
+  (`DeckIoModal`, montée dans la coquille, ouverte par `useImportOverlay`) : lien EDHREC ou
+  Archidekt **ou** liste collée, pour les deux jeux, avec le choix de destination — nouveau
+  deck, ou remplacer le deck ouvert. La page de deck s'y déclare comme cible
+  (`registerTarget`) et y garde copier, télécharger et charger un fichier. L'en-tête n'emmène
+  plus au tableau de bord : la fenêtre s'ouvre sur place.
+  Le bouton « Importer un fichier » devient « Charger un fichier » : deux boutons contenant
+  « Importer » dans la même fenêtre, c'était la confusion d'origine en plus petit.
+- **Moxfield** : leur API répond 403 à tout accès automatisé et l'accès est réservé à un
+  partenariat. Le message existant (« Seuls les liens EDHREC et Archidekt sont pris en
+  charge ») suffit ; la liste se colle depuis leur export.
+- **Coach IA** : la route exigeait déjà un compte, mais la pastille et le panneau
+  s'affichaient pour un visiteur, qui ne découvrait le mur qu'à l'envoi. Le Coach n'est plus
+  monté du tout sans compte.
+- **Ambiance Magic** : le registre « grimoire / arcane » ne correspond pas au Magic
+  d'aujourd'hui (les univers croisés). Direction retenue : **la table de jeu**. Feutrine
+  sombre et laiton à la place de l'obsidienne et de l'or, angles adoucis, animations plus
+  vives, `FxMagicTable` (tapis surpiqué, zones de jeu, poussière dans la lampe) à la place du
+  cercle d'invocation, tuile de deck en deck manchonné avec son jeton plutôt qu'en grimoire
+  scellé à la cire. Les deux polices à empattements (Cinzel, EB Garamond) disparaissent au
+  profit de la police neutre : deux familles de moins à télécharger. Vocabulaire revu dans
+  les deux langues (« Le grimoire » → « La bibliothèque », « Invoqué » → « Posé »…).
+- **Mesures de vitesse** : quatre tests chronométrés échouaient au hasard selon la charge de
+  la machine. Ils gardent leurs bornes serrées mais s'effacent au-dessus d'une charge
+  moyenne (`itPerf`, `test/support/perf.ts`) ; `PERF=1` les force.
+
 ---
 
 ## 7. Ce qui reste externe (assumé)
