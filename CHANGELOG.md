@@ -1,3 +1,9 @@
+## [0.6.1](https://github.com/Diix46/SpellForge/compare/v0.6.0...v0.6.1) (2026-09-21)
+
+### Bug Fixes
+
+* **mtg:** plus d'or résiduel, tout passe à l'encre bleue ([38d1fb4](https://github.com/Diix46/SpellForge/commit/38d1fb49d5c760a94bab566bdd87485c3ea0c445))
+
 ## [0.6.0](https://github.com/Diix46/SpellForge/compare/v0.5.0...v0.6.0) (2026-09-21)
 
 ### Features
