@@ -1,3 +1,14 @@
+## [0.5.0](https://github.com/Diix46/SpellForge/compare/v0.4.1...v0.5.0) (2026-09-21)
+
+### Features
+
+* **deck:** une seule fenêtre d'import et d'export, partout ([9b63517](https://github.com/Diix46/SpellForge/commit/9b6351706f458c51b8d4e85091a7626a6d8a7d62))
+* **mtg:** l'univers Magic quitte le grimoire pour la table de jeu ([74e84ba](https://github.com/Diix46/SpellForge/commit/74e84ba0dee4683f3e2ced11804d63c0a477abb6))
+
+### Bug Fixes
+
+* **coach:** le Coach IA n'apparaît plus pour un visiteur ([097632a](https://github.com/Diix46/SpellForge/commit/097632a8d0be91baab066de28fcbc700a679d81b))
+
 ## [0.4.1](https://github.com/Diix46/SpellForge/compare/v0.4.0...v0.4.1) (2026-09-17)
 
 ### Bug Fixes
