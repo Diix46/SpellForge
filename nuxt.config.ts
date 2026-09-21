@@ -98,16 +98,14 @@ export default defineNuxtConfig({
   // Self-host fonts (no render-blocking @import, works offline).
   // Geist (+ Geist Mono) is the neutral type system. Each universe adds its
   // own voice: Anton and Bangers for One Piece's posters and sound effects,
-  // Cinzel and EB Garamond for Magic's grimoire. A face is only downloaded on a
-  // page that uses it.
+  // Magic keeps the neutral face: it is a game played at a table, not a
+  // grimoire. A face is only downloaded on a page that uses it.
   fonts: {
     families: [
       { name: 'Geist', provider: 'google', weights: [400, 500, 600, 700] },
       { name: 'Geist Mono', provider: 'google', weights: [400, 500] },
       { name: 'Anton', provider: 'google', weights: [400] },
       { name: 'Bangers', provider: 'google', weights: [400] },
-      { name: 'Cinzel', provider: 'google', weights: [500, 700] },
-      { name: 'EB Garamond', provider: 'google', weights: [400, 500], styles: ['normal', 'italic'] },
     ],
   },
 })

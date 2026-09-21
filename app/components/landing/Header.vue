@@ -80,7 +80,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 }
 .bar.scrolled {
   background: rgba(12, 10, 16, 0.82);
-  box-shadow: 0 1px 0 rgba(212, 175, 95, 0.2);
+  box-shadow: 0 1px 0 rgba(201, 162, 78, 0.2);
   backdrop-filter: blur(12px);
 }
 .brand {
@@ -125,11 +125,11 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   color: #fff8ec;
 }
 .link--mtg {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
 }
 .link--mtg:hover {
-  background: #d4af5f;
+  background: #c9a24e;
   color: #100c06;
 }
 .right {
@@ -150,7 +150,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   font-size: 12px;
 }
 .lang button[aria-pressed='true'] {
-  background: #d4af5f;
+  background: #c9a24e;
   color: #100c06;
 }
 .action {
@@ -158,7 +158,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border: 1px solid rgba(212, 175, 95, 0.5);
+  border: 1px solid rgba(201, 162, 78, 0.5);
   border-radius: 8px;
   background: rgba(16, 13, 20, 0.82);
   color: #f3ecda;
@@ -166,11 +166,11 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   text-decoration: none;
 }
 .action:hover {
-  border-color: #d4af5f;
+  border-color: #c9a24e;
 }
 .action--decks {
   border-color: transparent;
-  background: linear-gradient(90deg, #c9312a, #b8903f);
+  background: linear-gradient(90deg, #c9312a, #9c8043);
   color: #fff8ec;
   font-weight: 600;
 }

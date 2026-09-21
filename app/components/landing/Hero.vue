@@ -127,8 +127,8 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   border: 1px solid transparent;
   border-radius: 22px;
   background:
-    linear-gradient(90deg, rgba(34, 21, 11, 0.76) var(--psplit), rgba(12, 10, 20, 0.76) var(--psplit)) padding-box,
-    linear-gradient(90deg, rgba(201, 49, 42, 0.6), rgba(241, 217, 148, 0.4) 50%, rgba(212, 175, 95, 0.6)) border-box;
+    linear-gradient(90deg, rgba(34, 21, 11, 0.76) var(--psplit), rgba(17, 23, 24, 0.78) var(--psplit)) padding-box,
+    linear-gradient(90deg, rgba(201, 49, 42, 0.6), rgba(241, 217, 148, 0.4) 50%, rgba(201, 162, 78, 0.6)) border-box;
   box-shadow:
     0 40px 90px -30px rgba(0, 0, 0, 0.9),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
@@ -156,9 +156,11 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   color: #ef6b5d;
 }
 .kicker--mtg {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
-  font-weight: 700;
-  color: #d4af5f;
+  font-family: var(--mtg-face);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: #c9a24e;
 }
 
 .headline {
@@ -184,11 +186,11 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
 }
 .hl--mtg {
   clip-path: inset(-20% 0 -20% var(--psplit));
-  background: linear-gradient(180deg, #fff3cf 0%, #e6c97f 45%, #b8903f 100%);
+  background: linear-gradient(180deg, #fff3cf 0%, #d8b465 45%, #9c8043 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 24px rgba(212, 175, 95, 0.35));
+  filter: drop-shadow(0 0 24px rgba(201, 162, 78, 0.35));
 }
 .sub {
   max-width: 54ch;
@@ -228,8 +230,7 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   color: #e8cfae;
 }
 .door--mtg .line {
-  font-family: 'EB Garamond', ui-serif, Georgia, serif;
-  font-style: italic;
+  font-family: var(--mtg-face);
   font-size: 15px;
   color: #d6cbb1;
 }
@@ -260,18 +261,25 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   box-shadow: 8px 8px 0 #f1d994;
 }
 .cta--mtg {
-  border: 1px solid #d4af5f;
-  border-radius: 3px;
-  background: linear-gradient(180deg, #e6c97f, #c9a24e);
+  border: 1px solid #ddbd7a;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #d8b465, #c9a24e);
   color: #100c06;
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  box-shadow: 0 0 26px -6px rgba(212, 175, 95, 0.7);
-  transition: box-shadow 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--mtg-face);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 10px 24px -14px rgba(0, 0, 0, 0.9);
+  transition:
+    transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.1),
+    box-shadow 0.2s ease;
 }
 .cta--mtg:hover {
-  box-shadow: 0 0 46px -2px rgba(212, 175, 95, 0.95);
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 16px 28px -16px rgba(0, 0, 0, 0.95);
 }
 .cta:focus-visible,
 .caption-link:focus-visible,
@@ -303,7 +311,7 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
 
 /* ---- the card on show, named in its world's corner ---- */
 .caption {
-  --glow: 212, 175, 95;
+  --glow: 201, 162, 78;
   /* The card's colour, lifted toward the text so a black card stays readable. */
   --ink: color-mix(in srgb, rgb(var(--glow)) 50%, #f4ecdc);
   position: absolute;

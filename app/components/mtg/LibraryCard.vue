@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import { displayName, displayType } from '~/composables/useMtg'
 import { getImageUris } from '~/composables/useScryfall'
 
-// A Magic card as a page of a grimoire: the card inside a gilt frame, its name
+// A Magic card as it sits on the table: the card in a brass-edged sleeve, its name
 // engraved beneath, the type line in italic. Perfectly square to the page,
 // and slow to answer: the gold warms under the pointer.
 const props = defineProps<{ card: ScryfallCard }>()
@@ -36,9 +36,9 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
   align-items: stretch;
   gap: 6px;
   padding: 10px 10px 12px;
-  border: 1px solid rgba(212, 175, 95, 0.18);
+  border: 1px solid rgba(201, 162, 78, 0.18);
   border-radius: 3px;
-  background: linear-gradient(180deg, rgba(212, 175, 95, 0.05), transparent 30%), var(--color-surface-1);
+  background: linear-gradient(180deg, rgba(201, 162, 78, 0.05), transparent 30%), var(--color-surface-1);
   text-align: center;
   transition:
     border-color var(--dur-slow) var(--ease-out),
@@ -47,18 +47,18 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
 }
 .page:hover,
 .page:focus-visible {
-  border-color: rgba(212, 175, 95, 0.55);
+  border-color: rgba(201, 162, 78, 0.55);
   box-shadow:
-    0 0 0 1px rgba(212, 175, 95, 0.2),
-    0 18px 40px -18px rgba(212, 175, 95, 0.45);
+    0 0 0 1px rgba(201, 162, 78, 0.2),
+    0 18px 40px -18px rgba(201, 162, 78, 0.45);
   transform: translateY(-3px);
 }
 .gilt {
   position: relative;
   display: block;
   padding: 4px;
-  border: 1px solid rgba(212, 175, 95, 0.45);
-  outline: 1px solid rgba(212, 175, 95, 0.15);
+  border: 1px solid rgba(201, 162, 78, 0.45);
+  outline: 1px solid rgba(201, 162, 78, 0.15);
   outline-offset: 3px;
   border-radius: 2px;
 }
@@ -90,7 +90,6 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
 }
 .type {
   margin-top: -3px;
-  font-style: italic;
   font-size: 12.5px;
   line-height: 1.2;
   color: var(--color-text-muted);
@@ -101,7 +100,7 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
 .price {
   align-self: center;
   padding: 0 6px;
-  border-top: 1px solid rgba(212, 175, 95, 0.25);
+  border-top: 1px solid rgba(201, 162, 78, 0.25);
   font-family: var(--font-mono);
   font-size: 10.5px;
   color: var(--accent-text);

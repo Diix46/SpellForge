@@ -185,10 +185,10 @@ const errored = computed(() => !!error.value)
   letter-spacing: 0.08em;
 }
 .discover-card--mtg .discover-card-world {
-  border: 1px solid rgba(212, 175, 95, 0.55);
+  border: 1px solid rgba(201, 162, 78, 0.55);
   background: #100d14;
-  color: #d4af5f;
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  color: #c9a24e;
+  font-family: var(--mtg-face);
 }
 .discover-state {
   display: flex;

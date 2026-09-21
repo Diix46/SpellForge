@@ -140,6 +140,11 @@
 
 /* ---------------- ROOT DEFAULTS ---------------- */
 :root {
+  /* The two worlds speak in their own face. One Piece shouts on a poster;
+     Magic is played at a table, so it takes the neutral face, set tight. */
+  --op-face: 'Anton', Impact, sans-serif;
+  --mtg-face: 'Geist', ui-sans-serif, system-ui, sans-serif;
+
   /* DYNAMIC ACCENT — default is a neutral that reads in BOTH modes (dark uses a
      light platinum, light mode darkens it below). The deck page overrides
      --accent-rgb / --accent-rgb-2 inline based on the commander's mana identity. */

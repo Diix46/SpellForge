@@ -57,7 +57,7 @@ const STEPS = [
   font-size: clamp(36px, 4.6vw, 64px);
   font-weight: 400;
   text-transform: uppercase;
-  background: linear-gradient(90deg, #ef6b5d 0%, #fff3cf 50%, #d4af5f 100%);
+  background: linear-gradient(90deg, #ef6b5d 0%, #fff3cf 50%, #c9a24e 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -79,7 +79,7 @@ const STEPS = [
   right: 16%;
   left: 16%;
   height: 2px;
-  background: linear-gradient(90deg, #c9312a, #f1d994, #d4af5f);
+  background: linear-gradient(90deg, #c9312a, #f1d994, #c9a24e);
   opacity: 0.7;
 }
 .step {
@@ -109,14 +109,14 @@ const STEPS = [
   border: 2px solid transparent;
   background:
     linear-gradient(#16111a, #16111a) padding-box,
-    linear-gradient(135deg, #c9312a, #d4af5f) border-box;
+    linear-gradient(135deg, #c9312a, #c9a24e) border-box;
   color: #fff3cf;
 }
 .step--2 .dot {
-  border: 1px solid #d4af5f;
+  border: 1px solid #c9a24e;
   background: #0b0910;
   color: #f1d994;
-  box-shadow: 0 0 24px -4px rgba(212, 175, 95, 0.6);
+  box-shadow: 0 0 24px -4px rgba(201, 162, 78, 0.6);
 }
 .step h3 {
   margin: 0;
@@ -130,7 +130,7 @@ const STEPS = [
   text-transform: uppercase;
 }
 .step--2 h3 {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
 }
 .step p {
   max-width: 32ch;
