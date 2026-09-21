@@ -83,7 +83,7 @@ export async function run() {
 
   // ---- Workshop: paste a full list with the Leader in the middle and a bad line ----
   await page.getByRole('button', { name: 'Importer / Exporter' }).click()
-  await page.locator('textarea[name="optcg-list"]').fill(OP_LIST.text)
+  await page.locator('textarea[name="import-list"]').fill(OP_LIST.text)
   await page.getByRole('button', { name: 'Appliquer' }).click()
   await page.waitForTimeout(2000)
   const count = (await page.locator('.status .count').textContent()).trim()

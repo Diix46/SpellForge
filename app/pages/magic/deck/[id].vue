@@ -103,55 +103,21 @@ watch(previewOpen, (v) => {
     previewLoaded.value = true
 })
 
-// Import/Export modal (the old raw-text editor lives here now).
-const showImportExport = ref(false)
-const importExportText = ref('')
-function openImportExport() {
-  importExportText.value = rawDecklist.value
-  showImportExport.value = true
-}
-function applyImportExport() {
-  rawDecklist.value = importExportText.value
-  showImportExport.value = false
-}
-async function copyDecklistText() {
-  try {
-    await navigator.clipboard.writeText(rawDecklist.value)
-    toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
-  }
-  catch {
-    toast.add({ title: t('toast.copyError'), color: 'error', icon: 'i-lucide-x' })
-  }
-}
+// The import/export dialog is the shell's own (DeckIoModal): this deck
+// registers itself as its target while it is on screen, so the dialog can
+// replace the open list and hand it out for copy, download or file.
+const importOverlay = useImportOverlay()
+onMounted(() => importOverlay.registerTarget({
+  game: 'mtg',
+  name: () => deckName.value,
+  read: () => rawDecklist.value,
+  write: (raw) => { rawDecklist.value = raw },
+}))
+onBeforeUnmount(() => importOverlay.clearTarget())
 
 // Share settings (DeckShareModal) and, for a guest, the sign-up offer.
 const showShareModal = ref(false)
 const showSaveWall = ref(false)
-
-// Download the current decklist as a .txt file.
-function downloadDecklist() {
-  const safeName = (deckName.value || 'deck').replace(/[^a-z0-9]+/gi, '_').toLowerCase()
-  const blob = new Blob([rawDecklist.value], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${safeName}.txt`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-// Load a .txt/.dec file into the import textarea.
-const importFileInput = ref<HTMLInputElement | null>(null)
-function pickImportFile() {
-  importFileInput.value?.click()
-}
-async function onImportFile(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file)
-    return
-  importExportText.value = await file.text()
-  input.value = '' // allow re-picking the same file
-}
 
 // Pagination state (declared early: builder ops reset the page on commander change).
 const PAGE_SIZE = 24
@@ -680,7 +646,7 @@ const {
       :can-redo="autosave.canRedo.value"
       printable
       buyable
-      @open-import-export="openImportExport"
+      @open-import-export="importOverlay.show({ fromTarget: true })"
       @share="showShareModal = true"
       @save="showSaveWall = true"
       @open-preview="previewOpen = true"
@@ -818,85 +784,6 @@ const {
       @copy-wants="copyWantsList"
       @open-all="openAllCardmarket"
     />
-
-    <!-- Import / Export decklist modal (the old text editor) -->
-    <UModal
-      v-model:open="showImportExport"
-      :title="t('build.importExportTitle')"
-      :ui="{ overlay: 'bg-ink-950/70 backdrop-blur-[6px]', content: 'glass rounded-[var(--radius-2xl)]' }"
-    >
-      <template #body>
-        <div class="space-y-3">
-          <p class="text-sm text-(--color-text-muted)">
-            {{ t('build.importExportHelp') }}
-          </p>
-          <textarea
-            v-model="importExportText"
-            name="import-export"
-            aria-label="Decklist"
-            rows="16"
-            spellcheck="false"
-            placeholder="1 Atraxa, Praetors' Voice&#10;1 Sol Ring&#10;…"
-            class="glass-solid w-full resize-y rounded-[var(--radius-lg)] bg-(--color-surface-2)/60 p-3 font-mono text-sm leading-relaxed text-(--color-text-high) placeholder:text-(--color-text-disabled) focus:border-(--accent-border) focus:outline-none focus:ring-1 focus:ring-(--accent-border)"
-          />
-          <div
-            v-if="parsed?.errors.length"
-            class="flex flex-wrap gap-1.5"
-          >
-            <span
-              v-for="err in parsed.errors"
-              :key="err"
-              class="rounded-full border border-(--color-error)/40 bg-(--color-error)/10 px-2.5 py-0.5 text-xs text-(--color-error)"
-            >
-              {{ t('parse.unrecognized') }} {{ err }}
-            </span>
-          </div>
-        </div>
-      </template>
-      <template #footer>
-        <input
-          ref="importFileInput"
-          type="file"
-          accept=".txt,.dec,text/plain"
-          class="hidden"
-          @change="onImportFile"
-        >
-        <div class="flex w-full flex-wrap items-center justify-end gap-2">
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-upload"
-            class="mr-auto"
-            @click="pickImportFile"
-          >
-            {{ t('build.importFile') }}
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-download"
-            @click="downloadDecklist"
-          >
-            {{ t('build.downloadTxt') }}
-          </UButton>
-          <UButton
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-clipboard-copy"
-            @click="copyDecklistText"
-          >
-            {{ t('build.copy') }}
-          </UButton>
-          <UButton
-            color="primary"
-            icon="i-lucide-check"
-            @click="applyImportExport"
-          >
-            {{ t('build.apply') }}
-          </UButton>
-        </div>
-      </template>
-    </UModal>
 
     <!-- Share settings: private link + public Discover listing -->
     <DeckShareModal v-model:open="showShareModal" :deck="deck" />

@@ -2,20 +2,17 @@
 import type { GameId } from '#shared/game'
 import { useLocale } from '~/composables/useLocale'
 
-// The dashboard's four modals (new deck / import / rename / delete). Pure
+// The dashboard's modals (new deck / rename / delete). Pure
 // presentation: open-state and input values are v-models; the page wires them to
 // useDashboardModals and listens for the action events. Extracted from index.vue
-// to keep the page lean (the user prefers many small components).
+// to keep the page lean (the user prefers many small components). Importing a
+// deck is the shell's own dialog (DeckIoModal), shared with the top bar and
+// the workshop.
 
 defineProps<{
   showNewDeck: boolean
   newDeckName: string
   newDeckGame: GameId
-  showImport: boolean
-  importUrl: string
-  importGame: GameId
-  importText: string
-  importing: boolean
   showRename: boolean
   renameValue: string
   showDelete: boolean
@@ -26,15 +23,10 @@ const emit = defineEmits<{
   'update:showNewDeck': [v: boolean]
   'update:newDeckName': [v: string]
   'update:newDeckGame': [v: GameId]
-  'update:showImport': [v: boolean]
-  'update:importUrl': [v: string]
-  'update:importGame': [v: GameId]
-  'update:importText': [v: string]
   'update:showRename': [v: boolean]
   'update:renameValue': [v: string]
   'update:showDelete': [v: boolean]
   'create': []
-  'import': []
   'rename': []
   'confirmDelete': []
 }>()
@@ -159,81 +151,6 @@ const modalUi = {
       </div>
     </template>
   </UModal>
-
-  <!-- IMPORT -->
-  <UModal
-    :open="showImport"
-    :title="t('modal.importDeck')"
-    :ui="modalUi"
-    @update:open="emit('update:showImport', $event)"
-  >
-    <template #body>
-      <fieldset class="worlds">
-        <legend class="worlds-legend">
-          {{ t('modal.chooseWorld') }}
-        </legend>
-        <button
-          type="button"
-          class="world world--op"
-          :aria-pressed="importGame === 'optcg'"
-          @click="emit('update:importGame', 'optcg')"
-        >
-          <span class="world-name">One Piece</span>
-          <span class="world-rule">{{ t('modal.importOpRule') }}</span>
-        </button>
-        <button
-          type="button"
-          class="world world--mtg"
-          :aria-pressed="importGame === 'mtg'"
-          @click="emit('update:importGame', 'mtg')"
-        >
-          <span class="world-name">Magic</span>
-          <span class="world-rule">{{ t('modal.importMtgRule') }}</span>
-        </button>
-      </fieldset>
-      <div v-if="importGame === 'mtg'" class="space-y-3">
-        <UFormField :label="t('modal.importUrl')" :help="t('modal.importUrlHelp')">
-          <UInput
-            :model-value="importUrl"
-            name="import-url"
-            placeholder="https://edhrec.com/commanders/atraxa-praetors-voice"
-            autofocus
-            class="w-full font-mono text-sm"
-            @update:model-value="emit('update:importUrl', String($event))"
-            @keyup.enter="emit('import')"
-          />
-        </UFormField>
-        <UAlert
-          color="info"
-          variant="soft"
-          icon="i-lucide-info"
-          :title="t('modal.examples')"
-          :description="t('modal.importExamples')"
-        />
-      </div>
-      <UFormField v-else :label="t('modal.importList')" :help="t('modal.importListHelp')">
-        <UTextarea
-          :model-value="importText"
-          name="import-list"
-          :rows="9"
-          autoresize
-          placeholder="1xOP05-060&#10;4xOP05-067&#10;4xOP05-069"
-          class="w-full font-mono text-sm"
-          @update:model-value="emit('update:importText', String($event))"
-        />
-      </UFormField>
-    </template>
-    <template #footer>
-      <div class="flex w-full justify-end gap-2">
-        <UButton color="neutral" variant="subtle" @click="emit('update:showImport', false)">
-          {{ t('modal.cancel') }}
-        </UButton>
-        <UButton color="primary" :loading="importing" icon="i-lucide-download" @click="emit('import')">
-          {{ t('modal.import') }}
-        </UButton>
-      </div>
-    </template>
-  </UModal>
 </template>
 
 <style scoped>
@@ -279,7 +196,7 @@ const modalUi = {
   border-color: #c9312a;
 }
 .world--mtg[aria-pressed='true'] {
-  border-color: #d4af5f;
+  border-color: #c9a24e;
 }
 .world-name {
   font-size: 20px;
@@ -290,9 +207,9 @@ const modalUi = {
   text-transform: uppercase;
 }
 .world--mtg .world-name {
-  font-family: 'Cinzel', ui-serif, Georgia, serif;
+  font-family: var(--mtg-face);
   font-weight: 700;
-  color: #d4af5f;
+  color: #c9a24e;
 }
 .world-rule {
   font-size: 12px;
