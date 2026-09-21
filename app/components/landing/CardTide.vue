@@ -140,7 +140,7 @@ function reveal(e: Event) {
 }
 .card--mtg img {
   box-shadow:
-    0 0 0 1px rgba(201, 162, 78, 0.18),
+    0 0 0 1px rgba(124, 160, 208, 0.22),
     0 14px 34px -12px rgba(0, 0, 0, 0.85);
 }
 @keyframes breathe {
@@ -192,8 +192,8 @@ function reveal(e: Event) {
   bottom: 0;
   left: calc(50% - 1px);
   width: 2px;
-  background: linear-gradient(180deg, transparent 0%, #c9312a 20%, #f1d994 50%, #c9a24e 80%, transparent 100%);
-  box-shadow: 0 0 18px rgba(241, 217, 148, 0.5);
+  background: linear-gradient(180deg, transparent 0%, #c9312a 20%, #f4f1e6 50%, #2d4f7c 80%, transparent 100%);
+  box-shadow: 0 0 18px rgba(244, 241, 230, 0.4);
   opacity: 0.75;
 }
 

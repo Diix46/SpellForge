@@ -185,9 +185,9 @@ const errored = computed(() => !!error.value)
   letter-spacing: 0.08em;
 }
 .discover-card--mtg .discover-card-world {
-  border: 1px solid rgba(201, 162, 78, 0.55);
-  background: #100d14;
-  color: #c9a24e;
+  border: 1px solid rgba(45, 79, 124, 0.45);
+  background: rgba(45, 79, 124, 0.1);
+  color: #2d4f7c;
   font-family: var(--mtg-face);
 }
 .discover-state {

@@ -252,13 +252,13 @@ function startWith() {
   font-size: clamp(26px, 3.4vw, 38px);
   font-weight: 700;
   line-height: 1.1;
-  color: #f3ecda;
+  color: var(--color-text-high);
   text-wrap: balance;
 }
 .sub {
   margin: 4px 0 0;
   font-family: var(--mtg-face);
-  color: #b3a68a;
+  color: var(--color-text-muted);
 }
 .type {
   margin: 0;
@@ -266,7 +266,7 @@ function startWith() {
   border-bottom: 1px solid var(--color-border-hairline);
   font-family: var(--mtg-face);
   font-size: 18px;
-  color: #d6cbb1;
+  color: var(--color-text-mid);
 }
 .keywords {
   display: flex;
@@ -302,11 +302,11 @@ function startWith() {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .facts dd {
   margin: 2px 0 0;
-  color: #d6cbb1;
+  color: #454d52;
   font-size: 14px;
 }
 .facts .legal {

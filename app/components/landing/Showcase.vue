@@ -144,9 +144,9 @@ const { t, formatShortDate } = useLocale()
   color: #6b5236;
 }
 .deck--mtg {
-  border: 1px solid rgba(201, 162, 78, 0.3);
-  border-radius: 4px;
-  background: linear-gradient(180deg, #15111c, #eceeea);
+  border: 1px solid rgba(27, 31, 34, 0.14);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #ffffff, #f2f3f0);
   color: #1b1f22;
 }
 .deck--mtg .world {

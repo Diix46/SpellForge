@@ -80,7 +80,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 }
 .bar.scrolled {
   background: rgba(12, 10, 16, 0.82);
-  box-shadow: 0 1px 0 rgba(201, 162, 78, 0.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(12px);
 }
 .brand {
@@ -94,7 +94,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 .link:focus-visible,
 .action:focus-visible,
 .lang button:focus-visible {
-  outline: 2px solid #f1d994;
+  outline: 2px solid #f4f1e6;
   outline-offset: 2px;
 }
 .links {
@@ -158,7 +158,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border: 1px solid rgba(201, 162, 78, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 8px;
   background: rgba(16, 13, 20, 0.82);
   color: #f3ecda;
@@ -170,7 +170,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 }
 .action--decks {
   border-color: transparent;
-  background: linear-gradient(90deg, #c9312a, #9c8043);
+  background: linear-gradient(90deg, #c9312a, #2d4f7c);
   color: #fff8ec;
   font-weight: 600;
 }
