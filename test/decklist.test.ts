@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { entryKey, totalCards } from '../shared/decklist'
 import { mtgLine, parseMtgDecklist, writeMtgDecklist } from '../shared/mtg/decklist'
 import { optcgLine, orderOptcgEntries, parseOptcgDecklist } from '../shared/optcg/decklist'
+import { itPerf } from './support/perf'
 
 describe('magic decklists', () => {
   it('reads quantities, Arena suffixes and sections', () => {
@@ -101,7 +102,7 @@ describe('one Piece decklists', () => {
     expect(ordered.map(e => e.name)).toEqual(['OP01-001', 'OP01-016', 'OP01-025'])
   })
 
-  it('reads a long line in linear time', () => {
+  itPerf('reads a long line in linear time', () => {
     const t = performance.now()
     parseOptcgDecklist(`4${' '.repeat(50_000)}zz`)
     expect(performance.now() - t).toBeLessThan(200)

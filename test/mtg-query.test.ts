@@ -9,6 +9,7 @@ import {
 } from '../server/utils/cards/mtg-query'
 import { fold } from '../server/utils/cards/text'
 import { openCardDb } from './support/card-db'
+import { itPerf } from './support/perf'
 
 const DB = '.data/cards-mtg.db'
 const hasDb = existsSync(DB)
@@ -162,12 +163,16 @@ withDb('against the real card database', () => {
     expect(opt.map(x => x.name)).toContain('Opt')
   })
 
-  it('keeps the default browse fast', async () => {
+  itPerf('keeps the default browse fast', async () => {
     const q = buildCardQuery({}, { identity: ['W', 'U', 'B', 'G'], lang: 'fr' }, 'edhrec', 1)
     await rows(q) // warm the page cache
-    const t = performance.now()
-    await rows(q)
-    const ms = performance.now() - t
+    // The best of three: one stalled run must not fail the suite.
+    let ms = Infinity
+    for (let run = 0; run < 3; run++) {
+      const t = performance.now()
+      await rows(q)
+      ms = Math.min(ms, performance.now() - t)
+    }
     // This query runs on every keystroke, and it took three fixes to get here:
     // 168 ms from a correlated subquery picking the printing, then 66 ms from a
     // non-indexable ORDER BY, with an 86 ms detour through an index that made

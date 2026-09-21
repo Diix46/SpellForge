@@ -4,6 +4,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { buildCardQuery, buildCoachSearchQuery } from '../server/utils/cards/mtg-query'
 import { compileSyntax, isSyntaxQuery, QuerySyntaxError } from '../server/utils/cards/mtg-syntax'
 import { openCardDb } from './support/card-db'
+import { itPerf } from './support/perf'
 
 function refusal(text: string): { code: SyntaxErrorCode, term: string } | null {
   try {
@@ -259,7 +260,7 @@ withDb('query syntax against the real card database', () => {
     expect(rows.every(r => typeof r.oracle_all === 'string' && /draw a card/i.test(r.oracle_all))).toBe(true)
   })
 
-  it('stays fast on printing and face lookups', async () => {
+  itPerf('stays fast on printing and face lookups', async () => {
     // The local client is synchronous: a slow query stalls every user. The
     // stat-against-cmc cases took 65 to 181 s before their index.
     const worst = Array.from({ length: 40 }, (_, i) => `-o:"zz${i}"`).join(' ')
@@ -277,9 +278,8 @@ withDb('query syntax against the real card database', () => {
       }
       // Page + count measured at 2–20 ms once the planner has statistics
       // (ANALYZE at ingest), ~75 ms for cmc>pow, whose count must probe every
-      // card. The bound is there to catch the pathological (seconds), not to
-      // budget.
-      expect(best, text).toBeLessThan(400)
+      // card. The stat-against-cmc cases took 65 to 181 s before their index.
+      expect(best, text).toBeLessThan(150)
     }
   })
 })
