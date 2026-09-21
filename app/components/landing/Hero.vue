@@ -250,14 +250,14 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   font-family: 'Anton', Impact, sans-serif;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  box-shadow: 5px 5px 0 #f1d994;
+  box-shadow: 5px 5px 0 #231708;
   transition:
     transform 0.3s cubic-bezier(0.3, 1.7, 0.5, 1),
     box-shadow 0.3s ease;
 }
 .cta--op:hover {
   transform: translate(-2px, -2px) rotate(-2deg);
-  box-shadow: 8px 8px 0 #f1d994;
+  box-shadow: 8px 8px 0 #231708;
 }
 .cta--mtg {
   border: 1px solid #24405f;
@@ -280,10 +280,14 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
     0 1px 0 rgba(255, 255, 255, 0.4) inset,
     0 16px 28px -16px rgba(0, 0, 0, 0.95);
 }
-.cta:focus-visible,
+.cta:focus-visible {
+  outline: 2px solid #1b1f22;
+  outline-offset: 4px;
+}
+/* These sit over the card pile, where a dark ring would disappear. */
 .caption-link:focus-visible,
 .scroll:focus-visible {
-  outline: 2px solid #f1d994;
+  outline: 2px solid #f4f1e6;
   outline-offset: 4px;
 }
 

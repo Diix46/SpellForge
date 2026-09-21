@@ -188,9 +188,9 @@ const modalUi = {
   color: #231708;
 }
 .world--mtg {
-  border-radius: 4px;
-  background: linear-gradient(180deg, #17131d, #0b0910);
-  color: #f3ecda;
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #ffffff, #f2f3f0);
+  color: #1b1f22;
 }
 .world--op[aria-pressed='true'] {
   border-color: #c9312a;

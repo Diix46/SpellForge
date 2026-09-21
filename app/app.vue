@@ -423,8 +423,8 @@ function openImport() {
   background: #c9312a;
 }
 .world--mtg.on {
-  color: #100c06;
-  background: #c9a24e;
+  color: #f4f7fb;
+  background: #2d4f7c;
 }
 @media (max-width: 720px) {
   .worlds {

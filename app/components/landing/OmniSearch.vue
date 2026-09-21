@@ -331,14 +331,14 @@ function pick(s: string) {
 .col--mtg .hit img {
   border-radius: 4.5% / 3.2%;
   box-shadow:
-    0 0 0 1px rgba(201, 162, 78, 0.3),
+    0 0 0 1px rgba(27, 31, 34, 0.14),
     0 18px 34px -18px rgba(0, 0, 0, 0.9);
 }
 .col--mtg .hit:hover img {
   transform: translateY(-4px);
   box-shadow:
-    0 0 0 1px rgba(201, 162, 78, 0.7),
-    0 22px 40px -16px rgba(201, 162, 78, 0.4);
+    0 0 0 1px rgba(45, 79, 124, 0.5),
+    0 22px 40px -18px rgba(27, 31, 34, 0.35);
 }
 .col--mtg .hit-name {
   font-family: var(--mtg-face);

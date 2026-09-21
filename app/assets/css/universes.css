@@ -199,10 +199,10 @@ html[data-universe='mtg'] body {
 html[data-universe='mtg'] .u-display {
   font-weight: 700;
 }
-/* The lamp above the mat, and the felt itself. */
+/* Daylight from the top of the sheet, and the grain of the paper. */
 html[data-universe='mtg'] body {
   background:
-    var(--u-texture), radial-gradient(900px 420px at 50% -8%, rgba(201, 162, 78, 0.1), transparent 68%),
+    var(--u-texture), radial-gradient(900px 420px at 50% -8%, rgba(45, 79, 124, 0.05), transparent 68%),
     var(--color-bg-base);
 }
 html[data-universe='mtg'] .u-prose {
@@ -233,7 +233,7 @@ html[data-universe] :where(h1, h2) {
   }
   html[data-universe='mtg'] body {
     cursor:
-      url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3E%3Cpath d='M15 2l2.6 9.4L27 15l-9.4 2.6L15 27l-2.6-9.4L3 15l9.4-3.6z' fill='%23c9a24e' stroke='%23fff3cf' stroke-width='.8'/%3E%3C/svg%3E")
+      url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3E%3Cpath d='M15 2l2.6 9.4L27 15l-9.4 2.6L15 27l-2.6-9.4L3 15l9.4-3.6z' fill='%232d4f7c' stroke='%23ffffff' stroke-width='.8'/%3E%3C/svg%3E")
         15 15,
       auto;
   }
