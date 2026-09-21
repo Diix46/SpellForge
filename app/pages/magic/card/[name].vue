@@ -204,12 +204,10 @@ function startWith() {
   display: grid;
   gap: 28px;
   padding: 24px;
-  border: 1px solid rgba(201, 162, 78, 0.28);
-  border-radius: 4px;
-  outline: 1px solid rgba(201, 162, 78, 0.12);
-  outline-offset: -8px;
-  background: linear-gradient(180deg, #15111c, #0b0910);
-  box-shadow: 0 20px 44px -22px rgba(0, 0, 0, 0.8);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-elev-2);
 }
 @media (min-width: 720px) {
   .page {
@@ -221,7 +219,7 @@ function startWith() {
   width: 100%;
   height: auto;
   border-radius: 4.5% / 3.2%;
-  box-shadow: 0 18px 40px -16px rgba(201, 162, 78, 0.3);
+  box-shadow: 0 18px 40px -20px rgba(27, 31, 34, 0.45);
 }
 .flip {
   display: flex;
@@ -231,7 +229,7 @@ function startWith() {
   width: 100%;
   margin-top: 12px;
   padding: 8px;
-  border: 1px solid rgba(201, 162, 78, 0.35);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 3px;
   color: #e2c47f;
   font-size: 13px;
@@ -265,7 +263,7 @@ function startWith() {
 .type {
   margin: 0;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(201, 162, 78, 0.2);
+  border-bottom: 1px solid var(--color-border-hairline);
   font-family: var(--mtg-face);
   font-size: 18px;
   color: #d6cbb1;
@@ -277,7 +275,7 @@ function startWith() {
 }
 .keywords span {
   padding: 1px 9px;
-  border: 1px solid rgba(201, 162, 78, 0.35);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 999px;
   font-size: 12px;
   color: #e2c47f;

@@ -375,13 +375,13 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
 .world--mtg {
   background:
     radial-gradient(700px 420px at 100% 100%, rgba(90, 122, 112, 0.16), transparent 60%),
-    linear-gradient(180deg, #0b0910, #07060b);
-  color: #f3ecda;
+    linear-gradient(180deg, #f7f7f5, #eceeea);
+  color: #1b1f22;
 }
 .world--mtg .kicker {
   font-family: var(--mtg-face);
   font-weight: 700;
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .world--mtg .title {
   font-family: var(--mtg-face);
@@ -391,7 +391,7 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
 .world--mtg .body {
   font-family: var(--mtg-face);
   font-size: 19px;
-  color: #d6cbb1;
+  color: #454d52;
 }
 .stage {
   position: relative;
@@ -412,7 +412,7 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
   width: 132px;
   border-radius: 6px;
   box-shadow:
-    0 0 0 1px rgba(201, 162, 78, 0.35),
+    0 0 0 1px rgba(45, 79, 124, 0.3),
     0 20px 34px -18px rgba(0, 0, 0, 0.95);
   transform-origin: 50% 120%;
   rotate: calc((var(--i) - (var(--n) - 1) / 2) * 11deg);
@@ -484,8 +484,8 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
   bottom: -26px;
   padding: 2px 8px;
   border-radius: 2px;
-  background: #c9a24e;
-  color: #100c06;
+  background: #2d4f7c;
+  color: #f4f7fb;
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -500,10 +500,10 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
   gap: 6px;
   width: 250px;
   padding: 12px;
-  border: 1px solid rgba(201, 162, 78, 0.35);
+  border: 1px solid rgba(27, 31, 34, 0.14);
   border-radius: 10px 10px 10px 2px;
-  background: rgba(21, 17, 28, 0.94);
-  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.9);
+  background: #ffffff;
+  box-shadow: 0 18px 36px -22px rgba(27, 31, 34, 0.55);
 }
 .coach-head {
   display: inline-flex;
@@ -512,13 +512,13 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
   font-family: var(--mtg-face);
   font-size: 12px;
   font-weight: 700;
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .coach p {
   margin: 0;
   font-family: var(--mtg-face);
   font-size: 15px;
-  color: #efe6d0;
+  color: #1b1f22;
 }
 .coach-card {
   display: flex;
@@ -526,7 +526,7 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
   gap: 8px;
   padding: 4px;
   border-radius: 6px;
-  background: rgba(201, 162, 78, 0.08);
+  background: rgba(45, 79, 124, 0.07);
   font-size: 12px;
 }
 .coach-card img {
@@ -543,7 +543,7 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
   text-overflow: ellipsis;
 }
 .coach-card :deep(svg) {
-  color: #8fd3a2;
+  color: #2f6b52;
 }
 .features {
   display: flex;
@@ -555,26 +555,26 @@ const FEATURES = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'] as const
 }
 .features li {
   padding: 5px 12px;
-  border: 1px solid rgba(201, 162, 78, 0.35);
+  border: 1px solid rgba(45, 79, 124, 0.3);
   border-radius: 999px;
-  color: #e2c47f;
+  color: #2d4f7c;
   font-size: 13px;
 }
 .cta--mtg {
-  border: 1px solid #c9a24e;
-  border-radius: 3px;
-  background: transparent;
-  color: #f1d994;
+  border: 1px solid #24405f;
+  border-radius: var(--radius-md);
+  background: #2d4f7c;
+  color: #f4f7fb;
   font-family: var(--mtg-face);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   transition:
-    background 0.6s ease,
-    color 0.6s ease;
+    background 0.26s ease,
+    transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .cta--mtg:hover {
-  background: #c9a24e;
-  color: #100c06;
+  background: #24405f;
+  transform: translateY(-2px);
 }
 
 /* Scroll-driven entrances where the browser has them; still pages elsewhere. */

@@ -75,8 +75,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  background: linear-gradient(90deg, #e6d2aa 50%, #0c0a12 50%);
-  border-block: 1px solid rgba(201, 162, 78, 0.25);
+  background: linear-gradient(90deg, #e6d2aa 50%, #eff0ed 50%);
+  border-block: 1px solid rgba(27, 31, 34, 0.14);
 }
 .half {
   display: flex;
@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
 }
 .half--mtg {
   justify-content: flex-start;
-  color: #f3ecda;
+  color: #1b1f22;
 }
 .figure {
   display: flex;
@@ -111,7 +111,7 @@ onBeforeUnmount(() => {
 .half--mtg strong {
   font-family: var(--mtg-face);
   font-weight: 700;
-  background: linear-gradient(180deg, #fff3cf, #c9a24e);
+  background: linear-gradient(180deg, #dce6f2, #2d4f7c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
   color: #5a4228;
 }
 .half--mtg span {
-  color: #b9ac8e;
+  color: #616a6f;
 }
 .zero {
   display: flex;
@@ -136,9 +136,9 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 10px;
   background:
-    linear-gradient(#100d14, #100d14) padding-box,
-    linear-gradient(90deg, #c9312a, #c9a24e) border-box;
-  color: #f3ecda;
+    linear-gradient(#f7f7f5, #f7f7f5) padding-box,
+    linear-gradient(90deg, #c9312a, #2d4f7c) border-box;
+  color: #1b1f22;
   text-align: center;
   box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.8);
 }
@@ -147,7 +147,7 @@ onBeforeUnmount(() => {
   font-size: 58px;
   font-weight: 400;
   line-height: 1;
-  background: linear-gradient(90deg, #ef6b5d, #f1d994);
+  background: linear-gradient(90deg, #ef6b5d, #2d4f7c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -155,7 +155,7 @@ onBeforeUnmount(() => {
 .zero span {
   font-size: 12px;
   letter-spacing: 0.06em;
-  color: #d6cbb1;
+  color: #454d52;
 }
 @media (max-width: 900px) {
   .numbers {
@@ -171,7 +171,7 @@ onBeforeUnmount(() => {
     background: #e6d2aa;
   }
   .half--mtg {
-    background: #0c0a12;
+    background: #eff0ed;
   }
   .figure {
     align-items: center;

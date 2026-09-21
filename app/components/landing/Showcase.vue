@@ -43,7 +43,7 @@ const { t, formatShortDate } = useLocale()
 .showcase {
   padding: 90px clamp(20px, 5vw, 88px);
   background: #0e0b12;
-  color: #f3ecda;
+  color: #1b1f22;
 }
 .head {
   display: flex;
@@ -56,7 +56,7 @@ const { t, formatShortDate } = useLocale()
 }
 .kicker {
   margin: 0 0 6px;
-  color: #f1d994;
+  color: #2d4f7c;
   font-size: 11px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -68,7 +68,7 @@ const { t, formatShortDate } = useLocale()
 }
 .sub {
   margin: 6px 0 0;
-  color: #b9ac8e;
+  color: #616a6f;
 }
 .all {
   display: inline-flex;
@@ -77,12 +77,12 @@ const { t, formatShortDate } = useLocale()
   padding: 9px 16px;
   border: 1px solid rgba(243, 236, 218, 0.35);
   border-radius: 999px;
-  color: #f3ecda;
+  color: #1b1f22;
   font-size: 14px;
   text-decoration: none;
 }
 .all:hover {
-  border-color: #f3ecda;
+  border-color: #1b1f22;
 }
 .grid {
   display: grid;
@@ -106,7 +106,7 @@ const { t, formatShortDate } = useLocale()
   transform: translateY(-4px);
 }
 .deck:focus-visible {
-  outline: 2px solid #f1d994;
+  outline: 2px solid #2d4f7c;
   outline-offset: 3px;
 }
 .world {
@@ -146,18 +146,18 @@ const { t, formatShortDate } = useLocale()
 .deck--mtg {
   border: 1px solid rgba(201, 162, 78, 0.3);
   border-radius: 4px;
-  background: linear-gradient(180deg, #15111c, #0b0910);
-  color: #f3ecda;
+  background: linear-gradient(180deg, #15111c, #eceeea);
+  color: #1b1f22;
 }
 .deck--mtg .world {
   font-family: var(--mtg-face);
   font-weight: 700;
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .deck--mtg .name {
   font-family: var(--mtg-face);
 }
 .deck--mtg .meta {
-  color: #b3a68a;
+  color: #616a6f;
 }
 </style>

@@ -33,8 +33,8 @@ const STEPS = [
 <style scoped>
 .journey {
   padding: 100px clamp(20px, 5vw, 88px) 110px;
-  background: linear-gradient(90deg, #2a1d12 0%, #16111a 50%, #07060b 100%);
-  color: #f3ecda;
+  background: linear-gradient(90deg, #f3e6cc 0%, #f2f0ec 50%, #eef0ee 100%);
+  color: #1b1f22;
 }
 .head {
   display: flex;
@@ -46,7 +46,7 @@ const STEPS = [
 }
 .kicker {
   margin: 0;
-  color: #f1d994;
+  color: #2d4f7c;
   font-size: 11px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -57,7 +57,7 @@ const STEPS = [
   font-size: clamp(36px, 4.6vw, 64px);
   font-weight: 400;
   text-transform: uppercase;
-  background: linear-gradient(90deg, #ef6b5d 0%, #fff3cf 50%, #c9a24e 100%);
+  background: linear-gradient(90deg, #c9312a 0%, #6b6f72 50%, #2d4f7c 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -79,7 +79,7 @@ const STEPS = [
   right: 16%;
   left: 16%;
   height: 2px;
-  background: linear-gradient(90deg, #c9312a, #f1d994, #c9a24e);
+  background: linear-gradient(90deg, #c9312a, #2d4f7c, #2d4f7c);
   opacity: 0.7;
 }
 .step {
@@ -108,15 +108,15 @@ const STEPS = [
 .step--1 .dot {
   border: 2px solid transparent;
   background:
-    linear-gradient(#16111a, #16111a) padding-box,
-    linear-gradient(135deg, #c9312a, #c9a24e) border-box;
-  color: #fff3cf;
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, #c9312a, #2d4f7c) border-box;
+  color: #2d4f7c;
 }
 .step--2 .dot {
-  border: 1px solid #c9a24e;
-  background: #0b0910;
-  color: #f1d994;
-  box-shadow: 0 0 24px -4px rgba(201, 162, 78, 0.6);
+  border: 1px solid #2d4f7c;
+  background: #eceeea;
+  color: #2d4f7c;
+  box-shadow: 0 6px 16px -10px rgba(45, 79, 124, 0.6);
 }
 .step h3 {
   margin: 0;
@@ -135,7 +135,7 @@ const STEPS = [
 .step p {
   max-width: 32ch;
   margin: 0;
-  color: #cfc4ab;
+  color: #454d52;
   font-size: 15px;
   line-height: 1.55;
 }

@@ -290,8 +290,8 @@ async function onFile(e: Event) {
   background: rgba(201, 49, 42, 0.12);
 }
 .world--mtg[aria-pressed='true'] {
-  border-color: #c9a24e;
-  background: rgba(201, 162, 78, 0.12);
+  border-color: #2d4f7c;
+  background: rgba(45, 79, 124, 0.12);
 }
 
 /* "or paste a list" between the two ways in */

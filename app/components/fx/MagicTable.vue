@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Magic backdrop: the playmat you build on. A stitched mat with its zones
-// drawn in the felt, under a low lamp, with the dust that floats in that
-// light — brass, or the commander's colours on a deck page (useAppTheme).
+// drawn on the sheet, in daylight, with the dust that floats in it — ink
+// blue, or the commander's colours on a deck page (useAppTheme).
 // Still under reduced motion; paused while the tab is hidden.
 import { onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
 
@@ -28,7 +28,7 @@ onMounted(() => {
     w = cv.width = window.innerWidth * dpr
     h = cv.height = window.innerHeight * dpr
   }
-  // Dust drifts down through the lamp light, slower than embers ever rose.
+  // Dust drifts down through the daylight, slower than embers ever rose.
   const spawn = (fresh = false): Mote => ({
     x: Math.random() * w,
     y: fresh ? Math.random() * h : -20 * dpr,
@@ -43,9 +43,10 @@ onMounted(() => {
   // Read each frame, so the dust follows a commander change without a restart.
   const style = getComputedStyle(document.documentElement)
   const draw = () => {
-    const universe = style.getPropertyValue('--accent-rgb').trim() || '201, 162, 78'
+    const universe = style.getPropertyValue('--accent-rgb').trim() || '45, 79, 124'
     ctx.clearRect(0, 0, w, h)
-    ctx.globalCompositeOperation = 'lighter'
+    // Laid on the sheet, not glowing: on a light page, 'lighter' would erase it.
+    ctx.globalCompositeOperation = 'source-over'
     motes.forEach((m, i) => {
       const rgb = isThemed.value ? auroraRgb.value[i % 2] : universe
       m.y += m.vy
@@ -53,9 +54,9 @@ onMounted(() => {
       m.life += 0.003
       if (m.y > h + 10)
         Object.assign(m, spawn())
-      // Brightest in the upper third, where the lamp actually reaches.
-      const lit = Math.max(0.15, 1 - m.y / h)
-      const a = (0.12 + 0.2 * Math.abs(Math.sin(m.life * 2.6))) * lit
+      // Densest where the light falls, at the top of the sheet.
+      const lit = Math.max(0.2, 1 - m.y / h)
+      const a = (0.05 + 0.09 * Math.abs(Math.sin(m.life * 2.6))) * lit
       ctx.beginPath()
       ctx.arc(m.x, m.y, m.r, 0, 6.283)
       ctx.fillStyle = `rgba(${rgb},${a})`
@@ -116,7 +117,7 @@ onBeforeUnmount(() => stop?.())
   overflow: hidden;
   pointer-events: none;
   /* The lamp over the table. */
-  background: radial-gradient(1200px 520px at 50% -10%, rgba(var(--accent-rgb), 0.07), transparent 70%);
+  background: radial-gradient(1200px 520px at 50% -10%, rgba(var(--accent-rgb), 0.05), transparent 70%);
 }
 .mat {
   position: absolute;
@@ -125,7 +126,7 @@ onBeforeUnmount(() => stop?.())
   width: min(1180px, 112vw);
   aspect-ratio: 360 / 200;
   transform: translate(-50%, -50%);
-  opacity: 0.09;
+  opacity: 0.07;
 }
 .mat rect {
   fill: none;

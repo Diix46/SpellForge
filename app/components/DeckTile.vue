@@ -265,20 +265,18 @@ const menuItems = computed(() => [
   color: #fbf4e6;
 }
 
-/* ---- Magic: a sleeved deck resting on the felt ---- */
+/* ---- Magic: a sleeved deck on the workbench, in daylight ---- */
 .tile--mtg {
-  border: 1px solid rgba(201, 162, 78, 0.24);
+  border: 1px solid rgba(27, 31, 34, 0.12);
   border-radius: 10px;
   /* The stitched edge of the mat it sits on. */
-  outline: 1px dashed rgba(201, 162, 78, 0.14);
+  outline: 1px dashed rgba(45, 79, 124, 0.16);
   outline-offset: -6px;
   background:
-    radial-gradient(420px 180px at 85% -20%, rgba(var(--accent-rgb, 201, 162, 78), 0.14), transparent 60%),
-    linear-gradient(180deg, #1a2224, #101718);
-  box-shadow:
-    0 10px 24px -16px rgba(0, 0, 0, 0.8),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  color: #f1f5f3;
+    radial-gradient(420px 180px at 85% -20%, rgba(var(--accent-rgb, 45, 79, 124), 0.08), transparent 60%),
+    linear-gradient(180deg, #ffffff, #f2f3f0);
+  box-shadow: 0 8px 20px -14px rgba(27, 31, 34, 0.45);
+  color: #1b1f22;
   transition:
     transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
     box-shadow 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
@@ -286,12 +284,10 @@ const menuItems = computed(() => [
 }
 .tile--mtg:hover {
   transform: translateY(-3px);
-  border-color: rgba(201, 162, 78, 0.5);
-  box-shadow:
-    0 18px 34px -20px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  border-color: rgba(45, 79, 124, 0.45);
+  box-shadow: 0 16px 30px -18px rgba(27, 31, 34, 0.5);
 }
-/* A brass counter, the kind that tracks life beside the deck. */
+/* A counter, the kind that tracks life beside the deck. */
 .tile--mtg .token {
   position: absolute;
   right: 14px;
@@ -299,16 +295,17 @@ const menuItems = computed(() => [
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: radial-gradient(circle at 36% 30%, #e0c07a, #a8823a 62%, #6d5322);
+  background: radial-gradient(circle at 36% 30%, #6d90bd, #2d4f7c 62%, #1d3555);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.45),
-    0 2px 5px rgba(0, 0, 0, 0.5);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.25),
+    0 2px 5px rgba(27, 31, 34, 0.3);
 }
 .tile--mtg .world {
   font-family: var(--mtg-face);
-  font-weight: 700;
-  color: #c9a24e;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: #2d4f7c;
 }
 .tile--mtg .name {
   font-family: var(--mtg-face);
@@ -319,24 +316,24 @@ const menuItems = computed(() => [
 .tile--mtg .sub {
   font-family: var(--mtg-face);
   font-size: 14px;
-  color: #a3afac;
+  color: #616a6f;
 }
 .tile--mtg .dot {
-  border: 1px solid rgba(201, 162, 78, 0.5);
+  border: 1px solid rgba(27, 31, 34, 0.25);
 }
 .tile--mtg .foot {
   padding-right: 34px;
-  border-top: 1px solid rgba(201, 162, 78, 0.18);
+  border-top: 1px solid rgba(27, 31, 34, 0.1);
 }
 .tile--mtg .count {
-  color: #c6d0cd;
+  color: #454d52;
 }
 .tile--mtg .count.ok {
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .tile--mtg .source {
-  border: 1px solid rgba(201, 162, 78, 0.35);
-  color: #e2c47f;
+  border: 1px solid rgba(45, 79, 124, 0.3);
+  color: #2d4f7c;
 }
 
 @media (prefers-reduced-motion: reduce) {

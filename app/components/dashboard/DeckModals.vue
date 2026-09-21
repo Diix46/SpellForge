@@ -196,7 +196,7 @@ const modalUi = {
   border-color: #c9312a;
 }
 .world--mtg[aria-pressed='true'] {
-  border-color: #c9a24e;
+  border-color: #2d4f7c;
 }
 .world-name {
   font-size: 20px;
@@ -209,7 +209,7 @@ const modalUi = {
 .world--mtg .world-name {
   font-family: var(--mtg-face);
   font-weight: 700;
-  color: #c9a24e;
+  color: #2d4f7c;
 }
 .world-rule {
   font-size: 12px;

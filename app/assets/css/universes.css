@@ -94,7 +94,7 @@ html[data-universe='optcg'] {
 
 /* ---------------------------------------------------------------------- Magic */
 html[data-universe='mtg'] {
-  color-scheme: dark;
+  color-scheme: light;
 
   /* No incantation voice here: Magic is played at a table, with sleeves and
      tokens. One neutral face, set tight and heavy for the titles. */
@@ -103,43 +103,44 @@ html[data-universe='mtg'] {
   --u-case: none;
   --u-track: -0.01em;
 
-  /* Dark felt under a low lamp. */
-  --color-bg-base: #0d1012;
-  --color-bg-base-2: #111618;
-  --color-surface-1: #151c1e;
-  --color-surface-2: #1b2426;
-  --color-surface-3: #222d30;
+  /* Daylight on the workbench: paper white, and the card art does the
+     colouring. */
+  --color-bg-base: #f7f7f5;
+  --color-bg-base-2: #f1f2ef;
+  --color-surface-1: #ffffff;
+  --color-surface-2: #f4f5f2;
+  --color-surface-3: #eaece8;
 
-  --color-ink-50: #f2f5f4;
-  --color-ink-100: #e2e8e6;
-  --color-ink-200: #c6d0cd;
-  --color-ink-300: #a3afac;
-  --color-ink-400: #82908d;
-  --color-ink-500: #5d6b68;
-  --color-ink-600: #3f4b49;
-  --color-ink-700: #2c3634;
-  --color-ink-800: #1d2624;
-  --color-ink-900: #141b19;
-  --color-ink-950: #0d1012;
+  /* Graphite ramp: Nuxt UI draws its text and neutral fills from it. */
+  --color-ink-50: #fbfbfa;
+  --color-ink-100: #f1f2ef;
+  --color-ink-200: #e2e4e0;
+  --color-ink-300: #c8ccc8;
+  --color-ink-400: #a2a8a5;
+  --color-ink-500: #7b827f;
+  --color-ink-600: #5c6462;
+  --color-ink-700: #434b49;
+  --color-ink-800: #2d3436;
+  --color-ink-900: #1b1f22;
+  --color-ink-950: #101314;
 
-  --color-text-high: #f1f5f3;
-  --color-text-mid: #c6d0cd;
-  --color-text-muted: #94a19d;
-  --color-text-disabled: #7a8785;
+  --color-text-high: #1b1f22;
+  --color-text-mid: #454d52;
+  --color-text-muted: #616a6f; /* 5.9:1 on the page paper */
+  --color-text-disabled: #8a9296;
 
-  /* Stitching: a thin brass thread on the felt. */
-  --color-border-hairline: rgba(201, 162, 78, 0.12);
-  --color-border-subtle: rgba(201, 162, 78, 0.2);
-  --color-border-strong: rgba(201, 162, 78, 0.34);
+  --color-border-hairline: rgba(27, 31, 34, 0.1);
+  --color-border-subtle: rgba(27, 31, 34, 0.16);
+  --color-border-strong: rgba(27, 31, 34, 0.28);
 
-  /* Brass and worn green — the playmat and its trim. The deck page still
-     re-tints the accent with the commander's colours. */
-  --accent-rgb: 201, 162, 78;
-  --accent-rgb-2: 90, 122, 112;
-  --accent-text: #dcbc72;
+  /* Ink blue, the colour of a pen on the sheet; the deck page still re-tints
+     the accent with the commander's colours. */
+  --accent-rgb: 45, 79, 124;
+  --accent-rgb-2: 92, 124, 160;
+  --accent-text: #24405f; /* 7.4:1 on the page paper */
 
-  --ui-primary: #c9a24e;
-  --ui-secondary: #5a7a70;
+  --ui-primary: #2d4f7c;
+  --ui-secondary: #5c6462;
 
   /* Cut corners of a playmat and a deck box: softer than engraved stone. */
   --radius-xs: 3px;
@@ -157,19 +158,21 @@ html[data-universe='mtg'] {
   --dur: 0.26s;
   --dur-slow: 0.42s;
 
-  /* Matte: a card on felt casts a short, soft shadow. */
-  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --shadow-elev-2: 0 6px 18px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --shadow-elev-3: 0 18px 44px -16px rgba(0, 0, 0, 0.78), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  /* Daylight shadows: short, soft, grey. */
+  --shadow-elev-1: 0 1px 2px rgba(27, 31, 34, 0.07);
+  --shadow-elev-2: 0 6px 16px -8px rgba(27, 31, 34, 0.22);
+  --shadow-elev-3: 0 18px 40px -18px rgba(27, 31, 34, 0.32);
+  --accent-glow: 0 0 0 2px rgba(45, 79, 124, 0.2), 0 6px 16px -10px rgba(45, 79, 124, 0.5);
+  --accent-glow-soft: 0 4px 12px -8px rgba(45, 79, 124, 0.45);
 
-  --glass-bg: rgba(21, 28, 30, 0.74);
-  --glass-bg-strong: rgba(21, 28, 30, 0.92);
-  --glass-highlight: rgba(255, 255, 255, 0.04);
-  --glass-solid-sheen: rgba(255, 255, 255, 0.025);
-  --texture-line: rgba(201, 162, 78, 0.05);
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-bg-strong: rgba(255, 255, 255, 0.94);
+  --glass-highlight: rgba(255, 255, 255, 0.7);
+  --glass-solid-sheen: rgba(27, 31, 34, 0.02);
+  --texture-line: rgba(27, 31, 34, 0.05);
 
-  /* Felt weave: fine, neutral, matte. */
-  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .72 0 0 0 0 .78 0 0 0 0 .76 0 0 0 .3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  /* Paper grain, finer than the One Piece fibre. */
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .11 0 0 0 0 .12 0 0 0 0 .13 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 /* ------------------------------------------------------------- Shared layer */
@@ -183,7 +186,7 @@ html[data-universe='optcg'] body {
   background-blend-mode: multiply, normal, normal;
 }
 html[data-universe='mtg'] body {
-  background-blend-mode: overlay, normal, normal;
+  background-blend-mode: multiply, normal, normal;
 }
 
 /* A universe's display voice. Components opt in with .u-display. */
@@ -283,8 +286,8 @@ html[data-universe] :focus-visible {
   font-size: 14px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #e7dcc3;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+  color: #2d4f7c;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.9);
   animation: ufx-land 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.1) forwards;
 }
 @keyframes ufx-don {
