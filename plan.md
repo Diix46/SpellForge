@@ -566,3 +566,32 @@ Real-ESRGAN (poids officiels xinntao) sur 8 scans FR basse définition du deck K
 - Décision à prendre avec Viktor (non lancé) : générer une variante « nette » pour les scans FR
   2020+ seulement, servie par la route d'images à la place du scan flou ; jamais pour les
   scans anciens. Comparatif : `~/Desktop/prism-comparatif-nettete.jpg`.
+
+---
+
+## 13. Cartes françaises recomposées (24/09, nuit)
+
+> Validé par Viktor sur le prototype v3 (6 cartes, 5 cadres) : illustration et cadre du scan
+> anglais HD, texte français recomposé avec les polices d'origine (Beleren, Matrix, Plantin),
+> installées sur le Mac de Viktor et jamais versionnées.
+
+**Cibles** (bulk Scryfall du 24/09) : 40 132 impressions FR en basse définition ont leur jumelle
+anglaise en HD ; ~20 000 sont celles affichées par défaut (`best_printings`), traitées d'abord.
+
+| Famille | Impressions | Lot |
+|---|---|---|
+| Cadre 2015, bordure noire, sans effet | 28 653 | R1 |
+| Cadre 2003 | 7 106 | R1 |
+| Cadre 1997 | 784 | plus tard (police Goudy Medieval absente) |
+| Sans bordure, showcase, doubles faces, sagas, aventures, fractionnées… | ~3 600 | plus tard |
+
+| Lot | Contenu |
+|---|---|
+| R1. Générateur (Mac) | `scripts/recompose/` (Python) : lit le bulk, télécharge le PNG anglais, efface nom / type / texte, compose le français (titre calibré au pixel, texte Plantin plafonné à 37 px, symboles Mana, « FR » dans la ligne du bas, `—` → `:` dans le type, apostrophe typographique). **Contrôle automatique par carte** : le texte anglais est d'abord recomposé sur la même carte et comparé au scan d'origine ; au-delà d'un seuil, la carte est écartée et garde son scan officiel. Sortie : un JPEG 745×1040 par impression. |
+| R2. Serveur | La route d'images sert la version recomposée d'une impression FR quand elle existe (`r=1` dans l'URL, donc un cache séparé) ; la forme des cartes signale `recomposed`. Tailles `large` / `normal` / `small` dérivées à la demande (sharp), comme les vignettes. |
+| R3. Interface | Badge « Recomposée » dans la fiche, et réglage « Scans officiels » (par navigateur) qui retire `r=1` des URLs. |
+| R4. Livraison | Copie des JPEG dans `/mnt/user/appdata/spellforge/images/mtg/recomposed/` (mode à confirmer avec Viktor). |
+
+**Garde-fous.** Les polices ne quittent pas le Mac ; seules les images produites sont servies.
+Un scan officiel reste toujours accessible. Rien n'est écrasé : les recompositions vivent dans
+leur propre dossier.
