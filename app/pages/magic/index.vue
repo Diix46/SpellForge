@@ -8,7 +8,7 @@ import { toMtgCard } from '~/composables/useScryfall'
 
 // The Magic library: every Commander-legal card, laid out on the mat.
 // Reading only: a card opens its sheet; a possible commander can start a deck.
-definePageMeta({ universe: 'mtg', colorMode: 'dark' })
+definePageMeta({ universe: 'mtg', colorMode: 'light' })
 
 const { t, locale } = useLocale()
 const { createDeck } = useDeckStore()
