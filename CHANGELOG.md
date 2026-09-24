@@ -1,3 +1,14 @@
+## [0.9.0](https://github.com/Diix46/SpellForge/compare/v0.8.0...v0.9.0) (2026-09-24)
+
+### Features
+
+* **mtg:** galerie des illustrations avec recherche, filtres et tri ([bdd6894](https://github.com/Diix46/SpellForge/commit/bdd6894902c139af1fbaee94a6b75d41636cc454))
+* **mtg:** thèmes de deck par style d'impression ou par artiste ([7a95ff5](https://github.com/Diix46/SpellForge/commit/7a95ff56a37cfc6155246eb4d6698257501b4773))
+
+### Bug Fixes
+
+* **mtg:** retours de revue sur la galerie et les thèmes ([cbe610c](https://github.com/Diix46/SpellForge/commit/cbe610c4f4f6514af4a6dacb91ea29a32c6dcc20))
+
 ## [0.8.0](https://github.com/Diix46/SpellForge/compare/v0.7.0...v0.8.0) (2026-09-24)
 
 ### Features
