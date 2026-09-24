@@ -605,6 +605,7 @@ const {
   cyclePrint,
   pendingImages,
   deckSets,
+  deckThemes,
   deckPrintsLoading,
   loadDeckPrints,
   applyBulk,
@@ -794,6 +795,7 @@ const {
       :color-var="colorVar"
       :pending-images="pendingImages"
       :art-sets="deckSets"
+      :art-themes="deckThemes"
       :art-loading="deckPrintsLoading"
       @details="openDetail"
       @toggle-type-filter="toggleTypeFilter"

@@ -59,7 +59,7 @@ const force = process.argv.includes('--force')
 // Bump whenever the schema changes. A database built by an older script is
 // rebuilt even when the Scryfall dump has not moved: the app would otherwise
 // query columns that do not exist yet.
-const SCHEMA_VERSION = '2'
+const SCHEMA_VERSION = '3'
 const log = (...a) => console.log(...a)
 const mb = n => `${(n / 1048576).toFixed(1)} MB`
 
@@ -89,6 +89,21 @@ function imgVersion(card) {
   const u = card.image_uris?.normal || card.card_faces?.[0]?.image_uris?.normal
   const m = u && /\?(\d+)/.exec(u)
   return m ? m[1] : null
+}
+
+/**
+ * The printing's look, as a bit mask the app filters themes on. Same bits as
+ * ART_STYLES in shared/mtg/prints.ts (a test holds them together).
+ */
+const STYLE = { fullart: 1, borderless: 2, showcase: 4, extendedart: 8, oldframe: 16, etched: 32 }
+function styleOf(card) {
+  const effects = card.frame_effects ?? []
+  return (card.full_art ? STYLE.fullart : 0)
+    | (card.border_color === 'borderless' ? STYLE.borderless : 0)
+    | (effects.includes('showcase') ? STYLE.showcase : 0)
+    | (effects.includes('extendedart') ? STYLE.extendedart : 0)
+    | (card.frame === '1993' || card.frame === '1997' ? STYLE.oldframe : 0)
+    | (effects.includes('etched') || card.finishes?.includes('etched') ? STYLE.etched : 0)
 }
 
 function hasRealImage(card) {
@@ -283,7 +298,10 @@ const SCHEMA = [
      is_ub            INTEGER NOT NULL DEFAULT 0,
      -- Memorabilia and joke sets hide a printing, not a card: a gold-bordered
      -- reprint must not hide Demonic Tutor. Rolled up in finalize().
-     set_type         TEXT
+     set_type         TEXT,
+     -- Full-art, borderless, showcase… as a bit mask (see styleOf): the deck
+     -- themes pick printings on it.
+     style            INTEGER NOT NULL DEFAULT 0
    )`,
   `CREATE TABLE card_faces (
      printing_id       TEXT NOT NULL,
@@ -502,6 +520,7 @@ async function ingest(db) {
     'is_digital',
     'is_ub',
     'set_type',
+    'style',
   ])
   const faces = new Batch(db, 'card_faces', [
     'printing_id',
@@ -664,6 +683,7 @@ async function ingest(db) {
       // Marvel reprint of Lightning Bolt is UB even though the card is not.
       c.promo_types?.includes('universesbeyond') ? 1 : 0,
       c.set_type || null,
+      styleOf(c),
     ])
 
     if (c.card_faces?.length) {

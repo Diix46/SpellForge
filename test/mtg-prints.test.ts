@@ -18,6 +18,8 @@ function print(set: string, collectorNumber: string, releasedAt: string, extra: 
     promo: false,
     highres: true,
     releasedAt,
+    artist: null,
+    styles: [],
     ...extra,
   }
 }
