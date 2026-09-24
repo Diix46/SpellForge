@@ -40,6 +40,8 @@ export interface PrintOption {
   artist: string | null
   /** Full-art, borderless, showcase… — empty for a regular frame. */
   styles: ArtStyle[]
+  /** A sharp French card made from the English scan (scripts/recompose). */
+  recomposed?: boolean
 }
 
 /**

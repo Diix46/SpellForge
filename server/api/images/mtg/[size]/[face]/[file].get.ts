@@ -22,6 +22,7 @@ import { Buffer } from 'node:buffer'
 import { createReadStream, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { recomposedImage } from '../../../../../utils/images/recomposed'
 import { hasFile, makeThumbnail } from '../../../../../utils/images/thumbnail'
 
 const ROOT = resolve('.data/images/mtg')
@@ -57,6 +58,15 @@ export default defineEventHandler(async (event) => {
   const found = (type = ext === 'png' ? 'image/png' : 'image/jpeg') => {
     setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
     setHeader(event, 'Content-Type', type)
+  }
+
+  // `r`: the recomposed French card (scripts/recompose), when there is one.
+  if (getQuery(event).r && face === 'front') {
+    const hit = await recomposedImage(id, size, size === 'normal' && getQuery(event).size === 'thumb')
+    if (hit) {
+      found(hit.type)
+      return hit.bytes ?? sendStream(event, createReadStream(hit.path!))
+    }
   }
 
   const thumb = size === 'normal' && getQuery(event).size === 'thumb'

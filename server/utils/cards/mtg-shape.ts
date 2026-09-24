@@ -15,6 +15,7 @@
  *    images, so the stored data says which shape to emit, no layout guessing.
  */
 import type { Client } from '@libsql/client'
+import { isRecomposed, RECOMPOSED_VERSION } from '../images/recomposed'
 
 type Row = Record<string, unknown>
 
@@ -29,7 +30,7 @@ export const IMAGE_SIZES = ['small', 'normal', 'large', 'png', 'art_crop'] as co
 export type ImageSize = typeof IMAGE_SIZES[number]
 export type ImageFace = 'front' | 'back'
 
-export function imageUrl(size: ImageSize, face: ImageFace, id: string, version: unknown, variant?: 'thumb'): string {
+export function imageUrl(size: ImageSize, face: ImageFace, id: string, version: unknown, variant?: 'thumb', recomposed = false): string {
   const ext = size === 'png' ? 'png' : 'jpg'
   const params = new URLSearchParams()
   // The version doubles as a cache buster: when Scryfall re-scans an image the
@@ -39,12 +40,15 @@ export function imageUrl(size: ImageSize, face: ImageFace, id: string, version: 
   // A 320 px WebP copy, made by the image route (normal size only).
   if (variant)
     params.set('size', variant)
+  // The recomposed French card (server/utils/images/recomposed.ts), cached apart.
+  if (recomposed)
+    params.set('r', RECOMPOSED_VERSION)
   const query = params.size ? `?${params}` : ''
   return `/api/images/mtg/${size}/${face}/${id}.${ext}${query}`
 }
 
-function imageUris(face: ImageFace, id: string, version: unknown): Record<ImageSize, string> {
-  return Object.fromEntries(IMAGE_SIZES.map(s => [s, imageUrl(s, face, id, version)])) as Record<ImageSize, string>
+function imageUris(face: ImageFace, id: string, version: unknown, recomposed = false): Record<ImageSize, string> {
+  return Object.fromEntries(IMAGE_SIZES.map(s => [s, imageUrl(s, face, id, version, undefined, recomposed && s !== 'art_crop')])) as Record<ImageSize, string>
 }
 
 /** Scryfall sends prices as two-decimal strings; the client formats them as-is. */
@@ -82,7 +86,12 @@ async function group(db: Client, sql: string, ids: string[], key: string): Promi
  * cards. Faces and token links are fetched in one query each for the whole
  * batch, never per card.
  */
-export async function toScryfallShape(db: Client, rows: Row[]): Promise<Row[]> {
+export interface ShapeOptions {
+  /** Point French printings at their recomposed image when there is one (default). */
+  recomposed?: boolean
+}
+
+export async function toScryfallShape(db: Client, rows: Row[], opts: ShapeOptions = {}): Promise<Row[]> {
   if (!rows.length)
     return []
 
@@ -135,8 +144,13 @@ export async function toScryfallShape(db: Client, rows: Row[]): Promise<Row[]> {
       prices: { eur: price(r.price_eur ?? r.min_price_eur) },
     }
 
-    if (!perFace)
-      card.image_uris = imageUris('front', id, r.img_version)
+    if (!perFace) {
+      // Only single-faced French printings are recomposed.
+      const recomposed = opts.recomposed !== false && r.lang === 'fr' && isRecomposed(id)
+      card.image_uris = imageUris('front', id, r.img_version, recomposed)
+      if (recomposed)
+        card.recomposed = true
+    }
 
     if (faces.length) {
       card.card_faces = faces.map(f => ({

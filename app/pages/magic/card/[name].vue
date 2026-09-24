@@ -20,11 +20,14 @@ const { searchUrl } = useCardmarket()
 
 const name = computed(() => String(route.params.name))
 
+// useRequestFetch: on the server, the request carries the viewer's cookies
+// (the recomposed / official scans choice among them).
+const requestFetch = useRequestFetch()
 const { data, error } = await useAsyncData(
   () => `mtg-card-${name.value}-${locale.value}`,
   async (): Promise<ResolvedCard | null> => {
     try {
-      const { cards } = await $fetch<{ cards: ResolvedRow[] }>('/api/cards/resolve', {
+      const { cards } = await requestFetch<{ cards: ResolvedRow[] }>('/api/cards/resolve', {
         method: 'POST',
         body: { lang: locale.value, entries: [{ name: name.value }] },
       })

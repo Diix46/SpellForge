@@ -9,6 +9,7 @@ import { useLocale } from '~/composables/useLocale'
 import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
 import { pinPrintKey, printKey } from '~/composables/usePrintings'
+import { useScanPreference } from '~/composables/useScanPreference'
 import { mtgRaw } from '~/composables/useScryfall'
 
 const props = defineProps<{
@@ -142,6 +143,10 @@ function onPickPrint(p: PrintOption | null, pin: PinFields) {
   emit('setPrinting', { name, ...pin })
 }
 
+// ----- Recomposed French card (scripts/recompose) or official scan -----
+const { official, setOfficial } = useScanPreference()
+const recomposed = computed(() => shownPrint.value ? !!shownPrint.value.recomposed : !!c.value?.recomposed)
+
 // ----- Oracle text: localized keyword chips + typed segments (mana/kw/text) -----
 const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 </script>
@@ -243,6 +248,33 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
             >
               {{ card.lang.toUpperCase() }}
             </span>
+            <UPopover v-if="recomposed" :content="{ side: 'bottom' }">
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded-full bg-(--color-surface-2) px-2.5 py-1 text-xs text-(--color-text-mid) hover:text-(--color-text-high)"
+              >
+                <UIcon name="i-lucide-sparkles" class="h-3 w-3 text-(--accent-text)" />
+                {{ t('recomposed.badge') }}
+              </button>
+              <template #content>
+                <div class="max-w-72 space-y-2 p-3 text-xs text-(--color-text-mid)">
+                  <p>{{ t('recomposed.explain') }}</p>
+                  <UButton size="xs" color="neutral" variant="subtle" icon="i-lucide-scan" @click="setOfficial(true)">
+                    {{ t('recomposed.showOfficial') }}
+                  </UButton>
+                </div>
+              </template>
+            </UPopover>
+            <button
+              v-else-if="official && card.lang === 'fr'"
+              type="button"
+              class="flex items-center gap-1 rounded-full bg-(--color-surface-2) px-2.5 py-1 text-xs text-(--color-text-muted) hover:text-(--accent-text)"
+              :title="t('recomposed.explain')"
+              @click="setOfficial(false)"
+            >
+              <UIcon name="i-lucide-sparkles" class="h-3 w-3" />
+              {{ t('recomposed.showRecomposed') }}
+            </button>
             <span
               v-if="card.entry.quantity > 1"
               class="rounded-full bg-(--color-surface-2) px-2.5 py-1 font-mono text-xs text-(--color-text-mid)"
