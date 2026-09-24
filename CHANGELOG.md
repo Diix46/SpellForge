@@ -1,3 +1,13 @@
+## [0.8.0](https://github.com/Diix46/SpellForge/compare/v0.7.0...v0.8.0) (2026-09-24)
+
+### Features
+
+* **mtg:** choisir une impression anglaise sur un deck français ([6ff5645](https://github.com/Diix46/SpellForge/commit/6ff5645bf0ff65dbb3f90d18dd06b62eea1fb462))
+
+### Bug Fixes
+
+* **mtg:** retours de revue sur les impressions anglaises ([1b4a014](https://github.com/Diix46/SpellForge/commit/1b4a014f5b61f04348bb49f004d8d906698d99ab))
+
 ## [0.7.0](https://github.com/Diix46/SpellForge/compare/v0.6.2...v0.7.0) (2026-09-24)
 
 ### Features
