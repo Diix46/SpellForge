@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PrintOption } from '~/composables/usePrintings'
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref, watch } from 'vue'
 import { cardPath } from '#shared/game'
@@ -6,6 +7,7 @@ import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
 import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
+import { printKey } from '~/composables/usePrintings'
 import { mtgRaw } from '~/composables/useScryfall'
 
 const props = defineProps<{
@@ -21,7 +23,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   'setCommander': [card: ResolvedCard]
-  'setPrinting': [payload: { name: string, set: string, collectorNumber: string }]
+  /** No set/number: back to the automatic printing. */
+  'setPrinting': [payload: { name: string, set?: string, collectorNumber?: string }]
 }>()
 
 const { t, rarityLabel, isFr } = useLocale()
@@ -32,9 +35,17 @@ const canBeCommander = computed(() => isCommanderType(props.card?.card?.typeLine
 const { searchUrl } = useCardmarket()
 
 const showBack = ref(false)
+// The printing under the pointer in the artwork strip, and the one just picked
+// (shown until the deck re-resolves and hands the modal the new card).
+const previewPrint = ref<PrintOption | null>(null)
+const chosenPrint = ref<PrintOption | null | undefined>(undefined)
 watch(() => props.card, () => {
   showBack.value = false
+  previewPrint.value = null
+  chosenPrint.value = undefined
 })
+// The printing the modal shows in place of the resolved card, if any.
+const shownPrint = computed(() => previewPrint.value ?? chosenPrint.value ?? null)
 
 // This view is Magic-specific: faces, set line, oracle segments all read
 // Scryfall's shape. Narrowing once here keeps the rest of the component as is.
@@ -42,6 +53,8 @@ const c = computed(() => mtgRaw(props.card?.card))
 const isDfc = computed(() => !!props.card?.backImageUrl)
 
 const displayImage = computed(() => {
+  if (shownPrint.value)
+    return shownPrint.value.imageLarge ?? shownPrint.value.image
   if (showBack.value && props.card?.backImageUrl)
     return props.card.backImageUrl
   return props.card?.imageUrl ?? null
@@ -76,6 +89,9 @@ const typeLine = computed(() => displayType(c.value, isFr.value, face.value))
 const manaCost = computed(() => face.value?.mana_cost ?? c.value?.mana_cost ?? '')
 const oracle = computed(() => displayOracle(c.value, isFr.value, face.value))
 const setLine = computed(() => {
+  const p = shownPrint.value
+  if (p)
+    return [p.setName, `#${p.collectorNumber}`, p.lang.toUpperCase()].filter(Boolean).join(' · ')
   if (!c.value)
     return ''
   return [
@@ -85,6 +101,8 @@ const setLine = computed(() => {
   ].filter(Boolean).join(' · ')
 })
 const priceEur = computed(() => {
+  if (shownPrint.value)
+    return shownPrint.value.priceEur ? `${shownPrint.value.priceEur} €` : null
   const p = props.card?.priceEur ?? c.value?.prices?.eur
   return p ? `${p} €` : null
 })
@@ -96,22 +114,31 @@ const scryUrl = computed(() => c.value?.scryfall_uri?.replace(/\?.*$/, '') ?? nu
 // The gallery's fetch/open/list state lives in CardPrintingPicker.
 const currentPrintKey = computed(() => {
   const card = c.value
-  return card ? `${card.set}/${card.collector_number}` : ''
+  return card ? printKey(card.set, card.collector_number) : ''
 })
+// A pick shows at once; the entry's own pin catches up after the re-resolve.
 const pinnedKey = computed(() => {
+  if (chosenPrint.value !== undefined)
+    return chosenPrint.value ? printKey(chosenPrint.value.set, chosenPrint.value.collectorNumber) : ''
   const e = props.card?.entry
-  return e?.set && e?.collectorNumber ? `${e.set.toLowerCase()}/${e.collectorNumber}` : ''
+  return e?.set && e?.collectorNumber ? printKey(e.set, e.collectorNumber) : ''
 })
-// Stable per-card key so the picker resets when the displayed card changes.
-const cardKey = computed(() => props.card?.card?.id ?? props.card?.entry.name ?? '')
+// The strip lists the deck line's card: keyed by the entry, so a pick (which
+// changes the printing, hence the card id) keeps the strip and its scroll.
+const cardKey = computed(() => props.card?.entry.name ?? '')
+// The whole card's name, not the face on show: the back face finds no printings.
+const printsName = computed(() => c.value?.name || props.card?.entry.name || '')
 
-function onPickPrint(p: { set: string, collectorNumber: string }) {
+function onPickPrint(p: PrintOption | null) {
   // The deck line's own name: a double-faced card is listed by its full name,
   // not by the face on show.
   const name = props.card?.entry.name || englishName.value
-  if (!name)
+  if (!name || pinnedKey.value === (p ? printKey(p.set, p.collectorNumber) : ''))
     return
-  emit('setPrinting', { name, set: p.set, collectorNumber: p.collectorNumber })
+  chosenPrint.value = p
+  previewPrint.value = null
+  showBack.value = false
+  emit('setPrinting', { name, set: p?.set, collectorNumber: p?.collectorNumber })
 }
 
 // ----- Oracle text: localized keyword chips + typed segments (mana/kw/text) -----
@@ -309,18 +336,6 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
             </div>
           </div>
 
-          <!-- Printings selector -->
-          <CardPrintingPicker
-            v-if="!library && inDeck"
-            class="mt-4"
-            :open="open"
-            :english-name="englishName"
-            :card-key="cardKey"
-            :current-print-key="currentPrintKey"
-            :pinned-key="pinnedKey"
-            @pick="onPickPrint"
-          />
-
           <button
             v-if="canBeCommander && !isCommander"
             class="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-(--accent-border) py-2 text-sm font-medium text-(--accent-text) transition-colors hover:bg-(--accent-soft)"
@@ -333,6 +348,18 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
             {{ library ? t('mtg.library.startWith') : t('commander.set') }}
           </button>
         </div>
+
+        <!-- Artwork strip: full width, right under the card, always visible. -->
+        <CardPrintingPicker
+          v-if="!library && inDeck"
+          class="sm:col-span-2"
+          :english-name="printsName"
+          :card-key="cardKey"
+          :current-print-key="currentPrintKey"
+          :pinned-key="pinnedKey"
+          @pick="onPickPrint"
+          @preview="previewPrint = $event"
+        />
       </div>
     </template>
   </UModal>

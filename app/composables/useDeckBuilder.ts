@@ -109,6 +109,26 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     return true
   }
 
+  /**
+   * Pin (or clear) the printings of many cards in one write, so a deck-wide
+   * change is one undo step. Cards not in the deck are skipped; returns how
+   * many entries changed.
+   */
+  function setPrintings(pins: { name: string, set?: string, collectorNumber?: string }[]): number {
+    let changed = 0
+    for (const p of pins) {
+      const entry = entries.value[findIndex(p.name)]
+      if (!entry || (entry.set === p.set && entry.collectorNumber === p.collectorNumber))
+        continue
+      entry.set = p.set
+      entry.collectorNumber = p.collectorNumber
+      changed++
+    }
+    if (changed)
+      serialise()
+    return changed
+  }
+
   const totalCards = computed(() => entries.value.reduce((s, e) => s + e.quantity, 0))
 
   const uniqueCount = computed(() => entries.value.length)
@@ -126,6 +146,7 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     setQuantity,
     setCommander,
     setPrinting,
+    setPrintings,
     findIndex,
   }
 }

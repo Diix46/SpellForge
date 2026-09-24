@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { BulkArtMode, SetCoverage } from '#shared/mtg/prints'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
 import type { ResolvedCard } from '~/composables/useScryfall'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useLocale } from '~/composables/useLocale'
 
 // Preview & print overlay (right slide-over): commander feature, clickable type
@@ -12,7 +14,7 @@ import { useLocale } from '~/composables/useLocale'
 
 interface TypeStat { key: CategoryKey, icon: string, count: number }
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   commander: ResolvedCard | null | undefined
   commanderName: string
@@ -36,6 +38,10 @@ defineProps<{
   fetchProgress: { loaded: number, total: number }
   printPageEstimate: number
   colorVar: (c: ManaColor) => string
+  /** Printings just stepped to with ‹ ›, by lowercased entry name. */
+  pendingImages: Map<string, { key: string, image: string }>
+  artSets: SetCoverage[]
+  artLoading: boolean
 }>()
 
 const emit = defineEmits<{
@@ -46,9 +52,29 @@ const emit = defineEmits<{
   'details': [card: ResolvedCard]
   'toggleTypeFilter': [key: CategoryKey]
   'export': [format: PageFormat]
+  'cyclePrint': [card: ResolvedCard, dir: 1 | -1]
+  'bulkArt': [mode: BulkArtMode]
+  'loadArtSets': []
 }>()
 
 const { t } = useLocale()
+
+const pendingImageOf = (card: ResolvedCard) => props.pendingImages.get(card.entry.name.trim().toLowerCase())?.image ?? null
+
+// ← → step the hovered card's artwork, without having to focus it first.
+const hovered = ref<ResolvedCard | null>(null)
+function onKey(e: KeyboardEvent) {
+  if (!props.open || !hovered.value || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight'))
+    return
+  const el = e.target as HTMLElement | null
+  // Typing, or a focused card tile (it handles its own arrows).
+  if (el?.closest('input, textarea, select, [contenteditable="true"], [role="listbox"], [data-card-tile]'))
+    return
+  e.preventDefault()
+  emit('cyclePrint', hovered.value, e.key === 'ArrowLeft' ? -1 : 1)
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
@@ -210,6 +236,14 @@ const { t } = useLocale()
                   </div>
                 </div>
 
+                <!-- Deck-wide artwork actions -->
+                <BuilderDeckArtworkPanel
+                  :sets="artSets"
+                  :loading="artLoading"
+                  @apply="emit('bulkArt', $event)"
+                  @load="emit('loadArtSets')"
+                />
+
                 <!-- Errors -->
                 <div
                   v-if="errorCards.length"
@@ -249,10 +283,14 @@ const { t } = useLocale()
                   <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                     <MtgCardPreview
                       v-for="(card, idx) in pagedCards"
-                      :key="card.card?.id ?? card.entry.name"
+                      :key="`${idx}:${card.entry.name}`"
                       :card="card"
                       :index="idx"
+                      cyclable
+                      :image-override="pendingImageOf(card)"
                       @details="emit('details', $event)"
+                      @cycle="(c, dir) => emit('cyclePrint', c, dir)"
+                      @hover="hovered = $event"
                     />
                   </div>
 

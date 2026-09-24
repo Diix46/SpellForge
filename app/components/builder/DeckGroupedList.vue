@@ -149,6 +149,13 @@ const groups = computed(() => {
           </div>
 
           <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-high)">{{ displayNameOf(entry.name) }}</span>
+          <!-- artwork picked by hand (pinned printing) -->
+          <UIcon
+            v-if="entry.set && entry.collectorNumber"
+            name="i-lucide-pin"
+            class="h-3 w-3 shrink-0 text-(--accent-text) transition-opacity group-hover/row:opacity-0"
+            :title="`${t('print.pinned')} · ${entry.set.toUpperCase()} #${entry.collectorNumber}`"
+          />
 
           <!-- mana cost pips (shimmer placeholders while the card resolves) -->
           <span
