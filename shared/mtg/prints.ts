@@ -50,12 +50,17 @@ export function pinPrintKey(pin: PinFields, deckLang: string): string {
   return pin.set && pin.collectorNumber ? printKey(pin.set, pin.collectorNumber, pin.lang ?? deckLang) : ''
 }
 
-/** The pin that shows `print` on a deck in `deckLang`: marked "[EN]" when the languages differ. */
-export function pinFor(print: PrintOption, deckLang: string): PinFields {
+/**
+ * The pin that shows `print` on a deck in `deckLang`, given every printing of
+ * the card. Marked "[EN]" only when the card exists in the deck's language: a
+ * card printed in English only shows in English anyway, and needs no marker.
+ */
+export function pinFor(print: PrintOption, deckLang: string, cardPrints: readonly PrintOption[]): PinFields {
+  const marked = print.lang === 'en' && deckLang !== 'en' && cardPrints.some(p => p.lang === deckLang)
   return {
     set: print.set,
     collectorNumber: print.collectorNumber,
-    ...(print.lang !== deckLang && print.lang === 'en' ? { lang: 'en' as const } : {}),
+    ...(marked ? { lang: 'en' as const } : {}),
   }
 }
 

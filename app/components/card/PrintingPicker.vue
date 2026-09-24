@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import type { PinFields } from '#shared/mtg/prints'
 import type { PrintOption } from '~/composables/usePrintings'
 import { computed, ref, watch } from 'vue'
 import { displayable } from '#shared/mtg/prints'
 import { useLocale } from '~/composables/useLocale'
-import { printKey, usePrintings } from '~/composables/usePrintings'
+import { pinFor, printKey, usePrintings } from '~/composables/usePrintings'
 
 // Artwork strip of the card detail modal: every printing that can show in the
 // site's language, then — on a French deck — the English ones, pinned "[EN]"
@@ -24,8 +25,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  /** A printing to pin, or null to go back to the automatic choice. */
-  pick: [print: PrintOption | null]
+  /** A printing to pin (with the pin that shows it), or null to go back to the automatic choice. */
+  pick: [print: PrintOption | null, pin: PinFields]
   /** The printing under the pointer or focus, null when it leaves the strip. */
   preview: [print: PrintOption | null]
 }>()
@@ -97,6 +98,13 @@ function titleOf(p: PrintOption): string {
   ].filter(Boolean).join(' · ')
 }
 
+// Nothing to do when the tile is already the pinned one (or Auto already is).
+function pick(p: PrintOption | null) {
+  if (p ? isPinned(p) : !pinned.value)
+    return
+  emit('pick', p, p ? pinFor(p, locale.value, prints.value) : {})
+}
+
 const hasLowres = computed(() => prints.value.some(p => !p.highres))
 </script>
 
@@ -141,7 +149,7 @@ const hasLowres = computed(() => prints.value.some(p => !p.highres))
           : 'border-(--color-border-strong) text-(--color-text-muted) hover:border-(--accent-border) hover:text-(--accent-text)'"
         :title="t('print.autoTitle')"
         :aria-pressed="!pinned"
-        @click="emit('pick', null)"
+        @click="pick(null)"
       >
         <span class="flex flex-col items-center gap-1 font-mono text-[10px] uppercase tracking-wider">
           <UIcon name="i-lucide-wand-sparkles" class="h-4 w-4" />
@@ -169,7 +177,7 @@ const hasLowres = computed(() => prints.value.some(p => !p.highres))
           :aria-pressed="isPinned(p)"
           @mouseenter="emit('preview', p)"
           @focus="emit('preview', p)"
-          @click="emit('pick', p)"
+          @click="pick(p)"
         >
           <img
             v-if="p.image"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PinFields } from '#shared/mtg/prints'
 import type { PrintOption } from '~/composables/usePrintings'
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { computed, ref, watch } from 'vue'
@@ -7,7 +8,7 @@ import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
 import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
-import { pinFor, pinPrintKey, printKey } from '~/composables/usePrintings'
+import { pinPrintKey, printKey } from '~/composables/usePrintings'
 import { mtgRaw } from '~/composables/useScryfall'
 
 const props = defineProps<{
@@ -128,17 +129,17 @@ const cardKey = computed(() => props.card?.entry.name ?? '')
 // The whole card's name, not the face on show: the back face finds no printings.
 const printsName = computed(() => c.value?.name || props.card?.entry.name || '')
 
-function onPickPrint(p: PrintOption | null) {
+function onPickPrint(p: PrintOption | null, pin: PinFields) {
   // The deck line's own name: a double-faced card is listed by its full name,
   // not by the face on show.
   const name = props.card?.entry.name || englishName.value
-  if (!name || pinnedKey.value === (p ? printKey(p.set, p.collectorNumber, p.lang) : ''))
+  if (!name)
     return
   chosenPrint.value = p
   previewPrint.value = null
   showBack.value = false
-  // A printing in another language than the deck's is pinned "[EN]".
-  emit('setPrinting', { name, ...(p ? pinFor(p, locale.value) : {}) })
+  // The picker built the pin: "[EN]" when the card also exists in the deck's language.
+  emit('setPrinting', { name, ...pin })
 }
 
 // ----- Oracle text: localized keyword chips + typed segments (mana/kw/text) -----

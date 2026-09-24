@@ -70,10 +70,12 @@ describe('pins and languages', () => {
     expect(printKey('lrw', '155', 'fr')).not.toBe(printKey('lrw', '155', 'en'))
   })
 
-  it('marks "[EN]" only a printing in another language than the deck', () => {
-    expect(pinFor(en, 'fr')).toEqual({ set: 'lrw', collectorNumber: '155', lang: 'en' })
-    expect(pinFor(fr, 'fr')).toEqual({ set: 'lrw', collectorNumber: '155' })
-    expect(pinFor(en, 'en')).toEqual({ set: 'lrw', collectorNumber: '155' })
+  it('marks "[EN]" only an English printing of a card that exists in the deck language', () => {
+    expect(pinFor(en, 'fr', [fr, en])).toEqual({ set: 'lrw', collectorNumber: '155', lang: 'en' })
+    expect(pinFor(fr, 'fr', [fr, en])).toEqual({ set: 'lrw', collectorNumber: '155' })
+    expect(pinFor(en, 'en', [fr, en])).toEqual({ set: 'lrw', collectorNumber: '155' })
+    // Printed in English only: it shows in English anyway, no marker needed.
+    expect(pinFor(en, 'fr', [en])).toEqual({ set: 'lrw', collectorNumber: '155' })
   })
 
   it('reads a pin in the deck language unless marked', () => {

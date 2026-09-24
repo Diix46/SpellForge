@@ -14,7 +14,7 @@ const SET_SUFFIX = /[ \t]+\(([a-z0-9]{2,8})\)[ \t]+(\S+)$/i
 const SECTION_HEADERS = /^(?:Deck|Sideboard|Commander|Companion)$/i
 // Our own marker after the suffix: this printing, in English, even on a French
 // deck. Not Arena syntax — text exports drop it (see withoutLangMarkers).
-const LANG_MARKER = /[ \t]+\[EN\]$/i
+const LANG_MARKER = /[ \t]*\[EN\]$/i
 
 export function parseMtgDecklist(raw: string): ParseResult {
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
@@ -99,7 +99,7 @@ export function mtgLine(entry: DeckEntry): string {
  * Moxfield and the rest do not know.
  */
 export function withoutLangMarkers(raw: string): string {
-  return raw.split('\n').map(l => l.replace(LANG_MARKER, '')).join('\n')
+  return raw.split('\n').map(l => l.trimEnd().replace(LANG_MARKER, '')).join('\n')
 }
 
 export const mtgDecklist: DecklistFormat = { parse: parseMtgDecklist, line: mtgLine }

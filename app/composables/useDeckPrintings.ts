@@ -86,19 +86,24 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
   }
   async function step(card: ResolvedCard, dir: 1 | -1) {
     const name = card.entry.name
-    const prints = await printsOf(mtgRaw(card.card)?.name || name, ctx.lang())
+    const lang = ctx.lang()
+    const all = await printsOf(mtgRaw(card.card)?.name || name, lang, lang !== 'en')
+    // Step within the group on show: the deck's language, or — from an "[EN]"
+    // pin — the English printings, so the marker is kept.
+    const pin = pinOf(name)
+    const own = displayable(all, lang)
+    const prints = pin.lang === 'en' && own.length && own[0]!.lang !== 'en' ? all.filter(p => p.lang === 'en') : own
     if (prints.length < 2)
       return
     // The entry's pin first: the resolved card lags behind a step just taken.
-    // A pin this language cannot show (an English one on a French deck) is not
-    // what is on screen: step from the displayed printing instead.
-    const lang = ctx.lang()
+    // A pin this group cannot show is not what is on screen: step from the
+    // displayed printing instead.
     const indexOf = (key: string) => key ? prints.findIndex(p => printKey(p.set, p.collectorNumber, p.lang) === key) : -1
     const c = mtgRaw(card.card)
-    const pinned = indexOf(pinPrintKey(pinOf(name), lang))
+    const pinned = indexOf(pinPrintKey(pin, lang))
     const i = pinned >= 0 ? pinned : indexOf(c ? printKey(c.set, c.collector_number, c.lang) : '')
     const next = prints[i < 0 ? (dir > 0 ? 0 : prints.length - 1) : (i + dir + prints.length) % prints.length]!
-    write([{ name, ...pinFor(next, lang) }])
+    write([{ name, ...pinFor(next, lang, all) }])
     const key = printKey(next.set, next.collectorNumber, next.lang)
     const images = new Map(pendingImages.value)
     images.set(norm(name), { key, image: next.image ?? '' })
@@ -179,7 +184,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
       // actions among what the deck's language shows on its own.
       const pick = pickPrint(mode.kind === 'english' ? all : displayable(all, lang), mode)
       if (pick !== undefined)
-        pins.push({ name: e.name, ...(pick ? pinFor(pick, lang) : {}) })
+        pins.push({ name: e.name, ...(pick ? pinFor(pick, lang, all) : {}) })
     }
     const before = entries.map(e => pinOf(e.name))
     const changed = write(pins)

@@ -51,7 +51,9 @@ describe('magic decklists', () => {
       { quantity: 1, name: 'Forest', set: 'SLD', collectorNumber: '1494★' },
     ])
     expect(r.mainboard.map(mtgLine)).toEqual(['1 Boggart Shenanigans (LRW) 155 [EN]', '1 Sol Ring', '1 Forest (SLD) 1494★'])
-    expect(withoutLangMarkers('1 Boggart Shenanigans (LRW) 155 [EN]\n1 Sol Ring')).toBe('1 Boggart Shenanigans (LRW) 155\n1 Sol Ring')
+    expect(withoutLangMarkers('1 Boggart Shenanigans (LRW) 155 [EN]  \n1 Sol Ring')).toBe('1 Boggart Shenanigans (LRW) 155\n1 Sol Ring')
+    // Typed without the space, the marker still reads.
+    expect(parseMtgDecklist('1 Boggart Shenanigans (LRW) 155[EN]').mainboard[0]).toMatchObject({ set: 'LRW', collectorNumber: '155', lang: 'en' })
   })
 
   it('keeps the companion out of the hundred', () => {
