@@ -1,3 +1,15 @@
+## [0.10.0](https://github.com/Diix46/SpellForge/compare/v0.9.0...v0.10.0) (2026-09-24)
+
+### Features
+
+* **mtg:** servir les cartes françaises recomposées ([c384db0](https://github.com/Diix46/SpellForge/commit/c384db090a15fc44f05c36268f2ec1c38a76a73a))
+* **recompose:** générateur de cartes françaises nettes ([636575c](https://github.com/Diix46/SpellForge/commit/636575cbedce7feeb9e93ca18b75f5b587bb5fc7))
+
+### Bug Fixes
+
+* **mtg:** le choix scans officiels / recomposées tient au rechargement ([f0d2fac](https://github.com/Diix46/SpellForge/commit/f0d2facfd25775de6f880f5efa1c625a413ffe83))
+* **recompose:** ancien cadre, bande du bloc force/endurance ([c10b144](https://github.com/Diix46/SpellForge/commit/c10b144d41384fa5124d4a0709ba45f593962c65))
+
 ## [0.9.0](https://github.com/Diix46/SpellForge/compare/v0.8.0...v0.9.0) (2026-09-24)
 
 ### Features
