@@ -1,3 +1,9 @@
+## [0.11.0](https://github.com/Diix46/SpellForge/compare/v0.10.0...v0.11.0) (2026-09-24)
+
+### Features
+
+* **mtg:** la carte française HD à la demande ([c1f1969](https://github.com/Diix46/SpellForge/commit/c1f1969e1867cb62098823aaa59565c68998f579))
+
 ## [0.10.0](https://github.com/Diix46/SpellForge/compare/v0.9.0...v0.10.0) (2026-09-24)
 
 ### Features
