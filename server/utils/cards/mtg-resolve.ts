@@ -38,16 +38,17 @@ function list(n: number): string {
 }
 
 /**
- * Pinned entries carry an exact printing chosen by the user. Honour it: take
- * its localised version when that has a real image, otherwise the same printing
- * in English. Never another art.
+ * Pinned entries carry an exact printing chosen by the user. In English it is
+ * always honoured. In another language the language wins over the art: the
+ * pinned printing's localised version when it has a real image, otherwise the
+ * entry is left to the by-name pass, which picks the card's best localised
+ * printing — another art. The pinned printing in English is only kept in
+ * `fallback`, for cards that exist in no localised printing at all.
  *
- * DELIBERATE FIX: the client cascade used to "upgrade" a pinned English
- * printing to a different high-resolution one when the pinned scan was low-res,
- * silently replacing the art the user picked — contrary to the documented rule
- * that a pinned printing is never substituted.
+ * Pinning a Secret Lair Blood Moon used to show it in English on a French
+ * deck, although "Lune de sang" exists: players asked for French cards first.
  */
-async function resolvePinned(db: Client, entries: ResolveEntry[], lang: string, found: Map<number, Row>): Promise<void> {
+async function resolvePinned(db: Client, entries: ResolveEntry[], lang: string, found: Map<number, Row>, fallback: Map<number, Row>): Promise<void> {
   const pinned = entries
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => e.set && e.collectorNumber)
@@ -66,9 +67,12 @@ async function resolvePinned(db: Client, entries: ResolveEntry[], lang: string, 
   for (const { e, i } of pinned) {
     const same = rows.filter(r => r.set_code === e.set!.toLowerCase() && r.collector_number === e.collectorNumber)
     const localised = same.find(r => r.lang === lang && r.is_real_image)
-    const pick = localised ?? same.find(r => r.lang === 'en') ?? same[0]
+    const english = same.find(r => r.lang === 'en') ?? same[0]
+    const pick = localised ?? (lang === 'en' ? english : undefined)
     if (pick)
       found.set(i, pick)
+    else if (english)
+      fallback.set(i, english)
     // No match at all (a printing we did not ingest): fall through to by-name.
   }
 }
@@ -148,8 +152,14 @@ async function resolveByName(db: Client, entries: ResolveEntry[], lang: string, 
  */
 export async function resolveEntries(db: Client, entries: ResolveEntry[], lang: string): Promise<ResolvedRow[]> {
   const found = new Map<number, Row>()
-  await resolvePinned(db, entries, lang, found)
+  const pinnedFallback = new Map<number, Row>()
+  await resolvePinned(db, entries, lang, found, pinnedFallback)
   await resolveByName(db, entries, lang, found)
+  // No localised printing anywhere: the pinned art beats an arbitrary English one.
+  for (const [i, row] of pinnedFallback) {
+    if (found.get(i)?.lang !== lang)
+      found.set(i, row)
+  }
 
   const indices = [...found.keys()]
   const shaped = await toScryfallShape(db, indices.map(i => found.get(i)!))

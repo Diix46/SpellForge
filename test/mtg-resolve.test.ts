@@ -31,7 +31,52 @@ withDb('resolveEntries', () => {
     expect(r!.lang).toBe('fr')
   })
 
-  it('never swaps a pinned printing for another art', async () => {
+  it('swaps a pinned English-only printing for a French art', async () => {
+    // Found by query: a pinned printing with no French version, of a card that
+    // has a French printing elsewhere (Secret Lair Blood Moon → "Lune de sang").
+    const { rows } = await db.execute(`
+      SELECT o.name, p.set_code, p.collector_number
+        FROM printings p
+        JOIN oracle_cards o ON o.oracle_id = p.oracle_id
+        JOIN best_printings b ON b.oracle_id = p.oracle_id AND b.lang = 'fr'
+        JOIN printings bp ON bp.id = b.printing_id AND bp.lang = 'fr'
+       WHERE p.lang = 'en' AND o.is_extra = 0
+         AND NOT EXISTS (SELECT 1 FROM printings f
+                          WHERE f.set_code = p.set_code AND f.collector_number = p.collector_number
+                            AND f.lang = 'fr')
+       LIMIT 1`)
+    const pin = rows[0]!
+    const [r] = await resolveEntries(db, [{
+      name: String(pin.name),
+      set: String(pin.set_code),
+      collectorNumber: String(pin.collector_number),
+    }], 'fr')
+    expect(r!.lang).toBe('fr')
+    expect(r!.card?.set).not.toBe(pin.set_code)
+  })
+
+  it('keeps the pinned art when a card exists in no French printing', async () => {
+    const { rows } = await db.execute(`
+      SELECT o.name, p.set_code, p.collector_number
+        FROM printings p
+        JOIN oracle_cards o ON o.oracle_id = p.oracle_id
+        JOIN best_printings b ON b.oracle_id = p.oracle_id AND b.lang = 'fr'
+       WHERE p.lang = 'en' AND p.id <> b.printing_id AND o.is_extra = 0
+         AND NOT EXISTS (SELECT 1 FROM printings f
+                          WHERE f.oracle_id = p.oracle_id AND f.lang = 'fr' AND f.is_real_image = 1)
+       LIMIT 1`)
+    const pin = rows[0]!
+    const [r] = await resolveEntries(db, [{
+      name: String(pin.name),
+      set: String(pin.set_code),
+      collectorNumber: String(pin.collector_number),
+    }], 'fr')
+    expect(r!.lang).toBe('en')
+    expect(r!.card?.set).toBe(pin.set_code)
+    expect(r!.card?.collector_number).toBe(pin.collector_number)
+  })
+
+  it('never swaps a pinned printing for another art in English', async () => {
     // Deliberately pin a printing best_printings would NOT pick — otherwise this
     // test would pass whether or not the pin is honoured.
     const { rows } = await db.execute(`

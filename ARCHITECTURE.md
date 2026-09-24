@@ -169,7 +169,7 @@ into the bundle: libsql loads it by a computed name the build trace cannot follo
 | `mtg-query.ts` | The search engine. Colour tests are integer masks (`id<=` → `(mask & ~allowed) = 0`, `color>=` → `(mask & wanted) = wanted`). Sorting reads the non-null `*_sort` columns: an `IS NULL` guard at the head of `ORDER BY` defeats every index. A `WITH page AS (…)` CTE filters, sorts and pages `oracle_cards` **before** joining `best_printings` (otherwise SQLite scanned all of `best_printings`). Also builds the autocomplete, pinned-printing, prints and coach queries. Always applies `legal_commander = 1`, `is_funny = 0`, `is_extra = 0`. |
 | `mtg-syntax.ts` | Scryfall query syntax → one SQL `WHERE` fragment, ANDed with the builder's filters. Tokenizer + parser (`or`, parentheses, `-` negation) + per-keyword handlers. Any filter it cannot honour throws `QuerySyntaxError` with a code (`unknownKeyword`, `unsupportedKeyword`, `badValue`, `badOperator`, `unbalanced`, `tooComplex`) and the offending term — never a silent no-op. Display options (`unique:`, `lang:`, `dir:`…) are ignored; `order:` overrides the requested sort. Printing terms (`s:`, `r:`, `a:`, `year:`, `is:promo`…) are all evaluated on **one** printing, of English printings. Power, toughness, loyalty and mana cost are tested per face. Known departures are listed in the module header. |
 | `mtg-shape.ts` | Rebuilds the Scryfall JSON shape the client consumes (`image_uris` / `card_faces`, colours from masks, `all_parts` tokens, `prices.eur`) from local rows. Image URLs point at the local image route. |
-| `mtg-resolve.ts` | Deck resolution: pinned `(SET) NUM` printings first (their own localised version, else the same printing in English — never another art), then by name through `best_printings`. `resolveCardsByName` serves the coach and AI validation. |
+| `mtg-resolve.ts` | Deck resolution: pinned `(SET) NUM` printings first (their own localised version; in English always the pinned art; in FR, a pin with no FR version falls back to the card's best FR printing — another art — and keeps the pinned English art only when no FR printing exists), then by name through `best_printings`. `resolveCardsByName` serves the coach and AI validation. |
 | `browse-params.ts` | Allowlists and bounds every `/api/cards/browse` query parameter. An absent `identity` means "no constraint"; a present one, even colourless, is a filter. |
 | `text.ts` | `fold` (accent-insensitive key), `ftsPhrase`, `likeContains` — shared by the engine and the syntax compiler. |
 
@@ -257,8 +257,9 @@ end; there is no polymorphic card provider (plan.md §6 ter).
 4. **Prices**: only ~2 % of French printings carry an EUR price. `prices.eur` is the printing's
    own price, else the card's cheapest (`min_price_eur`). The budget filter and `eur:` always
    use the cheapest printing, never the displayed one.
-5. **Pinned printings** round-trip as the Arena `(SET) NUM` suffix; in FR, a pinned print only
-   resolves to *its own* FR version, never a substitute art.
+5. **Pinned printings** round-trip as the Arena `(SET) NUM` suffix. In FR the language wins over
+   the art: a pin without its own FR version shows the card's best FR printing instead, and stays
+   in English only when the card has no FR printing with a real image.
 6. **A search filter is honoured or refused.** `mtg-syntax.ts` throws on anything it cannot
    evaluate; `/api/cards/browse` turns that into a 400 with `{ code, term }`, the coach tool
    into an error message for the model. Never drop a filter silently.
