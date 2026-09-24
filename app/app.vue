@@ -63,7 +63,7 @@ function toggleTheme() {
 // Browser chrome (mobile address bar) follows the active theme. The document
 // language follows the site locale (reactive — switches with the FR/EN toggle).
 // The universe re-themes the whole document (assets/css/universes.css).
-const THEME_COLOR = { optcg: '#efdfc0', mtg: '#07060b' } as const
+const THEME_COLOR = { optcg: '#efdfc0', mtg: '#f7f7f5' } as const
 useHead({
   htmlAttrs: {
     'lang': () => locale.value,

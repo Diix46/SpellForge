@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+/* Mana symbols as printed on the cards (Andrew Gioia's Mana, OFL): a subset of
+   the glyphs, used by ManaSymbol. */
+@font-face {
+  font-family: 'Mana';
+  src: url('/fonts/mana.woff2') format('woff2');
+  font-display: block;
+}
+
 @theme static {
   /* ============ FONTS (families resolved by @nuxt/fonts) ============ */
   /* Modern-SaaS redesign: Geist is the primary type system. --font-display now

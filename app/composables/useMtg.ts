@@ -371,10 +371,18 @@ export function displayType(card: ScryfallCard | null, isFr: boolean, face?: Fac
 /** Localized oracle text. */
 export function displayOracle(card: ScryfallCard | null, isFr: boolean, face?: Face | null): string {
   if (face)
-    return (isFr ? face.printed_text ?? face.oracle_text : face.oracle_text ?? face.printed_text) ?? ''
+    return (isFr ? face.printed_text ?? frenchFallback(face.oracle_text) : face.oracle_text ?? face.printed_text) ?? ''
   if (!card)
     return ''
-  return (isFr ? card.printed_text ?? card.oracle_text : card.oracle_text ?? card.printed_text) ?? ''
+  return (isFr ? card.printed_text ?? frenchFallback(card.oracle_text) : card.oracle_text ?? card.printed_text) ?? ''
+}
+
+// Scryfall has no French text for the basic lands: their one line, as printed
+// on the French cards, rather than the English one.
+const BASIC_MANA = /^\(\{T\}: Add (\{[WUBRGC]\})\.\)$/
+function frenchFallback(oracle: string | undefined): string | undefined {
+  const m = oracle && BASIC_MANA.exec(oracle)
+  return m ? `({T} : Ajoutez ${m[1]}.)` : oracle
 }
 
 /** Always-English type line (stable for classification), front-face aware. */

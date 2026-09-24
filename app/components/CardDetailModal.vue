@@ -156,6 +156,16 @@ function onPickPrint(p: PrintOption | null, pin: PinFields) {
 // ("[HD]") and the card comes back re-resolved; until then, and in the library
 // where nothing is saved, the HD image shows at once.
 const hdAvailable = computed(() => !!c.value?.recomposable)
+// Shown on every card; when there is nothing to make, the button says why.
+const hdUnavailable = computed(() => {
+  if (hdAvailable.value || c.value?.recomposed)
+    return ''
+  if (c.value?.lang !== 'fr')
+    return t('recomposed.notFrench')
+  if (c.value?.image_status === 'highres_scan')
+    return t('recomposed.alreadySharp')
+  return t('recomposed.notYet')
+})
 const hdShown = computed(() => !shownPrint.value && (!!c.value?.recomposed || (hdLocal.value && hdAvailable.value)))
 
 function setHd(on: boolean) {
@@ -216,18 +226,23 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
           </div>
 
           <button
-            v-if="hdAvailable && !shownPrint"
+            v-if="c"
             type="button"
-            class="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border py-2 text-sm transition-colors"
+            class="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-55"
             :class="hdShown
               ? 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:text-(--accent-text)'
-              : 'border-(--accent-border) bg-(--accent-soft) text-(--accent-text) hover:bg-[rgba(var(--accent-rgb),0.28)]'"
-            :title="t('recomposed.explain')"
+              : 'border-(--accent-border) bg-(--accent-soft) text-(--accent-text) enabled:hover:bg-[rgba(var(--accent-rgb),0.28)]'"
+            :disabled="!!hdUnavailable || !!shownPrint"
+            :title="hdUnavailable || t('recomposed.explain')"
+            :aria-describedby="hdUnavailable ? 'hd-why' : undefined"
             @click="setHd(!hdShown)"
           >
             <UIcon :name="hdShown ? 'i-lucide-scan' : 'i-lucide-sparkles'" class="h-4 w-4" />
             {{ hdShown ? t('recomposed.backToScan') : t('recomposed.generate') }}
           </button>
+          <p v-if="hdUnavailable" id="hd-why" class="mt-1 text-center text-[11px] text-(--color-text-muted)">
+            {{ hdUnavailable }}
+          </p>
 
           <button
             v-if="isDfc"

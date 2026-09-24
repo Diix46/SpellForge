@@ -24,7 +24,7 @@ import { isCardWithinIdentity } from '~/utils/mtgValidation'
 // the page transition fixes it — the deck opens reliably on client navigation.
 //
 // Magic lives at night: the universe and its forced dark mode are page meta.
-definePageMeta({ pageTransition: false, universe: 'mtg', colorMode: 'dark' })
+definePageMeta({ pageTransition: false, universe: 'mtg', colorMode: 'light' })
 const route = useRoute()
 const router = useRouter()
 const deckId = computed(() => route.params.id as string)

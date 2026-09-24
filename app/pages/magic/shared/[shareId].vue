@@ -9,7 +9,7 @@ import { useManaIdentity } from '~/composables/useManaIdentity'
 import { useScryfall } from '~/composables/useScryfall'
 
 // A shared Magic deck, read-only, at night like the rest of Magic.
-definePageMeta({ universe: 'mtg', colorMode: 'dark' })
+definePageMeta({ universe: 'mtg', colorMode: 'light' })
 
 const route = useRoute()
 const shareId = computed(() => route.params.shareId as string)

@@ -11,7 +11,7 @@ import { mtgRaw } from '~/composables/useScryfall'
 
 // One Magic card, on its own page: rendered by the server so it can be found
 // and shared. Addressed by its English name, in the site language's printing.
-definePageMeta({ universe: 'mtg', colorMode: 'dark' })
+definePageMeta({ universe: 'mtg', colorMode: 'light' })
 
 const route = useRoute()
 const { t, locale, isFr, rarityLabel } = useLocale()
