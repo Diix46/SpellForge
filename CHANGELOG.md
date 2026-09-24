@@ -1,3 +1,14 @@
+## [0.7.0](https://github.com/Diix46/SpellForge/compare/v0.6.2...v0.7.0) (2026-09-24)
+
+### Features
+
+* **mtg:** choisir une illustration en un clic, avec prévisualisation ([6a8e6e1](https://github.com/Diix46/SpellForge/commit/6a8e6e135fe65e88e3b349968d2aa23b0bd1fa83))
+* **mtg:** impressions en lot, qualité du scan et choix d'illustration par deck ([b1ee2f9](https://github.com/Diix46/SpellForge/commit/b1ee2f9cca3d3a977b2452aab396c0459bebff06))
+
+### Bug Fixes
+
+* **mtg:** retours de revue sur le choix d'illustration ([abf7cbe](https://github.com/Diix46/SpellForge/commit/abf7cbe97fc450005bb1cfd14e7eaa68c74b8d66))
+
 ## [0.6.2](https://github.com/Diix46/SpellForge/compare/v0.6.1...v0.6.2) (2026-09-24)
 
 ### Bug Fixes
