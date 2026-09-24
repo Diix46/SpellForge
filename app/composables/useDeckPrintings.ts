@@ -7,7 +7,7 @@ import { displayable, pickPrint, pinFor, pinPrintKey, printKey, samePin, setCove
 import { usePrintings } from '~/composables/usePrintings'
 import { mtgRaw } from '~/composables/useScryfall'
 
-interface Pin { name: string, set?: string, collectorNumber?: string, lang?: 'en' }
+interface Pin { name: string, set?: string, collectorNumber?: string, lang?: 'en', hd?: true }
 
 interface DeckPrintingsCtx {
   /** The builder's working entries (their set/number are the pins). */
@@ -34,7 +34,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
 
   function pinOf(name: string): Pin {
     const e = ctx.entries().find(x => norm(x.name) === norm(name))
-    return { name, set: e?.set, collectorNumber: e?.collectorNumber, lang: e?.lang }
+    return { name, set: e?.set, collectorNumber: e?.collectorNumber, lang: e?.lang, ...(e?.hd ? { hd: true as const } : {}) }
   }
 
   function write(pins: Pin[]): number {
@@ -54,7 +54,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
       return
     toast.add({
       title: p.set ? ctx.t('toast.printSet') : ctx.t('toast.printAuto'),
-      description: p.set ? `${p.set.toUpperCase()} #${p.collectorNumber}${p.lang === 'en' ? ' · EN' : ''}` : undefined,
+      description: p.set ? `${p.set.toUpperCase()} #${p.collectorNumber}${p.lang === 'en' ? ' · EN' : ''}${p.hd ? ' · HD' : ''}` : (p.hd ? 'HD' : undefined),
       icon: 'i-lucide-layers',
       color: 'success',
       actions: [{ label: ctx.t('build.undo'), onClick: () => { write([before]) } }],
@@ -175,6 +175,18 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
 
   async function applyBulk(mode: BulkArtMode) {
     const entries = ctx.entries()
+    if (mode.kind === 'hd') {
+      // Every card the deck shows in a French printing that has a sharp
+      // version: same printing, "[HD]". The resolved card knows (recomposable).
+      const recomposable = new Set(ctx.resolvedCards.value
+        .filter(rc => mtgRaw(rc.card)?.recomposable || mtgRaw(rc.card)?.recomposed)
+        .map(rc => norm(rc.entry.name)))
+      const before = entries.map(e => pinOf(e.name))
+      const changed = write(entries.filter(e => recomposable.has(norm(e.name)))
+        .map(e => ({ name: e.name, set: e.set, collectorNumber: e.collectorNumber, hd: true as const })))
+      bulkToast(changed, before)
+      return
+    }
     if (mode.kind !== 'auto') {
       await loadDeckPrints()
       if (!deckPrints.value)
@@ -195,7 +207,10 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
         pins.push({ name: e.name, ...(pick ? pinFor(pick, lang, all) : {}) })
     }
     const before = entries.map(e => pinOf(e.name))
-    const changed = write(pins)
+    bulkToast(write(pins), before)
+  }
+
+  function bulkToast(changed: number, before: Pin[]) {
     if (!changed) {
       toast.add({ title: ctx.t('print.bulk.none'), icon: 'i-lucide-layers', color: 'neutral' })
       return

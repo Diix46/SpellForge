@@ -4,7 +4,8 @@ import { computed, ref } from 'vue'
 import { useLocale } from '~/composables/useLocale'
 
 // Deck-wide artwork actions in the preview overlay: back to automatic, all retro,
-// all newest, all in English (sharp scans, pinned "[EN]"), or one set for every
+// all newest, all in English (sharp scans, pinned "[EN]"), all in French HD
+// (the recomposed cards, "[HD]"), or one set for every
 // card that has a printing in it. Themes pin one look (full-art, borderless,
 // old frame…) or one artist on every card that has it, in the deck's language
 // first, in English otherwise. The sets are
@@ -23,7 +24,7 @@ const emit = defineEmits<{
   load: []
 }>()
 
-const { t } = useLocale()
+const { t, isFr } = useLocale()
 
 const chosenSet = ref<string | undefined>()
 const chosenTheme = ref<string | undefined>()
@@ -72,6 +73,9 @@ const setItems = computed(() => props.sets.map(s => ({
       </UButton>
       <UButton size="xs" color="neutral" variant="subtle" icon="i-lucide-languages" :loading="loading" :title="t('print.bulk.englishTitle')" @click="emit('apply', { kind: 'english' })">
         {{ t('print.bulk.english') }}
+      </UButton>
+      <UButton v-if="isFr" size="xs" color="neutral" variant="subtle" icon="i-lucide-sparkles" :title="t('print.bulk.hdTitle')" @click="emit('apply', { kind: 'hd' })">
+        {{ t('print.bulk.hd') }}
       </UButton>
     </div>
 

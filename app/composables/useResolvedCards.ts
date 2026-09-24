@@ -69,7 +69,7 @@ export function useResolvedCards(ctx: ResolvedCardsCtx) {
   // be reached for is never kept: the next load asks again.
   const cache = new Map<string, ResolvedCard>()
   const CACHE_MAX = 3000
-  const keyOf = (e: DeckEntry, l: string) => `${l}|${e.name.trim().toLowerCase()}|${e.set ?? ''}|${e.collectorNumber ?? ''}|${e.lang ?? ''}`
+  const keyOf = (e: DeckEntry, l: string) => `${l}|${e.name.trim().toLowerCase()}|${e.set ?? ''}|${e.collectorNumber ?? ''}|${e.lang ?? ''}|${e.hd ? 'hd' : ''}`
   function remember(key: string, rc: ResolvedCard) {
     if (rc.transient)
       return

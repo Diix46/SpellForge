@@ -8,7 +8,6 @@
  */
 import { useMtgCardsDb } from '../../utils/cards/db'
 import { resolveEntries } from '../../utils/cards/mtg-resolve'
-import { wantsRecomposed } from '../../utils/images/recomposed'
 
 // A Commander deck is 100 cards; leave room for a sideboard and maybeboard.
 const MAX_ENTRIES = 250
@@ -18,6 +17,7 @@ interface EntryInput {
   set?: unknown
   collectorNumber?: unknown
   lang?: unknown
+  hd?: unknown
 }
 
 function isValid(e: EntryInput | null | undefined): boolean {
@@ -26,6 +26,7 @@ function isValid(e: EntryInput | null | undefined): boolean {
     && (e.set == null || typeof e.set === 'string')
     && (e.collectorNumber == null || typeof e.collectorNumber === 'string')
     && (e.lang == null || e.lang === 'en')
+    && (e.hd == null || typeof e.hd === 'boolean')
 }
 
 export default defineEventHandler(async (event) => {
@@ -44,8 +45,9 @@ export default defineEventHandler(async (event) => {
     set: (e.set as string | undefined) ?? null,
     collectorNumber: (e.collectorNumber as string | undefined) ?? null,
     lang: e.lang === 'en' ? 'en' as const : null,
+    hd: e.hd === true,
   }))
   const lang = body?.lang === 'fr' ? 'fr' : 'en'
 
-  return { cards: await resolveEntries(useMtgCardsDb(), entries, lang, { recomposed: wantsRecomposed(event) }) }
+  return { cards: await resolveEntries(useMtgCardsDb(), entries, lang) }
 })

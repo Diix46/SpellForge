@@ -9,7 +9,6 @@ import { useLocale } from '~/composables/useLocale'
 import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
 import { pinPrintKey, printKey } from '~/composables/usePrintings'
-import { useScanPreference } from '~/composables/useScanPreference'
 import { mtgRaw } from '~/composables/useScryfall'
 
 const props = defineProps<{
@@ -26,7 +25,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
   'setCommander': [card: ResolvedCard]
   /** No set/number: back to the automatic printing. */
-  'setPrinting': [payload: { name: string, set?: string, collectorNumber?: string, lang?: 'en' }]
+  'setPrinting': [payload: { name: string, set?: string, collectorNumber?: string, lang?: 'en', hd?: true }]
 }>()
 
 const { t, rarityLabel, isFr, locale } = useLocale()
@@ -46,6 +45,12 @@ watch(() => props.card, () => {
   previewPrint.value = null
   chosenPrint.value = undefined
 })
+// The sharp French card asked for (see setHd below), shown before the deck
+// re-resolves, or as the library's preview.
+const hdLocal = ref(false)
+watch(() => props.card, () => {
+  hdLocal.value = false
+})
 // The printing the modal shows in place of the resolved card, if any.
 const shownPrint = computed(() => previewPrint.value ?? chosenPrint.value ?? null)
 
@@ -57,6 +62,9 @@ const isDfc = computed(() => !!props.card?.backImageUrl)
 const displayImage = computed(() => {
   if (shownPrint.value)
     return shownPrint.value.imageLarge ?? shownPrint.value.image
+  // Asked for, not re-resolved yet (or the library's preview): the HD card now.
+  if (hdLocal.value && c.value?.recomposed_image && !c.value.recomposed)
+    return c.value.recomposed_image
   if (showBack.value && props.card?.backImageUrl)
     return props.card.backImageUrl
   return props.card?.imageUrl ?? null
@@ -143,9 +151,21 @@ function onPickPrint(p: PrintOption | null, pin: PinFields) {
   emit('setPrinting', { name, ...pin })
 }
 
-// ----- Recomposed French card (scripts/recompose) or official scan -----
-const { official, setOfficial } = useScanPreference()
-const recomposed = computed(() => shownPrint.value ? !!shownPrint.value.recomposed : !!c.value?.recomposed)
+// ----- The sharp French card (scripts/recompose), on demand -----
+// Scryfall's scan is the default. In a deck the choice is saved on the line
+// ("[HD]") and the card comes back re-resolved; until then, and in the library
+// where nothing is saved, the HD image shows at once.
+const hdAvailable = computed(() => !!c.value?.recomposable)
+const hdShown = computed(() => !shownPrint.value && (!!c.value?.recomposed || (hdLocal.value && hdAvailable.value)))
+
+function setHd(on: boolean) {
+  hdLocal.value = on
+  const e = props.card?.entry
+  if (props.library || !props.inDeck || !e)
+    return
+  // The printing stays as pinned (or automatic); "[HD]" and "[EN]" exclude each other.
+  emit('setPrinting', { name: e.name, set: e.set, collectorNumber: e.collectorNumber, ...(on ? { hd: true as const } : {}) })
+}
 
 // ----- Oracle text: localized keyword chips + typed segments (mana/kw/text) -----
 const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
@@ -194,6 +214,20 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
               class="h-10 w-10"
             />
           </div>
+
+          <button
+            v-if="hdAvailable && !shownPrint"
+            type="button"
+            class="mt-3 flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border py-2 text-sm transition-colors"
+            :class="hdShown
+              ? 'border-(--color-border-strong) text-(--color-text-mid) hover:border-(--accent-border) hover:text-(--accent-text)'
+              : 'border-(--accent-border) bg-(--accent-soft) text-(--accent-text) hover:bg-[rgba(var(--accent-rgb),0.28)]'"
+            :title="t('recomposed.explain')"
+            @click="setHd(!hdShown)"
+          >
+            <UIcon :name="hdShown ? 'i-lucide-scan' : 'i-lucide-sparkles'" class="h-4 w-4" />
+            {{ hdShown ? t('recomposed.backToScan') : t('recomposed.generate') }}
+          </button>
 
           <button
             v-if="isDfc"
@@ -248,33 +282,14 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
             >
               {{ card.lang.toUpperCase() }}
             </span>
-            <UPopover v-if="recomposed" :content="{ side: 'bottom' }">
-              <button
-                type="button"
-                class="flex items-center gap-1 rounded-full bg-(--color-surface-2) px-2.5 py-1 text-xs text-(--color-text-mid) hover:text-(--color-text-high)"
-              >
-                <UIcon name="i-lucide-sparkles" class="h-3 w-3 text-(--accent-text)" />
-                {{ t('recomposed.badge') }}
-              </button>
-              <template #content>
-                <div class="max-w-72 space-y-2 p-3 text-xs text-(--color-text-mid)">
-                  <p>{{ t('recomposed.explain') }}</p>
-                  <UButton size="xs" color="neutral" variant="subtle" icon="i-lucide-scan" @click="setOfficial(true)">
-                    {{ t('recomposed.showOfficial') }}
-                  </UButton>
-                </div>
-              </template>
-            </UPopover>
-            <button
-              v-else-if="official && card.lang === 'fr'"
-              type="button"
-              class="flex items-center gap-1 rounded-full bg-(--color-surface-2) px-2.5 py-1 text-xs text-(--color-text-muted) hover:text-(--accent-text)"
+            <span
+              v-if="hdShown"
+              class="flex items-center gap-1 rounded-full bg-(--color-surface-2) px-2.5 py-1 text-xs text-(--color-text-mid)"
               :title="t('recomposed.explain')"
-              @click="setOfficial(false)"
             >
-              <UIcon name="i-lucide-sparkles" class="h-3 w-3" />
-              {{ t('recomposed.showRecomposed') }}
-            </button>
+              <UIcon name="i-lucide-sparkles" class="h-3 w-3 text-(--accent-text)" />
+              {{ t('recomposed.badge') }}
+            </span>
             <span
               v-if="card.entry.quantity > 1"
               class="rounded-full bg-(--color-surface-2) px-2.5 py-1 font-mono text-xs text-(--color-text-mid)"

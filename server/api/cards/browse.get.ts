@@ -13,7 +13,6 @@ import { useMtgCardsDb } from '../../utils/cards/db'
 import { buildCardQuery, PAGE_SIZE } from '../../utils/cards/mtg-query'
 import { toScryfallShape } from '../../utils/cards/mtg-shape'
 import { QuerySyntaxError } from '../../utils/cards/mtg-syntax'
-import { wantsRecomposed } from '../../utils/images/recomposed'
 
 function build(...params: Parameters<typeof buildCardQuery>) {
   try {
@@ -42,6 +41,6 @@ export default defineEventHandler(async (event) => {
   return {
     total,
     hasMore: page * PAGE_SIZE < total,
-    cards: await toScryfallShape(db, result.rows, { recomposed: wantsRecomposed(event) }),
+    cards: await toScryfallShape(db, result.rows),
   }
 })

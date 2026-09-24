@@ -40,8 +40,8 @@ export interface PrintOption {
   artist: string | null
   /** Full-art, borderless, showcase… — empty for a regular frame. */
   styles: ArtStyle[]
-  /** A sharp French card made from the English scan (scripts/recompose). */
-  recomposed?: boolean
+  /** A sharp French card exists for it (scripts/recompose), on demand. */
+  recomposable?: boolean
 }
 
 /**
@@ -52,11 +52,12 @@ export function printKey(set: string, collectorNumber: string, lang: string): st
   return `${set.toLowerCase()}/${collectorNumber}@${lang}`
 }
 
-/** A pin as the decklist stores it: `(SET) NUM`, plus "[EN]" (`lang: 'en'`). */
+/** A pin as the decklist stores it: `(SET) NUM`, plus "[EN]" (`lang: 'en'`) or "[HD]" (`hd`). */
 export interface PinFields {
   set?: string
   collectorNumber?: string
   lang?: 'en'
+  hd?: true
 }
 
 /** The same pin as written in the list (set codes compare in any case). */
@@ -64,6 +65,7 @@ export function samePin(a: PinFields, b: PinFields): boolean {
   return (a.set ?? '').toLowerCase() === (b.set ?? '').toLowerCase()
     && (a.collectorNumber ?? '') === (b.collectorNumber ?? '')
     && (a.lang ?? '') === (b.lang ?? '')
+    && !!a.hd === !!b.hd
 }
 
 /**
@@ -109,6 +111,7 @@ export type BulkArtMode
     | { kind: 'english' }
     | { kind: 'style', style: ArtStyle }
     | { kind: 'artist', artist: string }
+    | { kind: 'hd' }
 
 // Promos (prerelease stamps, buy-a-box…) only when a card has nothing else: a
 // "newest" deck should not turn into a wall of stamped foils.

@@ -52,6 +52,14 @@ describe('magic decklists', () => {
     ])
     expect(r.mainboard.map(mtgLine)).toEqual(['1 Boggart Shenanigans (LRW) 155 [EN]', '1 Sol Ring', '1 Forest (SLD) 1494★'])
     expect(withoutLangMarkers('1 Boggart Shenanigans (LRW) 155 [EN]  \n1 Sol Ring')).toBe('1 Boggart Shenanigans (LRW) 155\n1 Sol Ring')
+    // "[HD]": the recomposed French card, with or without a pinned printing.
+    const hd = parseMtgDecklist(['1 Krenko, Mob Boss (FDN) 204 [HD]', '1 Sol Ring [hd]'].join('\n')).mainboard
+    expect(hd).toEqual([
+      { quantity: 1, name: 'Krenko, Mob Boss', set: 'FDN', collectorNumber: '204', hd: true },
+      { quantity: 1, name: 'Sol Ring', set: undefined, collectorNumber: undefined, hd: true },
+    ])
+    expect(hd.map(mtgLine)).toEqual(['1 Krenko, Mob Boss (FDN) 204 [HD]', '1 Sol Ring [HD]'])
+    expect(withoutLangMarkers('1 Sol Ring [HD]')).toBe('1 Sol Ring')
     // Typed without the space, the marker still reads.
     expect(parseMtgDecklist('1 Boggart Shenanigans (LRW) 155[EN]').mainboard[0]).toMatchObject({ set: 'LRW', collectorNumber: '155', lang: 'en' })
   })
