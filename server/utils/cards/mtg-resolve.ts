@@ -9,7 +9,6 @@
  * printing to show in which language) was settled at ingest in `best_printings`.
  */
 import type { Client } from '@libsql/client'
-import type { ShapeOptions } from './mtg-shape'
 import { toScryfallShape } from './mtg-shape'
 import { fold } from './text'
 
@@ -21,6 +20,8 @@ export interface ResolveEntry {
   collectorNumber?: string | null
   /** 'en': the pinned printing is wanted in English, whatever the deck's language. */
   lang?: 'en' | null
+  /** The recomposed French card, when there is one ("[HD]"). */
+  hd?: boolean | null
 }
 
 export interface ResolvedRow {
@@ -159,7 +160,7 @@ async function resolveByName(db: Client, entries: ResolveEntry[], lang: string, 
  * Resolve every entry, preserving input order. Unmatched entries come back with
  * `card: null` and the same error message the client used to produce.
  */
-export async function resolveEntries(db: Client, entries: ResolveEntry[], lang: string, shape: ShapeOptions = {}): Promise<ResolvedRow[]> {
+export async function resolveEntries(db: Client, entries: ResolveEntry[], lang: string): Promise<ResolvedRow[]> {
   const found = new Map<number, Row>()
   const pinnedFallback = new Map<number, Row>()
   await resolvePinned(db, entries, lang, found, pinnedFallback)
@@ -171,7 +172,7 @@ export async function resolveEntries(db: Client, entries: ResolveEntry[], lang: 
   }
 
   const indices = [...found.keys()]
-  const shaped = await toScryfallShape(db, indices.map(i => found.get(i)!), shape)
+  const shaped = await toScryfallShape(db, indices.map(i => found.get(i)!), { hd: indices.map(i => !!entries[i]!.hd) })
   const cardAt = new Map(indices.map((i, k) => [i, shaped[k]!]))
 
   return entries.map((entry, i) => {

@@ -87,8 +87,11 @@ async function group(db: Client, sql: string, ids: string[], key: string): Promi
  * batch, never per card.
  */
 export interface ShapeOptions {
-  /** Point French printings at their recomposed image when there is one (default). */
-  recomposed?: boolean
+  /**
+   * Per row: show the recomposed French card when there is one ("[HD]" on the
+   * deck line). Without it, Scryfall's scan.
+   */
+  hd?: readonly boolean[]
 }
 
 export async function toScryfallShape(db: Client, rows: Row[], opts: ShapeOptions = {}): Promise<Row[]> {
@@ -101,7 +104,7 @@ export async function toScryfallShape(db: Client, rows: Row[], opts: ShapeOption
   const facesBy = await group(db, `SELECT * FROM card_faces WHERE printing_id IN (?#) ORDER BY printing_id, face_index`, printingIds, 'printing_id')
   const partsBy = await group(db, `SELECT oracle_id, related_name FROM card_parts WHERE oracle_id IN (?#)`, oracleIds, 'oracle_id')
 
-  return rows.map((r) => {
+  return rows.map((r, index) => {
     const id = String(r.printing_id)
     const faces = facesBy.get(id) ?? []
     const parts = partsBy.get(String(r.oracle_id)) ?? []
@@ -145,10 +148,16 @@ export async function toScryfallShape(db: Client, rows: Row[], opts: ShapeOption
     }
 
     if (!perFace) {
-      // Only single-faced French printings are recomposed.
-      const recomposed = opts.recomposed !== false && r.lang === 'fr' && isRecomposed(id)
-      card.image_uris = imageUris('front', id, r.img_version, recomposed)
-      if (recomposed)
+      // Only single-faced French printings are recomposed; shown when asked.
+      const recomposable = r.lang === 'fr' && isRecomposed(id)
+      const hd = recomposable && !!opts.hd?.[index]
+      card.image_uris = imageUris('front', id, r.img_version, hd)
+      if (recomposable) {
+        card.recomposable = true
+        // For a preview outside a deck (the library): the HD card, not pinned.
+        card.recomposed_image = imageUrl('large', 'front', id, r.img_version, undefined, true)
+      }
+      if (hd)
         card.recomposed = true
     }
 

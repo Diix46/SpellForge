@@ -101,7 +101,7 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
    * change is one undo step. Cards not in the deck are skipped; returns how
    * many entries changed.
    */
-  function setPrintings(pins: { name: string, set?: string, collectorNumber?: string, lang?: 'en' }[]): number {
+  function setPrintings(pins: { name: string, set?: string, collectorNumber?: string, lang?: 'en', hd?: true }[]): number {
     let changed = 0
     for (const p of pins) {
       const entry = entries.value[findIndex(p.name)]
@@ -115,6 +115,10 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
         entry.lang = p.lang
       else
         delete entry.lang
+      if (p.hd)
+        entry.hd = true
+      else
+        delete entry.hd
       changed++
     }
     if (changed)

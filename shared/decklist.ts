@@ -19,6 +19,12 @@ export interface DeckEntry {
    * in French whenever it exists in French.
    */
   lang?: 'en'
+  /**
+   * Magic: show the recomposed French card (scripts/recompose), sharp, instead
+   * of Scryfall's low-resolution French scan — a " [HD]" marker, with or
+   * without a pinned printing. Asked for card by card; the scan stays the default.
+   */
+  hd?: true
   /** One Piece: a pinned art, "OP01-016_p1". */
   art?: string
 }

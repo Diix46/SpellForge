@@ -26,7 +26,7 @@ const title = computed(() => [
   `${props.print.setName} · #${props.print.collectorNumber}`,
   props.print.artist ?? '',
   props.print.priceEur ? `${props.print.priceEur} €` : '',
-  props.print.recomposed ? t('recomposed.badge') : props.print.highres ? '' : t('print.lowres'),
+  props.print.highres ? '' : t('print.lowres'),
 ].filter(Boolean).join(' · '))
 </script>
 
@@ -68,14 +68,7 @@ const title = computed(() => [
       <UIcon name="i-lucide-pin" class="h-2.5 w-2.5" />
     </span>
     <span
-      v-if="print.recomposed"
-      class="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-black/70 text-(--accent-text)"
-      aria-hidden="true"
-    >
-      <UIcon name="i-lucide-sparkles" class="h-2.5 w-2.5" />
-    </span>
-    <span
-      v-else-if="!print.highres"
+      v-if="!print.highres"
       class="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-black/70 text-amber-300"
       aria-hidden="true"
     >

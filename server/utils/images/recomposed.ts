@@ -5,13 +5,13 @@
  *
  * One 745x1040 JPEG per French printing id sits in RECOMPOSED_DIR; the other
  * sizes and the 320 px WebP are derived on first request and kept beside it.
- * Cards and printings point at them with an `r` query parameter, so their
- * browser cache stays apart from the official scan's.
+ * Cards point at them with an `r` query parameter, so their browser cache
+ * stays apart from the official scan's.
  *
- * A viewer who prefers the official scans says so with the `prism_scans`
- * cookie (`official`): the API then leaves `r` out.
+ * Scryfall's scan stays the default: a card shows its recomposed version only
+ * when its deck line asks for it ("[HD]"), and says it has one otherwise
+ * (`recomposable`), so the player can ask.
  */
-import type { H3Event } from 'h3'
 import type { Buffer } from 'node:buffer'
 import { mkdirSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -21,7 +21,6 @@ import { hasFile, loadSharp, THUMB_WIDTH } from './thumbnail'
 export const RECOMPOSED_DIR = resolve('.data/images/mtg/recomposed')
 /** Bump when the images are regenerated: a new `r` is a new cached URL. */
 export const RECOMPOSED_VERSION = '1'
-export const SCANS_COOKIE = 'prism_scans'
 
 // Sizes the image route derives, as Scryfall sizes them.
 const DERIVED: Record<string, [number, number] | null> = {
@@ -50,11 +49,6 @@ export function recomposedIds(): Set<string> {
 
 export function isRecomposed(id: string): boolean {
   return recomposedIds().has(id)
-}
-
-/** The viewer wants recomposed images unless the cookie asks for the official scans. */
-export function wantsRecomposed(event: H3Event): boolean {
-  return getCookie(event, SCANS_COOKIE) !== 'official'
 }
 
 /**

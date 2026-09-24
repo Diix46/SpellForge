@@ -12,9 +12,10 @@ const QTY_LINE = /^(\d+)[ \t]+(\S.*)$/
 // a digit counts. Set codes are read in any case and written in capitals.
 const SET_SUFFIX = /[ \t]+\(([a-z0-9]{2,8})\)[ \t]+(\S+)$/i
 const SECTION_HEADERS = /^(?:Deck|Sideboard|Commander|Companion)$/i
-// Our own marker after the suffix: this printing, in English, even on a French
-// deck. Not Arena syntax — text exports drop it (see withoutLangMarkers).
-const LANG_MARKER = /[ \t]*\[EN\]$/i
+// Our own markers after the suffix: "[EN]" this printing in English even on a
+// French deck, "[HD]" the recomposed French card. Not Arena syntax — text
+// exports drop them (see withoutLangMarkers).
+const LANG_MARKER = /[ \t]*\[(EN|HD)\]$/i
 
 export function parseMtgDecklist(raw: string): ParseResult {
   const lines = raw.split('\n').map(l => l.trim()).filter(Boolean)
@@ -42,8 +43,9 @@ export function parseMtgDecklist(raw: string): ParseResult {
     const quantity = Number.parseInt(match[1] ?? '1')
     let rest = (match[2] ?? '').trim()
 
-    // Peel off an optional "[EN]" marker, then the Arena "(SET) NUM" suffix.
+    // Peel off an optional "[EN]" / "[HD]" marker, then the Arena "(SET) NUM" suffix.
     const marker = rest.match(LANG_MARKER)
+    const hd = marker?.[1]?.toUpperCase() === 'HD'
     if (marker)
       rest = rest.slice(0, marker.index).trim()
     let set: string | undefined
@@ -53,12 +55,12 @@ export function parseMtgDecklist(raw: string): ParseResult {
     if (suffix && /\d/.test(suffix[2] ?? '')) {
       set = suffix[1]?.toUpperCase()
       collectorNumber = suffix[2]
-      // The marker only means something on a pinned printing.
-      lang = marker ? 'en' : undefined
+      // "[EN]" only means something on a pinned printing.
+      lang = marker && !hd ? 'en' : undefined
       rest = rest.slice(0, suffix.index ?? rest.length).trim()
     }
 
-    const entry: DeckEntry = { quantity, name: rest, set, collectorNumber, ...(lang ? { lang } : {}) }
+    const entry: DeckEntry = { quantity, name: rest, set, collectorNumber, ...(lang ? { lang } : {}), ...(hd ? { hd: true as const } : {}) }
     if (section === 'side') {
       sideboard.push(entry)
       continue
@@ -86,17 +88,20 @@ export function writeMtgDecklist(mainboard: readonly DeckEntry[], sideboard: rea
   return lines.join('\n')
 }
 
-/** A pinned printing round-trips as the Arena suffix, plus " [EN]" when wanted in English. */
+/**
+ * A pinned printing round-trips as the Arena suffix, plus " [EN]" when wanted
+ * in English or " [HD]" for the recomposed French card.
+ */
 export function mtgLine(entry: DeckEntry): string {
   const pinned = !!(entry.set && entry.collectorNumber)
   const suffix = pinned ? ` (${entry.set!.toUpperCase()}) ${entry.collectorNumber}` : ''
-  const marker = pinned && entry.lang === 'en' ? ' [EN]' : ''
+  const marker = entry.hd ? ' [HD]' : pinned && entry.lang === 'en' ? ' [EN]' : ''
   return `${entry.quantity} ${entry.name}${suffix}${marker}`
 }
 
 /**
- * The list as other sites read it: without our "[EN]" markers, which Arena,
- * Moxfield and the rest do not know.
+ * The list as other sites read it: without our "[EN]" / "[HD]" markers, which
+ * Arena, Moxfield and the rest do not know.
  */
 export function withoutLangMarkers(raw: string): string {
   return raw.split('\n').map(l => l.trimEnd().replace(LANG_MARKER, '')).join('\n')

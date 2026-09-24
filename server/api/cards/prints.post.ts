@@ -6,7 +6,6 @@
 import type { PrintOption } from '../../../shared/mtg/prints'
 import { useMtgCardsDb } from '../../utils/cards/db'
 import { listPrints } from '../../utils/cards/mtg-prints'
-import { wantsRecomposed } from '../../utils/images/recomposed'
 
 // A Commander deck is 100 cards; leave room for a sideboard and maybeboard.
 const MAX_NAMES = 250
@@ -25,9 +24,8 @@ export default defineEventHandler(async (event): Promise<{ prints: Record<string
   const all = body?.all === true
 
   const db = useMtgCardsDb()
-  const recomposed = wantsRecomposed(event)
   const prints: Record<string, PrintOption[]> = {}
   for (const name of names)
-    prints[name] = await listPrints(db, name, lang, all, recomposed)
+    prints[name] = await listPrints(db, name, lang, all)
   return { prints }
 })
