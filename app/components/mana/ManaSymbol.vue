@@ -20,7 +20,8 @@ const PIP: Record<string, string> = {
   r: '#e49977',
   g: '#a3c095',
 }
-const GENERIC = '#cac5c0'
+// Generic and colorless: a shade darker than print, or it vanishes on the light page.
+const GENERIC = '#b3aca3'
 
 const token = computed(() => props.sym.trim().toLowerCase())
 const px = computed(() => props.size ?? 22)
@@ -64,7 +65,7 @@ const content = computed<{ kind: 'glyph' | 'text', value: string }[]>(() => {
 <template>
   <span
     class="mana-pip relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full align-middle leading-none text-[#111]"
-    :class="token === 'e' ? '' : 'shadow-[0_1px_0_rgba(0,0,0,0.55)]'"
+    :class="token === 'e' ? '' : 'shadow-[inset_0_0_0_1px_rgba(0,0,0,0.38),0_1px_0_rgba(0,0,0,0.55)]'"
     :style="{ width: `${px}px`, height: `${px}px`, background }"
     :title="`{${sym}}`"
     role="img"
