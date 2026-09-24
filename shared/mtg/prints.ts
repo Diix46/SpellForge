@@ -1,4 +1,23 @@
 /**
+ * A printing's look, as the ingest stores it: a bit mask in `printings.style`
+ * (scripts/ingest-mtg.mjs, styleOf — a test holds the two together).
+ */
+export const ART_STYLES = {
+  fullart: 1,
+  borderless: 2,
+  showcase: 4,
+  extendedart: 8,
+  oldframe: 16,
+  etched: 32,
+} as const
+export type ArtStyle = keyof typeof ART_STYLES
+
+/** The styles set in a mask, in ART_STYLES order. */
+export function stylesOf(mask: number): ArtStyle[] {
+  return (Object.keys(ART_STYLES) as ArtStyle[]).filter(s => (mask & ART_STYLES[s]) !== 0)
+}
+
+/**
  * One printing of a card, as the edition picker and the deck-wide illustration
  * actions consume it. Served by `/api/cards/prints` (one card) and its POST
  * form (a whole deck).
@@ -18,6 +37,9 @@ export interface PrintOption {
   /** False for Scryfall's low-resolution scans — shown as "low-res" in the picker. */
   highres: boolean
   releasedAt: string | null
+  artist: string | null
+  /** Full-art, borderless, showcase… — empty for a regular frame. */
+  styles: ArtStyle[]
 }
 
 /**
@@ -77,7 +99,14 @@ export function displayable(prints: PrintOption[], lang: string): PrintOption[] 
  * A deck-wide artwork choice. `set` pins every card that has a printing in that
  * set; `english` pins the best English printing (high resolution first).
  */
-export type BulkArtMode = { kind: 'auto' } | { kind: 'oldest' } | { kind: 'newest' } | { kind: 'set', set: string } | { kind: 'english' }
+export type BulkArtMode
+  = | { kind: 'auto' }
+    | { kind: 'oldest' }
+    | { kind: 'newest' }
+    | { kind: 'set', set: string }
+    | { kind: 'english' }
+    | { kind: 'style', style: ArtStyle }
+    | { kind: 'artist', artist: string }
 
 // Promos (prerelease stamps, buy-a-box…) only when a card has nothing else: a
 // "newest" deck should not turn into a wall of stamped foils.
@@ -92,9 +121,18 @@ const byDate = (a: PrintOption, b: PrintOption) => (a.releasedAt ?? '').localeCo
  * The printing a deck-wide action pins on one card: null clears the pin
  * (automatic), undefined leaves the card as it is (no printing in that set).
  */
-export function pickPrint(prints: PrintOption[], mode: BulkArtMode): PrintOption | null | undefined {
+export function pickPrint(prints: PrintOption[], mode: BulkArtMode, deckLang = 'en'): PrintOption | null | undefined {
   if (mode.kind === 'auto')
     return null
+  if (mode.kind === 'style' || mode.kind === 'artist') {
+    // A theme is about the look: the deck's language when a matching printing
+    // exists in it, English otherwise (pinned "[EN]" by the caller).
+    const matches = (p: PrintOption) => mode.kind === 'style' ? p.styles.includes(mode.style) : p.artist === mode.artist
+    const own = displayable(prints, deckLang).filter(matches)
+    const pool = regularFirst(own.length ? own : prints.filter(p => p.lang === 'en' && matches(p)))
+    const hd = pool.filter(p => p.highres)
+    return (hd.length ? hd : pool).sort(byDate).at(-1)
+  }
   if (mode.kind === 'english') {
     // High resolution first, then the newest regular printing.
     const english = regularFirst(prints.filter(p => p.lang === 'en'))
@@ -110,6 +148,36 @@ export function pickPrint(prints: PrintOption[], mode: BulkArtMode): PrintOption
   }
   const sorted = regularFirst(prints).sort(byDate)
   return mode.kind === 'oldest' ? sorted[0] : sorted.at(-1)
+}
+
+export interface ThemeCoverage {
+  styles: { style: ArtStyle, cards: number }[]
+  artists: { artist: string, cards: number }[]
+}
+
+/**
+ * How many of the deck's cards each theme can reach, in any language (a theme
+ * falls back to English). Styles in ART_STYLES order, artists most cards first.
+ */
+export function themeCoverage(printsByName: Map<string, PrintOption[]>, artistLimit = 30): ThemeCoverage {
+  const styleCount = new Map<ArtStyle, number>()
+  const artistCount = new Map<string, number>()
+  for (const prints of printsByName.values()) {
+    for (const s of new Set(prints.flatMap(p => p.styles)))
+      styleCount.set(s, (styleCount.get(s) ?? 0) + 1)
+    for (const a of new Set(prints.map(p => p.artist).filter((a): a is string => !!a)))
+      artistCount.set(a, (artistCount.get(a) ?? 0) + 1)
+  }
+  return {
+    styles: (Object.keys(ART_STYLES) as ArtStyle[])
+      .filter(s => styleCount.has(s))
+      .map(style => ({ style, cards: styleCount.get(style)! })),
+    artists: [...artistCount]
+      .filter(([, n]) => n > 1)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, artistLimit)
+      .map(([artist, cards]) => ({ artist, cards })),
+  }
 }
 
 export interface SetCoverage {

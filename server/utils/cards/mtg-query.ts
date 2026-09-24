@@ -363,11 +363,12 @@ export function buildAutocompleteQuery(prefix: string, limit = 20) {
  * swapping the deck's playable card for an unplayable one. Exact full name
  * first, real cards before extras, then the most played.
  */
-export function buildPrintsQuery(name: string, lang: string, withEnglish = false) {
+export function buildPrintsQuery(name: string, lang: string, withEnglish = false, hasStyle = true) {
   const key = fold(name)
   return {
     sql: `SELECT p.id, p.set_code, p.set_name, p.collector_number, p.lang,
-                 p.img_version, p.price_eur, p.promo, p.is_highres, p.released_at
+                 p.img_version, p.price_eur, p.promo, p.is_highres, p.released_at,
+                 p.artist, ${hasStyle ? 'p.style' : '0 AS style'}
             FROM printings p
            WHERE p.is_real_image = 1
              AND p.oracle_id = (

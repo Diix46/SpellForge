@@ -1,9 +1,9 @@
 import type { Ref } from 'vue'
-import type { BulkArtMode, PrintOption, SetCoverage } from '#shared/mtg/prints'
+import type { BulkArtMode, PrintOption, SetCoverage, ThemeCoverage } from '#shared/mtg/prints'
 import type { DeckEntry } from '~/composables/useDecklist'
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { ref, watch } from 'vue'
-import { displayable, pickPrint, pinFor, pinPrintKey, printKey, samePin, setCoverage } from '#shared/mtg/prints'
+import { displayable, pickPrint, pinFor, pinPrintKey, printKey, samePin, setCoverage, themeCoverage } from '#shared/mtg/prints'
 import { usePrintings } from '~/composables/usePrintings'
 import { mtgRaw } from '~/composables/useScryfall'
 
@@ -122,6 +122,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
   // ---- Deck-wide actions ----
   const deckPrints = ref<Map<string, PrintOption[]> | null>(null)
   const deckSets = ref<SetCoverage[]>([])
+  const deckThemes = ref<ThemeCoverage>({ styles: [], artists: [] })
   const deckPrintsLoading = ref(false)
   let deckPrintsLang = ''
   // Monotonic, like loadCards: a load outrun by a deck edit drops its answer.
@@ -151,6 +152,8 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
       deckPrintsLang = lang
       // Sets are offered for what shows without "[EN]": the deck's language.
       deckSets.value = setCoverage(new Map([...perEntry].map(([n, p]) => [n, displayable(p, lang)])))
+      // Themes reach English printings too.
+      deckThemes.value = themeCoverage(perEntry)
     }
     catch {
       if (token === deckPrintsToken)
@@ -167,6 +170,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
     deckPrintsLoading.value = false
     deckPrints.value = null
     deckSets.value = []
+    deckThemes.value = { styles: [], artists: [] }
   })
 
   async function applyBulk(mode: BulkArtMode) {
@@ -182,7 +186,11 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
       const all = deckPrints.value?.get(e.name) ?? []
       // "All in English" chooses among every English printing; the other
       // actions among what the deck's language shows on its own.
-      const pick = pickPrint(mode.kind === 'english' ? all : displayable(all, lang), mode)
+      // "All in English" and the themes choose among every printing (a theme
+      // falls back to English); the other actions among what the deck's
+      // language shows on its own.
+      const wide = mode.kind === 'english' || mode.kind === 'style' || mode.kind === 'artist'
+      const pick = pickPrint(wide ? all : displayable(all, lang), mode, lang)
       if (pick !== undefined)
         pins.push({ name: e.name, ...(pick ? pinFor(pick, lang, all) : {}) })
     }
@@ -206,6 +214,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
     cyclePrint,
     pendingImages,
     deckSets,
+    deckThemes,
     deckPrintsLoading,
     loadDeckPrints,
     applyBulk,

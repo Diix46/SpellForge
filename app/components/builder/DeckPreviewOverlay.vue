@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BulkArtMode, SetCoverage } from '#shared/mtg/prints'
+import type { BulkArtMode, SetCoverage, ThemeCoverage } from '#shared/mtg/prints'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { PageFormat, PdfSettings } from '~/composables/usePdfExport'
 import type { ResolvedCard } from '~/composables/useScryfall'
@@ -41,6 +41,7 @@ const props = defineProps<{
   /** Printings just stepped to with ‹ ›, by lowercased entry name. */
   pendingImages: Map<string, { key: string, image: string }>
   artSets: SetCoverage[]
+  artThemes: ThemeCoverage
   artLoading: boolean
 }>()
 
@@ -247,6 +248,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
                 <!-- Deck-wide artwork actions -->
                 <BuilderDeckArtworkPanel
                   :sets="artSets"
+                  :themes="artThemes"
                   :loading="artLoading"
                   @apply="emit('bulkArt', $event)"
                   @load="emit('loadArtSets')"
