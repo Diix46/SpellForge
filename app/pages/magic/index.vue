@@ -36,9 +36,12 @@ function onTextInput() {
 const route = useRoute()
 const queryText = () => (typeof route.query.q === 'string' ? route.query.q : '')
 filters.text = queryText()
+// useRequestFetch: rendered by the server, the request carries the viewer's
+// cookies, among them the recomposed / official scans choice.
+const requestFetch = useRequestFetch()
 const { data: firstPage } = await useAsyncData(
   `mtg-library-${locale.value}-${filters.text}`,
-  () => $fetch<SearchResponse>('/api/cards/browse', { params: browseParams(filters, ctx.value, 1) }).catch(() => null),
+  () => requestFetch<SearchResponse>('/api/cards/browse', { params: browseParams(filters, ctx.value, 1) }).catch(() => null),
 )
 prime(firstPage.value ?? null, filters, ctx.value)
 // A failed first page is shown as such, but not handed to search engines.
