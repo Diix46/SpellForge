@@ -61,6 +61,9 @@ export interface ScryfallCard {
   layout: string
   // Scryfall image quality: 'missing' | 'placeholder' | 'lowres' | 'highres_scan'
   image_status?: string
+  // Prism: the image is a recomposed French card (scripts/recompose), not
+  // Scryfall's low-resolution French scan.
+  recomposed?: boolean
   // Related cards this one produces/needs — used to auto-add the tokens a card
   // creates (component: 'token'); also covers meld pieces/results, unused here.
   all_parts?: Array<{ id: string, component: string, name: string, type_line?: string }>

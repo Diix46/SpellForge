@@ -17,7 +17,7 @@ export const THUMB_WIDTH = 320
 type Sharp = typeof SharpModule
 let loading: Promise<Sharp | null> | null = null
 
-function loadSharp(): Promise<Sharp | null> {
+export function loadSharp(): Promise<Sharp | null> {
   loading ??= import('sharp').then(m => m.default).catch(() => null)
   return loading
 }

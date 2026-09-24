@@ -19,6 +19,7 @@
 import type { PrintOption } from '../../../shared/mtg/prints'
 import { useMtgCardsDb } from '../../utils/cards/db'
 import { listPrints } from '../../utils/cards/mtg-prints'
+import { wantsRecomposed } from '../../utils/images/recomposed'
 
 export default defineEventHandler(async (event): Promise<{ prints: PrintOption[] }> => {
   const q = getQuery(event)
@@ -28,5 +29,5 @@ export default defineEventHandler(async (event): Promise<{ prints: PrintOption[]
   const all = q.all === '1'
   if (!name)
     return { prints: [] }
-  return { prints: await listPrints(useMtgCardsDb(), name, lang, all) }
+  return { prints: await listPrints(useMtgCardsDb(), name, lang, all, wantsRecomposed(event)) }
 })

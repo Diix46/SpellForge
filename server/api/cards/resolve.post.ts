@@ -8,6 +8,7 @@
  */
 import { useMtgCardsDb } from '../../utils/cards/db'
 import { resolveEntries } from '../../utils/cards/mtg-resolve'
+import { wantsRecomposed } from '../../utils/images/recomposed'
 
 // A Commander deck is 100 cards; leave room for a sideboard and maybeboard.
 const MAX_ENTRIES = 250
@@ -46,5 +47,5 @@ export default defineEventHandler(async (event) => {
   }))
   const lang = body?.lang === 'fr' ? 'fr' : 'en'
 
-  return { cards: await resolveEntries(useMtgCardsDb(), entries, lang) }
+  return { cards: await resolveEntries(useMtgCardsDb(), entries, lang, { recomposed: wantsRecomposed(event) }) }
 })
