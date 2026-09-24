@@ -550,3 +550,19 @@ base (style à 0) pendant les ~3 minutes de reconstruction.
 
 **Hors périmètre.** « Thème Deadpool » par le contenu de l'image (niveaux 2 et 3 : étiquettes
 Tagger, empreintes CLIP) ; les noms de drops Secret Lair ne sont pas dans les données de masse.
+
+### Résultat du lot U (essai d'agrandissement IA, 24/09)
+
+Real-ESRGAN (poids officiels xinntao) sur 8 scans FR basse définition du deck Krenko, GPU M4 :
+
+| Époque du scan | Résultat | Cartes floues concernées |
+|---|---|---|
+| **2020 et après** (Krenko FDN, Lune de sang WOT, Cité des Trois arbres BLB) | Texte et illustration nettement plus nets, sans déformation | **13 318** |
+| 2015-2019 | Non testé en détail | 3 602 |
+| **Avant 2015** (Lorwyn, 10e édition) | **Texte rendu illisible** : le modèle invente des lettres. Pire que le flou | 4 122 |
+
+- `realesr-general-x4v3` : 0,5 s par carte, qualité proche de `RealESRGAN_x4plus` (8,7 s).
+  Passe complète 2020+ : environ **2 h** sur le Mac, ~400 Ko par image en 2x.
+- Décision à prendre avec Viktor (non lancé) : générer une variante « nette » pour les scans FR
+  2020+ seulement, servie par la route d'images à la place du scan flou ; jamais pour les
+  scans anciens. Comparatif : `~/Desktop/prism-comparatif-nettete.jpg`.
