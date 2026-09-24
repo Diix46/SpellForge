@@ -479,3 +479,31 @@ dépendances incohérent (`deduped invalid`).
 | Prix périmés | Scryfall : « dangerously stale after 24 hours ». Ré-ingestion quotidienne si on affiche des prix, hebdomadaire sinon |
 | Régression silencieuse à la bascule | Le lot 3 impose zéro changement de comportement, et le lot 2 est couvert par des tests comparés aux comptes Scryfall |
 | **Une requête lente bloque tout le serveur** | Le client libSQL local est **synchrone** : pendant qu'une requête tourne, Nitro ne sert personne. La relecture du lot 4 l'a prouvé (`cmc>pow` : 181 s, zéro tick de la boucle d'évènements). Chaque forme de requête de l'analyseur est désormais bornée (pire cas mesuré ~200 ms à 40 termes). **Reste à faire :** limite de débit sur `/api/cards/browse` au niveau du proxy inverse (l'utilitaire `rateLimit` ne purge pas ses entrées et ne convient pas à une clé par IP) ; à terme, requêtes de cartes hors du fil principal |
+
+---
+
+## 11. Choisir une illustration (24/09)
+
+> Demande de Viktor : « pas assez mise en avant, pas de prévisu, 3 clics pour changer ».
+> Validé : points 1 à 4 ci-dessous. Même mode d'autonomie que les lots précédents.
+
+**Constat.** 4 actions pour changer d'illustration (ouvrir la fiche, descendre, déplier
+« Versions », cliquer), fermeture de la fiche sans voir le résultat, aucun signe qu'une
+carte est épinglée, pas de retour à l'automatique.
+
+| Lot | Contenu | Fichiers |
+|---|---|---|
+| A. Données | `/api/cards/prints` renvoie la qualité (`highres`) et l'image `large`. Nouveau `POST /api/cards/prints` en lot (`{ names, lang }` → impressions par nom) pour les actions de deck et le défilement. Composable `usePrintings` : cache partagé par (nom, langue) | `server/api/cards/prints*.ts`, `mtg-query.ts`, `app/composables/usePrintings.ts` |
+| B. Fiche carte | Bande de vignettes toujours visible sous la grande image. Survol ou focus → la grande image, l'édition et le prix montrent cette version. Clic → épingle, la fiche reste ouverte, toast « Annuler ». Vignette « Auto » en tête (retire le pin). Badges FR/EN et « basse déf. ». Compteur d'illustrations | `CardDetailModal.vue`, `card/PrintingPicker.vue`, page deck |
+| C. Aperçu visuel | Flèches ‹ › au survol d'une carte : défilement des impressions sur place, enregistré tout de suite ; ← → au clavier sur la carte survolée ; image affichée sans attendre la résolution | `MtgCardPreview.vue`, `DeckPreviewOverlay.vue`, page deck |
+| D. Visibilité | Icône d'épingle dans la liste du deck et sur les cartes de l'aperçu | `DeckGroupedList.vue`, `MtgCardPreview.vue` |
+| E. Actions de deck | Panneau « Illustrations » dans l'aperçu : tout en automatique, tout en rétro (plus ancienne), tout en récent, une même édition pour tout le deck (liste des éditions triées par nombre de cartes couvertes). Une seule écriture → un seul pas d'annulation | `DeckPreviewOverlay.vue` (+ composant dédié), `useDeckBuilder.setPrintings` |
+
+**Arbitrages.**
+- Pas de « full-art » ni de « tout en HD » : la base n'a pas de drapeau full-art (le
+  schéma changerait et la prod devrait réingérer) et, en FR, la haute déf. anglaise est
+  écartée par la règle « la langue d'abord » (PR #12) — l'action ne ferait rien.
+- Le sélecteur ne propose que des impressions affichables (PR #12), donc un choix se voit
+  toujours.
+- Le défilement part du pin de l'entrée quand il existe (pas de la carte résolue, en
+  retard de 350 ms), pour que des clics rapides avancent bien d'un cran chacun.
