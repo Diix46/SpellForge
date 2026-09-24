@@ -4,6 +4,7 @@ import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { deckPath } from '#shared/game'
+import { samePin } from '#shared/mtg/prints'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDeckBuilder, validateCommander } from '~/composables/useDeckBuilder'
 import { useDeckBuy } from '~/composables/useDeckBuy'
@@ -626,8 +627,7 @@ watch(resolvedCards, () => {
   // Every resolve hands back new objects: only follow one made for the pin the
   // entry has now, or an older pick's answer would flash back in the modal.
   const now = builder.entries.value.find(e => e.name === rc.entry.name)
-  const pinOf = (e?: { set?: string, collectorNumber?: string }) => `${(e?.set ?? '').toLowerCase()}/${e?.collectorNumber ?? ''}`
-  if (now && pinOf(now) !== pinOf(rc.entry))
+  if (now && !samePin(now, rc.entry))
     return
   detailCard.value = rc
 })

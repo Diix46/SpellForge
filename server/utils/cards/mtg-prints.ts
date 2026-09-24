@@ -3,9 +3,12 @@ import type { PrintOption } from '../../../shared/mtg/prints'
 import { buildPrintsQuery } from './mtg-query'
 import { imageUrl } from './mtg-shape'
 
-/** Every printing of one card that can show in `lang` (see buildPrintsQuery), newest first. */
-export async function listPrints(db: Client, name: string, lang: string): Promise<PrintOption[]> {
-  const { rows } = await db.execute(buildPrintsQuery(name, lang))
+/**
+ * Every printing of one card that can show in `lang` (see buildPrintsQuery),
+ * newest first; with `withEnglish`, the English ones follow.
+ */
+export async function listPrints(db: Client, name: string, lang: string, withEnglish = false): Promise<PrintOption[]> {
+  const { rows } = await db.execute(buildPrintsQuery(name, lang, withEnglish))
   return rows.map((r) => {
     const id = String(r.id)
     return {

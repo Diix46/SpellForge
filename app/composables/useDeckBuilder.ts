@@ -3,6 +3,7 @@ import type { ValidationIssue } from '#shared/game'
 import type { ScryfallCard } from './useScryfall'
 import { computed, ref } from 'vue'
 import { writeMtgDecklist } from '#shared/mtg/decklist'
+import { samePin } from '#shared/mtg/prints'
 import { useDecklist } from './useDecklist'
 import { allowsAnyQuantity, isBasicLand } from './useMtg'
 
@@ -14,10 +15,6 @@ export type { ValidationIssue } from '#shared/game'
  * working); this composable parses it, exposes structured ops, and serialises
  * back to raw on every change.
  */
-function samePin(a: { set?: string, collectorNumber?: string }, b: { set?: string, collectorNumber?: string }): boolean {
-  return (a.set ?? '').toLowerCase() === (b.set ?? '').toLowerCase() && (a.collectorNumber ?? '') === (b.collectorNumber ?? '')
-}
-
 export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) => void }) {
   const { parse } = useDecklist()
 
@@ -104,7 +101,7 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
    * change is one undo step. Cards not in the deck are skipped; returns how
    * many entries changed.
    */
-  function setPrintings(pins: { name: string, set?: string, collectorNumber?: string }[]): number {
+  function setPrintings(pins: { name: string, set?: string, collectorNumber?: string, lang?: 'en' }[]): number {
     let changed = 0
     for (const p of pins) {
       const entry = entries.value[findIndex(p.name)]
@@ -114,6 +111,10 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
         continue
       entry.set = p.set
       entry.collectorNumber = p.collectorNumber
+      if (p.lang && p.set)
+        entry.lang = p.lang
+      else
+        delete entry.lang
       changed++
     }
     if (changed)

@@ -3,11 +3,11 @@ import type { BulkArtMode, PrintOption, SetCoverage } from '#shared/mtg/prints'
 import type { DeckEntry } from '~/composables/useDecklist'
 import type { ResolvedCard } from '~/composables/useScryfall'
 import { ref, watch } from 'vue'
-import { pickPrint, printKey, setCoverage } from '#shared/mtg/prints'
+import { displayable, pickPrint, pinFor, pinPrintKey, printKey, samePin, setCoverage } from '#shared/mtg/prints'
 import { usePrintings } from '~/composables/usePrintings'
 import { mtgRaw } from '~/composables/useScryfall'
 
-interface Pin { name: string, set?: string, collectorNumber?: string }
+interface Pin { name: string, set?: string, collectorNumber?: string, lang?: 'en' }
 
 interface DeckPrintingsCtx {
   /** The builder's working entries (their set/number are the pins). */
@@ -21,7 +21,6 @@ interface DeckPrintingsCtx {
 }
 
 const norm = (name: string) => name.trim().toLowerCase()
-const pinKey = (p: { set?: string, collectorNumber?: string }) => p.set && p.collectorNumber ? printKey(p.set, p.collectorNumber) : ''
 
 /**
  * Everything that changes a deck's artworks: a pick in the detail view (with
@@ -35,7 +34,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
 
   function pinOf(name: string): Pin {
     const e = ctx.entries().find(x => norm(x.name) === norm(name))
-    return { name, set: e?.set, collectorNumber: e?.collectorNumber }
+    return { name, set: e?.set, collectorNumber: e?.collectorNumber, lang: e?.lang }
   }
 
   function write(pins: Pin[]): number {
@@ -49,13 +48,13 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
   // ---- A pick in the detail view ----
   function setPrinting(p: Pin) {
     const before = pinOf(p.name)
-    if (pinKey(before) === pinKey(p))
+    if (samePin(before, p))
       return
     if (!write([p]))
       return
     toast.add({
       title: p.set ? ctx.t('toast.printSet') : ctx.t('toast.printAuto'),
-      description: p.set ? `${p.set.toUpperCase()} #${p.collectorNumber}` : undefined,
+      description: p.set ? `${p.set.toUpperCase()} #${p.collectorNumber}${p.lang === 'en' ? ' · EN' : ''}` : undefined,
       icon: 'i-lucide-layers',
       color: 'success',
       actions: [{ label: ctx.t('build.undo'), onClick: () => { write([before]) } }],
@@ -73,7 +72,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
     for (const rc of cards) {
       const pending = next.get(norm(rc.entry.name))
       const c = mtgRaw(rc.card)
-      if (pending && c && printKey(c.set, c.collector_number) === pending.key)
+      if (pending && c && printKey(c.set, c.collector_number, c.lang) === pending.key)
         next.delete(norm(rc.entry.name))
     }
     pendingImages.value = next
@@ -87,19 +86,25 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
   }
   async function step(card: ResolvedCard, dir: 1 | -1) {
     const name = card.entry.name
-    const prints = await printsOf(mtgRaw(card.card)?.name || name, ctx.lang())
+    const lang = ctx.lang()
+    const all = await printsOf(mtgRaw(card.card)?.name || name, lang, lang !== 'en')
+    // Step within the group on show: the deck's language, or — from an "[EN]"
+    // pin — the English printings, so the marker is kept.
+    const pin = pinOf(name)
+    const own = displayable(all, lang)
+    const prints = pin.lang === 'en' && own.length && own[0]!.lang !== 'en' ? all.filter(p => p.lang === 'en') : own
     if (prints.length < 2)
       return
     // The entry's pin first: the resolved card lags behind a step just taken.
-    // A pin this language cannot show (an English one on a French deck) is not
-    // what is on screen: step from the displayed printing instead.
-    const indexOf = (key: string) => key ? prints.findIndex(p => printKey(p.set, p.collectorNumber) === key) : -1
+    // A pin this group cannot show is not what is on screen: step from the
+    // displayed printing instead.
+    const indexOf = (key: string) => key ? prints.findIndex(p => printKey(p.set, p.collectorNumber, p.lang) === key) : -1
     const c = mtgRaw(card.card)
-    const pinned = indexOf(pinKey(pinOf(name)))
-    const i = pinned >= 0 ? pinned : indexOf(c ? printKey(c.set, c.collector_number) : '')
+    const pinned = indexOf(pinPrintKey(pin, lang))
+    const i = pinned >= 0 ? pinned : indexOf(c ? printKey(c.set, c.collector_number, c.lang) : '')
     const next = prints[i < 0 ? (dir > 0 ? 0 : prints.length - 1) : (i + dir + prints.length) % prints.length]!
-    write([{ name, set: next.set, collectorNumber: next.collectorNumber }])
-    const key = printKey(next.set, next.collectorNumber)
+    write([{ name, ...pinFor(next, lang, all) }])
+    const key = printKey(next.set, next.collectorNumber, next.lang)
     const images = new Map(pendingImages.value)
     images.set(norm(name), { key, image: next.image ?? '' })
     pendingImages.value = images
@@ -136,14 +141,16 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
         .filter(rc => rc.card)
         .map(rc => [norm(rc.entry.name), mtgRaw(rc.card)!.name]))
       const names = ctx.entries().map(e => byEntry.get(norm(e.name)) ?? e.name)
-      const found = await printsOfMany(names, lang)
+      // English printings included: the "all in English" action picks among them.
+      const found = await printsOfMany(names, lang, true)
       if (token !== deckPrintsToken)
         return
       const perEntry = new Map<string, PrintOption[]>()
       ctx.entries().forEach((e, i) => perEntry.set(e.name, found.get(names[i]!.trim()) ?? []))
       deckPrints.value = perEntry
       deckPrintsLang = lang
-      deckSets.value = setCoverage(perEntry)
+      // Sets are offered for what shows without "[EN]": the deck's language.
+      deckSets.value = setCoverage(new Map([...perEntry].map(([n, p]) => [n, displayable(p, lang)])))
     }
     catch {
       if (token === deckPrintsToken)
@@ -169,11 +176,15 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
       if (!deckPrints.value)
         return
     }
+    const lang = ctx.lang()
     const pins: Pin[] = []
     for (const e of entries) {
-      const pick = pickPrint(deckPrints.value?.get(e.name) ?? [], mode)
+      const all = deckPrints.value?.get(e.name) ?? []
+      // "All in English" chooses among every English printing; the other
+      // actions among what the deck's language shows on its own.
+      const pick = pickPrint(mode.kind === 'english' ? all : displayable(all, lang), mode)
       if (pick !== undefined)
-        pins.push({ name: e.name, set: pick?.set, collectorNumber: pick?.collectorNumber })
+        pins.push({ name: e.name, ...(pick ? pinFor(pick, lang, all) : {}) })
     }
     const before = entries.map(e => pinOf(e.name))
     const changed = write(pins)

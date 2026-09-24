@@ -16,6 +16,7 @@ interface EntryInput {
   name?: unknown
   set?: unknown
   collectorNumber?: unknown
+  lang?: unknown
 }
 
 function isValid(e: EntryInput | null | undefined): boolean {
@@ -23,6 +24,7 @@ function isValid(e: EntryInput | null | undefined): boolean {
     && typeof e.name === 'string' && e.name.trim().length > 0
     && (e.set == null || typeof e.set === 'string')
     && (e.collectorNumber == null || typeof e.collectorNumber === 'string')
+    && (e.lang == null || e.lang === 'en')
 }
 
 export default defineEventHandler(async (event) => {
@@ -40,6 +42,7 @@ export default defineEventHandler(async (event) => {
     name: (e.name as string).trim(),
     set: (e.set as string | undefined) ?? null,
     collectorNumber: (e.collectorNumber as string | undefined) ?? null,
+    lang: e.lang === 'en' ? 'en' as const : null,
   }))
   const lang = body?.lang === 'fr' ? 'fr' : 'en'
 

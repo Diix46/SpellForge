@@ -24,7 +24,9 @@ export default defineEventHandler(async (event): Promise<{ prints: PrintOption[]
   const q = getQuery(event)
   const name = typeof q.name === 'string' ? q.name.trim().slice(0, 160) : ''
   const lang = q.lang === 'fr' ? 'fr' : 'en'
+  // `all=1`: the English printings too, for an explicit "[EN]" pin.
+  const all = q.all === '1'
   if (!name)
     return { prints: [] }
-  return { prints: await listPrints(useMtgCardsDb(), name, lang) }
+  return { prints: await listPrints(useMtgCardsDb(), name, lang, all) }
 })

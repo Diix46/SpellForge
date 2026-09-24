@@ -4,7 +4,8 @@ import { computed, ref } from 'vue'
 import { useLocale } from '~/composables/useLocale'
 
 // Deck-wide artwork actions in the preview overlay: back to automatic, all retro,
-// all newest, or one set for every card that has a printing in it. The sets are
+// all newest, all in English (sharp scans, pinned "[EN]"), or one set for every
+// card that has a printing in it. The sets are
 // listed by how many of the deck's cards they cover, fetched on first use.
 // The menu is not portalled: the overlay sits above the page's portal layer.
 
@@ -48,6 +49,9 @@ const setItems = computed(() => props.sets.map(s => ({
       </UButton>
       <UButton size="xs" color="neutral" variant="subtle" icon="i-lucide-sparkles" :loading="loading" @click="emit('apply', { kind: 'newest' })">
         {{ t('print.bulk.newest') }}
+      </UButton>
+      <UButton size="xs" color="neutral" variant="subtle" icon="i-lucide-languages" :loading="loading" :title="t('print.bulk.englishTitle')" @click="emit('apply', { kind: 'english' })">
+        {{ t('print.bulk.english') }}
       </UButton>
     </div>
 

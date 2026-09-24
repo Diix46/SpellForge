@@ -154,7 +154,7 @@ const groups = computed(() => {
             v-if="entry.set && entry.collectorNumber"
             name="i-lucide-pin"
             class="h-3 w-3 shrink-0 text-(--accent-text) transition-opacity group-hover/row:opacity-0"
-            :title="`${t('print.pinned')} · ${entry.set.toUpperCase()} #${entry.collectorNumber}`"
+            :title="`${t('print.pinned')} · ${entry.set.toUpperCase()} #${entry.collectorNumber}${entry.lang === 'en' ? ' · EN' : ''}`"
           />
 
           <!-- mana cost pips (shimmer placeholders while the card resolves) -->

@@ -507,3 +507,21 @@ carte est épinglée, pas de retour à l'automatique.
   toujours.
 - Le défilement part du pin de l'entrée quand il existe (pas de la carte résolue, en
   retard de 350 ms), pour que des clics rapides avancent bien d'un cran chacun.
+
+### Choix explicite de l'anglais (24/09, soir)
+
+Retour de Viktor : Manigances boggartes n'existe en français qu'en scan basse définition
+(Lorwyn), alors que Lorwyn anglais est net, et rien ne permettait de le choisir. Cause : la
+règle « la langue d'abord » (PR #12) ignorait tout pin anglais sur un deck français.
+
+- **Marqueur `[EN]`** après le suffixe Arena : `1 Boggart Shenanigans (LRW) 155 [EN]`. Un pin
+  marqué est toujours honoré ; un pin sans marqueur garde la règle du français d'abord (Blood
+  Moon reste « Lune de sang »). Le marqueur est retiré des exports texte (copie,
+  téléchargement), que les autres sites ne liraient pas.
+- **Bande d'illustrations** : les impressions françaises, puis un groupe « En anglais ».
+  Choisir une impression anglaise sur un deck français écrit le marqueur.
+- **« Tout en anglais HD »** dans le panneau du deck : la meilleure impression anglaise de
+  chaque carte, haute définition d'abord, puis la plus récente.
+- Les clés d'impression portent la langue (`lrw/155@fr` ≠ `lrw/155@en`) : Lorwyn #155 existe
+  dans les deux langues.
+- Tout le deck en anglais sans pins reste possible avec le bouton FR/EN du site.
