@@ -148,6 +148,18 @@ withDb('against the real card database', () => {
     expect(await layoutsOf('Delver of Secrets')).toEqual(['transform'])
   })
 
+  it('offers only French printings in French when the card has any', async () => {
+    // An English pin would not show on a French deck: resolution puts the
+    // language first. Blood Moon has French printings and English-only ones.
+    const fr = await rows(buildPrintsQuery('Blood Moon', 'fr'))
+    expect(fr.length).toBeGreaterThan(0)
+    expect(new Set(fr.map(r => r.lang))).toEqual(new Set(['fr']))
+    // No French printing at all: the English ones stay pinnable.
+    const en = await rows(buildPrintsQuery('Goblin Chirurgeon', 'fr'))
+    expect(en.length).toBeGreaterThan(0)
+    expect(new Set(en.map(r => r.lang))).toEqual(new Set(['en']))
+  })
+
   it('finds cards by French printed text', async () => {
     const r = await rows(buildCardQuery({ text: 'contresort' }, { identity: null, lang: 'fr' }))
     expect(r.length).toBeGreaterThan(0)
