@@ -129,7 +129,7 @@ export function pickPrint(prints: PrintOption[], mode: BulkArtMode, deckLang = '
     // exists in it, English otherwise (pinned "[EN]" by the caller).
     const matches = (p: PrintOption) => mode.kind === 'style' ? p.styles.includes(mode.style) : p.artist === mode.artist
     const own = displayable(prints, deckLang).filter(matches)
-    const pool = own.length ? own : prints.filter(p => p.lang === 'en' && matches(p))
+    const pool = regularFirst(own.length ? own : prints.filter(p => p.lang === 'en' && matches(p)))
     const hd = pool.filter(p => p.highres)
     return (hd.length ? hd : pool).sort(byDate).at(-1)
   }

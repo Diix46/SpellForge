@@ -13,7 +13,11 @@ function hasStyleColumn(db: Client): Promise<boolean> {
   if (!known) {
     known = db.execute('SELECT name FROM pragma_table_info(\'printings\') WHERE name = \'style\'')
       .then(r => r.rows.length > 0)
-      .catch(() => false)
+      .catch(() => {
+        // A busy database, say: ask again next time rather than for the day.
+        styleColumn.delete(db)
+        return false
+      })
     styleColumn.set(db, known)
   }
   return known

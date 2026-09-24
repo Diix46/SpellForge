@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PinFields } from '#shared/mtg/prints'
 import type { PrintOption } from '~/composables/usePrintings'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { displayable } from '#shared/mtg/prints'
 import { useLocale } from '~/composables/useLocale'
 import { pinFor, printKey, usePrintings } from '~/composables/usePrintings'
@@ -41,6 +41,14 @@ const prints = ref<PrintOption[]>([])
 const loading = ref(false)
 const STRIP_MAX = 12
 const expanded = ref(false)
+// The button that swapped the view disappears with it: keep keyboard focus
+// on the view that replaces it.
+const root = ref<HTMLElement | null>(null)
+async function setExpanded(open: boolean) {
+  expanded.value = open
+  await nextTick()
+  root.value?.querySelector<HTMLElement>(open ? 'input[data-gallery-search], [data-gallery-search] input' : '[data-see-all]')?.focus()
+}
 
 watch(() => [props.cardKey, props.englishName, locale.value] as const, async ([, name, lang], _, onCleanup) => {
   // A newer card, name or language supersedes this lookup: drop its answer.
@@ -120,7 +128,7 @@ const hasLowres = computed(() => prints.value.some(p => !p.highres))
 </script>
 
 <template>
-  <div class="border-t border-(--color-border-subtle) pt-4">
+  <div ref="root" class="border-t border-(--color-border-subtle) pt-4">
     <div class="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
       <h3 class="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-(--color-text-mid)">
         <UIcon name="i-lucide-layers" class="h-3.5 w-3.5 text-(--accent-text)" />
@@ -146,7 +154,8 @@ const hasLowres = computed(() => prints.value.some(p => !p.highres))
           <button
             type="button"
             class="flex items-center gap-1 text-[11px] text-(--color-text-muted) hover:text-(--color-text-high)"
-            @click="expanded = false"
+            :aria-expanded="true"
+            @click="setExpanded(false)"
           >
             <UIcon name="i-lucide-chevrons-up" class="h-3.5 w-3.5" />
             {{ t('print.gallery.collapse') }}
@@ -221,7 +230,9 @@ const hasLowres = computed(() => prints.value.some(p => !p.highres))
         v-if="hidden > 0"
         type="button"
         class="grid aspect-[63/88] w-16 shrink-0 snap-start place-items-center rounded-[var(--radius-md)] bg-(--color-surface-2) text-center text-(--color-text-mid) ring-1 ring-(--color-border-strong) transition-colors hover:text-(--accent-text) hover:ring-(--accent-border)"
-        @click="expanded = true"
+        data-see-all
+        :aria-expanded="false"
+        @click="setExpanded(true)"
       >
         <span class="flex flex-col items-center gap-1 px-1 text-[10px] leading-tight">
           <UIcon name="i-lucide-layout-grid" class="h-4 w-4" />

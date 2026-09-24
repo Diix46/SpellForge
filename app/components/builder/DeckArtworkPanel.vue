@@ -76,9 +76,10 @@ const setItems = computed(() => props.sets.map(s => ({
     </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-2">
-      <span class="text-xs text-(--color-text-mid)">{{ t('print.bulk.set') }}</span>
+      <span id="art-set-label" class="text-xs text-(--color-text-mid)">{{ t('print.bulk.set') }}</span>
       <USelectMenu
         v-model="chosenSet"
+        aria-labelledby="art-set-label"
         :items="setItems"
         value-key="value"
         :loading="loading"
@@ -104,9 +105,10 @@ const setItems = computed(() => props.sets.map(s => ({
     </div>
 
     <div class="mt-3 flex flex-wrap items-center gap-2">
-      <span class="text-xs text-(--color-text-mid)">{{ t('print.bulk.theme') }}</span>
+      <span id="art-theme-label" class="text-xs text-(--color-text-mid)">{{ t('print.bulk.theme') }}</span>
       <USelectMenu
         v-model="chosenTheme"
+        aria-labelledby="art-theme-label"
         :items="themeItems"
         value-key="value"
         :loading="loading"

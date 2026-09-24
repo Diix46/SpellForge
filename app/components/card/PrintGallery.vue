@@ -25,7 +25,9 @@ const { t, locale } = useLocale()
 
 const query = ref('')
 // The deck's own language first; English (or everything) is one click away.
-const lang = ref<'all' | 'fr' | 'en'>(props.prints.some(p => p.lang === locale.value) ? locale.value : 'all')
+// A pinned printing in another language opens on everything, so it shows.
+const pinnedElsewhere = props.prints.some(p => props.isPinned(p) && p.lang !== locale.value)
+const lang = ref<'all' | 'fr' | 'en'>(!pinnedElsewhere && props.prints.some(p => p.lang === locale.value) ? locale.value : 'all')
 const hdOnly = ref(false)
 const noPromo = ref(false)
 const style = ref<ArtStyle | 'all'>('all')
@@ -88,12 +90,14 @@ const sortItems = computed(() => [
     <div class="mb-2 flex flex-wrap items-center gap-2">
       <UInput
         v-model="query"
+        data-gallery-search
+        :aria-label="t('print.gallery.search')"
         size="xs"
         icon="i-lucide-search"
         :placeholder="t('print.gallery.search')"
         class="min-w-44 flex-1"
       />
-      <div v-if="langs.length > 1" class="flex overflow-hidden rounded-[var(--radius-md)] ring-1 ring-(--color-border-strong)">
+      <div v-if="langs.length > 1" role="group" :aria-label="t('print.gallery.langs')" class="flex overflow-hidden rounded-[var(--radius-md)] ring-1 ring-(--color-border-strong)">
         <button
           v-for="l in (['all', ...langs] as const)"
           :key="l"
@@ -106,7 +110,7 @@ const sortItems = computed(() => [
           {{ l === 'all' ? t('print.gallery.allLangs') : l }}
         </button>
       </div>
-      <USelect v-model="sort" :items="sortItems" size="xs" class="w-32" />
+      <USelect v-model="sort" :items="sortItems" size="xs" class="w-32" :aria-label="t('print.gallery.sort')" />
     </div>
 
     <div class="mb-2 flex flex-wrap items-center gap-1.5">
@@ -149,6 +153,7 @@ const sortItems = computed(() => [
       v-else
       class="print-grid grid max-h-[46vh] grid-cols-4 gap-2 overflow-y-auto pr-1 sm:grid-cols-6 md:grid-cols-7"
       @mouseleave="emit('preview', null)"
+      @focusout="emit('preview', null)"
     >
       <template v-for="r in rows" :key="r.key">
         <h4
