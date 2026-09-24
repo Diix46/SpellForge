@@ -27,3 +27,7 @@ logs
 .env
 .env.*
 !.env.example
+scripts/recompose/.venv/
+scripts/recompose/out/
+scripts/recompose/*.jsonl.gz
+scripts/recompose/__pycache__/
