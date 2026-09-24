@@ -525,3 +525,28 @@ règle « la langue d'abord » (PR #12) ignorait tout pin anglais sur un deck fr
 - Les clés d'impression portent la langue (`lrw/155@fr` ≠ `lrw/155@en`) : Lorwyn #155 existe
   dans les deux langues.
 - Tout le deck en anglais sans pins reste possible avec le bouton FR/EN du site.
+
+---
+
+## 12. Galerie, thèmes et netteté (24/09, nuit)
+
+> Demande de Viktor : (1) des cartes FR nettes, (2) une navigation praticable quand une carte a
+> des centaines d'illustrations, (3) des thèmes de deck. Validé : galerie, puis thèmes niveau 1,
+> puis essai d'agrandissement IA sur un échantillon.
+
+Chiffres (base locale du 24/09) : 25 006 cartes s'affichent en FR, **21 042 en scan basse
+définition** (84 %). Montagne : 331 impressions FR et 862 EN ; Sol Ring : 45 FR et 137 EN.
+
+| Lot | Contenu |
+|---|---|
+| G. Galerie | La bande de la fiche montre 12 illustrations et un bouton « Voir les N ». Il déplie une grille dans la fiche (défilement vertical) : recherche (édition, code, artiste), filtres langue / HD / sans promos / style, tri récentes / anciennes / prix, intertitres par édition. Survol et clic inchangés. |
+| T. Thèmes niveau 1 | L'ingestion garde les styles d'impression de Scryfall dans une colonne `style` (masque de bits : full-art, sans bordure, showcase, extended art, ancien cadre 1993/1997, gravé) et l'artiste part avec chaque impression. Panneau du deck : « Appliquer un thème » (un style ou un artiste), dans la langue du deck d'abord, sinon en anglais `[EN]`. `SCHEMA_VERSION` 2 → 3. |
+| U. Netteté | Essai d'agrandissement IA (Real-ESRGAN) sur un échantillon de scans FR basse définition ; avant/après à montrer avant toute généralisation. |
+
+**Mise en production du lot T.** Le rafraîchissement nocturne reconstruit la base quand le
+schéma change, mais seulement à 04 h 30. Le plugin de démarrage relance donc la reconstruction
+dès que la version de la base est en retard, et les requêtes d'impressions tolèrent l'ancienne
+base (style à 0) pendant les ~3 minutes de reconstruction.
+
+**Hors périmètre.** « Thème Deadpool » par le contenu de l'image (niveaux 2 et 3 : étiquettes
+Tagger, empreintes CLIP) ; les noms de drops Secret Lair ne sont pas dans les données de masse.
