@@ -33,24 +33,30 @@ const { printsOf } = usePrintings()
 const prints = ref<PrintOption[]>([])
 const loading = ref(false)
 
-watch(() => [props.cardKey, props.englishName, locale.value] as const, async ([key, name, lang]) => {
+watch(() => [props.cardKey, props.englishName, locale.value] as const, async ([, name, lang], _, onCleanup) => {
+  // A newer card, name or language supersedes this lookup: drop its answer.
+  let cancelled = false
+  onCleanup(() => {
+    cancelled = true
+  })
   prints.value = []
   emit('preview', null)
-  if (!name)
+  if (!name) {
+    loading.value = false
     return
+  }
   loading.value = true
   try {
     const list = await printsOf(name, lang)
-    // The modal may have moved to another card before the answer.
-    if (key === props.cardKey)
+    if (!cancelled)
       prints.value = list
   }
   catch {
-    if (key === props.cardKey)
+    if (!cancelled)
       prints.value = []
   }
   finally {
-    if (key === props.cardKey)
+    if (!cancelled)
       loading.value = false
   }
 }, { immediate: true })

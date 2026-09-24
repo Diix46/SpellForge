@@ -621,8 +621,15 @@ watch(resolvedCards, () => {
   if (!showDetail.value || !detailCard.value)
     return
   const rc = resolvedFor(detailCard.value.entry.name)
-  if (rc && rc.entry.name === detailCard.value.entry.name && rc !== detailCard.value)
-    detailCard.value = rc
+  if (!rc || rc.entry.name !== detailCard.value.entry.name || rc === detailCard.value)
+    return
+  // Every resolve hands back new objects: only follow one made for the pin the
+  // entry has now, or an older pick's answer would flash back in the modal.
+  const now = builder.entries.value.find(e => e.name === rc.entry.name)
+  const pinOf = (e?: { set?: string, collectorNumber?: string }) => `${(e?.set ?? '').toLowerCase()}/${e?.collectorNumber ?? ''}`
+  if (now && pinOf(now) !== pinOf(rc.entry))
+    return
+  detailCard.value = rc
 })
 
 // PDF proxy export (settings, progress, action, page estimate). See useDeckExport.

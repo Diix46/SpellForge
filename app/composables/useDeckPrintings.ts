@@ -21,6 +21,7 @@ interface DeckPrintingsCtx {
 }
 
 const norm = (name: string) => name.trim().toLowerCase()
+const pinKey = (p: { set?: string, collectorNumber?: string }) => p.set && p.collectorNumber ? printKey(p.set, p.collectorNumber) : ''
 
 /**
  * Everything that changes a deck's artworks: a pick in the detail view (with
@@ -48,7 +49,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
   // ---- A pick in the detail view ----
   function setPrinting(p: Pin) {
     const before = pinOf(p.name)
-    if (before.set === p.set && before.collectorNumber === p.collectorNumber)
+    if (pinKey(before) === pinKey(p))
       return
     if (!write([p]))
       return
@@ -90,12 +91,12 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
     if (prints.length < 2)
       return
     // The entry's pin first: the resolved card lags behind a step just taken.
-    const pin = pinOf(name)
+    // A pin this language cannot show (an English one on a French deck) is not
+    // what is on screen: step from the displayed printing instead.
+    const indexOf = (key: string) => key ? prints.findIndex(p => printKey(p.set, p.collectorNumber) === key) : -1
     const c = mtgRaw(card.card)
-    const current = pin.set && pin.collectorNumber
-      ? printKey(pin.set, pin.collectorNumber)
-      : c ? printKey(c.set, c.collector_number) : ''
-    const i = prints.findIndex(p => printKey(p.set, p.collectorNumber) === current)
+    const pinned = indexOf(pinKey(pinOf(name)))
+    const i = pinned >= 0 ? pinned : indexOf(c ? printKey(c.set, c.collector_number) : '')
     const next = prints[i < 0 ? (dir > 0 ? 0 : prints.length - 1) : (i + dir + prints.length) % prints.length]!
     write([{ name, set: next.set, collectorNumber: next.collectorNumber }])
     const key = printKey(next.set, next.collectorNumber)
@@ -118,6 +119,8 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
   const deckSets = ref<SetCoverage[]>([])
   const deckPrintsLoading = ref(false)
   let deckPrintsLang = ''
+  // Monotonic, like loadCards: a load outrun by a deck edit drops its answer.
+  let deckPrintsToken = 0
 
   // Printings of every card of the deck, fetched when the artwork panel shows.
   async function loadDeckPrints() {
@@ -125,6 +128,7 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
     if (deckPrintsLoading.value || (deckPrints.value && deckPrintsLang === lang))
       return
     deckPrintsLoading.value = true
+    const token = ++deckPrintsToken
     try {
       // Entry name → the card's own name (a double-faced card's printings are
       // found by its full name; an entry may be typed in French).
@@ -133,6 +137,8 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
         .map(rc => [norm(rc.entry.name), mtgRaw(rc.card)!.name]))
       const names = ctx.entries().map(e => byEntry.get(norm(e.name)) ?? e.name)
       const found = await printsOfMany(names, lang)
+      if (token !== deckPrintsToken)
+        return
       const perEntry = new Map<string, PrintOption[]>()
       ctx.entries().forEach((e, i) => perEntry.set(e.name, found.get(names[i]!.trim()) ?? []))
       deckPrints.value = perEntry
@@ -140,14 +146,18 @@ export function useDeckPrintings(ctx: DeckPrintingsCtx) {
       deckSets.value = setCoverage(perEntry)
     }
     catch {
-      deckPrints.value = null
+      if (token === deckPrintsToken)
+        deckPrints.value = null
     }
     finally {
-      deckPrintsLoading.value = false
+      if (token === deckPrintsToken)
+        deckPrintsLoading.value = false
     }
   }
   // A card added or removed changes what the actions cover.
   watch(() => ctx.entries().map(e => norm(e.name)).join('|'), () => {
+    deckPrintsToken++
+    deckPrintsLoading.value = false
     deckPrints.value = null
     deckSets.value = []
   })

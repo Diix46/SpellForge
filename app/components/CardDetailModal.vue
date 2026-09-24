@@ -150,8 +150,9 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
     :open="open"
     :title="primaryName || 'Card'"
     :ui="{
-      overlay: 'bg-ink-950/80 backdrop-blur-[6px]',
-      content: 'glass rounded-[var(--radius-2xl)] w-[calc(100vw-1.5rem)] sm:max-w-[860px]',
+      // Above the deck overlays (--z-modal): the preview grid opens this modal.
+      overlay: 'bg-ink-950/80 backdrop-blur-[6px] z-[calc(var(--z-modal)+1)]',
+      content: 'glass rounded-[var(--radius-2xl)] w-[calc(100vw-1.5rem)] sm:max-w-[860px] z-[calc(var(--z-modal)+1)]',
       // Keep the header row (so the close button shows) but hide the duplicated
       // title text — the card name is already rendered as the <h2> in the body.
       header: 'absolute right-0 top-0 z-10 p-3 border-0',

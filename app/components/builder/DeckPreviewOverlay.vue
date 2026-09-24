@@ -63,11 +63,19 @@ const pendingImageOf = (card: ResolvedCard) => props.pendingImages.get(card.entr
 
 // ← → step the hovered card's artwork, without having to focus it first.
 const hovered = ref<ResolvedCard | null>(null)
+const panel = ref<HTMLElement | null>(null)
 function onKey(e: KeyboardEvent) {
   if (!props.open || !hovered.value || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight'))
     return
+  // Browser shortcuts (Alt+← is "back"), a held key, or a key already handled.
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.repeat || e.defaultPrevented)
+    return
+  // Only a key aimed at the overlay: not the detail modal opened above it (the
+  // pointer may still rest on a tile), not typing, not a focused tile (it
+  // handles its own arrows).
   const el = e.target as HTMLElement | null
-  // Typing, or a focused card tile (it handles its own arrows).
+  if (el && el !== document.body && !panel.value?.contains(el))
+    return
   if (el?.closest('input, textarea, select, [contenteditable="true"], [role="listbox"], [data-card-tile]'))
     return
   e.preventDefault()
@@ -82,7 +90,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <Transition name="ovl-slide">
       <div v-if="open" class="ovl-root">
         <div class="ovl-scrim" @click="emit('update:open', false)" />
-        <section class="ovl-panel ovl-panel--wide" role="dialog" aria-modal="true" :aria-label="t('tab.preview')" @keydown.escape="emit('update:open', false)">
+        <section ref="panel" class="ovl-panel ovl-panel--wide" role="dialog" aria-modal="true" :aria-label="t('tab.preview')" @keydown.escape="emit('update:open', false)">
           <header class="ovl-head">
             <div class="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[2px] text-(--accent-text)">
               <UIcon name="i-lucide-eye" class="h-4 w-4" />

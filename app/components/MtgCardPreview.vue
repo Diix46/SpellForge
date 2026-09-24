@@ -24,6 +24,14 @@ const { el: spotEl } = useSpotlight()
 
 const delay = computed(() => `${Math.min((props.index ?? 0) * 22, 500)}ms`)
 const image = computed(() => props.imageOverride || props.card.imageUrl || '')
+// ← → on a focused tile step its printing (the ‹ › buttons stay out of the tab
+// order: a 100-card deck would otherwise add 200 tab stops).
+function onArrow(e: KeyboardEvent, dir: 1 | -1) {
+  if (!props.cyclable || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey)
+    return
+  e.preventDefault()
+  emit('cycle', props.card, dir)
+}
 // A printing picked by hand: the entry carries its `(SET) NUM`.
 const pinned = computed(() => !!(props.card.entry.set && props.card.entry.collectorNumber))
 </script>
@@ -62,8 +70,8 @@ const pinned = computed(() => !!(props.card.entry.set && props.card.entry.collec
       :class="commander ? 'ring-2 ring-(--accent-border)' : ''"
       :style="{ boxShadow: commander ? 'var(--accent-glow-soft), var(--shadow-elev-2)' : 'var(--shadow-elev-2)' }"
       @click="emit('details', card)"
-      @keydown.left.prevent="cyclable && emit('cycle', card, -1)"
-      @keydown.right.prevent="cyclable && emit('cycle', card, 1)"
+      @keydown.left="onArrow($event, -1)"
+      @keydown.right="onArrow($event, 1)"
     >
       <img
         :src="image"
@@ -146,6 +154,7 @@ const pinned = computed(() => !!(props.card.entry.set && props.card.entry.collec
         v-for="dir in ([-1, 1] as const)"
         :key="dir"
         type="button"
+        tabindex="-1"
         class="absolute top-1/2 z-20 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-black/75 text-white opacity-0 shadow-[var(--shadow-elev-2)] backdrop-blur-sm transition-opacity hover:bg-black/90 focus-visible:opacity-100 group-hover/tile:opacity-100 group-focus-within/tile:opacity-100"
         :class="dir < 0 ? '-left-2' : '-right-2'"
         :aria-label="dir < 0 ? t('print.prev') : t('print.next')"
