@@ -1,3 +1,9 @@
+## [0.12.0](https://github.com/Diix46/SpellForge/compare/v0.11.0...v0.12.0) (2026-09-24)
+
+### Features
+
+* **mtg:** retours de Viktor sur la fiche carte et l'affichage ([903e63d](https://github.com/Diix46/SpellForge/commit/903e63d201fd4c507995cb02b907d0751385c428))
+
 ## [0.11.0](https://github.com/Diix46/SpellForge/compare/v0.10.0...v0.11.0) (2026-09-24)
 
 ### Features
