@@ -55,6 +55,19 @@ withDb('resolveEntries', () => {
     expect(r!.card?.set).not.toBe(pin.set_code)
   })
 
+  it('honours an "[EN]" pin on a French deck', async () => {
+    // Lorwyn's Boggart Shenanigans exists in French (low resolution) and in
+    // English (sharp): marked "[EN]", the English one shows.
+    const [plain, marked] = await resolveEntries(db, [
+      { name: 'Boggart Shenanigans', set: 'LRW', collectorNumber: '155' },
+      { name: 'Boggart Shenanigans', set: 'LRW', collectorNumber: '155', lang: 'en' },
+    ], 'fr')
+    expect(plain!.lang).toBe('fr')
+    expect(marked!.lang).toBe('en')
+    expect(marked!.card?.set).toBe('lrw')
+    expect(marked!.card?.collector_number).toBe('155')
+  })
+
   it('keeps the pinned art when a card exists in no French printing', async () => {
     const { rows } = await db.execute(`
       SELECT o.name, p.set_code, p.collector_number

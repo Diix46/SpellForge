@@ -354,13 +354,16 @@ export function buildAutocompleteQuery(prefix: string, limit = 20) {
  * Deck resolution puts the language before a pinned art, so a pin on a printing
  * of the other language would silently not show — it is not offered.
  *
+ * `withEnglish` adds every English printing after the localised ones: the
+ * picker offers them as an explicit "[EN]" choice, which resolution honours.
+ *
  * Picks ONE card before listing printings. Several cards can answer to a name —
  * "Sol Ring // Sol Ring" is an art-series card sharing Sol Ring's front face
  * name — and listing them all would let a player pin an art card, silently
  * swapping the deck's playable card for an unplayable one. Exact full name
  * first, real cards before extras, then the most played.
  */
-export function buildPrintsQuery(name: string, lang: string) {
+export function buildPrintsQuery(name: string, lang: string, withEnglish = false) {
   const key = fold(name)
   return {
     sql: `SELECT p.id, p.set_code, p.set_name, p.collector_number, p.lang,
@@ -372,10 +375,10 @@ export function buildPrintsQuery(name: string, lang: string) {
                 WHERE o.name_folded = ? OR o.name_front = ?
                 ORDER BY (o.name_folded = ?) DESC, o.is_extra ASC, o.edhrec_sort ASC
                 LIMIT 1)
-             AND (p.lang = ? OR (p.lang = 'en' AND NOT EXISTS (
+             AND (p.lang = ? OR (p.lang = 'en' AND (? OR NOT EXISTS (
                    SELECT 1 FROM printings l
-                    WHERE l.oracle_id = p.oracle_id AND l.lang = ? AND l.is_real_image = 1)))
-           ORDER BY p.released_at DESC`,
-    args: [key, key, key, lang, lang] as InValue[],
+                    WHERE l.oracle_id = p.oracle_id AND l.lang = ? AND l.is_real_image = 1))))
+           ORDER BY (p.lang = ?) DESC, p.released_at DESC`,
+    args: [key, key, key, lang, withEnglish ? 1 : 0, lang, lang] as InValue[],
   }
 }

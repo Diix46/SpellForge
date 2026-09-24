@@ -11,7 +11,7 @@ import { listPrints } from '../../utils/cards/mtg-prints'
 const MAX_NAMES = 250
 
 export default defineEventHandler(async (event): Promise<{ prints: Record<string, PrintOption[]> }> => {
-  const body = await readBody<{ names?: unknown, lang?: unknown }>(event)
+  const body = await readBody<{ names?: unknown, lang?: unknown, all?: unknown }>(event)
   const raw = Array.isArray(body?.names) ? body.names : []
   if (raw.length > MAX_NAMES)
     throw createError({ statusCode: 413, statusMessage: `Too many names (max ${MAX_NAMES})` })
@@ -20,10 +20,12 @@ export default defineEventHandler(async (event): Promise<{ prints: Record<string
     .map(n => n.trim().slice(0, 160))
     .filter(Boolean))]
   const lang = body?.lang === 'fr' ? 'fr' : 'en'
+  // The English printings too: the "all in English" action needs them.
+  const all = body?.all === true
 
   const db = useMtgCardsDb()
   const prints: Record<string, PrintOption[]> = {}
   for (const name of names)
-    prints[name] = await listPrints(db, name, lang)
+    prints[name] = await listPrints(db, name, lang, all)
   return { prints }
 })

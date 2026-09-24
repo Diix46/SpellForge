@@ -2,7 +2,7 @@ import type { PrintOption } from '../shared/mtg/prints'
 import { existsSync } from 'node:fs'
 import { afterAll, describe, expect, it } from 'vitest'
 import { listPrints } from '../server/utils/cards/mtg-prints'
-import { pickPrint, printKey, setCoverage } from '../shared/mtg/prints'
+import { displayable, pickPrint, pinFor, pinPrintKey, printKey, samePin, setCoverage } from '../shared/mtg/prints'
 import { openCardDb } from './support/card-db'
 
 function print(set: string, collectorNumber: string, releasedAt: string, extra: Partial<PrintOption> = {}): PrintOption {
@@ -61,8 +61,43 @@ describe('setCoverage', () => {
   })
 })
 
-it('printKey lowercases the set', () => {
-  expect(printKey('SLD', '2288')).toBe('sld/2288')
+describe('pins and languages', () => {
+  const fr = print('lrw', '155', '2007-10-12', { lang: 'fr', highres: false })
+  const en = print('lrw', '155', '2007-10-12', { lang: 'en' })
+
+  it('keys a printing by set, number and language', () => {
+    expect(printKey('SLD', '2288', 'en')).toBe('sld/2288@en')
+    expect(printKey('lrw', '155', 'fr')).not.toBe(printKey('lrw', '155', 'en'))
+  })
+
+  it('marks "[EN]" only a printing in another language than the deck', () => {
+    expect(pinFor(en, 'fr')).toEqual({ set: 'lrw', collectorNumber: '155', lang: 'en' })
+    expect(pinFor(fr, 'fr')).toEqual({ set: 'lrw', collectorNumber: '155' })
+    expect(pinFor(en, 'en')).toEqual({ set: 'lrw', collectorNumber: '155' })
+  })
+
+  it('reads a pin in the deck language unless marked', () => {
+    expect(pinPrintKey({ set: 'LRW', collectorNumber: '155' }, 'fr')).toBe('lrw/155@fr')
+    expect(pinPrintKey({ set: 'LRW', collectorNumber: '155', lang: 'en' }, 'fr')).toBe('lrw/155@en')
+    expect(pinPrintKey({}, 'fr')).toBe('')
+  })
+
+  it('compares pins as written, set in any case', () => {
+    expect(samePin({ set: 'LRW', collectorNumber: '155' }, { set: 'lrw', collectorNumber: '155' })).toBe(true)
+    expect(samePin({ set: 'LRW', collectorNumber: '155' }, { set: 'lrw', collectorNumber: '155', lang: 'en' })).toBe(false)
+  })
+
+  it('shows the deck language on its own, English when it has none', () => {
+    expect(displayable([fr, en], 'fr')).toEqual([fr])
+    expect(displayable([en], 'fr')).toEqual([en])
+  })
+
+  it('picks the best English printing for "all in English", sharp scans first', () => {
+    const blurry = print('evg', '54', '2014-12-05', { lang: 'en', highres: false })
+    expect(pickPrint([fr, blurry, en], { kind: 'english' })).toBe(en)
+    expect(pickPrint([fr, blurry], { kind: 'english' })).toBe(blurry)
+    expect(pickPrint([fr], { kind: 'english' })).toBeUndefined()
+  })
 })
 
 const DB = '.data/cards-mtg.db'
@@ -71,6 +106,16 @@ const withDb = existsSync(DB) ? describe : describe.skip
 withDb('listPrints', () => {
   const db = openCardDb()
   afterAll(() => db.close())
+
+  it('adds the English printings after the French ones on demand', async () => {
+    const own = await listPrints(db, 'Boggart Shenanigans', 'fr')
+    const all = await listPrints(db, 'Boggart Shenanigans', 'fr', true)
+    expect(own.every(p => p.lang === 'fr')).toBe(true)
+    expect(all.length).toBeGreaterThan(own.length)
+    const firstEnglish = all.findIndex(p => p.lang === 'en')
+    expect(firstEnglish).toBe(own.length)
+    expect(all.slice(firstEnglish).every(p => p.lang === 'en')).toBe(true)
+  })
 
   it('tells low-resolution scans apart and serves a large image for the preview', async () => {
     const prints = await listPrints(db, 'Krenko, Mob Boss', 'fr')

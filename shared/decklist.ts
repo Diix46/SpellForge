@@ -13,6 +13,12 @@ export interface DeckEntry {
   /** Magic: a pinned printing, the Arena "(SET) NUM" suffix. */
   set?: string
   collectorNumber?: string
+  /**
+   * Magic: the pinned printing is wanted in English even on a French deck — a
+   * " [EN]" marker after the suffix. Without it, a French deck shows the card
+   * in French whenever it exists in French.
+   */
+  lang?: 'en'
   /** One Piece: a pinned art, "OP01-016_p1". */
   art?: string
 }

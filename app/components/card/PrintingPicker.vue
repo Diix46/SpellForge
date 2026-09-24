@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { PrintOption } from '~/composables/usePrintings'
 import { computed, ref, watch } from 'vue'
+import { displayable } from '#shared/mtg/prints'
 import { useLocale } from '~/composables/useLocale'
 import { printKey, usePrintings } from '~/composables/usePrintings'
 
 // Artwork strip of the card detail modal: every printing that can show in the
-// site's language, always visible. Hovering or focusing a thumbnail previews it
+// site's language, then — on a French deck — the English ones, pinned "[EN]"
+// when picked (a sharp English scan over a low-resolution French one). Always
+// visible. Hovering or focusing a thumbnail previews it
 // in the modal's big image; a click pins it on the deck entry, and the leading
 // "Auto" tile clears the pin. The modal stays open, so the choice is seen.
 
@@ -47,7 +50,8 @@ watch(() => [props.cardKey, props.englishName, locale.value] as const, async ([,
   }
   loading.value = true
   try {
-    const list = await printsOf(name, lang)
+    // English printings too, unless the site already is in English.
+    const list = await printsOf(name, lang, lang !== 'en')
     if (!cancelled)
       prints.value = list
   }
@@ -61,10 +65,26 @@ watch(() => [props.cardKey, props.englishName, locale.value] as const, async ([,
   }
 }, { immediate: true })
 
-const keyOf = (p: PrintOption) => printKey(p.set, p.collectorNumber)
-// A pin on a printing this language cannot show (an English one on a French
-// deck) is not honoured: the card is on its automatic printing.
-const pinned = computed(() => prints.value.some(p => keyOf(p) === props.pinnedKey) ? props.pinnedKey : '')
+const keyOf = (p: PrintOption) => printKey(p.set, p.collectorNumber, p.lang)
+// The site's own language first, then the English printings, apart.
+const groups = computed(() => {
+  const own = displayable(prints.value, locale.value)
+  const english = prints.value.filter(p => !own.includes(p))
+  return [
+    { key: 'own', label: '', items: own },
+    { key: 'en', label: t('print.inEnglish'), items: english },
+  ].filter(g => g.items.length)
+})
+// A pin this list does not hold (one it cannot show) is not honoured: the card
+// is on its automatic printing.
+const pinned = computed(() => {
+  const has = (key: string) => prints.value.some(p => keyOf(p) === key)
+  if (has(props.pinnedKey))
+    return props.pinnedKey
+  // An unmarked pin on a card with no printing in this language shows in English.
+  const english = props.pinnedKey.replace(/@\w+$/, '@en')
+  return !prints.value.some(p => p.lang === locale.value) && has(english) ? english : ''
+})
 const isPinned = (p: PrintOption) => pinned.value === keyOf(p)
 // With no pin, the printing on show is the automatic one: mark it, lighter.
 const isAutoShown = (p: PrintOption) => !pinned.value && props.currentPrintKey === keyOf(p)
@@ -129,52 +149,58 @@ const hasLowres = computed(() => prints.value.some(p => !p.highres))
         </span>
       </button>
 
-      <button
-        v-for="p in prints"
-        :key="p.id"
-        type="button"
-        class="relative w-16 shrink-0 snap-start overflow-hidden rounded-[var(--radius-md)] ring-2 transition-all focus-visible:outline-none"
-        :class="isPinned(p)
-          ? 'ring-(--accent-border)'
-          : isAutoShown(p)
-            ? 'ring-(--color-border-strong)'
-            : 'ring-transparent hover:ring-(--color-border-strong) focus-visible:ring-(--color-border-strong)'"
-        :title="titleOf(p)"
-        :aria-label="titleOf(p)"
-        :aria-pressed="isPinned(p)"
-        @mouseenter="emit('preview', p)"
-        @focus="emit('preview', p)"
-        @click="emit('pick', p)"
-      >
-        <img
-          v-if="p.image"
-          :src="p.image"
-          :alt="p.setName"
-          loading="lazy"
-          class="block aspect-[63/88] w-full object-cover"
-        >
+      <template v-for="g in groups" :key="g.key">
         <span
-          class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-0.5 bg-black/70 px-1 py-0.5 font-mono text-[8px] text-white/80"
+          v-if="g.label"
+          class="flex w-6 shrink-0 items-center justify-center border-l border-(--color-border-subtle) font-mono text-[9px] uppercase tracking-wider text-(--color-text-muted) [writing-mode:vertical-rl]"
+        >{{ g.label }}</span>
+        <button
+          v-for="p in g.items"
+          :key="p.id"
+          type="button"
+          class="relative w-16 shrink-0 snap-start overflow-hidden rounded-[var(--radius-md)] ring-2 transition-all focus-visible:outline-none"
+          :class="isPinned(p)
+            ? 'ring-(--accent-border)'
+            : isAutoShown(p)
+              ? 'ring-(--color-border-strong)'
+              : 'ring-transparent hover:ring-(--color-border-strong) focus-visible:ring-(--color-border-strong)'"
+          :title="titleOf(p)"
+          :aria-label="titleOf(p)"
+          :aria-pressed="isPinned(p)"
+          @mouseenter="emit('preview', p)"
+          @focus="emit('preview', p)"
+          @click="emit('pick', p)"
         >
-          <span class="truncate uppercase">{{ p.set }}</span>
-          <span class="shrink-0 rounded-sm bg-white/15 px-0.5">{{ p.lang.toUpperCase() }}</span>
-        </span>
-        <span
-          v-if="isPinned(p)"
-          class="absolute left-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full text-(--color-bg-base)"
-          :style="{ background: 'var(--accent)' }"
-          aria-hidden="true"
-        >
-          <UIcon name="i-lucide-pin" class="h-2.5 w-2.5" />
-        </span>
-        <span
-          v-if="!p.highres"
-          class="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-black/70 text-amber-300"
-          aria-hidden="true"
-        >
-          <UIcon name="i-lucide-scan-line" class="h-2.5 w-2.5" />
-        </span>
-      </button>
+          <img
+            v-if="p.image"
+            :src="p.image"
+            :alt="p.setName"
+            loading="lazy"
+            class="block aspect-[63/88] w-full object-cover"
+          >
+          <span
+            class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-0.5 bg-black/70 px-1 py-0.5 font-mono text-[8px] text-white/80"
+          >
+            <span class="truncate uppercase">{{ p.set }}</span>
+            <span class="shrink-0 rounded-sm bg-white/15 px-0.5">{{ p.lang.toUpperCase() }}</span>
+          </span>
+          <span
+            v-if="isPinned(p)"
+            class="absolute left-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full text-(--color-bg-base)"
+            :style="{ background: 'var(--accent)' }"
+            aria-hidden="true"
+          >
+            <UIcon name="i-lucide-pin" class="h-2.5 w-2.5" />
+          </span>
+          <span
+            v-if="!p.highres"
+            class="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-black/70 text-amber-300"
+            aria-hidden="true"
+          >
+            <UIcon name="i-lucide-scan-line" class="h-2.5 w-2.5" />
+          </span>
+        </button>
+      </template>
     </div>
 
     <p v-if="hasLowres" class="mt-1 flex items-center gap-1 text-[10px] text-(--color-text-muted)">

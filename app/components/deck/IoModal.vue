@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { deckPath } from '#shared/game'
-import { parseMtgDecklist } from '#shared/mtg/decklist'
+import { parseMtgDecklist, withoutLangMarkers } from '#shared/mtg/decklist'
 import { useDeckImport } from '~/composables/useDeckImport'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { errMessage } from '~/composables/useErrors'
@@ -76,9 +76,15 @@ async function submit() {
   }
 }
 
+// The list as other sites read it: Prism's own "[EN]" markers dropped.
+function exportedList(): string {
+  const raw = target.value?.read() ?? text.value
+  return game.value === 'mtg' ? withoutLangMarkers(raw) : raw
+}
+
 async function copyList() {
   try {
-    await navigator.clipboard.writeText(target.value?.read() ?? text.value)
+    await navigator.clipboard.writeText(exportedList())
     toast.add({ title: t('toast.listCopied'), color: 'success', icon: 'i-lucide-clipboard-check' })
   }
   catch {
@@ -88,7 +94,7 @@ async function copyList() {
 
 function downloadList() {
   const name = (target.value?.name() || 'deck').replace(/[^a-z0-9]+/gi, '_').toLowerCase()
-  const url = URL.createObjectURL(new Blob([target.value?.read() ?? text.value], { type: 'text/plain;charset=utf-8' }))
+  const url = URL.createObjectURL(new Blob([exportedList()], { type: 'text/plain;charset=utf-8' }))
   const a = document.createElement('a')
   a.href = url
   a.download = `${name}.txt`

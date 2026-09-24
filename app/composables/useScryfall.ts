@@ -44,7 +44,7 @@ export function useScryfall() {
         const res = await $fetch<{ cards: ResolvedRow[] }>('/api/cards/resolve', {
           method: 'POST',
           body: {
-            entries: batch.map(e => ({ name: e.name, set: e.set ?? null, collectorNumber: e.collectorNumber ?? null })),
+            entries: batch.map(e => ({ name: e.name, set: e.set ?? null, collectorNumber: e.collectorNumber ?? null, lang: e.lang ?? null })),
             lang,
           },
         })

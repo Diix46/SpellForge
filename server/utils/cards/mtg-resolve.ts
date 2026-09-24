@@ -18,6 +18,8 @@ export interface ResolveEntry {
   name: string
   set?: string | null
   collectorNumber?: string | null
+  /** 'en': the pinned printing is wanted in English, whatever the deck's language. */
+  lang?: 'en' | null
 }
 
 export interface ResolvedRow {
@@ -47,6 +49,10 @@ function list(n: number): string {
  *
  * Pinning a Secret Lair Blood Moon used to show it in English on a French
  * deck, although "Lune de sang" exists: players asked for French cards first.
+ *
+ * An entry marked "[EN]" is the exception: the player picked this printing in
+ * English on purpose (a sharp scan over a low-resolution French one), so it is
+ * honoured as is.
  */
 async function resolvePinned(db: Client, entries: ResolveEntry[], lang: string, found: Map<number, Row>, fallback: Map<number, Row>): Promise<void> {
   const pinned = entries
@@ -66,13 +72,15 @@ async function resolvePinned(db: Client, entries: ResolveEntry[], lang: string, 
 
   for (const { e, i } of pinned) {
     const same = rows.filter(r => r.set_code === e.set!.toLowerCase() && r.collector_number === e.collectorNumber)
-    const localised = same.find(r => r.lang === lang && r.is_real_image)
-    const english = same.find(r => r.lang === 'en') ?? same[0]
-    const pick = localised ?? (lang === 'en' ? english : undefined)
+    const english = same.find(r => r.lang === 'en')
+    // "[EN]": this printing in English, whatever the deck's language.
+    const wanted = e.lang === 'en' ? english : same.find(r => r.lang === lang && r.is_real_image)
+    const pick = wanted ?? (lang === 'en' ? english : undefined)
+    const other = english ?? same[0]
     if (pick)
       found.set(i, pick)
-    else if (english)
-      fallback.set(i, english)
+    else if (other)
+      fallback.set(i, other)
     // No match at all (a printing we did not ingest): fall through to by-name.
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { entryKey, totalCards } from '../shared/decklist'
-import { mtgLine, parseMtgDecklist, writeMtgDecklist } from '../shared/mtg/decklist'
+import { mtgLine, parseMtgDecklist, withoutLangMarkers, writeMtgDecklist } from '../shared/mtg/decklist'
 import { optcgLine, orderOptcgEntries, parseOptcgDecklist } from '../shared/optcg/decklist'
 import { itPerf } from './support/perf'
 
@@ -40,6 +40,18 @@ describe('magic decklists', () => {
     expect(back.sideboard[0]).toEqual({ quantity: 1, name: 'Duress', set: 'M21', collectorNumber: '96' })
     // No choice, or a commander no longer in the list: a plain list.
     expect(writeMtgDecklist(main, [], 'Kenrith')).toBe('1 Sol Ring\n1 Atraxa, Praetors\' Voice (ONE) 196\n30 Forest')
+  })
+
+  it('round-trips an "[EN]" pin, and drops the marker for other sites', () => {
+    const r = parseMtgDecklist(['1 Boggart Shenanigans (LRW) 155 [EN]', '1 Sol Ring [en]', '1 Forest (SLD) 1494★'].join('\n'))
+    expect(r.mainboard).toEqual([
+      { quantity: 1, name: 'Boggart Shenanigans', set: 'LRW', collectorNumber: '155', lang: 'en' },
+      // The marker only means something on a pinned printing.
+      { quantity: 1, name: 'Sol Ring', set: undefined, collectorNumber: undefined },
+      { quantity: 1, name: 'Forest', set: 'SLD', collectorNumber: '1494★' },
+    ])
+    expect(r.mainboard.map(mtgLine)).toEqual(['1 Boggart Shenanigans (LRW) 155 [EN]', '1 Sol Ring', '1 Forest (SLD) 1494★'])
+    expect(withoutLangMarkers('1 Boggart Shenanigans (LRW) 155 [EN]\n1 Sol Ring')).toBe('1 Boggart Shenanigans (LRW) 155\n1 Sol Ring')
   })
 
   it('keeps the companion out of the hundred', () => {

@@ -7,7 +7,7 @@ import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
 import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
-import { printKey } from '~/composables/usePrintings'
+import { pinFor, pinPrintKey, printKey } from '~/composables/usePrintings'
 import { mtgRaw } from '~/composables/useScryfall'
 
 const props = defineProps<{
@@ -24,10 +24,10 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
   'setCommander': [card: ResolvedCard]
   /** No set/number: back to the automatic printing. */
-  'setPrinting': [payload: { name: string, set?: string, collectorNumber?: string }]
+  'setPrinting': [payload: { name: string, set?: string, collectorNumber?: string, lang?: 'en' }]
 }>()
 
-const { t, rarityLabel, isFr } = useLocale()
+const { t, rarityLabel, isFr, locale } = useLocale()
 
 // Only legendary creatures / planeswalkers can be commanders.
 const canBeCommander = computed(() => isCommanderType(props.card?.card?.typeLine ?? ''))
@@ -114,14 +114,13 @@ const scryUrl = computed(() => c.value?.scryfall_uri?.replace(/\?.*$/, '') ?? nu
 // The gallery's fetch/open/list state lives in CardPrintingPicker.
 const currentPrintKey = computed(() => {
   const card = c.value
-  return card ? printKey(card.set, card.collector_number) : ''
+  return card ? printKey(card.set, card.collector_number, card.lang) : ''
 })
 // A pick shows at once; the entry's own pin catches up after the re-resolve.
 const pinnedKey = computed(() => {
   if (chosenPrint.value !== undefined)
-    return chosenPrint.value ? printKey(chosenPrint.value.set, chosenPrint.value.collectorNumber) : ''
-  const e = props.card?.entry
-  return e?.set && e?.collectorNumber ? printKey(e.set, e.collectorNumber) : ''
+    return chosenPrint.value ? printKey(chosenPrint.value.set, chosenPrint.value.collectorNumber, chosenPrint.value.lang) : ''
+  return props.card ? pinPrintKey(props.card.entry, locale.value) : ''
 })
 // The strip lists the deck line's card: keyed by the entry, so a pick (which
 // changes the printing, hence the card id) keeps the strip and its scroll.
@@ -133,12 +132,13 @@ function onPickPrint(p: PrintOption | null) {
   // The deck line's own name: a double-faced card is listed by its full name,
   // not by the face on show.
   const name = props.card?.entry.name || englishName.value
-  if (!name || pinnedKey.value === (p ? printKey(p.set, p.collectorNumber) : ''))
+  if (!name || pinnedKey.value === (p ? printKey(p.set, p.collectorNumber, p.lang) : ''))
     return
   chosenPrint.value = p
   previewPrint.value = null
   showBack.value = false
-  emit('setPrinting', { name, set: p?.set, collectorNumber: p?.collectorNumber })
+  // A printing in another language than the deck's is pinned "[EN]".
+  emit('setPrinting', { name, ...(p ? pinFor(p, locale.value) : {}) })
 }
 
 // ----- Oracle text: localized keyword chips + typed segments (mana/kw/text) -----
