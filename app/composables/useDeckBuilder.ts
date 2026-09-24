@@ -14,6 +14,10 @@ export type { ValidationIssue } from '#shared/game'
  * working); this composable parses it, exposes structured ops, and serialises
  * back to raw on every change.
  */
+function samePin(a: { set?: string, collectorNumber?: string }, b: { set?: string, collectorNumber?: string }): boolean {
+  return (a.set ?? '').toLowerCase() === (b.set ?? '').toLowerCase() && (a.collectorNumber ?? '') === (b.collectorNumber ?? '')
+}
+
 export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) => void }) {
   const { parse } = useDecklist()
 
@@ -96,17 +100,25 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
   }
 
   /**
-   * Pin a specific printing (set + collector number) on a card, or clear it.
-   * False when the card is not in the deck.
+   * Pin (or clear) the printings of many cards in one write, so a deck-wide
+   * change is one undo step. Cards not in the deck are skipped; returns how
+   * many entries changed.
    */
-  function setPrinting(name: string, set?: string, collectorNumber?: string): boolean {
-    const idx = findIndex(name)
-    if (idx < 0)
-      return false
-    entries.value[idx]!.set = set
-    entries.value[idx]!.collectorNumber = collectorNumber
-    serialise()
-    return true
+  function setPrintings(pins: { name: string, set?: string, collectorNumber?: string }[]): number {
+    let changed = 0
+    for (const p of pins) {
+      const entry = entries.value[findIndex(p.name)]
+      // Set codes compare case-insensitively: the parser uppercases them, the
+      // card database answers in lowercase.
+      if (!entry || samePin(entry, p))
+        continue
+      entry.set = p.set
+      entry.collectorNumber = p.collectorNumber
+      changed++
+    }
+    if (changed)
+      serialise()
+    return changed
   }
 
   const totalCards = computed(() => entries.value.reduce((s, e) => s + e.quantity, 0))
@@ -125,7 +137,7 @@ export function useDeckBuilder(rawModel: { get: () => string, set: (v: string) =
     removeCard,
     setQuantity,
     setCommander,
-    setPrinting,
+    setPrintings,
     findIndex,
   }
 }

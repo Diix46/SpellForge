@@ -9,6 +9,7 @@ import { useDeckBuilder, validateCommander } from '~/composables/useDeckBuilder'
 import { useDeckBuy } from '~/composables/useDeckBuy'
 import { useDeckExport } from '~/composables/useDeckExport'
 import { useDecklist } from '~/composables/useDecklist'
+import { useDeckPrintings } from '~/composables/useDeckPrintings'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { classifyType, displayName, displayType, isTokenType } from '~/composables/useMtg'
@@ -596,17 +597,40 @@ function setCommander(card: ResolvedCard) {
   toast.add({ title: t('toast.commanderSet'), description: name, icon: 'i-lucide-crown', color: 'success' })
 }
 
-// Pin a specific printing on a deck entry, then re-resolve so the chosen art
-// (and its price) replaces the auto-picked one across preview/buy/PDF.
-function onSetPrinting(payload: { name: string, set: string, collectorNumber: string }) {
-  let pinned = false
-  builderOp(() => {
-    pinned = builder.setPrinting(payload.name, payload.set, payload.collectorNumber)
-  })
-  showDetail.value = false
-  if (pinned)
-    toast.add({ title: t('toast.printSet'), description: `${payload.set.toUpperCase()} #${payload.collectorNumber}`, icon: 'i-lucide-layers', color: 'success' })
-}
+// Artworks: a pick in the detail view (the modal stays open, the toast undoes),
+// the preview grid's ‹ › browsing and the deck-wide actions. See useDeckPrintings.
+const {
+  setPrinting: onSetPrinting,
+  cyclePrint,
+  pendingImages,
+  deckSets,
+  deckPrintsLoading,
+  loadDeckPrints,
+  applyBulk,
+} = useDeckPrintings({
+  entries: () => builder.entries.value,
+  setPrintings: pins => builder.setPrintings(pins),
+  builderOp,
+  resolvedCards,
+  lang: () => lang.value,
+  t,
+})
+// The open detail view follows the deck: after a pick re-resolves, it shows the
+// card as the deck now has it (new art, price, set line).
+watch(resolvedCards, () => {
+  if (!showDetail.value || !detailCard.value)
+    return
+  const rc = resolvedFor(detailCard.value.entry.name)
+  if (!rc || rc.entry.name !== detailCard.value.entry.name || rc === detailCard.value)
+    return
+  // Every resolve hands back new objects: only follow one made for the pin the
+  // entry has now, or an older pick's answer would flash back in the modal.
+  const now = builder.entries.value.find(e => e.name === rc.entry.name)
+  const pinOf = (e?: { set?: string, collectorNumber?: string }) => `${(e?.set ?? '').toLowerCase()}/${e?.collectorNumber ?? ''}`
+  if (now && pinOf(now) !== pinOf(rc.entry))
+    return
+  detailCard.value = rc
+})
 
 // PDF proxy export (settings, progress, action, page estimate). See useDeckExport.
 const {
@@ -768,9 +792,15 @@ const {
       :fetch-progress="fetchProgress"
       :print-page-estimate="printPageEstimate"
       :color-var="colorVar"
+      :pending-images="pendingImages"
+      :art-sets="deckSets"
+      :art-loading="deckPrintsLoading"
       @details="openDetail"
       @toggle-type-filter="toggleTypeFilter"
       @export="doExport"
+      @cycle-print="cyclePrint"
+      @bulk-art="applyBulk"
+      @load-art-sets="loadDeckPrints"
     />
 
     <!-- BUY — centered modal overlay (cost summary + per-card list + checkout). -->
