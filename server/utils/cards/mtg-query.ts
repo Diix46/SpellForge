@@ -364,7 +364,7 @@ export function buildPrintsQuery(name: string, lang: string) {
   const key = fold(name)
   return {
     sql: `SELECT p.id, p.set_code, p.set_name, p.collector_number, p.lang,
-                 p.img_version, p.price_eur, p.promo
+                 p.img_version, p.price_eur, p.promo, p.is_highres, p.released_at
             FROM printings p
            WHERE p.is_real_image = 1
              AND p.oracle_id = (
