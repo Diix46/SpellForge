@@ -62,7 +62,8 @@ OLD = {'2003'}
 # card (mana cost, set symbol) and the box bottom by the power/toughness box.
 LAYOUT = {
     'modern': dict(name=(58, 58, 690, 102), type=(58, 588, 690, 638), box=(58, 652, 686, 948), box_pt=928),
-    'old': dict(name=(58, 60, 690, 102), type=(58, 590, 690, 636), box=(60, 656, 688, 930), box_pt=912,
+    # the old box's right border sits close: stop short of it or the erase smears it
+    'old': dict(name=(58, 60, 690, 102), type=(58, 590, 690, 636), box=(60, 656, 682, 930), box_pt=912,
                 extra=[(58, 96, 690, 108)]),
 }
 
@@ -110,6 +111,10 @@ def regions(img, en, fam):
     has_pt = en.get('power') is not None or en.get('toughness') is not None or en.get('loyalty') is not None
     box = lay['box'][:3] + ((lay['box_pt'] if has_pt else lay['box'][3]),)
     extra = list(lay.get('extra', []))
+    if fam == 'old' and has_pt:
+        # the last line runs left of the power/toughness box (no holofoil stamp
+        # on this frame)
+        extra.append((lay['box'][0], lay['box_pt'] - 40, 545, lay['box_pt'] + 22))
     if fam == 'modern' and has_pt:
         # the last line runs under the power/toughness box, left of it
         # (tall enough, overlapping the box, for the erase's median to see
