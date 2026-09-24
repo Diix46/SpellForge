@@ -1,3 +1,10 @@
+## [0.6.2](https://github.com/Diix46/SpellForge/compare/v0.6.1...v0.6.2) (2026-09-24)
+
+### Bug Fixes
+
+* **mtg:** en FR, une impression épinglée cède la place à une version française ([a3b9fe7](https://github.com/Diix46/SpellForge/commit/a3b9fe7f619c0e3b81af5b29d4a0b20cb8c06bfb))
+* **mtg:** le sélecteur d'impressions ne propose que la langue affichable ([057b6bd](https://github.com/Diix46/SpellForge/commit/057b6bd18e1a30e348c448661fb5cd53adc202d9))
+
 ## [0.6.1](https://github.com/Diix46/SpellForge/compare/v0.6.0...v0.6.1) (2026-09-21)
 
 ### Bug Fixes

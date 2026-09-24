@@ -1,7 +1,7 @@
 {
   "name": "spellforge",
   "type": "module",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "description": "Prism, l'atelier de decks One Piece et Magic: The Gathering, avec impression de proxies Magic FR/EN (A4/A3).",
   "scripts": {
