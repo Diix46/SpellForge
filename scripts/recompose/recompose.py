@@ -39,10 +39,15 @@ GATE = {'name': 0.7, 'type': 0.85}
 
 def load_targets(bulk, only_ids=None):
     en, fr = {}, {}
+    # A French type line from any printing of the card: some French printings
+    # lack theirs in Scryfall's data.
+    fr_types = {}
     with gzip.open(bulk, 'rt', encoding='utf-8') as fh:
         for line in fh:
             c = json.loads(line)
             key = (c['set'], c['collector_number'])
+            if c['lang'] == 'fr' and c.get('printed_type_line'):
+                fr_types.setdefault(c.get('oracle_id'), c['printed_type_line'])
             if c['lang'] == 'en' and c.get('image_status') == 'highres_scan':
                 en[key] = c
             elif c['lang'] == 'fr' and c.get('image_status') == 'lowres':
@@ -52,6 +57,8 @@ def load_targets(bulk, only_ids=None):
         e = en.get(key)
         if e is None or (only_ids is not None and f['id'] not in only_ids):
             continue
+        if f.get('printed_type_line') is None and fr_types.get(f.get('oracle_id')):
+            f = {**f, 'printed_type_line': fr_types[f['oracle_id']]}
         out.append((f, e))
     return out
 

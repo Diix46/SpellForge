@@ -93,10 +93,11 @@ def family_of(card):
 def supported(fr, en):
     """Only the plain frames the templates were calibrated on."""
     fam = family_of(fr)
-    effects = set(fr.get('frame_effects') or []) - {'legendary', 'enchantment', 'miracle', 'nyxtouched'}
-    # A watermark sits under the rules text; the erase would smear it.
-    return (fam is not None and fr.get('layout') == 'normal' and fr.get('border_color') == 'black'
-            and not effects and not fr.get('watermark') and not en.get('watermark')
+    # Effects that change colours or ornaments, not where the text sits: the
+    # quality gate decides for each card.
+    effects = set(fr.get('frame_effects') or []) - {'legendary', 'enchantment', 'miracle', 'nyxtouched', 'etched', 'devoid', 'extendedart', 'inverted', 'showcase', 'colorshifted', 'snow'}
+    return (fam is not None and fr.get('layout') == 'normal' and fr.get('border_color') in ('black', 'yellow', 'white')
+            and not effects
             and fr.get('printed_name') and fr.get('printed_type_line') is not None
             and 'Planeswalker' not in (en.get('type_line') or '') and 'Battle' not in (en.get('type_line') or ''))
 
@@ -122,6 +123,8 @@ def regions(img, en, fam):
         # at the bottom center, which the erase would smear)
         extra.append((lay['box'][0], lay['box_pt'] - 40, 320, lay['box_pt'] + 30))
         extra.append((420, lay['box_pt'] - 40, 570, lay['box_pt'] + 30))
+        # and above the stamp itself, where a centered last line ends
+        extra.append((320, lay['box_pt'] - 40, 420, lay['box_pt'] + 15))
     extra = [(e[0], e[1], min(e[2], name[2]) if e[1] < 200 else e[2], e[3]) for e in extra]
     return dict(name=name, type=type_, box=box, extra=extra)
 
@@ -143,14 +146,22 @@ def set_symbol_left(img, bar):
 
 # ---- erase ---------------------------------------------------------------------
 
-def erase(img, region, dark_text=True):
-    """Inpaint the letters in `region`: strokes stand out from a median-blurred background."""
+def erase(img, region, dark_text=True, ink_only=False):
+    """Inpaint the letters in `region`: strokes stand out from a median-blurred background.
+
+    `ink_only` keeps to the printed ink itself (near black, or near white on a
+    dark box): a watermark under the rules text stands out from the background
+    too, but pale and coloured, and must survive the erase.
+    """
     x0, y0, x1, y1 = region
     crop = img[y0:y1, x0:x1]
     gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY).astype(np.int16)
     bg = cv2.medianBlur(cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY), 31).astype(np.int16)
     diff = (bg - gray) if dark_text else (gray - bg)
-    mask = (diff > 18).astype(np.uint8) * 255
+    strokes = diff > 18
+    if ink_only:
+        strokes &= (gray < 110) if dark_text else (gray > 170)
+    mask = strokes.astype(np.uint8) * 255
     mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=2)
     img[y0:y1, x0:x1] = cv2.inpaint(crop, mask, 7, cv2.INPAINT_TELEA)
 
@@ -162,11 +173,61 @@ def luminance(img, region):
 
 # ---- titles --------------------------------------------------------------------
 
-def set_title(im, box, text, fam, part, color, k=4):
-    """Name or type line at the calibrated size; smaller only when too long."""
+def measure_line(img, box, dark_text):
+    """Where the scan prints the line in `box`: left edge, baseline and cap
+    height of its letters (box-relative), or None when no text reads there.
+
+    Scans are not cropped alike and the old frames were not typeset alike:
+    the French line takes the English one's place, card by card."""
     x0, y0, x1, y1 = box
-    p = TITLE_SET[(fam, part)]
+    gray = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_RGB2GRAY).astype(np.int16)
+    bg = cv2.medianBlur(gray.astype(np.uint8), 31).astype(np.int16)
+    diff = (bg - gray) if dark_text else (gray - bg)
+    ink = (diff > 35).astype(np.uint8)
+    ink[ink.mean(1) > 0.5, :] = 0  # the bar's own edges
+    n, _, stats, _ = cv2.connectedComponentsWithStats(ink, 8)
+    w = x1 - x0
+    # Not the bar's own curled ends, at its left and right edges.
+    letters = [stats[i] for i in range(1, n)
+               if 6 <= stats[i, cv2.CC_STAT_HEIGHT] <= 60 and stats[i, cv2.CC_STAT_WIDTH] <= 80 and stats[i, cv2.CC_STAT_AREA] >= 10
+               and stats[i, cv2.CC_STAT_LEFT] > 4 and stats[i, cv2.CC_STAT_LEFT] + stats[i, cv2.CC_STAT_WIDTH] < w - 4]
+    if len(letters) < 3:
+        return None
+    bottoms = np.array([s[1] + s[3] for s in letters])
+    baseline = float(np.median(bottoms))  # descenders are the few
+    # Width is the steadiest measure: how wide the English line prints.
+    right = float(max(s[0] + s[2] for s in letters))
+    left = float(min(s[0] for s in letters))
+    return dict(left=left, baseline=baseline, width=right - left)
+
+
+_CAP_RATIO = {}
+
+
+def cap_ratio(path):
+    """Cap height of a font, per point of size."""
+    if path not in _CAP_RATIO:
+        f = ImageFont.truetype(path, 200)
+        b = f.getbbox('H')
+        _CAP_RATIO[path] = (b[3] - b[1]) / 200
+    return _CAP_RATIO[path]
+
+
+def set_title(im, box, text, fam, part, color, measured=None, measured_text=None, k=4):
+    """Name or type line where and as large as the scan printed it (measured),
+    else at the calibrated place and size; smaller only when too long."""
+    x0, y0, x1, y1 = box
+    p = dict(TITLE_SET[(fam, part)])
     path = FONT['title'] if fam == 'modern' else FONT['title_old']
+    if measured and measured_text:
+        # The size that gives the English line its printed width, tracking kept.
+        f = ImageFont.truetype(path, 100)
+        natural = f.getbbox(measured_text)
+        per_pt = (natural[2] - natural[0]) / 100
+        size = (measured['width'] - p['tracking'] * (len(measured_text) - 1)) / per_pt if per_pt else p['size']
+        # A measure far from the calibration read something else (an ornament).
+        if 0.8 * p['size'] <= size <= 1.2 * p['size']:
+            p.update(size=size, dx=measured['left'] - natural[0] * size / 100, dy=measured['baseline'] / (y1 - y0))
     size = p['size']
 
     def width(sz):
@@ -393,15 +454,18 @@ def compose(scan, en, texts, lang_label=None):
     img = np.array(scan.convert('RGB').resize((W, H), Image.LANCZOS))
     reg = regions(img, en, fam)
     colors = {}
+    # Measured before the erase: where the English name and type sit.
+    measured = {part: measure_line(img, reg[part], dark_text=luminance(img, reg[part]) >= 110) for part in ('name', 'type')}
     for part in ('name', 'type', 'box'):
         dark_bg = luminance(img, reg[part]) < 110
         colors[part] = LIGHT_INK if dark_bg else DARK_INK
-        erase(img, reg[part], dark_text=not dark_bg)
+        # Only the ink: the bars' texture and the box's watermark stay intact.
+        erase(img, reg[part], dark_text=not dark_bg, ink_only=True)
     for region in reg['extra']:
-        erase(img, region, dark_text=luminance(img, region) >= 110)
+        erase(img, region, dark_text=luminance(img, region) >= 110, ink_only=True)
     im = Image.fromarray(img).convert('RGBA')
-    set_title(im, reg['name'], texts['name'], fam, 'name', colors['name'])
-    set_title(im, reg['type'], texts['type'], fam, 'type', colors['type'])
+    set_title(im, reg['name'], texts['name'], fam, 'name', colors['name'], measured['name'], en['name'])
+    set_title(im, reg['type'], texts['type'], fam, 'type', colors['type'], measured['type'], en['type_line'])
     if not typeset_box(im, reg['box'], texts['rules'], texts['flavor'], colors['box'], divider=fam == 'modern'):
         return None, 'text does not fit'
     if lang_label and fam == 'modern':
@@ -474,7 +538,15 @@ def symbols_ok(*texts):
     return all(drawable(t) for text in texts for t in TOKEN.findall(text or ''))
 
 
+# Scryfall's French text sometimes loses a line break: "Vol{1}{B} : …" where
+# the card prints "Vol" then "{1}{B} : …". French never glues a word to a
+# symbol, so a letter right before one means a lost break.
+# Same for a sentence glued to the next: "d'une carte.Piochez deux cartes."
+LOST_BREAK = re.compile(r'(?<=[^\W\d_])(?=\{)|(?<=[.!?])(?=[A-ZÀ-Ý])')
+
+
 def french_texts(fr):
+    fr = {**fr, 'printed_text': LOST_BREAK.sub('\n', fr.get('printed_text') or '')}
     return {
         'name': fr['printed_name'],
         'type': (fr.get('printed_type_line') or '').replace(' — ', ' : ').replace(' - ', ' : '),
