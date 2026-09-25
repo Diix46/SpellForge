@@ -87,9 +87,9 @@ useHead({
 const { open: showAuth, show: openAuth } = useAuthOverlay()
 const mobileNav = ref(false)
 
-// The home page brings its own header and footer; every other page gets the
-// app chrome.
-const showChrome = computed(() => route.path !== '/')
+// One top bar everywhere. The home page brings its own footer and spans the
+// whole width; every other page gets the app's frame and footer.
+const isHome = computed(() => route.path === '/')
 
 // A page can request a viewport-locked shell (no page scroll; the page fills the
 // area below the top bar and manages its own internal scroll). The deck page
@@ -129,14 +129,6 @@ const worlds = computed(() => [
 function isActive(to: string) {
   return route.path === to
 }
-
-// The same dialog everywhere, without leaving the page: inside a universe it
-// opens on that game, and on a deck page it offers to replace the open list.
-const importOverlay = useImportOverlay()
-function openImport() {
-  mobileNav.value = false
-  importOverlay.show({ game: universe.value ?? undefined })
-}
 </script>
 
 <template>
@@ -144,14 +136,14 @@ function openImport() {
     <FxOnePieceSea v-if="universe === 'optcg'" />
     <FxMagicTable v-else-if="universe === 'mtg'" />
     <!-- The home page paints its own ground over it: no hidden animation there. -->
-    <FxAppBackground v-else-if="showChrome" />
+    <FxAppBackground v-else-if="!isHome" />
 
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
-    <div class="app-shell" :class="{ 'app-shell--fullscreen': appFullscreen, 'app-shell--bare': !showChrome }" :style="{ zIndex: 'var(--z-content)' }">
+    <div class="app-shell" :class="{ 'app-shell--fullscreen': appFullscreen, 'app-shell--bare': isHome }" :style="{ zIndex: 'var(--z-content)' }">
       <a href="#content" class="sr-only">Aller au contenu</a>
-      <!-- ============ HEADER (single top bar) — members only ============ -->
-      <header v-if="showChrome" class="topbar">
+      <!-- ============ HEADER (single top bar, every page) ============ -->
+      <header class="topbar">
         <div class="topbar-inner">
           <!-- Left: brand + primary nav -->
           <NuxtLink to="/" class="brand" @click="mobileNav = false">
@@ -170,10 +162,6 @@ function openImport() {
               <UIcon :name="item.icon" class="ic" />
               <span>{{ item.label }}</span>
             </NuxtLink>
-            <button type="button" class="nav-link" @click="openImport">
-              <UIcon name="i-lucide-download" class="ic" />
-              <span>{{ t('nav.import') }}</span>
-            </button>
           </nav>
 
           <!-- the two worlds -->
@@ -255,10 +243,6 @@ function openImport() {
             <UIcon :name="item.icon" class="ic" />
             <span>{{ item.label }}</span>
           </NuxtLink>
-          <button type="button" class="nav-link" @click="openImport">
-            <UIcon name="i-lucide-download" class="ic" />
-            <span>{{ t('nav.import') }}</span>
-          </button>
           <!-- on a phone the bar has no room left for these -->
           <div class="nav-mobile-tools">
             <div class="lang">
@@ -286,7 +270,7 @@ function openImport() {
         <NuxtPage :transition="pageTransition" />
       </main>
 
-      <footer v-if="showChrome" class="foot">
+      <footer v-if="!isHome" class="foot">
         <div class="foot-inner">
           <div class="foot-brand">
             <AppLogo :wordmark="false" :size="20" />
@@ -318,13 +302,11 @@ function openImport() {
   flex-direction: column;
   min-height: 100dvh;
 }
-/* Chrome-less mode (landing for guests): the page IS the whole viewport — no top
-   bar / footer, the content area carries everything full-bleed. Override the
-   members' content frame (max-width 1720 + padding + auto margins) so the landing
-   truly spans edge to edge on any screen width. */
+/* The home page: under the top bar, the content area carries everything
+   full-bleed (its own footer included). Override the content frame (max-width
+   1720 + padding + auto margins) so it spans edge to edge on any width. */
 .app-shell--bare .content {
   flex: 1;
-  min-height: 100dvh;
   max-width: none;
   margin: 0;
   padding: 0;

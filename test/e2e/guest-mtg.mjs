@@ -102,10 +102,11 @@ export async function run() {
   await page.waitForTimeout(500)
 
   // ---- Import from EDHREC ----
-  await page.goto(`${BASE}/magic`, { waitUntil: 'networkidle' })
-  await page.getByRole('button', { name: 'Importer' }).first().click()
+  // From the deck page's import/export dialog, into a new deck.
+  await page.getByRole('button', { name: /Importer \/ Exporter/ }).first().click()
   await page.waitForTimeout(800)
   const dialog = page.getByRole('dialog')
+  await dialog.locator('button[aria-pressed]', { hasText: 'Nouveau deck' }).first().click().catch(() => {})
   await dialog.locator('input[name="import-url"]').fill('https://edhrec.com/commanders/atraxa-praetors-voice')
   await dialog.getByRole('button', { name: 'Importer' }).click()
   await page.waitForURL('**/magic/deck/**', { timeout: 20000 }).catch(() => {})
