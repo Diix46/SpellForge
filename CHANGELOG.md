@@ -1,3 +1,9 @@
+## [0.14.0](https://github.com/Diix46/SpellForge/compare/v0.13.1...v0.14.0) (2026-09-25)
+
+### Features
+
+* **recompose:** le cadre rétro (1993/1997) ([0412067](https://github.com/Diix46/SpellForge/commit/0412067a22173f7cb4116a0ad9361bff68d64189))
+
 ## [0.13.1](https://github.com/Diix46/SpellForge/compare/v0.13.0...v0.13.1) (2026-09-25)
 
 ### Bug Fixes
