@@ -1,19 +1,17 @@
-import { and, desc, eq, like } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { parseGameId } from '../../../shared/game'
 import { schema, useDb } from '../../utils/db'
 
 // Public, unauthenticated listing of decks the owner opted to list in the
-// Discover gallery. Minimal fields only — no raw decklist, no userId (same
-// minimization as /api/shared/:shareId). Optional ?q= filters by deck name,
-// ?game= by game.
+// Discover gallery. The list goes with each deck — what its shared page
+// already shows — so the gallery dresses and filters the decks itself
+// (commander art, colours, a card inside); never the userId. Optional ?game=.
+const LIMIT = 300
+
 export default defineEventHandler(async (event) => {
-  const query = getQuery(event)
-  const q = typeof query.q === 'string' ? query.q.trim() : ''
-  const game = parseGameId(query.game)
+  const game = parseGameId(getQuery(event).game)
 
   const conditions = [eq(schema.decks.public, true)]
-  if (q)
-    conditions.push(like(schema.decks.name, `%${q}%`))
   if (game)
     conditions.push(eq(schema.decks.game, game))
 
@@ -21,6 +19,8 @@ export default defineEventHandler(async (event) => {
     .select({
       name: schema.decks.name,
       game: schema.decks.game,
+      raw: schema.decks.raw,
+      createdAt: schema.decks.createdAt,
       updatedAt: schema.decks.updatedAt,
       shareId: schema.decks.shareId,
       ownerDisplayName: schema.users.displayName,
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     .innerJoin(schema.users, eq(schema.decks.userId, schema.users.id))
     .where(and(...conditions))
     .orderBy(desc(schema.decks.updatedAt))
-    .limit(60)
+    .limit(LIMIT)
     .all()
 
   return { decks: rows }

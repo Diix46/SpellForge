@@ -8,7 +8,13 @@ import { isDefaultDeckName } from '#shared/decks'
 // One Piece deck is the Leader's WANTED poster, as the Marines print them
 // (portrait, DEAD OR ALIVE, name, bounty); a Magic deck is a sleeved deck on
 // the mat, under its commander's art. Same grid, same actions.
-const props = defineProps<{ deck: Deck, fingerprint: DeckFingerprint }>()
+const props = defineProps<{
+  deck: Pick<Deck, 'id' | 'name' | 'game' | 'updatedAt'> & { public?: boolean }
+  fingerprint: DeckFingerprint
+  /** A deck of someone else's (Discover): a link to it, no menu, its author. */
+  to?: string
+  owner?: string
+}>()
 const emit = defineEmits<{
   open: [id: string]
   duplicate: [id: string]
@@ -40,6 +46,20 @@ const gaugeFill = computed(() => {
 // A deck without a name of its own goes by its commander or Leader.
 const title = computed(() => (isDefaultDeckName(props.deck.name) && fp.value.lead) || props.deck.name)
 
+// Someone else's deck (Discover) is a plain link; one's own opens on click
+// or Enter/Space and carries the menu.
+const NuxtLink = resolveComponent('NuxtLink')
+const open = () => emit('open', props.deck.id)
+function onKeydown(ev: KeyboardEvent) {
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === ev.currentTarget) {
+    ev.preventDefault()
+    open()
+  }
+}
+const rootAttrs = computed(() => props.to
+  ? { to: props.to }
+  : { role: 'button', tabindex: 0, onClick: open, onKeydown })
+
 const menuItems = computed(() => [
   [{ label: t('tile.open'), icon: 'i-lucide-folder-open', onSelect: () => emit('open', props.deck.id) }],
   [
@@ -51,16 +71,13 @@ const menuItems = computed(() => [
 </script>
 
 <template>
-  <div
-    role="button"
-    tabindex="0"
+  <component
+    :is="to ? NuxtLink : 'div'"
+    v-bind="rootAttrs"
     :aria-labelledby="titleId"
     class="tile"
     :class="isOp ? 'tile--op' : 'tile--mtg'"
     :style="fp.accent"
-    @click="emit('open', deck.id)"
-    @keydown.enter.self.prevent="emit('open', deck.id)"
-    @keydown.space.self.prevent="emit('open', deck.id)"
   >
     <span v-if="isOp" class="pin" aria-hidden="true" />
     <!-- Magic: the commander's art across the top of the deck box. -->
@@ -71,7 +88,7 @@ const menuItems = computed(() => [
     <div class="head">
       <span v-if="isOp" class="wanted-title">{{ t('optcg.wanted') }}</span>
       <span v-else class="world">Magic</span>
-      <UDropdownMenu :items="menuItems" @click.stop>
+      <UDropdownMenu v-if="!to" :items="menuItems" @click.stop>
         <UButton
           icon="i-lucide-ellipsis"
           color="neutral"
@@ -104,6 +121,9 @@ const menuItems = computed(() => [
           <template v-if="fp.label && fp.label !== title">
             {{ isOp ? `Leader ${fp.label}` : fp.label }} ·
           </template>
+          <template v-if="owner">
+            {{ t('discover.by') }} {{ owner }} ·
+          </template>
           {{ formatShortDate(deck.updatedAt) }}
         </p>
         <p v-if="isOp && bounty" class="bounty">
@@ -125,7 +145,7 @@ const menuItems = computed(() => [
       <span class="gauge" aria-hidden="true"><span :style="{ width: filled, background: gaugeFill }" /></span>
       <span v-if="deck.public" class="source">{{ t('tile.public') }}</span>
     </div>
-  </div>
+  </component>
 </template>
 
 <style scoped>
@@ -140,6 +160,9 @@ const menuItems = computed(() => [
   transition:
     transform 0.35s cubic-bezier(0.3, 1.7, 0.5, 1),
     box-shadow 0.3s ease;
+}
+a.tile {
+  text-decoration: none;
 }
 .tile:focus-visible {
   outline: 2px solid rgb(var(--accent-rgb, 168, 178, 196));
