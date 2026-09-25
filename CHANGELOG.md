@@ -1,3 +1,9 @@
+## [0.19.0](https://github.com/Diix46/SpellForge/compare/v0.18.0...v0.19.0) (2026-09-25)
+
+### Features
+
+* **decks:** le portrait du Leader scotché sur l'affiche One Piece ([7b22ac9](https://github.com/Diix46/SpellForge/commit/7b22ac973bc8a3787ed2e67d2d4fd79beeca11da))
+
 ## [0.18.0](https://github.com/Diix46/SpellForge/compare/v0.17.0...v0.18.0) (2026-09-25)
 
 ### Features
