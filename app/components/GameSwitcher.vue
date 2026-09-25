@@ -3,10 +3,10 @@ import type { GameId } from '#shared/game'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { libraryPath } from '#shared/game'
 
-// The game picker beside the logo: the game on screen ("Magic ▾"), and every
-// game one click away, each in its own colours with the decks it holds. A list,
-// not a row of buttons, so a tenth game costs the header nothing. Opens on
-// click (touch, keyboard) and, with a mouse, on hover.
+// "Libraries ▾" in the top bar: every game's library one click away, each in
+// its own colours with the decks it holds. A list, not a row of buttons, so a
+// tenth game costs the header nothing. Active inside a game; opens on click
+// (touch, keyboard) and, with a mouse, on hover.
 const { t } = useLocale()
 const { universe } = useUniverse()
 const { decks } = useDeckStore()
@@ -73,18 +73,17 @@ onBeforeUnmount(() => clearTimeout(closing))
     <button
       type="button"
       class="switch"
-      :aria-label="t('nav.chooseGame')"
+      :class="{ active: !!current }"
       @mouseenter="enter"
       @mouseleave="leave"
     >
-      <span class="slash" aria-hidden="true">/</span>
-      <span v-if="current" class="name" :class="`name--${current.id}`">{{ current.label }}</span>
-      <span v-else class="name">{{ t('nav.games') }}</span>
+      <UIcon name="i-lucide-library" class="ic" />
+      <span>{{ t('nav.libraries') }}</span>
       <UIcon name="i-lucide-chevron-down" class="chev" :class="{ up: open }" />
     </button>
 
     <template #content>
-      <nav class="games" :aria-label="t('nav.games')" @mouseenter="enter" @mouseleave="leave">
+      <nav class="games" :aria-label="t('nav.libraries')" @mouseenter="enter" @mouseleave="leave">
         <NuxtLink
           v-for="g in GAMES"
           :key="g.id"
@@ -104,25 +103,37 @@ onBeforeUnmount(() => clearTimeout(closing))
 </template>
 
 <style scoped>
+/* Dressed like the other top-bar links (app.vue .nav-link). */
 .switch {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 2px;
-  padding: 5px 8px;
+  gap: 8px;
+  padding: 7px 11px;
   border-radius: var(--radius-sm);
-  color: var(--color-text-high);
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+  font-weight: 450;
   white-space: nowrap;
-  transition: background var(--dur-fast) var(--ease-out);
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
 }
 .switch:hover,
 .switch[data-state='open'] {
+  color: var(--color-text-high);
+  background: var(--color-surface-1);
+}
+.switch.active {
+  color: var(--color-text-high);
   background: var(--color-surface-2);
 }
-.slash {
-  color: var(--color-text-disabled);
-  font-weight: 300;
+.switch:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.ic {
+  width: 16px;
+  height: 16px;
 }
 .chev {
   width: 14px;
