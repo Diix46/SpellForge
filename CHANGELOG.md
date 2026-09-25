@@ -1,3 +1,9 @@
+## [0.21.0](https://github.com/Diix46/SpellForge/compare/v0.20.0...v0.21.0) (2026-09-25)
+
+### Features
+
+* **decks:** l'affiche WANTED de la Marine pour les decks One Piece ([241382b](https://github.com/Diix46/SpellForge/commit/241382b79ee2b55bdec6c7316d57ea8d0dae852a))
+
 ## [0.20.0](https://github.com/Diix46/SpellForge/compare/v0.19.0...v0.20.0) (2026-09-25)
 
 ### Features
