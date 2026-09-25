@@ -496,7 +496,11 @@ def compose(scan, en, texts, lang_label=None, reference=None):
     # White lines on the retro frame, whatever the texture behind them.
     light_text = {part: retro or luminance(img, reg[part]) < 110 for part in ('name', 'type')}
     light_text['box'] = luminance(img, reg['box']) < 110
-    measured = {part: measure_line(img, reg[part], dark_text=not light_text[part]) for part in ('name', 'type')}
+    # The older frames were typeset card by card: the line goes where the
+    # scan printed it. The modern frame is regular, and its calibration beats
+    # a measure (which can catch the bar's curled end).
+    measured = {part: measure_line(img, reg[part], dark_text=not light_text[part]) if fam != 'modern' else None
+                for part in ('name', 'type')}
     for part in ('name', 'type', 'box'):
         colors[part] = LIGHT_INK if light_text[part] else DARK_INK
         # Only the ink in the box, so a watermark under the text stays intact;
