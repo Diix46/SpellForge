@@ -210,12 +210,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--bulk', required=True, type=Path)
     ap.add_argument('--out', required=True, type=Path)
-    ap.add_argument('--db', type=Path, default=Path(__file__).resolve().parents[2] / '.data/cards-mtg.db')
+    ap.add_argument('--db', type=Path, help='the card database (default: the repository\'s .data/cards-mtg.db)')
     ap.add_argument('--all', action='store_true', help='every French low-res printing, not only those shown by default')
     ap.add_argument('--limit', type=int)
     ap.add_argument('--sample', type=int, help='a deterministic spread of N targets, for tuning')
     ap.add_argument('--workers', type=int, default=6)
     args = ap.parse_args()
+    # Beside the repository by default; the image passes it (the script sits in /app there).
+    args.db = args.db or Path(__file__).resolve().parents[2] / '.data/cards-mtg.db'
 
     missing = render.missing_fonts()
     if missing:
