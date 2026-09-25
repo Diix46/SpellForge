@@ -61,8 +61,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // `r`: the recomposed French card (scripts/recompose), when there is one.
-  if (getQuery(event).r && face === 'front') {
-    const hit = await recomposedImage(id, size, size === 'normal' && getQuery(event).size === 'thumb')
+  if (getQuery(event).r && (face === 'front' || face === 'back')) {
+    const hit = await recomposedImage(id, size, size === 'normal' && getQuery(event).size === 'thumb', face)
     if (hit) {
       found(hit.type)
       return hit.bytes ?? sendStream(event, createReadStream(hit.path!))

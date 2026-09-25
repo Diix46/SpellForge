@@ -147,10 +147,11 @@ export async function toScryfallShape(db: Client, rows: Row[], opts: ShapeOption
       prices: { eur: price(r.price_eur ?? r.min_price_eur) },
     }
 
+    // French printings recomposed in HD; shown when asked. A double-faced
+    // card has its front, and its back when that one could be made too.
+    const recomposable = r.lang === 'fr' && isRecomposed(id)
+    const hd = recomposable && !!opts.hd?.[index]
     if (!perFace) {
-      // Only single-faced French printings are recomposed; shown when asked.
-      const recomposable = r.lang === 'fr' && isRecomposed(id)
-      const hd = recomposable && !!opts.hd?.[index]
       card.image_uris = imageUris('front', id, r.img_version, hd)
       if (recomposable) {
         card.recomposable = true
@@ -171,9 +172,17 @@ export async function toScryfallShape(db: Client, rows: Row[], opts: ShapeOption
         oracle_text: opt(f.oracle_text),
         printed_text: opt(f.printed_text),
         ...(f.img_version != null
-          ? { image_uris: imageUris(Number(f.face_index) === 0 ? 'front' : 'back', id, f.img_version) }
+          ? { image_uris: Number(f.face_index) === 0
+              ? imageUris('front', id, f.img_version, hd)
+              : imageUris('back', id, f.img_version, hd && isRecomposed(`${id}-back`)) }
           : {}),
       }))
+      if (perFace && recomposable) {
+        card.recomposable = true
+        card.recomposed_image = imageUrl('large', 'front', id, faces[0]!.img_version, undefined, true)
+      }
+      if (perFace && hd)
+        card.recomposed = true
     }
 
     // Only tokens are stored — the one component the client reads. Always

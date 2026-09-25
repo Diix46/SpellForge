@@ -63,7 +63,7 @@ const displayImage = computed(() => {
   if (shownPrint.value)
     return shownPrint.value.imageLarge ?? shownPrint.value.image
   // Asked for, not re-resolved yet (or the library's preview): the HD card now.
-  if (hdLocal.value && c.value?.recomposed_image && !c.value.recomposed)
+  if (hdLocal.value && c.value?.recomposed_image && !c.value.recomposed && !showBack.value)
     return c.value.recomposed_image
   if (showBack.value && props.card?.backImageUrl)
     return props.card.backImageUrl

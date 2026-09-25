@@ -3,7 +3,8 @@
  * of the same printing (scripts/recompose), for the French printings Scryfall
  * only has as low-resolution scans.
  *
- * One 745x1040 JPEG per French printing id sits in RECOMPOSED_DIR; the other
+ * One 745x1040 JPEG per French printing id sits in RECOMPOSED_DIR (and
+ * `<id>-back.jpg` for the back of a double-faced card); the other
  * sizes and the 320 px WebP are derived on first request and kept beside it.
  * Cards point at them with an `r` query parameter, so their browser cache
  * stays apart from the official scan's.
@@ -20,7 +21,7 @@ import { hasFile, loadSharp, THUMB_WIDTH } from './thumbnail'
 
 export const RECOMPOSED_DIR = resolve('.data/images/mtg/recomposed')
 /** Bump when the images are regenerated: a new `r` is a new cached URL. */
-export const RECOMPOSED_VERSION = '1'
+export const RECOMPOSED_VERSION = '2'
 
 // Sizes the image route derives, as Scryfall sizes them.
 const DERIVED: Record<string, [number, number] | null> = {
@@ -55,7 +56,9 @@ export function isRecomposed(id: string): boolean {
  * The recomposed image of `id` at `size` (or its 320 px WebP), made on first
  * request. Null when there is none for that size, or it cannot be made.
  */
-export async function recomposedImage(id: string, size: string, thumb: boolean): Promise<{ path?: string, bytes?: Buffer, type: string } | null> {
+export async function recomposedImage(id: string, size: string, thumb: boolean, face: 'front' | 'back' = 'front'): Promise<{ path?: string, bytes?: Buffer, type: string } | null> {
+  if (face === 'back')
+    id = `${id}-back`
   if (!(size in DERIVED) || !isRecomposed(id))
     return null
   const master = resolve(RECOMPOSED_DIR, `${id}.jpg`)
