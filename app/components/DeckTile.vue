@@ -29,6 +29,8 @@ const bounty = computed(() => {
   return p == null ? null : p.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US')
 })
 const progress = computed(() => (fp.value.complete ? t('tile.legalSize') : `${fp.value.count} / ${fp.value.target}`))
+// How far the deck is from its full size, as a gauge along the foot.
+const filled = computed(() => `${Math.min(100, Math.round((fp.value.count / fp.value.target) * 100))}%`)
 // The Leader's colours, as the strip along the poster's photo.
 const stripe = computed(() => optcgColorFill(fp.value.leader?.colors ?? []))
 // A deck without a name of its own goes by its commander or Leader.
@@ -57,7 +59,6 @@ const menuItems = computed(() => [
     @keydown.space.self.prevent="emit('open', deck.id)"
   >
     <span v-if="isOp" class="pin" aria-hidden="true" />
-    <span v-else class="token" aria-hidden="true" />
     <!-- Magic: the commander's art across the top of the deck box. -->
     <div v-if="!isOp && fp.art" class="art" aria-hidden="true">
       <img :src="fp.art" alt="" loading="lazy">
@@ -111,7 +112,10 @@ const menuItems = computed(() => [
     </div>
 
     <div class="foot">
-      <span class="count" :class="{ ok: fp.complete }">{{ progress }}</span>
+      <span class="count" :class="{ ok: fp.complete }">
+        <UIcon v-if="fp.complete" name="i-lucide-check" class="h-3.5 w-3.5" />{{ progress }}
+      </span>
+      <span class="gauge" aria-hidden="true"><span :style="{ width: filled }" /></span>
       <span v-if="deck.public" class="source">{{ t('tile.public') }}</span>
     </div>
   </div>
@@ -190,10 +194,26 @@ const menuItems = computed(() => [
   padding-top: 10px;
 }
 .count {
-  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
   font-family: var(--font-mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+/* The deck's fill, from empty to its full size. */
+.gauge {
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+.gauge span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .source {
   padding: 1px 7px;
@@ -260,6 +280,17 @@ const menuItems = computed(() => [
 }
 .tile--op .foot {
   border-top: 1px dashed rgba(58, 38, 22, 0.3);
+}
+.tile--op .gauge {
+  background: rgba(58, 38, 22, 0.12);
+}
+/* A fuse, in the Leader's colours. */
+.tile--op .gauge span {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--accent-rgb, 201, 49, 42)),
+    rgb(var(--accent-rgb-2, var(--accent-rgb, 201, 49, 42)))
+  );
 }
 .tile--op .count.ok {
   color: #2f8a4f;
@@ -400,20 +431,6 @@ const menuItems = computed(() => [
 .tile--mtg:hover .art img {
   transform: scale(1.04);
 }
-/* A counter, the kind that tracks life beside the deck. */
-.tile--mtg .token {
-  position: absolute;
-  right: 14px;
-  bottom: 12px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 36% 30%, #6d90bd, #2d4f7c 62%, #1d3555);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.25),
-    0 2px 5px rgba(27, 31, 34, 0.3);
-}
 .tile--mtg .world {
   font-family: var(--mtg-face);
   font-weight: 600;
@@ -435,7 +452,6 @@ const menuItems = computed(() => [
   border: 1px solid rgba(27, 31, 34, 0.25);
 }
 .tile--mtg .foot {
-  padding-right: 34px;
   border-top: 1px solid rgba(27, 31, 34, 0.1);
 }
 .tile--mtg .count {
@@ -443,6 +459,17 @@ const menuItems = computed(() => [
 }
 .tile--mtg .count.ok {
   color: #2d4f7c;
+}
+.tile--mtg .gauge {
+  background: rgba(27, 31, 34, 0.08);
+}
+/* In the commander's colours. */
+.tile--mtg .gauge span {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--accent-rgb, 45, 79, 124)),
+    rgb(var(--accent-rgb-2, var(--accent-rgb, 45, 79, 124)))
+  );
 }
 .tile--mtg .source {
   border: 1px solid rgba(45, 79, 124, 0.3);
