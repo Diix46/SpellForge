@@ -1,3 +1,13 @@
+## [0.16.0](https://github.com/Diix46/SpellForge/compare/v0.15.1...v0.16.0) (2026-09-25)
+
+### Features
+
+* **ui:** les univers One Piece et Magic ont leur version sombre ([0d10dbc](https://github.com/Diix46/SpellForge/commit/0d10dbc9bbdd18b97e77108a2fa4a8dff94318e7))
+
+### Bug Fixes
+
+* **ui:** l'univers change avec la page affichée, pas avec la route ([43bc39b](https://github.com/Diix46/SpellForge/commit/43bc39ba1d0b60b0c7091f1926bcc6f5df7587cc))
+
 ## [0.15.1](https://github.com/Diix46/SpellForge/compare/v0.15.0...v0.15.1) (2026-09-25)
 
 ### Bug Fixes
