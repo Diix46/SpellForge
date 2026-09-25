@@ -24,6 +24,17 @@ export interface StoredDeck {
   public?: boolean
 }
 
+/** The placeholder a deck is created with, in either language. */
+const DEFAULT_NAMES = new Set(['', 'nouveau deck', 'new deck'])
+
+/**
+ * Whether a deck still has no name of its own (empty, or the "New deck"
+ * placeholder): such a deck takes its commander's or Leader's name.
+ */
+export function isDefaultDeckName(name: string | null | undefined): boolean {
+  return DEFAULT_NAMES.has((name ?? '').trim().toLowerCase())
+}
+
 function time(v: unknown): number {
   const n = typeof v === 'number' ? v : typeof v === 'string' ? new Date(v).getTime() : Number.NaN
   return Number.isFinite(n) ? n : 0

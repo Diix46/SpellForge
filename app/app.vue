@@ -98,6 +98,7 @@ const appFullscreen = useState('app-fullscreen', () => false)
 
 const userMenu = computed(() => [[
   { label: user.value?.displayName ?? t('auth.account'), type: 'label' as const },
+  { label: t('account.menu'), icon: 'i-lucide-user-cog', to: '/account' },
   { label: t('auth.logout'), icon: 'i-lucide-log-out', onSelect: () => logout() },
 ]])
 

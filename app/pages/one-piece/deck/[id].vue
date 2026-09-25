@@ -4,6 +4,7 @@ import type { OptcgCategory } from '#shared/optcg/rules'
 import type { OptcgCard } from '#shared/optcg/types'
 import type { OptcgFilters } from '~/composables/useOptcgSearch'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { isDefaultDeckName } from '#shared/decks'
 import { deckPath } from '#shared/game'
 import { OPTCG_COLOR_HEX } from '~/utils/optcgColors'
 
@@ -89,6 +90,11 @@ watch(() => getDeck(deckId.value), (now, before) => {
 const { state, search, loadMore, autocomplete } = useOptcgSearch()
 const filters = reactive<OptcgFilters>({ ...emptyOptcgFilters(), legalOnly: true })
 const leaderColors = computed(() => optDeck.leader.value?.card?.colors ?? null)
+// A deck without a name of its own takes its Leader's.
+watch(() => optDeck.leader.value?.card?.name, (lead) => {
+  if (lead && isDefaultDeckName(name.value))
+    name.value = lead
+})
 // Without a Leader the first job is to pick one: the search shows Leaders only.
 const categories = computed<OptcgCategory[]>(() => (optDeck.leader.value?.card ? ['Character', 'Event', 'Stage'] : ['Leader']))
 const ctx = computed(() => ({ lang: lang.value, leaderColors: leaderColors.value }))

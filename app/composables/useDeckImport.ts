@@ -68,7 +68,7 @@ export function useDeckImport() {
     const leaderIndex = mainboard.findIndex(e => leaders.has(e.name))
     const leaderName = leaderIndex >= 0 ? cards[leaderIndex]?.name ?? '' : ''
     return {
-      name: leaderName ? `${t('optcg.library.newDeckName')} ${leaderName}`.trim() : t('nav.newDeck'),
+      name: leaderName || t('nav.newDeck'),
       raw: [...ordered, ...errors].join('\n'),
       count: totalCards(mainboard),
     }

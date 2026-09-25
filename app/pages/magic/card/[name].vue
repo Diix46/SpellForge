@@ -85,7 +85,7 @@ usePublicSeo({
 function startWith() {
   if (!c.value)
     return
-  const deck = createDeck({ name: `${t('mtg.library.newDeckName')} ${title.value}`, game: 'mtg', raw: `1 ${c.value.name}` })
+  const deck = createDeck({ name: title.value, game: 'mtg', raw: `1 ${c.value.name}` })
   navigateTo(deckPath(deck))
 }
 </script>

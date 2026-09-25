@@ -90,7 +90,7 @@ async function importEdhrecAverage(slug: string): Promise<ImportResponse> {
     throw new ImportFailure('empty', `no cards for ${slug}`)
   const name = deck.commanders[0] ?? headerName(data, slug.replace(/-/g, ' '))
   return {
-    name: `${name} (EDHREC)`,
+    name,
     raw: deck.lines.join('\n'),
     source: `https://edhrec.com/average-decks/${slug}`,
     cardCount: deck.cardCount,
@@ -105,7 +105,7 @@ async function importEdhrecDeckpreview(hash: string): Promise<ImportResponse> {
     throw new ImportFailure('empty', `no cards for ${hash}`)
   const name = deck.commanders[0] ?? headerName(data, 'EDHREC')
   return {
-    name: `${name} (EDHREC)`,
+    name,
     raw: deck.lines.join('\n'),
     source: `https://edhrec.com/deckpreview/${hash}`,
     cardCount: deck.cardCount,
@@ -186,7 +186,7 @@ async function importArchidekt(id: number): Promise<ImportResponse> {
     lines.push('Sideboard', ...sideboardLines)
 
   return {
-    name: data.name ? `${data.name} (Archidekt)` : 'Deck Archidekt',
+    name: data.name || 'Deck Archidekt',
     raw: lines.join('\n'),
     source: `https://archidekt.com/decks/${id}`,
     cardCount,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeDeck, readGuestDecks } from '../shared/decks'
+import { isDefaultDeckName, normalizeDeck, readGuestDecks } from '../shared/decks'
 
 const v1Deck = { id: 'd_1', name: 'Atraxa', raw: '1 Sol Ring', createdAt: 1, updatedAt: 2 }
 
@@ -34,5 +34,18 @@ describe('guest deck storage', () => {
   it('normalises server rows: ISO dates, unknown game, share fields', () => {
     expect(normalizeDeck({ id: 'd', name: 'x', game: 'chess', raw: null, createdAt: '2026-09-16T00:00:00.000Z', updatedAt: 5, shareId: null, public: 1 }))
       .toEqual({ id: 'd', name: 'x', game: 'mtg', raw: '', createdAt: Date.parse('2026-09-16T00:00:00.000Z'), updatedAt: 5, shareId: null, public: true })
+  })
+})
+
+describe('isDefaultDeckName', () => {
+  it('knows the placeholder in both languages, and an empty name', () => {
+    expect(isDefaultDeckName('Nouveau deck')).toBe(true)
+    expect(isDefaultDeckName(' new deck ')).toBe(true)
+    expect(isDefaultDeckName('')).toBe(true)
+    expect(isDefaultDeckName(undefined)).toBe(true)
+  })
+  it('leaves a name of its own alone', () => {
+    expect(isDefaultDeckName('Krenko le caïd')).toBe(false)
+    expect(isDefaultDeckName('Nouveau deck gobelins')).toBe(false)
   })
 })

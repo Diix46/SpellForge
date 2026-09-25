@@ -3,6 +3,7 @@ import type { ResolvedRow } from '~/composables/scryfall/toResolved'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { isDefaultDeckName } from '#shared/decks'
 import { deckPath } from '#shared/game'
 import { samePin } from '#shared/mtg/prints'
 import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
@@ -485,6 +486,11 @@ const commanderEnName = computed(() =>
   commander.value?.card?.name ?? (builder.commanderName.value || commanderName.value),
 )
 const commanderType = computed(() => displayType(mtgRaw(commander.value?.card), locale.value === 'fr'))
+// A deck without a name of its own takes its commander's, once resolved.
+watch(commanderName, (lead) => {
+  if (lead && commander.value?.card && isDefaultDeckName(deckName.value))
+    deckName.value = lead
+})
 
 // Theme colors: from commander if resolved, else from decklist heuristic, else neutral.
 const { themeColors, themeStyle } = useDeckTheme(() =>

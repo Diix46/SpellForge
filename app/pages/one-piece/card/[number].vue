@@ -66,7 +66,7 @@ usePublicSeo({
 
 function startWith(c: OptcgCard) {
   const art = c.id !== c.number ? c.id : c.number
-  const deck = createDeck({ name: `${t('optcg.library.newDeckName')} ${c.name}`, game: 'optcg', raw: `1x${art}` })
+  const deck = createDeck({ name: c.name, game: 'optcg', raw: `1x${art}` })
   navigateTo(deckPath(deck))
 }
 </script>

@@ -2,6 +2,7 @@
 import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
 import { computed } from 'vue'
+import { isDefaultDeckName } from '#shared/decks'
 
 // A deck on the dashboard, dressed as its world whatever the page's mode: a
 // One Piece deck is a poster pinned askew, with its Leader's bounty; a Magic
@@ -27,13 +28,8 @@ const bounty = computed(() => {
   return p == null ? null : p.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US')
 })
 const progress = computed(() => (fp.value.complete ? t('tile.legalSize') : `${fp.value.count} / ${fp.value.target}`))
-const source = computed(() => {
-  if (props.deck.source?.includes('edhrec'))
-    return 'EDHREC'
-  if (props.deck.source?.includes('archidekt'))
-    return 'Archidekt'
-  return null
-})
+// A deck without a name of its own goes by its commander or Leader.
+const title = computed(() => (isDefaultDeckName(props.deck.name) && fp.value.lead) || props.deck.name)
 
 const menuItems = computed(() => [
   [{ label: t('tile.open'), icon: 'i-lucide-folder-open', onSelect: () => emit('open', props.deck.id) }],
@@ -83,10 +79,10 @@ const menuItems = computed(() => [
       <img v-if="isOp && fp.leader" :src="fp.leader.thumb" alt="" class="leader" loading="lazy">
       <div class="min-w-0">
         <h2 :id="titleId" class="name">
-          {{ deck.name }}
+          {{ title }}
         </h2>
         <p class="sub">
-          <template v-if="fp.label">
+          <template v-if="fp.label && fp.label !== title">
             {{ isOp ? `Leader ${fp.label}` : fp.label }} ·
           </template>
           {{ formatShortDate(deck.updatedAt) }}
@@ -105,7 +101,6 @@ const menuItems = computed(() => [
 
     <div class="foot">
       <span class="count" :class="{ ok: fp.complete }">{{ progress }}</span>
-      <span v-if="source" class="source">{{ source }}</span>
       <span v-if="deck.public" class="source">{{ t('tile.public') }}</span>
     </div>
   </div>
