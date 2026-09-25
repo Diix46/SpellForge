@@ -30,13 +30,13 @@ const { t } = useLocale()
       :style="fingerprint.accent"
       @click="emit('open', featured.id)"
     >
-      <!-- Magic: the commander's art, fading in from the right. -->
-      <img v-if="fingerprint.art" :src="fingerprint.art" alt="" class="feature-art">
+      <!-- The commander's art or the Leader's portrait, fading in from the right. -->
+      <img v-if="fingerprint.art" :src="fingerprint.art" alt="" class="feature-art" :class="{ 'feature-art--op': featured.game === 'optcg' }">
       <span class="feature-tag">
         <span class="dot" />{{ t('dash.recent') }} · {{ featured.game === 'optcg' ? 'One Piece' : 'Magic' }}
       </span>
       <div class="feature-body">
-        <img v-if="fingerprint.leader" :src="fingerprint.leader.thumb" alt="" class="feature-leader">
+        <img v-if="fingerprint.leader && !fingerprint.art" :src="fingerprint.leader.thumb" alt="" class="feature-leader">
         <div class="min-w-0">
           <h3 class="feature-name">
             {{ (isDefaultDeckName(featured.name) && fingerprint.lead) || featured.name }}
@@ -150,6 +150,10 @@ const { t } = useLocale()
   opacity: 0.9;
   pointer-events: none;
   transition: transform var(--dur-slow) var(--ease-out);
+}
+.feature > .feature-art--op {
+  object-position: 50% 21%;
+  filter: sepia(0.14) saturate(1.08);
 }
 .feature:hover > .feature-art {
   transform: scale(1.03);

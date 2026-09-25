@@ -25,7 +25,7 @@ export interface DeckFingerprint {
   accent: Record<string, string>
   /** One Piece: the Leader, once resolved. */
   leader: OptcgCard | null
-  /** Magic: the commander's art (art crop), once resolved. */
+  /** The commander's art (Magic: its art crop) or the Leader's card (One Piece), once resolved. */
   art: string | null
   /** Magic: the colour identity as mana symbols ("R", "G"…, "C" colourless). */
   mana: string[]
@@ -195,7 +195,7 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
       label: isLeader ? leader!.name : '',
       accent: optcgAccentStyle(colors),
       leader: isLeader ? leader : null,
-      art: null,
+      art: isLeader ? leader!.image : null,
       mana: [],
       lead: isLeader ? leader!.name : '',
     }
