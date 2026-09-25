@@ -10,3 +10,7 @@
 *.woff binary
 *.woff2 binary
 *.pdf binary
+
+# The print fonts of the HD card generator are licensed: encrypted with
+# git-crypt, never readable in this public repository (scripts/recompose/README.md).
+scripts/recompose/fonts/** filter=git-crypt diff=git-crypt -text

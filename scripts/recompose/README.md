@@ -9,9 +9,17 @@ why.
 
 ## Fonts
 
-The print fonts are proprietary: **never committed, never put in an image**
-(the repository is public). They are read from `~/Library/Fonts`, from the
-folder in `PRISM_FONTS_DIR`, or file by file from these variables:
+The print fonts are licensed. They are in `fonts/`, **encrypted with
+git-crypt**: unreadable in this public repository, and never put in an image.
+To use them in a clone:
+
+```sh
+brew install git-crypt
+git-crypt unlock <the key file>   # kept outside any repository, and in a password manager
+```
+
+They are read from the folder in `PRISM_FONTS_DIR`, else from `fonts/` once
+unlocked, else from `~/Library/Fonts`; or file by file from these variables:
 
 | Variable | Default file | Used for |
 |---|---|---|
@@ -69,7 +77,7 @@ It runs from the image `ghcr.io/diix46/spellforge-recompose` (built by
 `.github/workflows/recompose-image.yml` when this folder changes), on the
 Unraid server, every Sunday at 05:30, as the User Script `spellforge_hd_cards`
 (`unraid/spellforge_hd_cards.sh`). To set it up again (fonts, script and
-schedule) from a Mac holding the fonts:
+schedule) from a clone where the fonts are unlocked:
 
 ```sh
 scripts/recompose/unraid/install.sh root@192.168.1.2

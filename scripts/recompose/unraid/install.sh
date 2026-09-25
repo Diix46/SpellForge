@@ -1,6 +1,6 @@
 #!/bin/bash
-# Installs the weekly HD cards job on the Unraid server, from a Mac holding
-# the print fonts. Run from the repository root, with a host your SSH setup
+# Installs the weekly HD cards job on the Unraid server, from a clone where
+# the fonts are unlocked (git-crypt unlock). Run from the repository root, with a host your SSH setup
 # reaches (a ~/.ssh/config alias, or user@address):
 #
 #   scripts/recompose/unraid/install.sh root@192.168.1.2
@@ -13,11 +13,15 @@
 set -euo pipefail
 HOST=${1:?usage: install.sh user@host}
 HERE=$(cd "$(dirname "$0")" && pwd)
-FONTS=(Beleren2016-Bold.ttf Matrix-Bold.ttf GoudyMediaeval-Regular.ttf PlantinMTProRg.TTF PlantinMTProRgIt.TTF PlantinMTProBold.TTF)
+FONTS_DIR="$HERE/../fonts"
+if head -c 9 "$FONTS_DIR/PlantinMTProRg.TTF" | grep -q GITCRYPT; then
+  echo "The fonts are still encrypted: git-crypt unlock <key file> first." >&2
+  exit 1
+fi
 DIR=/boot/config/plugins/user.scripts/scripts/spellforge_hd_cards
 
 ssh "$HOST" "mkdir -p /mnt/user/appdata/spellforge/fonts $DIR && chmod 700 /mnt/user/appdata/spellforge/fonts"
-(cd "$HOME/Library/Fonts" && rsync -a "${FONTS[@]}" "$HOST:/mnt/user/appdata/spellforge/fonts/")
+rsync -a "$FONTS_DIR/" "$HOST:/mnt/user/appdata/spellforge/fonts/"
 rsync -a "$HERE/spellforge_hd_cards.sh" "$HOST:$DIR/script"
 ssh "$HOST" "echo 'SpellForge : cartes françaises HD des nouvelles impressions (dimanche 5h30)' > $DIR/description"
 
