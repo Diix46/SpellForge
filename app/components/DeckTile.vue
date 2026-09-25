@@ -495,3 +495,49 @@ const menuItems = computed(() => [
   }
 }
 </style>
+
+<style>
+/* Magic after dark: the same deck box on the night table (the One Piece
+   poster keeps its paper, pinned on the dark deck). */
+html.dark .tile--mtg {
+  border-color: rgba(238, 240, 241, 0.09);
+  outline-color: rgba(122, 160, 212, 0.18);
+  background:
+    radial-gradient(420px 180px at 85% -20%, rgba(var(--accent-rgb, 122, 160, 212), 0.12), transparent 60%),
+    linear-gradient(180deg, #1b1f23, #15181b);
+  box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.8);
+  color: #eef0f1;
+}
+html.dark .tile--mtg:hover {
+  border-color: rgba(122, 160, 212, 0.45);
+  box-shadow: 0 18px 34px -18px rgba(0, 0, 0, 0.85);
+}
+html.dark .tile--mtg .art::after {
+  background:
+    linear-gradient(180deg, transparent 40%, #1b1f23 100%),
+    linear-gradient(90deg, rgba(var(--accent-rgb, 122, 160, 212), 0.2), transparent 60%);
+}
+html.dark .tile--mtg:has(.art) {
+  outline-color: transparent;
+}
+html.dark .tile--mtg .world,
+html.dark .tile--mtg .count.ok {
+  color: #a8c3e8;
+}
+html.dark .tile--mtg .sub {
+  color: #959da1;
+}
+html.dark .tile--mtg .count {
+  color: #c4cacd;
+}
+html.dark .tile--mtg .foot {
+  border-top-color: rgba(238, 240, 241, 0.1);
+}
+html.dark .tile--mtg .gauge {
+  background: rgba(238, 240, 241, 0.1);
+}
+html.dark .tile--mtg .source {
+  border-color: rgba(122, 160, 212, 0.35);
+  color: #a8c3e8;
+}
+</style>

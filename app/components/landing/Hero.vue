@@ -102,14 +102,15 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
 
 <style scoped>
 .hero {
-  min-height: max(700px, min(100svh, 1000px));
+  /* One screen under the site's top bar. */
+  min-height: max(640px, min(calc(100svh - 64px), 940px));
   color: #1b1f22;
 }
 .stage {
   position: relative;
   display: grid;
   place-items: center;
-  padding: 88px clamp(16px, 4vw, 48px) 72px;
+  padding: 48px clamp(16px, 4vw, 48px) 72px;
 }
 
 /* ---- the reading panel: warm glass on the day side, cool on the night side ---- */

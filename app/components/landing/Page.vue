@@ -15,7 +15,6 @@ const decks = computed(() => overview.value?.decks ?? [])
 
 <template>
   <div class="home">
-    <LandingHeader />
     <main>
       <LandingHero :posters="optcg" :cards="mtg" />
       <LandingNumbers :stats="stats" />
