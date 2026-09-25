@@ -29,6 +29,8 @@ const { t } = useLocale()
       :style="fingerprint.accent"
       @click="emit('open', featured.id)"
     >
+      <!-- Magic: the commander's art, fading in from the right. -->
+      <img v-if="fingerprint.art" :src="fingerprint.art" alt="" class="feature-art">
       <span class="feature-tag">
         <span class="dot" />{{ t('dash.recent') }} · {{ featured.game === 'optcg' ? 'One Piece' : 'Magic' }}
       </span>
@@ -42,7 +44,10 @@ const { t } = useLocale()
             <span><b>{{ fingerprint.count }}</b> / {{ fingerprint.target }} {{ t('dash.cards') }}</span>
             <span v-if="fingerprint.label"><b>{{ fingerprint.label }}</b></span>
           </div>
-          <div class="feature-pips">
+          <div v-if="fingerprint.mana.length" class="feature-pips">
+            <ManaSymbol v-for="m in fingerprint.mana" :key="m" :sym="m" :size="20" />
+          </div>
+          <div v-else class="feature-pips">
             <span
               v-for="(c, i) in fingerprint.dots"
               :key="i"
@@ -130,6 +135,23 @@ const { t } = useLocale()
 }
 .feature > * {
   position: relative;
+}
+.feature > .feature-art {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 62%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 55%);
+  mask-image: linear-gradient(90deg, transparent, #000 55%);
+  opacity: 0.9;
+  pointer-events: none;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.feature:hover > .feature-art {
+  transform: scale(1.03);
 }
 .feature-tag {
   display: inline-flex;
