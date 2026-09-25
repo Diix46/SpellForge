@@ -17,7 +17,7 @@ import { it } from 'vitest'
  * machine is busy, instead of failing the suite for someone else's load.
  * `PERF=1` runs them anyway, to measure on purpose.
  */
-export const BUSY = process.env.PERF !== '1' && loadavg()[0]! > Math.max(2, cpus().length * 0.7)
+const BUSY = process.env.PERF !== '1' && loadavg()[0]! > Math.max(2, cpus().length * 0.7)
 
 /** `it`, but skipped while the machine is under load. */
 export const itPerf = it.skipIf(BUSY)

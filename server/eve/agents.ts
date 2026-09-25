@@ -65,7 +65,7 @@ Reason from the deck's actual cards: count fast mana (Sol Ring is baseline/expec
   },
 ]
 
-export const AGENT_BY_KEY: Record<string, DomainAgent> = Object.fromEntries(
+const AGENT_BY_KEY: Record<string, DomainAgent> = Object.fromEntries(
   DOMAIN_AGENTS.map(a => [a.key, a]),
 )
 

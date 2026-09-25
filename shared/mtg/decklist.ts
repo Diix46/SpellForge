@@ -2,7 +2,7 @@
  * Magic decklist text: "<qty> <name>", optionally followed by an MTG Arena
  * "(SET) NUM" suffix that pins a printing, with Arena section headers.
  */
-import type { DeckEntry, DecklistFormat, ParseResult } from '../decklist'
+import type { DeckEntry, ParseResult } from '../decklist'
 
 // "<qty> <rest>" — the rest starts at a non-space char so the gap quantifier
 // and the rest capture can't overlap (keeps the match linear, no ReDoS).
@@ -106,5 +106,3 @@ export function mtgLine(entry: DeckEntry): string {
 export function withoutLangMarkers(raw: string): string {
   return raw.split('\n').map(l => l.trimEnd().replace(LANG_MARKER, '')).join('\n')
 }
-
-export const mtgDecklist: DecklistFormat = { parse: parseMtgDecklist, line: mtgLine }

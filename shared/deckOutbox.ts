@@ -16,7 +16,7 @@ export type OutboxEntry
 
 export type Outbox = Record<string, OutboxEntry>
 
-export const OUTBOX_KEY = 'prism_outbox_v1'
+const OUTBOX_KEY = 'prism_outbox_v1'
 
 export const outboxKey = (userId: string) => `${OUTBOX_KEY}:${userId}`
 

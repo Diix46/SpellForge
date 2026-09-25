@@ -38,12 +38,6 @@ export interface ParseResult {
   errors: string[]
 }
 
-export interface DecklistFormat {
-  parse: (raw: string) => ParseResult
-  /** One line per entry, in order. */
-  line: (entry: DeckEntry) => string
-}
-
 export function totalCards(entries: readonly DeckEntry[]): number {
   return entries.reduce((sum, e) => sum + e.quantity, 0)
 }

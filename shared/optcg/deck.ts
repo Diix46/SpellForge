@@ -7,7 +7,7 @@ import type { OptcgRuleCard, OptcgValidation } from './rules'
 import type { OptcgCard } from './types'
 import { MAX_COPIES, validateOptcgDeck } from './rules'
 
-export function toRuleCard(card: OptcgCard): OptcgRuleCard {
+function toRuleCard(card: OptcgCard): OptcgRuleCard {
   return { number: card.number, category: card.category, colors: card.colors, block: card.block, banned: card.banned }
 }
 

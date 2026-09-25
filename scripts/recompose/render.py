@@ -29,7 +29,9 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ASSETS = Path(__file__).parent / 'assets'
-FONTS_DIR = Path.home() / 'Library/Fonts'
+# The print fonts are proprietary, never committed nor put in an image: read
+# from the Mac's fonts, or from a mounted folder (PRISM_FONTS_DIR).
+FONTS_DIR = Path(os.environ.get('PRISM_FONTS_DIR') or Path.home() / 'Library/Fonts')
 
 
 def _font_path(env, default):
