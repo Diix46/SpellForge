@@ -24,6 +24,6 @@ export function useUniverse() {
  * put in, in the same frame (page:finish comes a paint later).
  */
 export function useShowUniverseOnMount() {
-  const { $showUniverse } = useNuxtApp()
-  onMounted(() => $showUniverse())
+  const { $showPage } = useNuxtApp()
+  onMounted(() => $showPage())
 }

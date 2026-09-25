@@ -31,8 +31,8 @@ const route = useRoute()
 const { universe } = useUniverse()
 // The new universe comes in with the new page, once the old one has left (plugins/universe.ts).
 const router = useRouter()
-const { $showUniverse } = useNuxtApp()
-const pageTransition = computed(() => router.currentRoute.value.meta.pageTransition === false ? false : { onBeforeEnter: $showUniverse })
+const { $showPage } = useNuxtApp()
+const pageTransition = computed(() => router.currentRoute.value.meta.pageTransition === false ? false : { onBeforeEnter: $showPage })
 const { locale, setLocale, t } = useLocale()
 
 // A link can ask for a language (?lang=en): the hreflang alternates of the
@@ -88,7 +88,9 @@ const mobileNav = ref(false)
 
 // One top bar everywhere. The home page brings its own footer and spans the
 // whole width; every other page gets the app's frame and footer.
-const isHome = computed(() => route.path === '/')
+// The page on screen, not the route: the old page keeps its frame while it
+// leaves (plugins/universe.ts).
+const isHome = useState<boolean>('page-home', () => route.path === '/')
 
 // A page can request a viewport-locked shell (no page scroll; the page fills the
 // area below the top bar and manages its own internal scroll). The deck page
