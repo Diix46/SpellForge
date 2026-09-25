@@ -14,6 +14,7 @@ composed in French and written as out/<french printing id>.jpg. Every outcome
 lands in out/results.jsonl, so a run can be stopped and resumed.
 """
 import argparse
+import collections
 import gzip
 import io
 import json
@@ -41,13 +42,19 @@ def load_targets(bulk, only_ids=None):
     en, fr = {}, {}
     # A French type line from any printing of the card: some French printings
     # lack theirs in Scryfall's data.
-    fr_types = {}
+    # Failing that, the French of the same English type line on other cards.
+    fr_types, by_line = {}, {}
+    oracle_line = {}
     with gzip.open(bulk, 'rt', encoding='utf-8') as fh:
         for line in fh:
             c = json.loads(line)
             key = (c['set'], c['collector_number'])
+            if c['lang'] == 'en' and c.get('type_line'):
+                oracle_line.setdefault(c.get('oracle_id'), c['type_line'])
             if c['lang'] == 'fr' and c.get('printed_type_line'):
                 fr_types.setdefault(c.get('oracle_id'), c['printed_type_line'])
+                if c.get('type_line'):
+                    by_line.setdefault(c['type_line'], collections.Counter())[c['printed_type_line']] += 1
             if c['lang'] == 'en' and c.get('image_status') == 'highres_scan':
                 en[key] = c
             elif c['lang'] == 'fr' and c.get('image_status') == 'lowres':
@@ -57,8 +64,12 @@ def load_targets(bulk, only_ids=None):
         e = en.get(key)
         if e is None or (only_ids is not None and f['id'] not in only_ids):
             continue
-        if f.get('printed_type_line') is None and fr_types.get(f.get('oracle_id')):
-            f = {**f, 'printed_type_line': fr_types[f['oracle_id']]}
+        if f.get('printed_type_line') is None:
+            known = fr_types.get(f.get('oracle_id'))
+            if not known and by_line.get(e.get('type_line')):
+                known = by_line[e['type_line']].most_common(1)[0][0]
+            if known:
+                f = {**f, 'printed_type_line': known}
         out.append((f, e))
     return out
 
@@ -89,6 +100,8 @@ def process(fr, en, out_dir):
         return {'id': fid, 'status': 'skip', 'reason': 'frame'}
     if not render.symbols_ok(fr.get('printed_text'), en.get('oracle_text')):
         return {'id': fid, 'status': 'skip', 'reason': 'symbol'}
+    if render.looks_english(fr.get('printed_text')) or render.looks_english(fr.get('flavor_text')):
+        return {'id': fid, 'status': 'skip', 'reason': 'english text'}
     uris = en.get('image_uris') or {}
     if 'png' not in uris:
         return {'id': fid, 'status': 'skip', 'reason': 'no png'}

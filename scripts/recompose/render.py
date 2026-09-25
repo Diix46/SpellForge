@@ -459,8 +459,9 @@ def compose(scan, en, texts, lang_label=None):
     for part in ('name', 'type', 'box'):
         dark_bg = luminance(img, reg[part]) < 110
         colors[part] = LIGHT_INK if dark_bg else DARK_INK
-        # Only the ink: the bars' texture and the box's watermark stay intact.
-        erase(img, reg[part], dark_text=not dark_bg, ink_only=True)
+        # Only the ink in the box, so a watermark under the text stays intact;
+        # the bars need the full erase, or letter edges survive.
+        erase(img, reg[part], dark_text=not dark_bg, ink_only=part == 'box')
     for region in reg['extra']:
         erase(img, region, dark_text=luminance(img, region) >= 110, ink_only=True)
     im = Image.fromarray(img).convert('RGBA')
@@ -532,6 +533,19 @@ def text_outside(image, box, pt_box):
     letters = sum(1 for i in range(1, n) if 4 <= stats[i, cv2.CC_STAT_HEIGHT] <= 30 and stats[i, cv2.CC_STAT_WIDTH] <= 40
                   and stats[i, cv2.CC_STAT_AREA] >= 6)
     return 1.0 if letters >= 3 else 0.0
+
+
+# Scryfall's French data for some sets (Edge of Eternities, 2025) is the
+# English text: such a card must not be recomposed "in French".
+ENGLISH_WORDS = {'you', 'the', 'whenever', 'control', 'target', 'your', 'each', 'turn', 'enters', 'creature',
+                 'card', 'cards', 'draw', 'gets', 'until', 'end', 'of', 'this', 'with', 'and', 'that', 'its'}
+
+
+def looks_english(text):
+    words = re.findall(r"[a-zA-Z]+", text or '')
+    if len(words) < 4:
+        return False
+    return sum(w.lower() in ENGLISH_WORDS for w in words) / len(words) > 0.2
 
 
 def symbols_ok(*texts):
