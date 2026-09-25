@@ -1,3 +1,9 @@
+## [0.23.1](https://github.com/Diix46/SpellForge/compare/v0.23.0...v0.23.1) (2026-09-25)
+
+### Bug Fixes
+
+* **ui:** le cadre de l'accueil change avec la page affichée ([0c07273](https://github.com/Diix46/SpellForge/commit/0c07273b0ed4800d8fa00bdc80dc7ce9b788f67c))
+
 ## [0.23.0](https://github.com/Diix46/SpellForge/compare/v0.22.0...v0.23.0) (2026-09-25)
 
 ### Features
