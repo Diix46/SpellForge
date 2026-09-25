@@ -3,6 +3,7 @@ import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
 import { computed } from 'vue'
 import { isDefaultDeckName } from '#shared/decks'
+import { optcgColorFill } from '~/utils/optcgColors'
 
 // A deck on the dashboard, dressed as its world whatever the page's mode: a
 // One Piece deck is a poster pinned askew, with its Leader's bounty; a Magic
@@ -28,6 +29,8 @@ const bounty = computed(() => {
   return p == null ? null : p.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US')
 })
 const progress = computed(() => (fp.value.complete ? t('tile.legalSize') : `${fp.value.count} / ${fp.value.target}`))
+// The Leader's colours, as the strip along the poster's photo.
+const stripe = computed(() => optcgColorFill(fp.value.leader?.colors ?? []))
 // A deck without a name of its own goes by its commander or Leader.
 const title = computed(() => (isDefaultDeckName(props.deck.name) && fp.value.lead) || props.deck.name)
 
@@ -75,8 +78,16 @@ const menuItems = computed(() => [
       </UDropdownMenu>
     </div>
 
+    <!-- One Piece: the Leader's portrait taped onto the WANTED poster. -->
+    <div v-if="isOp && fp.art" class="photo" aria-hidden="true">
+      <span class="frame"><img :src="fp.art" alt="" loading="lazy" decoding="async"></span>
+      <span class="tape tape--l" />
+      <span class="tape tape--r" />
+      <span class="wanted">{{ t('optcg.wanted') }}</span>
+      <span class="photo-stripe" :style="{ background: stripe }" />
+    </div>
+
     <div class="main">
-      <img v-if="isOp && fp.leader" :src="fp.leader.thumb" alt="" class="leader" loading="lazy">
       <div class="min-w-0">
         <h2 :id="titleId" class="name">
           {{ title }}
@@ -147,15 +158,6 @@ const menuItems = computed(() => [
   flex: 1;
   gap: 12px;
   min-width: 0;
-}
-.leader {
-  flex: 0 0 auto;
-  width: 54px;
-  align-self: flex-start;
-  border: 2px solid #231708;
-  border-radius: 3px;
-  rotate: -3deg;
-  box-shadow: 2px 2px 0 #231708;
 }
 .name {
   margin: 0;
@@ -265,6 +267,86 @@ const menuItems = computed(() => [
 .tile--op .source {
   background: #231708;
   color: #fbf4e6;
+}
+
+/* The Leader's portrait: a photo taped onto the poster, sepia at the edges,
+   stamped WANTED, with the Leader's colours along its foot. */
+.tile--op .photo {
+  position: relative;
+  height: 96px;
+  margin-top: -2px;
+  border: 2px solid #231708;
+  background: #231708;
+  box-shadow: 2px 3px 0 rgba(35, 23, 8, 0.85);
+  rotate: 0.7deg;
+}
+.tile--op:nth-child(even) .photo {
+  rotate: -0.9deg;
+}
+.tile--op .frame {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+}
+.tile--op .photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 21%;
+  filter: sepia(0.16) saturate(1.08) contrast(1.03);
+  transition: transform 0.45s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+.tile--op .photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 24px rgba(35, 23, 8, 0.55);
+  pointer-events: none;
+}
+.tile--op:hover .photo img {
+  transform: scale(1.05);
+}
+.tile--op .tape {
+  position: absolute;
+  z-index: 1;
+  top: -8px;
+  width: 44px;
+  height: 15px;
+  background: rgba(247, 236, 214, 0.78);
+  border: 1px solid rgba(58, 38, 22, 0.12);
+  box-shadow: 0 1px 2px rgba(35, 23, 8, 0.25);
+}
+.tile--op .tape--l {
+  left: -10px;
+  rotate: -28deg;
+}
+.tile--op .tape--r {
+  right: -10px;
+  rotate: 24deg;
+}
+.tile--op .wanted {
+  position: absolute;
+  z-index: 1;
+  right: 8px;
+  bottom: 12px;
+  padding: 0 6px;
+  border: 2px solid #c9312a;
+  border-radius: 2px;
+  background: rgba(251, 243, 227, 0.88);
+  color: #c9312a;
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  rotate: -7deg;
+}
+.tile--op .photo-stripe {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
 }
 
 /* ---- Magic: a sleeved deck on the workbench, in daylight ---- */
