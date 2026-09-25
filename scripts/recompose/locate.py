@@ -12,7 +12,6 @@ import re
 import cv2
 import numpy as np
 import pytesseract
-from PIL import Image
 from rapidfuzz import fuzz
 
 SCALE = 3  # OCR at three times the scan's size: small rules text reads far better

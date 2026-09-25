@@ -285,7 +285,6 @@ def plan_planeswalker(lines, en_t, fr_t, badges):
 
 PW_RAW = {}
 DEBUG = False
-LAST = []  # debugging: the last card composed, before its checks
 BADGE_RIGHT = [96]
 
 
@@ -476,8 +475,6 @@ def compose_free(scan, faces, layout, frame, reference=None, lang_label='FR'):
     out = im.convert('RGB')
     en_all = {f'{fi}.{k}': v for fi, (e, _) in enumerate(texts) for k, v in e.items()}
     fr_all = {f'{fi}.{k}': v for fi, (_, f) in enumerate(texts) for k, v in f.items()}
-    if DEBUG:
-        LAST[:] = [out]
     left = leftover_english(np.array(out), en_all, fr_all, [])
     if left:
         return None, 'english left: ' + ' '.join(left[:5])
@@ -552,7 +549,7 @@ def reads_en(img):
 
 
 def obstacle_right(img, box, light):
-    x0, y0, x1, y1 = (int(max(0, box[0])), int(max(0, box[1])), int(min(W, box[2])), int(min(H, box[3])))
+    y0, x1, y1 = int(max(0, box[1])), int(min(W, box[2])), int(min(H, box[3]))
     if y1 - y0 < 3:
         return W - 30
     gray = cv2.cvtColor(img[y0:y1], cv2.COLOR_RGB2GRAY).astype(np.int16)
@@ -580,7 +577,7 @@ def leftover_english(img, en_all, fr_all, areas):
     names = {t for k, v in en_all.items() if k.endswith('name') for t in locate._tokens(v)}
     english = {t for v in en_all.values() for t in locate._tokens(v) if len(t) >= 4} - french - names
     def inside(w):
-        cx, cy = w[1] + w[3] / 2, w[2] + w[4] / 2
+        cy = w[2] + w[4] / 2
         # Everywhere above the artist and copyright line; not the fine print
         # some art carries (card text is never that small).
         return cy < 955 and w[4] >= 15
