@@ -1,3 +1,10 @@
+## [0.18.0](https://github.com/Diix46/SpellForge/compare/v0.17.0...v0.18.0) (2026-09-25)
+
+### Features
+
+* **account:** la page Mon compte ([a239b2d](https://github.com/Diix46/SpellForge/commit/a239b2d2113d5fea45bfdee8d92b41ff09ce9227))
+* **decks:** un deck sans nom prend celui de son commandant ou Leader ([5f13cbf](https://github.com/Diix46/SpellForge/commit/5f13cbfc725bdbe11acc00d0ffcf93d0697e0cab))
+
 ## [0.17.0](https://github.com/Diix46/SpellForge/compare/v0.16.0...v0.17.0) (2026-09-25)
 
 ### Features
