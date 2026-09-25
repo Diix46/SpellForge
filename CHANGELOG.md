@@ -1,3 +1,9 @@
+## [0.24.0](https://github.com/Diix46/SpellForge/compare/v0.23.1...v0.24.0) (2026-09-25)
+
+### Features
+
+* **ui:** le menu Bibliothèques dans la navigation ([aeafe10](https://github.com/Diix46/SpellForge/commit/aeafe10408b189ba4b68c95fc988a0f3733fc660))
+
 ## [0.23.1](https://github.com/Diix46/SpellForge/compare/v0.23.0...v0.23.1) (2026-09-25)
 
 ### Bug Fixes
