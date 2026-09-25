@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { parseLocale } from '~/composables/useLocale'
 
@@ -118,6 +119,12 @@ const nav = computed(() => [
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
+// The libraries, in the phone's menu (the bar has "Libraries ▾").
+const libraries = [
+  { game: 'optcg' as const, to: libraryPath('optcg'), label: 'One Piece' },
+  { game: 'mtg' as const, to: libraryPath('mtg'), label: 'Magic' },
+]
+
 // A nav link is active only when it's the current route (exact); the query of
 // a transient ?import/?new modal does not count.
 function isActive(to: string) {
@@ -143,9 +150,6 @@ function isActive(to: string) {
           <NuxtLink to="/" class="brand" @click="mobileNav = false">
             <AppLogo />
           </NuxtLink>
-          <!-- the game on screen, and every game in a list -->
-          <GameSwitcher />
-
           <nav class="nav">
             <NuxtLink
               v-for="item in nav"
@@ -158,6 +162,8 @@ function isActive(to: string) {
               <UIcon :name="item.icon" class="ic" />
               <span>{{ item.label }}</span>
             </NuxtLink>
+            <!-- every game's library, in a list -->
+            <GameSwitcher />
           </nav>
 
           <!-- page-specific actions injected here by the active page -->
@@ -224,6 +230,17 @@ function isActive(to: string) {
           >
             <UIcon :name="item.icon" class="ic" />
             <span>{{ item.label }}</span>
+          </NuxtLink>
+          <NuxtLink
+            v-for="g in libraries"
+            :key="g.to"
+            :to="g.to"
+            class="nav-link"
+            :class="{ active: universe === g.game }"
+            @click="mobileNav = false"
+          >
+            <UIcon name="i-lucide-library" class="ic" />
+            <span>{{ g.label }}</span>
           </NuxtLink>
           <!-- on a phone the bar has no room left for these -->
           <div class="nav-mobile-tools">
