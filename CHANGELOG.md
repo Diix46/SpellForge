@@ -1,3 +1,9 @@
+## [0.23.0](https://github.com/Diix46/SpellForge/compare/v0.22.0...v0.23.0) (2026-09-25)
+
+### Features
+
+* **discover:** les decks en tuiles de Mes decks, et de vrais filtres ([ef58c2a](https://github.com/Diix46/SpellForge/commit/ef58c2a32ec3f28fb761fd0858ce6fd286c37598))
+
 ## [0.22.0](https://github.com/Diix46/SpellForge/compare/v0.21.1...v0.22.0) (2026-09-25)
 
 ### Features
