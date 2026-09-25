@@ -37,6 +37,7 @@ function glyphOf(t: string): string | null {
     return MANA_GLYPH.untap ?? null
   if (t === 'e')
     return MANA_GLYPH.energy ?? null
+  // Figures too: the Mana font draws them as the cards print them.
   return MANA_GLYPH[t] ?? null
 }
 
