@@ -1,3 +1,9 @@
+## [0.22.0](https://github.com/Diix46/SpellForge/compare/v0.21.1...v0.22.0) (2026-09-25)
+
+### Features
+
+* **ui:** un sélecteur de jeu à côté du logo ([c5ff1ef](https://github.com/Diix46/SpellForge/commit/c5ff1efba7e9d12037ce79006ffd5c2363f89b24))
+
 ## [0.21.1](https://github.com/Diix46/SpellForge/compare/v0.21.0...v0.21.1) (2026-09-25)
 
 ### Bug Fixes
