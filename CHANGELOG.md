@@ -1,3 +1,9 @@
+## [0.25.1](https://github.com/Diix46/SpellForge/compare/v0.25.0...v0.25.1) (2026-09-25)
+
+### Bug Fixes
+
+* **recompose:** l'en-tête Accept que l'API Scryfall exige ([34bed14](https://github.com/Diix46/SpellForge/commit/34bed14993376e6c2e8249cd2aff7c7a35ce8065))
+
 ## [0.25.0](https://github.com/Diix46/SpellForge/compare/v0.24.0...v0.25.0) (2026-09-25)
 
 ### Features
