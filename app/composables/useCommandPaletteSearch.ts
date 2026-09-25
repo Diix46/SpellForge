@@ -35,13 +35,15 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
   const { decks } = useDeckStore()
   const { universe } = useUniverse()
   const { go } = handlers
+  // "My decks" is for members: a guest starts a deck from a library.
+  const { loggedIn } = useUserSession()
   const cardGame = computed(() => universe.value ?? 'mtg')
 
   // ----- Static actions -----
   const actions = computed<CommandItem[]>(() => [
     // Inside a universe, a new deck or an import starts in that game.
-    { id: 'new', label: t('cmd.newDeck'), icon: 'i-lucide-plus', group: t('cmd.grpActions'), run: () => go(`/decks?new=${universe.value ?? '1'}`) },
-    { id: 'import', label: t('cmd.import'), icon: 'i-lucide-download', group: t('cmd.grpActions'), run: () => go(`/decks?import=${universe.value ?? '1'}`) },
+    { id: 'new', label: t('cmd.newDeck'), icon: 'i-lucide-plus', group: t('cmd.grpActions'), run: () => go(loggedIn.value ? `/decks?new=${universe.value ?? '1'}` : libraryPath(cardGame.value)) },
+    { id: 'import', label: t('cmd.import'), icon: 'i-lucide-download', group: t('cmd.grpActions'), run: () => go(loggedIn.value ? `/decks?import=${universe.value ?? '1'}` : libraryPath(cardGame.value)) },
     { id: 'home', label: t('cmd.allDecks'), icon: 'i-lucide-layout-grid', group: t('cmd.grpActions'), run: () => go('/decks') },
     { id: 'landing', label: t('cmd.home'), icon: 'i-lucide-house', group: t('cmd.grpActions'), run: () => go('/') },
     { id: 'lib-optcg', label: t('cmd.libraryOp'), icon: 'i-lucide-anchor', group: t('cmd.grpActions'), run: () => go(libraryPath('optcg')) },

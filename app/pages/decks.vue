@@ -6,13 +6,15 @@ import { useDashboardModals } from '~/composables/useDashboardModals'
 import { useDeckFingerprints } from '~/composables/useDeckFingerprints'
 import { useDeckStore } from '~/composables/useDeckStore'
 
-// The workshop's home: every deck of this browser (guest) or of the account,
-// both worlds together. Rendered in the browser, where guest decks live.
+// The workshop's home: every deck of the account, both worlds together. A
+// guest gets the way in instead (DashboardMembersGate): the list is for
+// members, the deck started in this browser stays one click away.
 const { t, formatShortDate } = useLocale()
 
 const route = useRoute()
 const router = useRouter()
 const { decks, duplicateDeck, getDeck, ready, syncFailed, syncFromCloud } = useDeckStore()
+const { loggedIn } = useAuth()
 
 function openDeck(id: string) {
   const deck = getDeck(id)
@@ -69,7 +71,8 @@ const restDecks = computed(() =>
 
 <template>
   <div>
-    <div class="fade-up dash">
+    <DashboardMembersGate v-if="!loggedIn" :decks="decks" />
+    <div v-else class="fade-up dash">
       <!-- PAGE HEAD -->
       <header class="dash-head">
         <div class="min-w-0">

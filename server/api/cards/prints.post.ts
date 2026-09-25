@@ -4,6 +4,7 @@
  * of one per card; each lookup is an indexed query on the local database.
  */
 import type { PrintOption } from '../../../shared/mtg/prints'
+import { requireAppUser } from '../../utils/appUser'
 import { useMtgCardsDb } from '../../utils/cards/db'
 import { listPrints } from '../../utils/cards/mtg-prints'
 
@@ -11,6 +12,8 @@ import { listPrints } from '../../utils/cards/mtg-prints'
 const MAX_NAMES = 250
 
 export default defineEventHandler(async (event): Promise<{ prints: Record<string, PrintOption[]> }> => {
+  // Choosing artworks is for members (useMembersOnly).
+  await requireAppUser(event)
   const body = await readBody<{ names?: unknown, lang?: unknown, all?: unknown }>(event)
   const raw = Array.isArray(body?.names) ? body.names : []
   if (raw.length > MAX_NAMES)

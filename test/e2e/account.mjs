@@ -24,7 +24,9 @@ export async function run() {
     ]))
   }, OP_LIST.text)
   await page.reload({ waitUntil: 'networkidle' })
-  rec.check('guest dashboard shows both decks', (await page.locator('.tile').count()) === 2)
+  // "My decks" is for members: a guest gets the way in, and the latest deck.
+  rec.check('guest "My decks" asks for an account', (await page.locator('.gate').count()) === 1 && (await page.locator('.tile').count()) === 0)
+  rec.check('guest can resume the deck in progress', (await page.getByRole('link', { name: /Reprendre « Guest crew »/ }).count()) === 1)
 
   // Sign up from the app
   await page.getByRole('button', { name: 'Se connecter' }).first().click()
@@ -103,7 +105,7 @@ export async function run() {
   await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }))
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(1000)
-  rec.check('signed out, the account decks are gone from this browser', (await page.locator('.tile').count()) === 0)
+  rec.check('signed out, the account decks are gone from this browser', (await page.locator('.tile').count()) === 0 && (await page.locator('.gate').count()) === 1)
 
   await browser.close()
   return rec.done()

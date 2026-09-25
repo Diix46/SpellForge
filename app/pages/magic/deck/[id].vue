@@ -101,7 +101,17 @@ const coachExpanded = useCoachExpanded()
 // false) so its internal open/close <Transition> keeps animating normally on
 // every subsequent toggle.
 const previewLoaded = ref(false)
+// Preview and printing are for members, however the panel is asked for
+// (toolbar, ?preview link, shortcut): a guest signs in, then it opens.
+const members = useMembersOnly()
 watch(previewOpen, (v) => {
+  if (v && !loggedIn.value) {
+    previewOpen.value = false
+    members.require('preview', () => {
+      previewOpen.value = true
+    })
+    return
+  }
   if (v)
     previewLoaded.value = true
 })
