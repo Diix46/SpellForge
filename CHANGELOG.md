@@ -1,3 +1,9 @@
+## [0.21.1](https://github.com/Diix46/SpellForge/compare/v0.21.0...v0.21.1) (2026-09-25)
+
+### Bug Fixes
+
+* **ui:** un seul header partout, les tuiles Magic en sombre ([89741ed](https://github.com/Diix46/SpellForge/commit/89741ed0106d7b5277cd48129ab872117f0df13f))
+
 ## [0.21.0](https://github.com/Diix46/SpellForge/compare/v0.20.0...v0.21.0) (2026-09-25)
 
 ### Features
