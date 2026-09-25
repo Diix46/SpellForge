@@ -1,3 +1,9 @@
+## [0.26.0](https://github.com/Diix46/SpellForge/compare/v0.25.2...v0.26.0) (2026-09-25)
+
+### Features
+
+* **recompose:** les polices dans le dépôt, chiffrées avec git-crypt ([f7e2401](https://github.com/Diix46/SpellForge/commit/f7e24014958d95f9f5020f1d917fbe654c791405))
+
 ## [0.25.2](https://github.com/Diix46/SpellForge/compare/v0.25.1...v0.25.2) (2026-09-25)
 
 ### Bug Fixes
