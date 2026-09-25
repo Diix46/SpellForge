@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { parseLocale } from '~/composables/useLocale'
 
@@ -117,13 +116,6 @@ const nav = computed(() => [
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
-// The two worlds, always one click away. Inside a universe its library is
-// the active entry; its decks live under it too.
-const worlds = computed(() => [
-  { game: 'optcg' as const, to: libraryPath('optcg'), label: 'One Piece' },
-  { game: 'mtg' as const, to: libraryPath('mtg'), label: 'Magic' },
-])
-
 // A nav link is active only when it's the current route (exact); the query of
 // a transient ?import/?new modal does not count.
 function isActive(to: string) {
@@ -149,6 +141,8 @@ function isActive(to: string) {
           <NuxtLink to="/" class="brand" @click="mobileNav = false">
             <AppLogo />
           </NuxtLink>
+          <!-- the game on screen, and every game in a list -->
+          <GameSwitcher />
 
           <nav class="nav">
             <NuxtLink
@@ -161,20 +155,6 @@ function isActive(to: string) {
             >
               <UIcon :name="item.icon" class="ic" />
               <span>{{ item.label }}</span>
-            </NuxtLink>
-          </nav>
-
-          <!-- the two worlds -->
-          <nav class="worlds" :aria-label="t('nav.worlds')">
-            <NuxtLink
-              v-for="w in worlds"
-              :key="w.game"
-              :to="w.to"
-              class="world"
-              :class="[`world--${w.game}`, { on: universe === w.game }]"
-              :aria-current="universe === w.game ? 'page' : undefined"
-            >
-              {{ w.label }}
             </NuxtLink>
           </nav>
 
@@ -369,58 +349,6 @@ function isActive(to: string) {
   flex-shrink: 0;
   padding: 4px;
   border-radius: var(--radius-sm);
-}
-
-/* the two worlds: each pill wears its own universe, even outside it */
-.worlds {
-  display: flex;
-  gap: 4px;
-  margin-left: 8px;
-  padding: 3px;
-  border: 1px solid var(--color-border-hairline);
-  border-radius: var(--radius-sm);
-}
-.world {
-  padding: 4px 11px;
-  white-space: nowrap;
-  border-radius: calc(var(--radius-sm) - 1px);
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-  text-decoration: none;
-  transition:
-    color var(--dur-fast) var(--ease-out),
-    background var(--dur-fast) var(--ease-out),
-    transform var(--dur-fast) var(--ease-out);
-}
-.world:hover {
-  color: var(--color-text-high);
-  transform: translateY(-1px);
-}
-.world--optcg {
-  font-family: 'Anton', Impact, sans-serif;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.world--mtg {
-  font-family: var(--mtg-face);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-.world--optcg.on {
-  color: #fff8ec;
-  background: #c9312a;
-}
-.world--mtg.on {
-  color: #f4f7fb;
-  background: #2d4f7c;
-}
-@media (max-width: 720px) {
-  .worlds {
-    margin-left: 4px;
-  }
-  .world {
-    padding: 4px 8px;
-  }
 }
 
 /* primary nav (destinations) */
