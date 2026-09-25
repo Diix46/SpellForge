@@ -36,6 +36,7 @@ UA = 'PrismRecompose/1.0 (+https://github.com/Diix46/SpellForge)'
 # reviewed by eye: passing cards were right, the failures seen were reworded
 # old cards (Oracle text differs from the print), so the limits are generous.
 GATE = {'name': 0.7, 'type': 0.85}
+GATE_RETRO = {'name': 1.0, 'type': 0.95}
 
 
 def load_targets(bulk, only_ids=None):
@@ -114,7 +115,10 @@ def process(fr, en, out_dir):
         ratios = render.check(scan, en)
         if ratios is None:
             return {'id': fid, 'status': 'skip', 'reason': 'english does not fit'}
-        failed = [p for p, limit in GATE.items() if ratios[p] > limit]
+        # The digital Goudy of the retro frame differs a little from the printed
+        # cut: a looser bar there, the gate still catches a misplaced line.
+        gate = GATE_RETRO if render.family_of(en) == 'retro' else GATE
+        failed = [p for p, limit in gate.items() if ratios[p] > limit]
         if failed:
             return {'id': fid, 'status': 'skip', 'reason': 'gate', 'parts': failed, 'ratios': ratios}
         im, reason = render.compose(scan, en, render.french_texts(fr), lang_label='FR')
