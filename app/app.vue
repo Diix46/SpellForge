@@ -67,7 +67,10 @@ function toggleTheme() {
 // Browser chrome (mobile address bar) follows the active theme. The document
 // language follows the site locale (reactive — switches with the FR/EN toggle).
 // The universe re-themes the whole document (assets/css/universes.css).
-const THEME_COLOR = { optcg: '#efdfc0', mtg: '#f7f7f5' } as const
+const THEME_COLOR = {
+  light: { optcg: '#efdfc0', mtg: '#f7f7f5' },
+  dark: { optcg: '#17120c', mtg: '#0f1113' },
+} as const
 useHead({
   htmlAttrs: {
     'lang': () => locale.value,
@@ -75,7 +78,7 @@ useHead({
   },
   meta: [{
     name: 'theme-color',
-    content: () => (universe.value ? THEME_COLOR[universe.value] : isDark.value ? '#0a0a0b' : '#fafafa'),
+    content: () => (universe.value ? THEME_COLOR[isDark.value ? 'dark' : 'light'][universe.value] : isDark.value ? '#0a0a0b' : '#fafafa'),
   }],
 })
 
@@ -206,8 +209,7 @@ function openImport() {
               </button>
             </div>
 
-            <!-- A universe sets its own light: One Piece by day, Magic by night. -->
-            <ClientOnly v-if="!universe">
+            <ClientOnly>
               <button
                 type="button"
                 class="icon-btn theme-bar"
@@ -267,7 +269,6 @@ function openImport() {
               </button>
             </div>
             <button
-              v-if="!universe"
               type="button"
               class="icon-btn"
               :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"

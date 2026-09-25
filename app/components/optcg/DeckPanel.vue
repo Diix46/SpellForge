@@ -287,9 +287,9 @@ function cardTitle(card: OptcgCard | null, entry: DeckEntry): string {
 .leader-art img {
   display: block;
   width: 100%;
-  border: 2px solid #231708;
+  border: 2px solid var(--color-text-high);
   border-radius: 3px;
-  box-shadow: 3px 3px 0 #231708;
+  box-shadow: 3px 3px 0 var(--color-text-high);
 }
 .leader-placeholder {
   display: grid;

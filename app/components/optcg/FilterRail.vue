@@ -344,7 +344,7 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
 .pip {
   width: 28px;
   height: 28px;
-  border: 2px solid #231708;
+  border: 2px solid var(--color-text-high);
   border-radius: 50%;
   background: var(--pip);
   opacity: 0.4;

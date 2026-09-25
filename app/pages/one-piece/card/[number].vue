@@ -5,7 +5,7 @@ import { deckPath } from '#shared/game'
 
 // One One Piece card, on its own page: rendered by the server so it can be
 // found and shared. The same view as the library's sheet.
-definePageMeta({ universe: 'optcg', colorMode: 'light' })
+definePageMeta({ universe: 'optcg' })
 
 const route = useRoute()
 const { t, locale } = useLocale()

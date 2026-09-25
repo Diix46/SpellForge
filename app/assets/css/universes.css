@@ -8,8 +8,9 @@
    only read tokens, which is what keeps a third game cheap.
 
    The universe is set on <html data-universe> by useUniverse() from the page
-   meta, and each universe page also forces its colour mode (One Piece light,
-   Magic dark), so Nuxt UI resolves its own tokens on the right side. The
+   meta. Each one has a day and a night side, following the site's colour mode
+   (html.light / html.dark): One Piece's paper by day, the ship's deck under
+   lanterns by night; Magic's workbench, then the same table after dark. The
    selectors below (element + attribute) outrank :root and .light/.dark.
    ========================================================================== */
 
@@ -175,6 +176,93 @@ html[data-universe='mtg'] {
   --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .11 0 0 0 0 .12 0 0 0 0 .13 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
+/* ------------------------------------------------------------ Night sides */
+/* One Piece at night: the deck of the ship under lanterns — dark tarred wood,
+   parchment-coloured ink, the poster red and the sea brighter to carry. */
+html.dark[data-universe='optcg'] {
+  color-scheme: dark;
+
+  --color-bg-base: #17120c;
+  --color-bg-base-2: #1d170f;
+  --color-surface-1: #231b12;
+  --color-surface-2: #2b2217;
+  --color-surface-3: #362a1c;
+
+  --color-text-high: #f5e8cc;
+  --color-text-mid: #dcc9a6;
+  --color-text-muted: #ae9772; /* 6.4:1 on the deck */
+  --color-text-disabled: #8c7658;
+
+  --color-border-hairline: rgba(245, 232, 204, 0.08);
+  --color-border-subtle: rgba(245, 232, 204, 0.14);
+  --color-border-strong: rgba(245, 232, 204, 0.26);
+
+  --accent-rgb: 226, 72, 58;
+  --accent-rgb-2: 240, 184, 70;
+  --u-sea: #4aa6cf;
+  --accent-text: #f58a7c; /* 6.9:1 on the deck */
+
+  --ui-primary: #e2483a;
+  --ui-secondary: #4aa6cf;
+
+  --shadow-elev-1: 0 1px 0 rgba(0, 0, 0, 0.3), 0 2px 6px -2px rgba(0, 0, 0, 0.5);
+  --shadow-elev-2: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 18px -8px rgba(0, 0, 0, 0.7);
+  --shadow-elev-3: 0 2px 0 rgba(0, 0, 0, 0.3), 0 18px 40px -14px rgba(0, 0, 0, 0.8);
+  --accent-glow: 0 0 0 2px rgba(226, 72, 58, 0.3), 0 6px 18px -8px rgba(226, 72, 58, 0.7);
+  --accent-glow-soft: 0 4px 14px -6px rgba(226, 72, 58, 0.6);
+
+  --glass-bg: rgba(35, 27, 18, 0.8);
+  --glass-bg-strong: rgba(35, 27, 18, 0.94);
+  --glass-highlight: rgba(245, 232, 204, 0.06);
+  --glass-solid-sheen: rgba(245, 232, 204, 0.025);
+  --texture-line: rgba(245, 232, 204, 0.04);
+
+  /* Wood grain in the dark: the same fibre, drawn light and faint. */
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .96 0 0 0 0 .91 0 0 0 0 .8 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+
+/* Magic at night: the same table after dark — slate, lamplight grey, and the
+   ink blue lifted so it still reads. */
+html.dark[data-universe='mtg'] {
+  color-scheme: dark;
+
+  --color-bg-base: #0f1113;
+  --color-bg-base-2: #131619;
+  --color-surface-1: #171a1d;
+  --color-surface-2: #1d2124;
+  --color-surface-3: #252a2e;
+
+  --color-text-high: #eef0f1;
+  --color-text-mid: #c4cacd;
+  --color-text-muted: #959da1; /* 7:1 on the table */
+  --color-text-disabled: #6f777b;
+
+  --color-border-hairline: rgba(238, 240, 241, 0.07);
+  --color-border-subtle: rgba(238, 240, 241, 0.12);
+  --color-border-strong: rgba(238, 240, 241, 0.22);
+
+  --accent-rgb: 122, 160, 212;
+  --accent-rgb-2: 150, 174, 200;
+  --accent-text: #a8c3e8; /* 10:1 on the table */
+
+  --ui-primary: #7aa0d4;
+  --ui-secondary: #959da1;
+
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-elev-2: 0 6px 16px -8px rgba(0, 0, 0, 0.6);
+  --shadow-elev-3: 0 18px 40px -18px rgba(0, 0, 0, 0.75);
+  --accent-glow: 0 0 0 2px rgba(122, 160, 212, 0.25), 0 6px 16px -10px rgba(122, 160, 212, 0.55);
+  --accent-glow-soft: 0 4px 12px -8px rgba(122, 160, 212, 0.5);
+
+  --glass-bg: rgba(23, 26, 29, 0.78);
+  --glass-bg-strong: rgba(23, 26, 29, 0.94);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-solid-sheen: rgba(255, 255, 255, 0.02);
+  --texture-line: rgba(255, 255, 255, 0.035);
+
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .93 0 0 0 0 .94 0 0 0 0 .95 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
 /* ------------------------------------------------------------- Shared layer */
 html[data-universe] body {
   background:
@@ -203,6 +291,15 @@ html[data-universe='mtg'] .u-display {
 html[data-universe='mtg'] body {
   background:
     var(--u-texture), radial-gradient(900px 420px at 50% -8%, rgba(45, 79, 124, 0.05), transparent 68%),
+    var(--color-bg-base);
+}
+/* At night the grain is light specks over the dark, not ink on paper. */
+html.dark[data-universe] body {
+  background-blend-mode: normal, normal, normal;
+}
+html.dark[data-universe='mtg'] body {
+  background:
+    var(--u-texture), radial-gradient(900px 420px at 50% -8%, rgba(122, 160, 212, 0.07), transparent 68%),
     var(--color-bg-base);
 }
 html[data-universe='mtg'] .u-prose {
@@ -283,6 +380,10 @@ html[data-universe] :focus-visible {
   color: #2d4f7c;
   text-shadow: 0 2px 10px rgba(255, 255, 255, 0.9);
   animation: ufx-land 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.1) forwards;
+}
+html.dark .ufx--mtg {
+  color: #a8c3e8;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
 }
 @keyframes ufx-don {
   0% {

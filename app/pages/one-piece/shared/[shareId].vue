@@ -8,7 +8,7 @@ import { deckPath, sharedPath } from '#shared/game'
 // A shared One Piece deck, read-only, by day. The same deck panel as the
 // builder without its steppers, and the fifty cards pinned as posters. A
 // visitor can take a copy: it lands among their decks, account or not.
-definePageMeta({ universe: 'optcg', colorMode: 'light' })
+definePageMeta({ universe: 'optcg' })
 
 interface SharedDeck { name: string, game: GameId, raw: string, source?: string | null, public: boolean }
 
