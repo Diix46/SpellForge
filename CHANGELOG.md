@@ -1,3 +1,13 @@
+## [0.25.0](https://github.com/Diix46/SpellForge/compare/v0.24.0...v0.25.0) (2026-09-25)
+
+### Features
+
+* **recompose:** les cartes HD des nouvelles impressions, automatiquement ([2e70821](https://github.com/Diix46/SpellForge/commit/2e70821f1fcc0cb67108919c470b10d9382d5798))
+
+### Bug Fixes
+
+* **ci:** style YAML du workflow de l'image recompose ([79b2b7c](https://github.com/Diix46/SpellForge/commit/79b2b7c000bf385b9b2e601c64719b86258dd2d7))
+
 ## [0.24.0](https://github.com/Diix46/SpellForge/compare/v0.23.1...v0.24.0) (2026-09-25)
 
 ### Features
