@@ -1,3 +1,9 @@
+## [0.15.1](https://github.com/Diix46/SpellForge/compare/v0.15.0...v0.15.1) (2026-09-25)
+
+### Bug Fixes
+
+* **recompose:** le titre du cadre moderne revient à sa calibration ([c85bfae](https://github.com/Diix46/SpellForge/commit/c85bfaedbe8f3517abb5df8569147b1a405ad28d))
+
 ## [0.15.0](https://github.com/Diix46/SpellForge/compare/v0.14.0...v0.15.0) (2026-09-25)
 
 ### Features
