@@ -39,6 +39,7 @@ def _font_path(env, default):
 FONT = {
     'title': _font_path('PRISM_FONT_TITLE', 'Beleren2016-Bold.ttf'),
     'title_old': _font_path('PRISM_FONT_TITLE_OLD', 'Matrix-Bold.ttf'),
+    'title_retro': _font_path('PRISM_FONT_TITLE_RETRO', 'GoudyMediaeval-Regular.ttf'),
     'text': _font_path('PRISM_FONT_TEXT', 'PlantinMTProRg.TTF'),
     'italic': _font_path('PRISM_FONT_TEXT_ITALIC', 'PlantinMTProRgIt.TTF'),
     'digits': _font_path('PRISM_FONT_DIGITS', 'PlantinMTProBold.TTF'),
@@ -57,12 +58,16 @@ def missing_fonts():
 W, H = 745, 1040
 MODERN = {'2015', 'future'}
 OLD = {'2003'}
+RETRO = {'1993', '1997'}
 
 # name/type bars and text box per frame family; right edges are refined per
 # card (mana cost, set symbol) and the box bottom by the power/toughness box.
 LAYOUT = {
     'modern': dict(name=(58, 58, 690, 102), type=(58, 588, 690, 638), box=(58, 652, 686, 948), box_pt=928),
     # the old box's right border sits close: stop short of it or the erase smears it
+    # 1993/1997 frames: white name (Goudy) and type (Plantin) with a drop
+    # shadow over the frame's texture; the box reaches down to the artist line.
+    'retro': dict(name=(66, 46, 690, 93), type=(66, 574, 690, 622), box=(82, 628, 666, 932), box_pt=932),
     'old': dict(name=(58, 60, 690, 102), type=(58, 590, 690, 636), box=(60, 656, 682, 930), box_pt=912,
                 extra=[(58, 96, 690, 108)]),
 }
@@ -74,6 +79,8 @@ TITLE_SET = {
     ('modern', 'type'): dict(size=33.5, dx=3.0, dy=0.71, tracking=0.0),
     ('old', 'name'): dict(size=44.5, dx=10.0, dy=0.905, tracking=0.6),
     ('old', 'type'): dict(size=36.0, dx=6.0, dy=0.77, tracking=0.0),
+    ('retro', 'name'): dict(size=48.8, dx=10.0, dy=0.80, tracking=0.0),
+    ('retro', 'type'): dict(size=31.0, dx=6.0, dy=0.66, tracking=0.0),
 }
 TEXT_MAX = 37
 
@@ -87,6 +94,8 @@ def family_of(card):
         return 'modern'
     if card.get('frame') in OLD:
         return 'old'
+    if card.get('frame') in RETRO:
+        return 'retro'
     return None
 
 
@@ -213,12 +222,14 @@ def cap_ratio(path):
     return _CAP_RATIO[path]
 
 
-def set_title(im, box, text, fam, part, color, measured=None, measured_text=None, k=4):
+def set_title(im, box, text, fam, part, color, measured=None, measured_text=None, k=4, shadow=False):
     """Name or type line where and as large as the scan printed it (measured),
     else at the calibrated place and size; smaller only when too long."""
     x0, y0, x1, y1 = box
     p = dict(TITLE_SET[(fam, part)])
-    path = FONT['title'] if fam == 'modern' else FONT['title_old']
+    path = {'modern': FONT['title'], 'old': FONT['title_old'], 'retro': FONT['title_retro']}[fam]
+    if fam == 'retro' and part == 'type':
+        path = FONT['text']
     if measured and measured_text:
         # The size that gives the English line its printed width, tracking kept.
         f = ImageFont.truetype(path, 100)
@@ -239,9 +250,12 @@ def set_title(im, box, text, fam, part, color, measured=None, measured_text=None
     layer = Image.new('RGBA', ((x1 - x0) * k, (y1 - y0) * k), color + (0,))
     d = ImageDraw.Draw(layer)
     base_y = p['dy'] * (y1 - y0) * k
-    for i, ch in enumerate(text):
-        x = p['dx'] * k + f.getlength(text[:i]) + i * p['tracking'] * k
-        d.text((x, base_y), ch, font=f, fill=color + (255,), anchor='ls')
+    # The retro frame prints its white lines over a soft black shadow.
+    passes = ([((1.6, 1.6), (0, 0, 0)), ((0.8, 0.8), (0, 0, 0))] if shadow else []) + [((0, 0), color)]
+    for (sx, sy), fill in passes:
+        for i, ch in enumerate(text):
+            x = p['dx'] * k + f.getlength(text[:i]) + i * p['tracking'] * k
+            d.text((x + sx * k, base_y + sy * k), ch, font=f, fill=fill + (255,), anchor='ls')
     im.alpha_composite(layer.resize((x1 - x0, y1 - y0), Image.LANCZOS), (x0, y0))
 
 
@@ -455,18 +469,30 @@ def compose(scan, en, texts, lang_label=None):
     reg = regions(img, en, fam)
     colors = {}
     # Measured before the erase: where the English name and type sit.
-    measured = {part: measure_line(img, reg[part], dark_text=luminance(img, reg[part]) >= 110) for part in ('name', 'type')}
+    retro = fam == 'retro'
+    # White lines on the retro frame, whatever the texture behind them.
+    light_text = {part: retro or luminance(img, reg[part]) < 110 for part in ('name', 'type')}
+    light_text['box'] = luminance(img, reg['box']) < 110
+    measured = {part: measure_line(img, reg[part], dark_text=not light_text[part]) for part in ('name', 'type')}
     for part in ('name', 'type', 'box'):
-        dark_bg = luminance(img, reg[part]) < 110
-        colors[part] = LIGHT_INK if dark_bg else DARK_INK
+        colors[part] = LIGHT_INK if light_text[part] else DARK_INK
         # Only the ink in the box, so a watermark under the text stays intact;
         # the bars need the full erase, or letter edges survive.
-        erase(img, reg[part], dark_text=not dark_bg, ink_only=part == 'box')
+        erase(img, reg[part], dark_text=not light_text[part], ink_only=part == 'box')
+        if retro and part != 'box':
+            erase(img, reg[part], dark_text=True, ink_only=True)  # and the letters' black shadow
+    if retro:
+        # English descenders reach over the bar's bottom line: ink only, so
+        # the line stays.
+        x0, _, x1, y1 = reg['name']
+        strip = (x0, y1 - 12, x1, y1 + 10)
+        erase(img, strip, dark_text=False, ink_only=True)
+        erase(img, strip, dark_text=True, ink_only=True)
     for region in reg['extra']:
         erase(img, region, dark_text=luminance(img, region) >= 110, ink_only=True)
     im = Image.fromarray(img).convert('RGBA')
-    set_title(im, reg['name'], texts['name'], fam, 'name', colors['name'], measured['name'], en['name'])
-    set_title(im, reg['type'], texts['type'], fam, 'type', colors['type'], measured['type'], en['type_line'])
+    set_title(im, reg['name'], texts['name'], fam, 'name', colors['name'], measured['name'], en['name'], shadow=retro)
+    set_title(im, reg['type'], texts['type'], fam, 'type', colors['type'], measured['type'], en['type_line'], shadow=retro)
     if not typeset_box(im, reg['box'], texts['rules'], texts['flavor'], colors['box'], divider=fam == 'modern'):
         return None, 'text does not fit'
     if lang_label and fam == 'modern':
@@ -502,8 +528,13 @@ def check(scan, en):
         return None
     original = scan.convert('RGB').resize((W, H), Image.LANCZOS)
     img = np.array(original)
+    retro = family_of(en) == 'retro'
     for part in ('name', 'type', 'box'):
-        erase(img, reg[part], dark_text=luminance(img, reg[part]) >= 110)
+        if retro and part != 'box':
+            erase(img, reg[part], dark_text=False)
+            erase(img, reg[part], dark_text=True)
+        else:
+            erase(img, reg[part], dark_text=luminance(img, reg[part]) >= 110)
     for region in reg['extra']:
         erase(img, region, dark_text=luminance(img, region) >= 110)
     blank = Image.fromarray(img)
