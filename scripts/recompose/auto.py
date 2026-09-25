@@ -87,10 +87,13 @@ def prune(out, db):
 
 
 def download_bulk(target):
-    with urllib.request.urlopen(urllib.request.Request(BULK_META, headers={'User-Agent': recompose.UA}), timeout=30) as r:
+    # Scryfall's API answers 400 without an Accept header (urllib sends none).
+    meta = urllib.request.Request(BULK_META, headers={'User-Agent': recompose.UA, 'Accept': 'application/json'})
+    with urllib.request.urlopen(meta, timeout=30) as r:
         uri = json.load(r)['jsonl_download_uri']
     tmp = target.with_suffix('.part')
-    with urllib.request.urlopen(urllib.request.Request(uri, headers={'User-Agent': recompose.UA}), timeout=120) as r, tmp.open('wb') as fh:
+    data = urllib.request.Request(uri, headers={'User-Agent': recompose.UA, 'Accept': '*/*'})
+    with urllib.request.urlopen(data, timeout=120) as r, tmp.open('wb') as fh:
         shutil.copyfileobj(r, fh, 1 << 20)
     tmp.rename(target)
 
