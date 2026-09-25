@@ -15,3 +15,6 @@ agent-coach
 .eve
 npm-debug.log*
 .DS_Store
+# The HD card generator has its own image (scripts/recompose/Dockerfile);
+# its fonts are licensed and never shipped.
+scripts/recompose

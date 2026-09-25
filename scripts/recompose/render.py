@@ -29,9 +29,20 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 ASSETS = Path(__file__).parent / 'assets'
-# The print fonts are proprietary, never committed nor put in an image: read
-# from the Mac's fonts, or from a mounted folder (PRISM_FONTS_DIR).
-FONTS_DIR = Path(os.environ.get('PRISM_FONTS_DIR') or Path.home() / 'Library/Fonts')
+# The print fonts are licensed: in this public repository they are encrypted
+# (git-crypt, fonts/), and never put in an image. Read from PRISM_FONTS_DIR
+# (the image mounts them there), else from fonts/ once unlocked, else from the
+# Mac's own fonts.
+REPO_FONTS = Path(__file__).parent / 'fonts'
+
+
+def _unlocked(folder):
+    # An encrypted file starts with git-crypt's header, not a font's.
+    probe = folder / 'PlantinMTProRg.TTF'
+    return probe.is_file() and not probe.read_bytes()[:9] == b'\x00GITCRYPT'
+
+
+FONTS_DIR = Path(os.environ.get('PRISM_FONTS_DIR') or (REPO_FONTS if _unlocked(REPO_FONTS) else Path.home() / 'Library/Fonts'))
 
 
 def _font_path(env, default):
