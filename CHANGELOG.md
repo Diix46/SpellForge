@@ -1,3 +1,9 @@
+## [0.13.1](https://github.com/Diix46/SpellForge/compare/v0.13.0...v0.13.1) (2026-09-25)
+
+### Bug Fixes
+
+* **mtg:** les chiffres des coûts de mana dans la police Mana ([8447a50](https://github.com/Diix46/SpellForge/commit/8447a50dced50531ac6824f21df6be23fb5bcd81))
+
 ## [0.13.0](https://github.com/Diix46/SpellForge/compare/v0.12.0...v0.13.0) (2026-09-25)
 
 ### Features
