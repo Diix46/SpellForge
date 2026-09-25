@@ -15,6 +15,22 @@ export function useAuth() {
     await refreshSession()
   }
 
+  /** Display name and/or e-mail; a new e-mail needs the current password. */
+  async function updateAccount(patch: { displayName?: string, email?: string, currentPassword?: string }) {
+    await $fetch('/api/account', { method: 'PATCH', body: patch })
+    await refreshSession()
+  }
+
+  async function changePassword(currentPassword: string, newPassword: string) {
+    await $fetch('/api/account/password', { method: 'POST', body: { currentPassword, newPassword } })
+  }
+
+  /** The account and its decks, for good; the session ends with it. */
+  async function deleteAccount(password: string) {
+    await $fetch('/api/account', { method: 'DELETE', body: { password } })
+    await clear()
+  }
+
   async function logout() {
     await $fetch('/api/auth/logout', { method: 'POST' })
     await clear()
@@ -26,6 +42,9 @@ export function useAuth() {
     register,
     login,
     logout,
+    updateAccount,
+    changePassword,
+    deleteAccount,
     refreshSession,
   }
 }

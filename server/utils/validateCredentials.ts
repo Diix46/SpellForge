@@ -4,18 +4,30 @@ const EMAIL_RE = /^[^\s@]+@[^\s.@]+(?:\.[^\s.@]+)+$/
 
 export interface Credentials { email: string, password: string }
 
-export function validateCredentials(body: unknown): Credentials {
-  const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
-  const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : ''
-  const password = typeof b.password === 'string' ? b.password : ''
+function bad(message: string): never {
+  throw createError({ statusCode: 400, statusMessage: 'Bad Request', message })
+}
 
+/** A normalized e-mail address (trimmed, lower case), or a 400. */
+export function validateEmail(value: unknown): string {
+  const email = typeof value === 'string' ? value.trim().toLowerCase() : ''
   if (email.length > 254 || !EMAIL_RE.test(email))
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Adresse e-mail invalide' })
+    bad('Adresse e-mail invalide')
+  return email
+}
+
+/** A password fit to be hashed, or a 400. */
+export function validatePassword(value: unknown): string {
+  const password = typeof value === 'string' ? value : ''
   if (password.length < 8)
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Le mot de passe doit faire au moins 8 caractères' })
+    bad('Le mot de passe doit faire au moins 8 caractères')
   // Hashing is deliberately slow: an endless password must not make it slower.
   if (password.length > 256)
-    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Le mot de passe doit faire au plus 256 caractères' })
+    bad('Le mot de passe doit faire au plus 256 caractères')
+  return password
+}
 
-  return { email, password }
+export function validateCredentials(body: unknown): Credentials {
+  const b = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+  return { email: validateEmail(b.email), password: validatePassword(b.password) }
 }
