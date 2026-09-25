@@ -1,3 +1,13 @@
+## [0.13.0](https://github.com/Diix46/SpellForge/compare/v0.12.0...v0.13.0) (2026-09-25)
+
+### Features
+
+* **recompose:** filigranes, anciens cadres, effets de cadre ([da66711](https://github.com/Diix46/SpellForge/commit/da66711ef0adecbf16c1d7281754e772aac95b0e))
+
+### Bug Fixes
+
+* **recompose:** cartes au texte anglais écartées, effacement des barres rétabli ([31743fe](https://github.com/Diix46/SpellForge/commit/31743fe96ab2cb8092d540f8c93d539661d6920e))
+
 ## [0.12.0](https://github.com/Diix46/SpellForge/compare/v0.11.0...v0.12.0) (2026-09-24)
 
 ### Features
