@@ -17,10 +17,13 @@
  * Which card to list, and why only one, is explained in buildPrintsQuery.
  */
 import type { PrintOption } from '../../../shared/mtg/prints'
+import { requireAppUser } from '../../utils/appUser'
 import { useMtgCardsDb } from '../../utils/cards/db'
 import { listPrints } from '../../utils/cards/mtg-prints'
 
 export default defineEventHandler(async (event): Promise<{ prints: PrintOption[] }> => {
+  // Choosing artworks is for members (useMembersOnly).
+  await requireAppUser(event)
   const q = getQuery(event)
   const name = typeof q.name === 'string' ? q.name.trim().slice(0, 160) : ''
   const lang = q.lang === 'fr' ? 'fr' : 'en'

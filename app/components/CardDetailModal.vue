@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import { cardPath } from '#shared/game'
 import { useCardmarket } from '~/composables/useCardmarket'
 import { useLocale } from '~/composables/useLocale'
+import { useMembersOnly } from '~/composables/useMembersOnly'
 import { displayName, displayOracle, displayType, isCommanderType } from '~/composables/useMtg'
 import { useOracleText } from '~/composables/useOracleText'
 import { pinPrintKey, printKey } from '~/composables/usePrintings'
@@ -168,6 +169,13 @@ const hdUnavailable = computed(() => {
 })
 const hdShown = computed(() => !shownPrint.value && (!!c.value?.recomposed || (hdLocal.value && hdAvailable.value)))
 
+// Choosing artworks (the gallery, the HD card) is for members.
+const members = useMembersOnly()
+function toggleHd() {
+  const on = !hdShown.value
+  members.require('artwork', () => setHd(on))
+}
+
 function setHd(on: boolean) {
   hdLocal.value = on
   const e = props.card?.entry
@@ -235,9 +243,9 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
             :disabled="!!hdUnavailable || !!shownPrint"
             :title="hdUnavailable || t('recomposed.explain')"
             :aria-describedby="hdUnavailable ? 'hd-why' : undefined"
-            @click="setHd(!hdShown)"
+            @click="toggleHd"
           >
-            <UIcon :name="hdShown ? 'i-lucide-scan' : 'i-lucide-sparkles'" class="h-4 w-4" />
+            <UIcon :name="!members.loggedIn.value ? 'i-lucide-lock-keyhole' : hdShown ? 'i-lucide-scan' : 'i-lucide-sparkles'" class="h-4 w-4" />
             {{ hdShown ? t('recomposed.backToScan') : t('recomposed.generate') }}
           </button>
           <p v-if="hdUnavailable" id="hd-why" class="mt-1 text-center text-[11px] text-(--color-text-muted)">
@@ -414,8 +422,17 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
         </div>
 
         <!-- Artwork strip: full width, right under the card, always visible. -->
+        <div v-if="!library && inDeck && !members.loggedIn.value" class="members-art sm:col-span-2">
+          <UIcon name="i-lucide-images" class="h-5 w-5 shrink-0 text-(--accent-text)" />
+          <p class="min-w-0 flex-1">
+            {{ t('members.artworkLocked') }}
+          </p>
+          <UButton size="sm" color="primary" icon="i-lucide-lock-keyhole-open" @click="members.require('artwork')">
+            {{ t('members.unlock') }}
+          </UButton>
+        </div>
         <CardPrintingPicker
-          v-if="!library && inDeck"
+          v-else-if="!library && inDeck"
           class="sm:col-span-2"
           :english-name="printsName"
           :card-key="cardKey"
@@ -430,6 +447,18 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 </template>
 
 <style scoped>
+.members-art {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--color-text-mid);
+  font-size: 13px;
+  line-height: 1.45;
+}
 /* Close button: a dark frosted disc with a light glyph, top-right of the modal.
    Scoped + :deep beats the UButton neutral variant's own background. */
 :deep(.modal-close) {

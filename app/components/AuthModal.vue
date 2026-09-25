@@ -3,12 +3,15 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useAuthOverlay } from '~/composables/useAuthOverlay'
 import { useLocale } from '~/composables/useLocale'
+import { useMembersOnly } from '~/composables/useMembersOnly'
 
 const open = defineModel<boolean>('open', { required: true })
 
 const { t } = useLocale()
 const { login, register } = useAuth()
 const { mode: requestedMode } = useAuthOverlay()
+// Opened by a members-only feature: say which, and carry on once signed in.
+const members = useMembersOnly()
 const toast = useToast()
 
 const mode = ref<'login' | 'register'>('login')
@@ -32,6 +35,7 @@ watch(open, (isOpen) => {
     error.value = ''
     form.password = ''
     showPassword.value = false
+    members.forget()
   }
 })
 
@@ -48,8 +52,10 @@ async function submit() {
     else
       await login(form.email, form.password)
     toast.add({ title: mode.value === 'register' ? t('auth.welcome') : t('auth.loggedIn'), color: 'success', icon: 'i-lucide-check' })
-    open.value = false
     form.password = ''
+    // Before closing, which forgets it: what the guest asked for, now allowed.
+    members.runPending()
+    open.value = false
   }
   catch (e: any) {
     // The server's own words; a request that got no answer gets the generic one.
@@ -69,6 +75,10 @@ async function submit() {
     :ui="{ content: 'sm:max-w-sm' }"
   >
     <template #body>
+      <p v-if="members.reason.value" class="members-why">
+        <UIcon name="i-lucide-lock-keyhole" class="h-4 w-4 shrink-0" />
+        <span>{{ t(`members.${members.reason.value}`) }}</span>
+      </p>
       <UTabs
         v-model="mode"
         :items="tabItems"
@@ -154,3 +164,19 @@ async function submit() {
     </template>
   </UModal>
 </template>
+
+<style scoped>
+.members-why {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--color-text-high);
+  font-size: 13px;
+  line-height: 1.45;
+}
+</style>

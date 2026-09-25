@@ -78,13 +78,20 @@ export async function run() {
   await page.waitForTimeout(900)
   rec.check('redo brings it back', /Bitterblossom/.test(await raw()))
 
-  // Preview and Esc layering
+  // Preview is for members: a guest is asked to sign up, and it stays shut
   await page.getByRole('button', { name: /Aperçu/ }).first().click()
-  await page.waitForTimeout(1500)
-  rec.check('preview opens', (await page.locator('section[role="dialog"][aria-label="Aperçu"]').count()) === 1)
+  await page.waitForTimeout(1200)
+  rec.check('preview asks a guest for an account', (await page.getByRole('dialog').getByText(/réservés aux membres/).count()) === 1)
+  rec.check('preview stays shut for a guest', (await page.locator('section[role="dialog"][aria-label="Aperçu"]').count()) === 0)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(600)
-  rec.check('Esc closes the preview', (await page.locator('section[role="dialog"][aria-label="Aperçu"]').count()) === 0)
+
+  // Choosing artworks too: the detail view shows the way in, not the gallery
+  await page.locator('.dnd-row').getByText(/^(Anneau solaire|Sol Ring)$/).first().click()
+  await page.waitForTimeout(1200)
+  rec.check('artwork gallery is for members', (await page.getByText(/Choisis l'illustration de chaque carte/).count()) >= 1)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
 
   // Buy overlay leaves the token out
   await page.getByRole('button', { name: /Acheter/ }).first().click()
@@ -95,7 +102,8 @@ export async function run() {
   await page.waitForTimeout(500)
 
   // ---- Import from EDHREC ----
-  await page.goto(`${BASE}/decks?import=mtg`, { waitUntil: 'networkidle' })
+  await page.goto(`${BASE}/magic`, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Importer' }).first().click()
   await page.waitForTimeout(800)
   const dialog = page.getByRole('dialog')
   await dialog.locator('input[name="import-url"]').fill('https://edhrec.com/commanders/atraxa-praetors-voice')

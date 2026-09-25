@@ -59,6 +59,10 @@ const menuItems = computed(() => [
   >
     <span v-if="isOp" class="pin" aria-hidden="true" />
     <span v-else class="token" aria-hidden="true" />
+    <!-- Magic: the commander's art across the top of the deck box. -->
+    <div v-if="!isOp && fp.art" class="art" aria-hidden="true">
+      <img :src="fp.art" alt="" loading="lazy">
+    </div>
 
     <div class="head">
       <span class="world">{{ isOp ? 'One Piece' : 'Magic' }}</span>
@@ -90,6 +94,9 @@ const menuItems = computed(() => [
         <p v-if="isOp && bounty" class="bounty">
           <span aria-hidden="true">฿</span> {{ bounty }}
         </p>
+        <div v-else-if="!isOp && fp.mana.length" class="dots">
+          <ManaSymbol v-for="m in fp.mana" :key="m" :sym="m" :size="18" />
+        </div>
         <div v-else-if="fp.dots.length" class="dots">
           <span v-for="(c, i) in fp.dots" :key="i" class="dot" :style="{ background: c }" />
         </div>
@@ -286,6 +293,35 @@ const menuItems = computed(() => [
   transform: translateY(-3px);
   border-color: rgba(45, 79, 124, 0.45);
   box-shadow: 0 16px 30px -18px rgba(27, 31, 34, 0.5);
+}
+/* The commander's art: the deck box's window, full width, fading into it. */
+.tile--mtg .art {
+  position: relative;
+  height: 92px;
+  margin: -16px -16px -4px;
+  overflow: hidden;
+  border-radius: 9px 9px 0 0;
+}
+.tile--mtg .art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 28%;
+  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tile--mtg .art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, transparent 45%, #fdfdfc 100%),
+    linear-gradient(90deg, rgba(var(--accent-rgb, 45, 79, 124), 0.18), transparent 60%);
+}
+.tile--mtg:has(.art) {
+  outline-color: transparent; /* the stitch would cross the art */
+}
+.tile--mtg:hover .art img {
+  transform: scale(1.04);
 }
 /* A counter, the kind that tracks life beside the deck. */
 .tile--mtg .token {
