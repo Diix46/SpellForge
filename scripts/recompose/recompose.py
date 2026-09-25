@@ -12,6 +12,12 @@ Each card: the English PNG is downloaded, the English text retypeset on it and
 compared with the scan (the quality gate, render.check); a card that passes is
 composed in French and written as out/<french printing id>.jpg. Every outcome
 lands in out/results.jsonl, so a run can be stopped and resumed.
+
+Cards the fixed layouts do not fit (borderless and showcase frames,
+planeswalkers, sagas, adventures, double-faced cards, cards the gate refuses)
+go through the free-form mode (freeform.py): the text is found by reading the
+scan, then checked by reading the result back. The back of a double-faced
+card is written as out/<id>-back.jpg.
 """
 import argparse
 import collections
@@ -28,6 +34,8 @@ from pathlib import Path
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent))
+import freeform  # noqa: E402
+import locate  # noqa: E402
 import render  # noqa: E402
 
 UA = 'PrismRecompose/1.0 (+https://github.com/Diix46/SpellForge)'
@@ -39,19 +47,26 @@ GATE = {'name': 0.7, 'type': 0.85}
 GATE_RETRO = {'name': 1.0, 'type': 0.95}
 
 
-def load_targets(bulk, only_ids=None):
+def load_targets(bulk, only_ids=None, vocab=None):
     en, fr = {}, {}
     # A French type line from any printing of the card: some French printings
     # lack theirs in Scryfall's data.
     # Failing that, the French of the same English type line on other cards.
     fr_types, by_line = {}, {}
+    # Likewise the French rules text, where Scryfall gives English instead.
+    fr_rules = {}
     oracle_line = {}
     with gzip.open(bulk, 'rt', encoding='utf-8') as fh:
         for line in fh:
             c = json.loads(line)
             key = (c['set'], c['collector_number'])
+            if vocab is not None and c['lang'] == 'en':
+                for f in [c] + c.get('card_faces', []):
+                    vocab.update(locate._tokens(' '.join(f.get(k) or '' for k in ('name', 'type_line', 'oracle_text', 'flavor_text'))))
             if c['lang'] == 'en' and c.get('type_line'):
                 oracle_line.setdefault(c.get('oracle_id'), c['type_line'])
+            if c['lang'] == 'fr' and c.get('printed_text') and not c.get('card_faces') and not render.looks_english(c['printed_text']):
+                fr_rules.setdefault(c.get('oracle_id'), c['printed_text'])
             if c['lang'] == 'fr' and c.get('printed_type_line'):
                 fr_types.setdefault(c.get('oracle_id'), c['printed_type_line'])
                 if c.get('type_line'):
@@ -71,6 +86,11 @@ def load_targets(bulk, only_ids=None):
                 known = by_line[e['type_line']].most_common(1)[0][0]
             if known:
                 f = {**f, 'printed_type_line': known}
+        if render.looks_english(f.get('printed_text')) and fr_rules.get(f.get('oracle_id')):
+            f = {**f, 'printed_text': fr_rules[f['oracle_id']]}
+        if render.looks_english(f.get('flavor_text')):
+            # A flavor text is the printing's own: none rather than English.
+            f = {k: v for k, v in f.items() if k != 'flavor_text'}
         out.append((f, e))
     return out
 
@@ -95,7 +115,57 @@ def fetch(url, tries=3):
             time.sleep(1 + 2 * i)
 
 
+def init_worker(vocab):
+    freeform.set_vocab(vocab)
+
+
+FACES_ON_PAGE = ('adventure', 'split', 'flip')
+DOUBLE_FACED = ('transform', 'modal_dfc')
+
+
+def process_free(fr, en, out_dir, why):
+    """The free-form mode, for a card the fixed layouts do not fit: each
+    printed side composed apart (the back of a double-faced card too)."""
+    fid = fr['id']
+    both = en.get('card_faces') and fr.get('card_faces') and len(en['card_faces']) == len(fr['card_faces'])
+    if fr['layout'] in DOUBLE_FACED and both:
+        sides = [([(e, f)], e.get('image_uris'), f.get('image_uris'), suffix)
+                 for e, f, suffix in zip(en['card_faces'][:2], fr['card_faces'][:2], ('', '-back'))]
+    else:
+        faces = list(zip(en['card_faces'], fr['card_faces'])) if fr['layout'] in FACES_ON_PAGE and both else [(en, fr)]
+        sides = [(faces, en.get('image_uris'), fr.get('image_uris'), '')]
+    made = []
+    for faces, uris, fref, suffix in sides:
+        if not uris or 'png' not in uris:
+            reason = 'no png'
+        else:
+            try:
+                scan = Image.open(io.BytesIO(fetch(uris['png'])))
+                try:
+                    ref = Image.open(io.BytesIO(fetch(fref['png']))) if fref else None
+                except Exception:
+                    ref = None
+                im, reason = freeform.compose_free(scan, faces, fr['layout'], fr.get('frame'), ref)
+            except Exception as err:
+                im, reason = None, f'{type(err).__name__}: {err}'
+            if im is not None:
+                im.save(out_dir / f'{fid}{suffix}.jpg', quality=92, optimize=True, progressive=True)
+                made.append(suffix or 'front')
+                continue
+        if not suffix:
+            # No front, no card: the back alone is never shown.
+            return {'id': fid, 'status': 'skip', 'reason': f'{why}; free: {reason}'}
+    return {'id': fid, 'status': 'ok', 'mode': 'free', 'sides': made, 'set': fr['set'], 'cn': fr['collector_number']}
+
+
 def process(fr, en, out_dir):
+    r = process_fixed(fr, en, out_dir)
+    if r['status'] == 'skip' and r['reason'] not in ('symbol', 'english text'):
+        return process_free(fr, en, out_dir, r['reason'])
+    return r
+
+
+def process_fixed(fr, en, out_dir):
     fid = fr['id']
     if not render.supported(fr, en):
         return {'id': fid, 'status': 'skip', 'reason': 'frame'}
@@ -121,7 +191,13 @@ def process(fr, en, out_dir):
         failed = [p for p, limit in gate.items() if ratios[p] > limit]
         if failed:
             return {'id': fid, 'status': 'skip', 'reason': 'gate', 'parts': failed, 'ratios': ratios}
-        im, reason = render.compose(scan, en, render.french_texts(fr), lang_label='FR')
+        # The French scan, however blurry, gives the colours (render.match_colors).
+        try:
+            reference = Image.open(io.BytesIO(fetch(fr['image_uris']['png'])))
+            reference.load()
+        except Exception:
+            reference = None
+        im, reason = render.compose(scan, en, render.french_texts(fr), lang_label='FR', reference=reference)
         if im is None:
             return {'id': fid, 'status': 'skip', 'reason': reason, 'ratios': ratios}
         im.save(out_dir / f'{fid}.jpg', quality=92, optimize=True, progressive=True)
@@ -152,7 +228,8 @@ def main():
         done = {json.loads(line)['id'] for line in results.read_text().splitlines() if line.strip()}
 
     only = None if args.all else best_printing_ids(args.db)
-    targets = [t for t in load_targets(args.bulk, only) if t[0]['id'] not in done]
+    vocab = set()
+    targets = [t for t in load_targets(args.bulk, only, vocab) if t[0]['id'] not in done]
     targets.sort(key=lambda t: (t[0]['set'], t[0]['collector_number']))
     if args.sample:
         step = max(1, len(targets) // args.sample)
@@ -162,7 +239,7 @@ def main():
     print(f'{len(targets)} cards to process ({len(done)} already done)', flush=True)
 
     counts, t0 = {}, time.time()
-    with ProcessPoolExecutor(args.workers) as pool, results.open('a') as log:
+    with ProcessPoolExecutor(args.workers, initializer=init_worker, initargs=(vocab,)) as pool, results.open('a') as log:
         futures = [pool.submit(process, f, e, args.out) for f, e in targets]
         for i, fut in enumerate(as_completed(futures), 1):
             r = fut.result()

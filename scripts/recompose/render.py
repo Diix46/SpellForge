@@ -105,7 +105,9 @@ def supported(fr, en):
     # Effects that change colours or ornaments, not where the text sits: the
     # quality gate decides for each card.
     effects = set(fr.get('frame_effects') or []) - {'legendary', 'enchantment', 'miracle', 'nyxtouched', 'etched', 'devoid', 'extendedart', 'inverted', 'showcase', 'colorshifted', 'snow'}
-    return (fam is not None and fr.get('layout') == 'normal' and fr.get('border_color') in ('black', 'yellow', 'white')
+    # Borderless too: its bars and box sit where the black-bordered ones do,
+    # the quality gate checks each card.
+    return (fam is not None and fr.get('layout') == 'normal' and fr.get('border_color') in ('black', 'yellow', 'white', 'borderless')
             and not effects
             and fr.get('printed_name') and fr.get('printed_type_line') is not None
             and 'Planeswalker' not in (en.get('type_line') or '') and 'Battle' not in (en.get('type_line') or ''))
@@ -381,13 +383,13 @@ def layout(paragraphs, width, size, fonts):
     return lines_out
 
 
-def typeset_box(im, box, rules, flavor, color, divider, k=4):
+def typeset_box(im, box, rules, flavor, color, divider, k=4, max_size=TEXT_MAX, min_size=16, dry=False):
     x0, y0, x1, y1 = box
     pad_x, pad_y = 10, 6
     width, height = x1 - x0 - 2 * pad_x, y1 - y0 - 2 * pad_y
     paragraphs = [runs(p) for p in rules.split('\n')] if rules else []
     flavor_pars = [runs(p, italic=True) for p in (flavor or '').split('\n') if p]
-    for size in range(TEXT_MAX, 15, -1):
+    for size in range(max_size, min_size - 1, -1):
         fonts = (ImageFont.truetype(FONT['text'], size), ImageFont.truetype(FONT['italic'], size))
         body = layout(paragraphs, width, size, fonts)
         fl = layout(flavor_pars, width, size, fonts) if flavor_pars else []
@@ -398,6 +400,8 @@ def typeset_box(im, box, rules, flavor, color, divider, k=4):
             break
     else:
         return False
+    if dry:
+        return True
     # Drawn 4x larger then scaled down: glyphs keep their shapes, and a
     # quarter-pixel stroke brings Plantin to MPlantin's printed weight.
     big = (ImageFont.truetype(FONT['text'], size * k), ImageFont.truetype(FONT['italic'], size * k))
@@ -459,7 +463,26 @@ def curly(text):
     return (text or '').replace("'", '’')
 
 
-def compose(scan, en, texts, lang_label=None):
+def match_colors(img, reference):
+    """Recolour `img` (the English HD scan) to the tones of `reference` (the
+    French scan of the same printing): per-channel mean and spread in Lab,
+    measured on both whole cards. Scryfall scanned the two at different times
+    and settings; the French card should look like the French scan, sharp.
+    The change is damped, so a badly exposed reference only nudges the result."""
+    ref = cv2.cvtColor(np.asarray(reference.convert('RGB').resize((W, H), Image.LANCZOS)), cv2.COLOR_RGB2LAB).astype(np.float32)
+    src = cv2.cvtColor(img, cv2.COLOR_RGB2LAB).astype(np.float32)
+    # Stats inside the card, not on the rounded black corners.
+    inner = (slice(40, H - 40), slice(30, W - 30))
+    out = src.copy()
+    for c in range(3):
+        s_mean, s_std = src[inner][..., c].mean(), src[inner][..., c].std() + 1e-3
+        r_mean, r_std = ref[inner][..., c].mean(), ref[inner][..., c].std() + 1e-3
+        scale = 1 + 0.8 * (r_std / s_std - 1)
+        out[..., c] = (src[..., c] - s_mean) * scale + s_mean + 0.8 * (r_mean - s_mean)
+    return cv2.cvtColor(np.clip(out, 0, 255).astype(np.uint8), cv2.COLOR_LAB2RGB)
+
+
+def compose(scan, en, texts, lang_label=None, reference=None):
     """Erase the English text from `scan` and set `texts` (name, type, rules, flavor).
 
     Returns (image, regions) or (None, reason).
@@ -490,6 +513,10 @@ def compose(scan, en, texts, lang_label=None):
         erase(img, strip, dark_text=True, ink_only=True)
     for region in reg['extra']:
         erase(img, region, dark_text=luminance(img, region) >= 110, ink_only=True)
+    # The French scan's colours, once the English text is gone: measuring and
+    # erasing work on the scan as it is, and the new text keeps its pure ink.
+    if reference is not None:
+        img = match_colors(img, reference)
     im = Image.fromarray(img).convert('RGBA')
     set_title(im, reg['name'], texts['name'], fam, 'name', colors['name'], measured['name'], en['name'], shadow=retro)
     set_title(im, reg['type'], texts['type'], fam, 'type', colors['type'], measured['type'], en['type_line'], shadow=retro)
