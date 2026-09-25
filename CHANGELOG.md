@@ -1,3 +1,11 @@
+## [0.15.0](https://github.com/Diix46/SpellForge/compare/v0.14.0...v0.15.0) (2026-09-25)
+
+### Features
+
+* **images:** le verso HD des cartes double face ([a5ae602](https://github.com/Diix46/SpellForge/commit/a5ae602f25e16d59e454a1e14675b57cca604665))
+* **recompose:** couleurs du scan français et repli sur le mode libre ([765caf3](https://github.com/Diix46/SpellForge/commit/765caf301119132033e059c4d8ea44e82825a7a2))
+* **recompose:** le mode libre par OCR pour les cadres non standard ([340d1c5](https://github.com/Diix46/SpellForge/commit/340d1c5ffffca730a50909319885847219fa5e51))
+
 ## [0.14.0](https://github.com/Diix46/SpellForge/compare/v0.13.1...v0.14.0) (2026-09-25)
 
 ### Features
