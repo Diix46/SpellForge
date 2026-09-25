@@ -30,6 +30,10 @@ useHead({
 
 const route = useRoute()
 const { universe } = useUniverse()
+// The new universe comes in with the new page, once the old one has left (plugins/universe.ts).
+const router = useRouter()
+const { $showUniverse } = useNuxtApp()
+const pageTransition = computed(() => router.currentRoute.value.meta.pageTransition === false ? false : { onBeforeEnter: $showUniverse })
 const { locale, setLocale, t } = useLocale()
 
 // A link can ask for a language (?lang=en): the hreflang alternates of the
@@ -277,7 +281,7 @@ function openImport() {
 
       <!-- ============ MAIN ============ -->
       <main id="content" class="content">
-        <NuxtPage />
+        <NuxtPage :transition="pageTransition" />
       </main>
 
       <footer v-if="showChrome" class="foot">
