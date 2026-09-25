@@ -11,7 +11,7 @@ import { mtgRaw } from '~/composables/useScryfall'
 
 // One Magic card, on its own page: rendered by the server so it can be found
 // and shared. Addressed by its English name, in the site language's printing.
-definePageMeta({ universe: 'mtg', colorMode: 'light' })
+definePageMeta({ universe: 'mtg' })
 
 const route = useRoute()
 const { t, locale, isFr, rarityLabel } = useLocale()
@@ -219,7 +219,7 @@ function startWith() {
   width: 100%;
   height: auto;
   border-radius: 4.5% / 3.2%;
-  box-shadow: 0 18px 40px -20px rgba(27, 31, 34, 0.45);
+  box-shadow: var(--shadow-elev-3);
 }
 .flip {
   display: flex;
@@ -231,7 +231,7 @@ function startWith() {
   padding: 8px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 3px;
-  color: #e2c47f;
+  color: var(--accent-text);
   font-size: 13px;
 }
 .info {
@@ -278,18 +278,18 @@ function startWith() {
   border: 1px solid var(--color-border-subtle);
   border-radius: 999px;
   font-size: 12px;
-  color: #e2c47f;
+  color: var(--accent-text);
 }
 .oracle {
   margin: 0;
   font-family: var(--mtg-face);
   font-size: 18px;
   line-height: 1.55;
-  color: #efe6d0;
+  color: var(--color-text-high);
 }
 .oracle .kw {
   font-weight: 600;
-  color: #e2c47f;
+  color: var(--accent-text);
 }
 .facts {
   display: grid;
@@ -302,18 +302,18 @@ function startWith() {
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #2d4f7c;
+  color: var(--accent-text);
 }
 .facts dd {
   margin: 2px 0 0;
-  color: #454d52;
+  color: var(--color-text-mid);
   font-size: 14px;
 }
 .facts .legal {
-  color: #8fd3a2;
+  color: var(--ui-success);
 }
 .facts .illegal {
-  color: #e88a7d;
+  color: var(--ui-error);
 }
 .actions {
   display: flex;

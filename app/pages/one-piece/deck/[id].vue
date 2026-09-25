@@ -11,7 +11,8 @@ import { OPTCG_COLOR_HEX } from '~/utils/optcgColors'
 // the One Piece universe. Same page skeleton as Magic (toolbar, deck on the
 // left, search on the right), with its own rules, filters and posters. No
 // print, no buy, no coach: those are Magic-only (shared/game.ts).
-definePageMeta({ pageTransition: false, universe: 'optcg', colorMode: 'light' })
+definePageMeta({ pageTransition: false, universe: 'optcg' })
+useShowUniverseOnMount()
 
 const route = useRoute()
 const deckId = computed(() => String(route.params.id))

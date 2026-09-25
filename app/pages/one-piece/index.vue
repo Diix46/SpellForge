@@ -6,7 +6,7 @@ import { deckPath } from '#shared/game'
 
 // The One Piece library: every card of the game, pinned up as wanted posters.
 // Reading only: a card opens its sheet; a Leader can start a deck.
-definePageMeta({ universe: 'optcg', colorMode: 'light' })
+definePageMeta({ universe: 'optcg' })
 
 const { t, locale } = useLocale()
 const { createDeck } = useDeckStore()
