@@ -3,17 +3,6 @@ import type { ImageUris, ScryfallCard } from './types'
 
 const DFC_LAYOUTS = ['transform', 'modal_dfc', 'double_faced_token', 'reversible_card', 'art_series']
 
-/**
- * Sanitize a card name for embedding in a Scryfall `!"name"` exact-match
- * clause: strip quotes/backslashes (either would break out of the quoted
- * clause and produce an invalid query — the likely cause of intermittent 422s
- * from EDHREC-sourced names) and trim whitespace. Callers should also drop
- * empties from the result before building a query.
- */
-export function sanitizeCardName(name: string): string {
-  return name.replace(/["\\]/g, '').trim()
-}
-
 export function isDoubleFaced(card: ScryfallCard): boolean {
   return DFC_LAYOUTS.includes(card.layout) && !!card.card_faces?.[1]?.image_uris
 }
@@ -57,7 +46,7 @@ export async function mapPool<T, R>(items: T[], limit: number, fn: (item: T, i: 
   return results
 }
 
-export function hasImage(card: ScryfallCard | null): boolean {
+function hasImage(card: ScryfallCard | null): boolean {
   return !!getImageUris(card)
 }
 

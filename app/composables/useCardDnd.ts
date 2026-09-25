@@ -5,7 +5,7 @@ import { useState } from 'nuxt/app'
 // highlighting (dataTransfer payload isn't readable during dragover for security,
 // so we keep the active source in reactive state to decide which zone lights up).
 
-export const DND_MIME = 'application/x-prism-card'
+const DND_MIME = 'application/x-prism-card'
 
 export interface CardDragPayload {
   source: 'search' | 'deck'

@@ -11,7 +11,7 @@
  * Leader, written first by convention. Card numbers are the join key, names
  * being translated and shared by many cards.
  */
-import type { DeckEntry, DecklistFormat, ParseResult } from '../decklist'
+import type { DeckEntry, ParseResult } from '../decklist'
 
 // Quantity, separator, number, optional suffix, optional trailing text. Each
 // part is anchored on a character class the next one cannot start with, so the
@@ -55,5 +55,3 @@ export function orderOptcgEntries(entries: readonly DeckEntry[], isLeader: (numb
   const leaders = entries.filter(e => isLeader(e.name))
   return [...leaders, ...entries.filter(e => !leaders.includes(e))]
 }
-
-export const optcgDecklist: DecklistFormat = { parse: parseOptcgDecklist, line: optcgLine }

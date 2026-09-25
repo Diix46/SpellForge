@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs'
 import { createClient } from '@libsql/client'
 
 /** Built by `npm run cards:ingest`; integration suites skip without it. */
-export const CARD_DB = '.data/cards-mtg.db'
+const CARD_DB = '.data/cards-mtg.db'
 
 /**
  * The card database, or an empty in-memory one when it is not built.

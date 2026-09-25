@@ -16,7 +16,6 @@ export type OptcgCategory = 'Leader' | 'Character' | 'Event' | 'Stage'
 
 export const DECK_SIZE = 50
 export const MAX_COPIES = 4
-export const DON_DECK_SIZE = 10
 
 /**
  * Standard rotation: cards whose newest printing carries block icon 1 left the
@@ -32,7 +31,7 @@ export const MIN_LEGAL_BLOCK = 2
  * validator cannot be a simple per-card lookup. A Leader counts as part of the
  * deck here: OP11-040 is one.
  */
-export const BANNED_PAIRS: readonly (readonly [string, string])[] = [
+const BANNED_PAIRS: readonly (readonly [string, string])[] = [
   ['EB04-058', 'OP07-115'],
   ['OP11-040', 'OP11-067'],
   ['OP11-040', 'OP08-069'],

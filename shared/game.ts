@@ -8,7 +8,7 @@
 
 export type GameId = 'mtg' | 'optcg'
 
-export const GAME_IDS: readonly GameId[] = ['mtg', 'optcg']
+const GAME_IDS: readonly GameId[] = ['mtg', 'optcg']
 
 export function parseGameId(value: unknown): GameId | null {
   return typeof value === 'string' && (GAME_IDS as readonly string[]).includes(value) ? value as GameId : null

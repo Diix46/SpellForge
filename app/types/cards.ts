@@ -2,8 +2,6 @@ import type { GameId } from '#shared/game'
 import type { OptcgCard } from '#shared/optcg/types'
 import type { ScryfallCard } from '../composables/scryfall/types'
 
-export type { GameId } from '#shared/game'
-
 /**
  * Game-neutral card model.
  *
