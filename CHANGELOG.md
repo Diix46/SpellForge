@@ -1,3 +1,10 @@
+## [0.17.0](https://github.com/Diix46/SpellForge/compare/v0.16.0...v0.17.0) (2026-09-25)
+
+### Features
+
+* **auth:** Mes decks, l'aperçu et le choix des illustrations pour les membres ([75a92d3](https://github.com/Diix46/SpellForge/commit/75a92d3ba194bbd6b8ada404ba314bcd2211ac39))
+* **decks:** l'illustration et les couleurs du commandant sur les decks Magic ([0530abf](https://github.com/Diix46/SpellForge/commit/0530abf221dad9b4eb9cca6e12141ba90dcd0fdb))
+
 ## [0.16.0](https://github.com/Diix46/SpellForge/compare/v0.15.1...v0.16.0) (2026-09-25)
 
 ### Features
