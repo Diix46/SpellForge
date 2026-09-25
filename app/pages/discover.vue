@@ -1,49 +1,44 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
-import { computed, ref, watch } from 'vue'
+import type { DiscoverDeck } from '~/composables/useDiscoverFilters'
+import { computed } from 'vue'
 import { sharedPath } from '#shared/game'
+import { useDiscoverFilters } from '~/composables/useDiscoverFilters'
 
-interface DiscoverDeck {
+interface DiscoverRow {
   name: string
   game: GameId
+  raw: string
   ownerDisplayName: string
-  updatedAt: number
+  createdAt: string | number
+  updatedAt: string | number
   shareId: string
 }
 
-// The public gallery, rendered by the server: the decks are what a search
-// engine should find here.
-const { t, formatShortDate } = useLocale()
-
-const query = ref('')
-const search = ref('')
-const game = ref<GameId | 'all'>('all')
-const GAMES = [
-  { value: 'all', label: () => t('discover.all') },
-  { value: 'optcg', label: () => 'One Piece' },
-  { value: 'mtg', label: () => 'Magic' },
-] as const
+// The public gallery, rendered by the server (the decks are what a search
+// engine should find here), dressed like "My decks": the commander's art or
+// the Leader's WANTED poster. Every filter runs in the browser.
+const { t } = useLocale()
 
 usePublicSeo({
   title: () => t('discover.title'),
   description: () => t('discover.subtitle'),
 })
 
-// The text filter waits for a pause in typing.
-let searchDebounce: ReturnType<typeof setTimeout> | null = null
-watch(query, (q) => {
-  if (searchDebounce)
-    clearTimeout(searchDebounce)
-  searchDebounce = setTimeout(() => (search.value = q.trim()), 300)
-})
+const { data, status, error, refresh } = await useFetch<{ decks: DiscoverRow[] }>('/api/decks/discover')
+const time = (v: string | number) => (typeof v === 'number' ? v : Date.parse(v))
+const decks = computed<DiscoverDeck[]>(() => (data.value?.decks ?? []).map(d => ({
+  id: d.shareId,
+  name: d.name,
+  game: d.game,
+  raw: d.raw,
+  owner: d.ownerDisplayName,
+  createdAt: time(d.createdAt),
+  updatedAt: time(d.updatedAt),
+})))
+const { fingerprints } = useDeckFingerprints(decks)
+const { filters, results, active, reset } = useDiscoverFilters(decks, fingerprints)
 
-const { data, status, error, refresh } = await useFetch<{ decks: DiscoverDeck[] }>('/api/decks/discover', {
-  query: computed(() => ({
-    ...(search.value ? { q: search.value } : {}),
-    ...(game.value !== 'all' ? { game: game.value } : {}),
-  })),
-})
-const decks = computed(() => data.value?.decks ?? [])
 const loading = computed(() => status.value === 'pending')
 const errored = computed(() => !!error.value)
 </script>
@@ -57,27 +52,9 @@ const errored = computed(() => !!error.value)
       <p class="discover-subtitle">
         {{ t('discover.subtitle') }}
       </p>
-      <div class="discover-tools">
-        <UInput
-          v-model="query"
-          icon="i-lucide-search"
-          :placeholder="t('discover.searchPlaceholder')"
-          class="discover-search"
-        />
-        <div class="world-filter" role="group">
-          <button
-            v-for="g in GAMES"
-            :key="g.value"
-            type="button"
-            :class="`world--${g.value}`"
-            :aria-pressed="game === g.value"
-            @click="game = g.value"
-          >
-            {{ g.label() }}
-          </button>
-        </div>
-      </div>
     </header>
+
+    <DiscoverFilterBar v-model="filters" :count="results.length" :active="active" @reset="reset" />
 
     <div v-if="loading" class="discover-state">
       <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-(--accent-text)" />
@@ -92,41 +69,42 @@ const errored = computed(() => !!error.value)
       </UButton>
     </div>
 
-    <div v-else-if="decks.length === 0" class="discover-state">
+    <div v-else-if="!decks.length" class="discover-state">
       <p class="text-(--color-text-muted)">
         {{ t('discover.empty') }}
       </p>
     </div>
 
+    <div v-else-if="!results.length" class="discover-state">
+      <p class="text-(--color-text-muted)">
+        {{ t('discover.noMatch') }}
+      </p>
+      <UButton color="neutral" variant="subtle" icon="i-lucide-rotate-ccw" @click="reset">
+        {{ t('discover.reset') }}
+      </UButton>
+    </div>
+
     <div v-else class="discover-grid">
-      <NuxtLink
-        v-for="d in decks"
-        :key="d.shareId"
-        :to="sharedPath(d.game, d.shareId)"
-        class="discover-card"
-        :class="`discover-card--${d.game}`"
-      >
-        <span class="discover-card-world">{{ d.game === 'optcg' ? 'One Piece' : 'Magic' }}</span>
-        <h3 class="discover-card-name">
-          {{ d.name }}
-        </h3>
-        <p class="discover-card-meta">
-          {{ t('discover.by') }} <span class="font-medium text-(--color-text-mid)">{{ d.ownerDisplayName }}</span>
-          · {{ t('discover.updatedOn') }} {{ formatShortDate(d.updatedAt) }}
-        </p>
-      </NuxtLink>
+      <DeckTile
+        v-for="d in results"
+        :key="d.id"
+        :deck="d"
+        :fingerprint="fingerprints.get(d.id)!"
+        :to="sharedPath(d.game, d.id)"
+        :owner="d.owner"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
 .discover-page {
-  max-width: 1100px;
+  max-width: 1720px;
   margin: 0 auto;
   padding: 32px 20px 60px;
 }
 .discover-head {
-  margin-bottom: 28px;
+  margin-bottom: 18px;
 }
 .discover-title {
   font-family: var(--font-display);
@@ -139,57 +117,6 @@ const errored = computed(() => !!error.value)
   color: var(--color-text-muted);
   font-size: 14px;
 }
-.discover-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
-}
-.discover-search {
-  width: 100%;
-  max-width: 360px;
-}
-.world-filter {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--color-border-hairline);
-  border-radius: var(--radius-sm);
-}
-.world-filter button {
-  padding: 4px 10px;
-  border-radius: calc(var(--radius-sm) - 2px);
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-}
-.world-filter button[aria-pressed='true'] {
-  background: var(--color-surface-2);
-  color: var(--color-text-high);
-}
-.discover-card-world {
-  display: inline-block;
-  margin-bottom: 8px;
-  padding: 1px 7px;
-  border-radius: 2px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-/* each world wears its own colours, even on a neutral page */
-.discover-card--optcg .discover-card-world {
-  background: #c9312a;
-  color: #fff8ec;
-  font-family: 'Anton', Impact, sans-serif;
-  letter-spacing: 0.08em;
-}
-.discover-card--mtg .discover-card-world {
-  border: 1px solid rgba(45, 79, 124, 0.45);
-  background: rgba(45, 79, 124, 0.1);
-  color: #2d4f7c;
-  font-family: var(--mtg-face);
-}
 .discover-state {
   display: flex;
   flex-direction: column;
@@ -200,32 +127,8 @@ const errored = computed(() => !!error.value)
 }
 .discover-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
-}
-.discover-card {
-  display: block;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 16px 18px;
-  background: var(--color-surface-1);
-  transition:
-    border-color var(--dur) var(--ease-out),
-    transform var(--dur-slow) var(--ease-spring);
-}
-.discover-card:hover {
-  border-color: var(--accent-border);
-  transform: translateY(-2px);
-}
-.discover-card-name {
-  font-family: var(--font-display);
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text-high);
-  margin-bottom: 6px;
-}
-.discover-card-meta {
-  font-size: 12.5px;
-  color: var(--color-text-muted);
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 22px;
 }
 </style>
