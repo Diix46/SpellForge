@@ -595,3 +595,27 @@ anglaise en HD ; ~20 000 sont celles affichées par défaut (`best_printings`), 
 **Garde-fous.** Les polices ne quittent pas le Mac ; seules les images produites sont servies.
 Un scan officiel reste toujours accessible. Rien n'est écrasé : les recompositions vivent dans
 leur propre dossier.
+
+---
+
+## 14. Toutes les cartes en français HD (25/09)
+
+> Viktor : « il va bien falloir toutes les traiter ». Sur les 20 266 cartes françaises floues
+> affichées par défaut, 14 261 ont leur version HD ; 6 005 non. Mêmes règles que §13
+> (contrôle qualité par carte, polices jamais versionnées), un lot par famille, du plus
+> rentable au plus coûteux.
+
+| Lot | Famille | Cartes | Approche |
+|---|---|---|---|
+| H1 | Filigranes | 1 488 | l'effacement ne prend que l'encre sombre du texte, pas le filigrane (clair, coloré) |
+| H2 | Rejets du contrôle qualité (2003, 2015) | 1 783 | revue des échecs, correction des gabarits ou des seuils |
+| H3 | Effets de cadre (gravé, devoid, étendue, inversé, showcase, bordure jaune) | 412 | mêmes gabarits, validés par le contrôle qualité |
+| H4 | « Autre » : données françaises incomplètes | 365 | analyse puis règle au cas par cas |
+| H5 | Sans bordure | 593 | texte blanc sur l'illustration : gabarit dédié |
+| H6 | Cadre 1997 / 1993 | 215 | police Goudy Medieval (à installer par Viktor), titre blanc ombré |
+| H7 | Doubles faces (transform, modal, meld) | 414 | les deux faces recomposées ; la route d'images sert `back` aussi |
+| H8 | Planeswalkers | 209 | gabarit des capacités de loyauté |
+| H9 | Sagas, aventures, fractionnées, classes, niveaux, mutation, prototype, enquête, plans, machinations | ~560 | un gabarit par format, par ordre de volume |
+
+Les images s'ajoutent sur le serveur comme au §13 (archive servie par le Mac, commande dans
+le terminal Unraid) ; rien n'est écrasé, seules des cartes gagnent leur version HD.
