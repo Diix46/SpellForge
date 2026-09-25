@@ -1,3 +1,9 @@
+## [0.20.0](https://github.com/Diix46/SpellForge/compare/v0.19.0...v0.20.0) (2026-09-25)
+
+### Features
+
+* **decks:** une jauge de remplissage à la place du pion bleu ([ff9e15a](https://github.com/Diix46/SpellForge/commit/ff9e15aeb3b83bd609b1524810c0b0f26ad02703))
+
 ## [0.19.0](https://github.com/Diix46/SpellForge/compare/v0.18.0...v0.19.0) (2026-09-25)
 
 ### Features
