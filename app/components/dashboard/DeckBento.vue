@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
+import { isDefaultDeckName } from '#shared/decks'
 import { useLocale } from '~/composables/useLocale'
 
 // Bento hero: the featured (most-recent) deck + two quick-start tiles. Pure
@@ -38,7 +39,7 @@ const { t } = useLocale()
         <img v-if="fingerprint.leader" :src="fingerprint.leader.thumb" alt="" class="feature-leader">
         <div class="min-w-0">
           <h3 class="feature-name">
-            {{ featured.name }}
+            {{ (isDefaultDeckName(featured.name) && fingerprint.lead) || featured.name }}
           </h3>
           <div class="feature-meta">
             <span><b>{{ fingerprint.count }}</b> / {{ fingerprint.target }} {{ t('dash.cards') }}</span>

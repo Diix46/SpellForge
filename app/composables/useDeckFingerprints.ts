@@ -8,6 +8,7 @@ import { mtgLine, parseMtgDecklist } from '#shared/mtg/decklist'
 import { parseOptcgDecklist } from '#shared/optcg/decklist'
 import { DECK_SIZE } from '#shared/optcg/rules'
 import { OPTCG_COLOR_HEX, optcgAccentStyle } from '~/utils/optcgColors'
+import { isCommanderType } from './useMtg'
 
 /** What a deck tile shows without resolving the whole deck. */
 export interface DeckFingerprint {
@@ -28,10 +29,12 @@ export interface DeckFingerprint {
   art: string | null
   /** Magic: the colour identity as mana symbols ("R", "G"…, "C" colourless). */
   mana: string[]
+  /** The commander's or Leader's name, once resolved: a deck without a name of its own shows it. */
+  lead: string
 }
 
 /** What a Magic tile shows of its commander. */
-interface Commander { name: string, art: string | null, identity: string[] }
+interface Commander { name: string, art: string | null, identity: string[], canLead: boolean }
 
 const MTG_TARGET = 100
 
@@ -39,6 +42,7 @@ const MTG_TARGET = 100
 interface MtgCardLike {
   name: string
   printed_name?: string
+  type_line?: string
   color_identity?: string[]
   image_uris?: { art_crop?: string }
   card_faces?: { image_uris?: { art_crop?: string } }[]
@@ -100,10 +104,12 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
     }
   }, { immediate: true })
 
+  // The chosen commander; without a choice, the first card (lists put the
+  // commander first), kept only if it can lead (see mtg below).
   function commanderEntry(deck: Deck) {
     const { mainboard, commanders: names } = parseMtgDecklist(deck.raw)
     const key = names?.[0]?.trim().toLowerCase()
-    return key ? mainboard.find(e => e.name.trim().toLowerCase() === key) ?? null : null
+    return key ? mainboard.find(e => e.name.trim().toLowerCase() === key) ?? null : mainboard[0] ?? null
   }
 
   // Every Magic deck's commander, in one request for the whole dashboard.
@@ -138,6 +144,7 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
               name: c.printed_name || c.name,
               art: c.image_uris?.art_crop ?? c.card_faces?.[0]?.image_uris?.art_crop ?? null,
               identity: (c.color_identity ?? []).map(x => x.toUpperCase()),
+              canLead: isCommanderType(c.type_line ?? ''),
             }
           : null)
       })
@@ -152,7 +159,9 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
     const { mainboard, sideboard } = parseMtgDecklist(deck.raw)
     const count = totalCards(mainboard) + totalCards(sideboard)
     const entry = commanderEntry(deck)
-    const commander = entry ? commanders.value.get(mtgLine({ ...entry, quantity: 1 })) ?? null : null
+    const chosen = !!parseMtgDecklist(deck.raw).commanders?.length
+    const found = entry ? commanders.value.get(mtgLine({ ...entry, quantity: 1 })) ?? null : null
+    const commander = found && (chosen || found.canLead) ? found : null
     // The commander's identity when known; the list's colours until then.
     const colors = commander
       ? commander.identity.map(c => c.toLowerCase()).filter((c): c is ManaColor => 'wubrg'.includes(c))
@@ -167,6 +176,7 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
       leader: null,
       art: commander?.art ?? null,
       mana: colors.length ? colors.map(c => c.toUpperCase()) : commander ? ['C'] : [],
+      lead: commander?.name ?? '',
     }
   }
 
@@ -187,6 +197,7 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
       leader: isLeader ? leader : null,
       art: null,
       mana: [],
+      lead: isLeader ? leader!.name : '',
     }
   }
 

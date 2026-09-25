@@ -68,7 +68,7 @@ function openCard(c: ScryfallCard) {
 function newDeck(commander?: ResolvedCard) {
   const name = commander?.card?.name
   const deck = createDeck({
-    name: name ? `${t('mtg.library.newDeckName')} ${name}` : t('nav.newDeck'),
+    name: name || t('nav.newDeck'),
     game: 'mtg',
     raw: name ? `1 ${name}` : '',
   })

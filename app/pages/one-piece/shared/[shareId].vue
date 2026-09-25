@@ -82,7 +82,7 @@ function copyToMine() {
 // From the sheet, a Leader can start a fresh deck of the visitor's own.
 function startWith(card: OptcgCard) {
   const art = card.id !== card.number ? card.id : card.number
-  const fresh = createDeck({ name: `${t('optcg.library.newDeckName')} ${card.name}`, game: 'optcg', raw: `1x${art}` })
+  const fresh = createDeck({ name: card.name, game: 'optcg', raw: `1x${art}` })
   navigateTo(deckPath(fresh))
 }
 </script>

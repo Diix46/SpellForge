@@ -59,7 +59,7 @@ function openCard(card: OptcgCard) {
 function newDeck(leader?: OptcgCard) {
   const art = leader && leader.id !== leader.number ? leader.id : leader?.number
   const deck = createDeck({
-    name: leader ? `${t('optcg.library.newDeckName')} ${leader.name}` : t('nav.newDeck'),
+    name: leader?.name || t('nav.newDeck'),
     game: 'optcg',
     raw: leader ? `1x${art}` : '',
   })
