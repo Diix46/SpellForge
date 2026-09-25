@@ -3,12 +3,11 @@ import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
 import { computed } from 'vue'
 import { isDefaultDeckName } from '#shared/decks'
-import { optcgColorFill } from '~/utils/optcgColors'
 
 // A deck on the dashboard, dressed as its world whatever the page's mode: a
-// One Piece deck is a poster pinned askew, with its Leader's bounty; a Magic
-// deck is a sleeved deck on the mat, with its counter. Same size, same grid,
-// same actions.
+// One Piece deck is the Leader's WANTED poster, as the Marines print them
+// (portrait, DEAD OR ALIVE, name, bounty); a Magic deck is a sleeved deck on
+// the mat, under its commander's art. Same grid, same actions.
 const props = defineProps<{ deck: Deck, fingerprint: DeckFingerprint }>()
 const emit = defineEmits<{
   open: [id: string]
@@ -31,8 +30,13 @@ const bounty = computed(() => {
 const progress = computed(() => (fp.value.complete ? t('tile.legalSize') : `${fp.value.count} / ${fp.value.target}`))
 // How far the deck is from its full size, as a gauge along the foot.
 const filled = computed(() => `${Math.min(100, Math.round((fp.value.count / fp.value.target) * 100))}%`)
-// The Leader's colours, as the strip along the poster's photo.
-const stripe = computed(() => optcgColorFill(fp.value.leader?.colors ?? []))
+// The gauge in every colour of the deck (the accent pair would drop the middle one).
+const gaugeFill = computed(() => {
+  const c = fp.value.dots
+  if (c.length > 1)
+    return `linear-gradient(90deg, ${c.join(', ')})`
+  return c[0] ?? undefined
+})
 // A deck without a name of its own goes by its commander or Leader.
 const title = computed(() => (isDefaultDeckName(props.deck.name) && fp.value.lead) || props.deck.name)
 
@@ -65,7 +69,8 @@ const menuItems = computed(() => [
     </div>
 
     <div class="head">
-      <span class="world">{{ isOp ? 'One Piece' : 'Magic' }}</span>
+      <span v-if="isOp" class="wanted-title">{{ t('optcg.wanted') }}</span>
+      <span v-else class="world">Magic</span>
       <UDropdownMenu :items="menuItems" @click.stop>
         <UButton
           icon="i-lucide-ellipsis"
@@ -79,14 +84,16 @@ const menuItems = computed(() => [
       </UDropdownMenu>
     </div>
 
-    <!-- One Piece: the Leader's portrait taped onto the WANTED poster. -->
-    <div v-if="isOp && fp.art" class="photo" aria-hidden="true">
-      <span class="frame"><img :src="fp.art" alt="" loading="lazy" decoding="async"></span>
-      <span class="tape tape--l" />
-      <span class="tape tape--r" />
-      <span class="wanted">{{ t('optcg.wanted') }}</span>
-      <span class="photo-stripe" :style="{ background: stripe }" />
-    </div>
+    <!-- One Piece: the poster's portrait, then DEAD OR ALIVE. -->
+    <template v-if="isOp">
+      <div class="portrait" aria-hidden="true">
+        <img v-if="fp.art" :src="fp.art" alt="" loading="lazy" decoding="async">
+        <UIcon v-else name="i-lucide-skull" class="h-10 w-10" />
+      </div>
+      <p class="doa" aria-hidden="true">
+        Dead or alive
+      </p>
+    </template>
 
     <div class="main">
       <div class="min-w-0">
@@ -100,7 +107,7 @@ const menuItems = computed(() => [
           {{ formatShortDate(deck.updatedAt) }}
         </p>
         <p v-if="isOp && bounty" class="bounty">
-          <span aria-hidden="true">฿</span> {{ bounty }}
+          <span aria-hidden="true">฿</span>{{ bounty }}<span aria-hidden="true">-</span>
         </p>
         <div v-else-if="!isOp && fp.mana.length" class="dots">
           <ManaSymbol v-for="m in fp.mana" :key="m" :sym="m" :size="18" />
@@ -115,7 +122,7 @@ const menuItems = computed(() => [
       <span class="count" :class="{ ok: fp.complete }">
         <UIcon v-if="fp.complete" name="i-lucide-check" class="h-3.5 w-3.5" />{{ progress }}
       </span>
-      <span class="gauge" aria-hidden="true"><span :style="{ width: filled }" /></span>
+      <span class="gauge" aria-hidden="true"><span :style="{ width: filled, background: gaugeFill }" /></span>
       <span v-if="deck.public" class="source">{{ t('tile.public') }}</span>
     </div>
   </div>
@@ -256,13 +263,9 @@ const menuItems = computed(() => [
   background: radial-gradient(circle at 35% 30%, #ef6b5d, #c9312a 55%, #7a1a14);
   box-shadow: 0 2px 3px rgba(35, 23, 8, 0.45);
 }
-.tile--op .world {
-  font-family: 'Anton', Impact, sans-serif;
-  color: #a4231d;
-}
 .tile--op .name {
   font-family: 'Anton', Impact, sans-serif;
-  font-size: 22px;
+  font-size: 26px;
   text-transform: uppercase;
   letter-spacing: 0.01em;
 }
@@ -270,9 +273,9 @@ const menuItems = computed(() => [
   color: #6b5236;
 }
 .tile--op .bounty {
-  margin: 8px 0 0;
+  margin: 2px 0 0;
   font-family: 'Anton', Impact, sans-serif;
-  font-size: 20px;
+  font-size: 26px;
   letter-spacing: 0.02em;
 }
 .tile--op .bounty span {
@@ -300,84 +303,91 @@ const menuItems = computed(() => [
   color: #fbf4e6;
 }
 
-/* The Leader's portrait: a photo taped onto the poster, sepia at the edges,
-   stamped WANTED, with the Leader's colours along its foot. */
-.tile--op .photo {
+/* The poster, as the Marines print it: WANTED across the top, the portrait
+   filling the sheet, DEAD OR ALIVE, the name and the bounty, centred. */
+.tile--op {
+  text-align: center;
+}
+.tile--op .head {
   position: relative;
-  height: 96px;
-  margin-top: -2px;
-  border: 2px solid #231708;
-  background: #231708;
-  box-shadow: 2px 3px 0 rgba(35, 23, 8, 0.85);
-  rotate: 0.7deg;
+  justify-content: center;
+  margin-top: 6px;
 }
-.tile--op:nth-child(even) .photo {
-  rotate: -0.9deg;
+.tile--op .head .menu {
+  position: absolute;
+  right: -6px;
+  top: -4px;
 }
-.tile--op .frame {
-  display: block;
-  height: 100%;
+.tile--op .wanted-title {
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3a2616;
+  text-shadow: 1px 1px 0 rgba(251, 243, 227, 0.8);
+}
+.tile--op .portrait {
+  display: grid;
+  place-items: center;
+  height: 150px;
+  margin: 0 2px;
   overflow: hidden;
+  border: 3px solid #3a2616;
+  background: #e8d5b0;
+  color: rgba(58, 38, 22, 0.35);
+  box-shadow: inset 0 0 0 2px rgba(251, 243, 227, 0.6);
 }
-.tile--op .photo img {
-  display: block;
+.tile--op .portrait img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: 50% 21%;
-  filter: sepia(0.16) saturate(1.08) contrast(1.03);
+  /* Closer on the character: not the card's power above, nor its footer. */
+  transform: scale(1.34);
+  transform-origin: 50% 34%;
+  /* Printed on the poster's paper: a touch of sepia. */
+  filter: sepia(0.22) saturate(1.05) contrast(1.04);
   transition: transform 0.45s cubic-bezier(0.3, 1.7, 0.5, 1);
 }
-.tile--op .photo::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  box-shadow: inset 0 0 24px rgba(35, 23, 8, 0.55);
-  pointer-events: none;
+.tile--op:hover .portrait img {
+  transform: scale(1.4);
 }
-.tile--op:hover .photo img {
-  transform: scale(1.05);
-}
-.tile--op .tape {
-  position: absolute;
-  z-index: 1;
-  top: -8px;
-  width: 44px;
-  height: 15px;
-  background: rgba(247, 236, 214, 0.78);
-  border: 1px solid rgba(58, 38, 22, 0.12);
-  box-shadow: 0 1px 2px rgba(35, 23, 8, 0.25);
-}
-.tile--op .tape--l {
-  left: -10px;
-  rotate: -28deg;
-}
-.tile--op .tape--r {
-  right: -10px;
-  rotate: 24deg;
-}
-.tile--op .wanted {
-  position: absolute;
-  z-index: 1;
-  right: 8px;
-  bottom: 12px;
-  padding: 0 6px;
-  border: 2px solid #c9312a;
-  border-radius: 2px;
-  background: rgba(251, 243, 227, 0.88);
-  color: #c9312a;
+.tile--op .doa {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 -6px;
   font-family: 'Anton', Impact, sans-serif;
-  font-size: 13px;
-  letter-spacing: 0.08em;
+  font-size: 15px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  rotate: -7deg;
+  color: #3a2616;
 }
-.tile--op .photo-stripe {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 5px;
+.tile--op .doa::before,
+.tile--op .doa::after {
+  content: '';
+  flex: 1;
+  height: 2px;
+  background: #3a2616;
+}
+.tile--op .main {
+  justify-content: center;
+}
+/* Name, bounty, then the small print. */
+.tile--op .main > div {
+  display: flex;
+  flex-direction: column;
+}
+.tile--op .name {
+  order: 1;
+}
+.tile--op .bounty {
+  order: 2;
+}
+.tile--op .sub {
+  order: 3;
+  margin-top: 6px;
 }
 
 /* ---- Magic: a sleeved deck on the workbench, in daylight ---- */
@@ -405,7 +415,7 @@ const menuItems = computed(() => [
 /* The commander's art: the deck box's window, full width, fading into it. */
 .tile--mtg .art {
   position: relative;
-  height: 92px;
+  height: 136px;
   margin: -16px -16px -4px;
   overflow: hidden;
   border-radius: 9px 9px 0 0;
