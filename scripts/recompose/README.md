@@ -67,7 +67,15 @@ cards of what was added:
 
 It runs from the image `ghcr.io/diix46/spellforge-recompose` (built by
 `.github/workflows/recompose-image.yml` when this folder changes), on the
-Unraid server, weekly, as the User Script `spellforge_hd_cards`:
+Unraid server, every Sunday at 05:30, as the User Script `spellforge_hd_cards`
+(`unraid/spellforge_hd_cards.sh`). To set it up again (fonts, script and
+schedule) from a Mac holding the fonts:
+
+```sh
+scripts/recompose/unraid/install.sh root@192.168.1.2
+```
+
+What it runs:
 
 ```sh
 docker run --rm -v /mnt/user/appdata/spellforge:/data \
