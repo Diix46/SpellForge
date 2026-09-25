@@ -1,3 +1,9 @@
+## [0.25.2](https://github.com/Diix46/SpellForge/compare/v0.25.1...v0.25.2) (2026-09-25)
+
+### Bug Fixes
+
+* **recompose:** la base de cartes par défaut hors du dépôt ([7dfe9df](https://github.com/Diix46/SpellForge/commit/7dfe9df33dcdd6265a9206889830f8e4462d0160))
+
 ## [0.25.1](https://github.com/Diix46/SpellForge/compare/v0.25.0...v0.25.1) (2026-09-25)
 
 ### Bug Fixes
