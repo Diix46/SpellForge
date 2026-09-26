@@ -1,3 +1,9 @@
+## [0.27.0](https://github.com/Diix46/SpellForge/compare/v0.26.0...v0.27.0) (2026-09-26)
+
+### Features
+
+* **magic:** les gestes de la table dans le deckbuilder ([22bf3e2](https://github.com/Diix46/SpellForge/commit/22bf3e2334d261b4fefe88df791d275ecf753093))
+
 ## [0.26.0](https://github.com/Diix46/SpellForge/compare/v0.25.2...v0.26.0) (2026-09-25)
 
 ### Features
