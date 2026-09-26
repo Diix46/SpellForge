@@ -12,7 +12,7 @@ import { MAX_COPIES } from './collection'
 
 export const IMPORT_MAX_ROWS = 5000
 
-export type ImportFormat = 'prism' | 'manabox' | 'moxfield' | 'cardmarket' | 'delver' | 'csv' | 'text'
+export type ImportFormat = 'prism' | 'manabox' | 'moxfield' | 'cardmarket' | 'delver' | 'csv' | 'text' | 'precon' | 'deck'
 export type ExportFormat = 'prism' | 'manabox' | 'moxfield' | 'text'
 
 /** One line of a file, read: what identifies the card, and the copies. */

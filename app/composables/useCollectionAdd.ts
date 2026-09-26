@@ -10,6 +10,17 @@ export function useCollectionAdd() {
   return { state, openAdd }
 }
 
+export type ImportSource = 'file' | 'precon' | 'deck'
+
+/** The import dialog, opened on one of its sources (a file, a precon, a deck). */
+export function useCollectionImportDialog() {
+  const state = useState('collection-import', () => ({ open: false, source: 'file' as ImportSource }))
+  function openImport(source: ImportSource = 'file') {
+    state.value = { open: true, source }
+  }
+  return { state, openImport }
+}
+
 /** Where a game's collection lives. */
 export function collectionPath(game: 'mtg' | 'optcg', sub = ''): string {
   return `${game === 'mtg' ? '/magic' : '/one-piece'}/collection${sub}`
