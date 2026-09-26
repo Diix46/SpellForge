@@ -40,7 +40,7 @@ export interface LibraryOptions extends LibraryEvents {
     mergeGeometries: (g: Three.BufferGeometry[]) => Three.BufferGeometry | null
     RoomEnvironment: new () => Three.Scene
   }
-  buildAmbiance: (THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: { width: number, height: number, depth: number }, universe: Universe, quality: Quality) => Ambiance
+  buildAmbiance: (THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: { width: number, height: number, depth: number, cases: number, caseWidth: number, gap: number }, universe: Universe, quality: Quality) => Ambiance
 }
 
 // Sizes, in scene units: a binder, the step between two, a shelf's height.
@@ -243,11 +243,11 @@ export class Library {
         bodies.instanceColor.needsUpdate = true
     })
 
-    const span = { width: layout.length * (caseW + GAP) - GAP, height: caseH, depth: D }
+    const span = { width: layout.length * (caseW + GAP) - GAP, height: caseH, depth: D, cases: layout.length, caseWidth: caseW, gap: GAP }
     this.lights(span)
     this.ambiance = this.opts.buildAmbiance(THREE, kit, this.scene, span, this.opts.universe, this.opts.quality)
-    // Centred between the plinth and the cornice.
-    this.camY = (caseH - 0.35) / 2
+    // Centred between the plinth and what stands on the cornice (candles, a lantern).
+    this.camY = (caseH - 0.35) / 2 + 0.15
     this.resize()
     this.camX = this.camTargetX = this.caseCenter(0)
     this.shadowDirty = true
@@ -357,8 +357,10 @@ export class Library {
   private lights(span: { width: number, height: number }): void {
     const { THREE } = this
     const warm = this.opts.universe === 'mtg' ? 0xFFD9A8 : 0xFFE7C4
-    this.scene.add(new THREE.HemisphereLight(0xFFF1DD, 0x2A1C12, this.opts.universe === 'mtg' ? 0.5 : 0.75))
-    const key = new THREE.DirectionalLight(warm, 1.7)
+    // Magic: a dim room where the candles do the lighting; One Piece: daylight.
+    const mtg = this.opts.universe === 'mtg'
+    this.scene.add(new THREE.HemisphereLight(0xFFF1DD, 0x2A1C12, mtg ? 0.32 : 0.7))
+    const key = new THREE.DirectionalLight(warm, mtg ? 1.05 : 1.6)
     key.position.set(span.width / 2 + 2.5, span.height + 3, 6)
     key.target.position.set(span.width / 2, span.height / 2, 0)
     key.castShadow = true
@@ -721,7 +723,7 @@ export class Library {
       const tan = Math.tan((this.camera.fov * Math.PI) / 360)
       // The whole bookcase in view, snugly (its front edge, plates included,
       // stands closer than its back: a little extra room for them).
-      const caseH = this.camY * 2 + 1
+      const caseH = this.camY * 2 + 1.35
       this.camZ = Math.max(caseH / 2 / tan, (c.width / 2 + 0.35) / (tan * this.camera.aspect)) * 1.06
     }
     this.invalidate()
@@ -770,7 +772,7 @@ export class Library {
     }
     busy = this.stepOpening(now) || busy
     if (this.ambiance && now < this.lifeUntil && !this.opts.reducedMotion)
-      busy = this.ambiance.update(now / 1000, dt) || true
+      busy = this.ambiance.update(now / 1000, dt, this.camX) || true
 
     if (this.shadowDirty && !busy) {
       this.renderer.shadowMap.needsUpdate = true
