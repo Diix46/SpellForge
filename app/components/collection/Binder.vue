@@ -21,11 +21,14 @@ const lang = computed(() => (locale.value === 'fr' ? 'fr' : 'en'))
 const { data, status, error, refresh } = useFetch<{ set: SetProgress, cards: ChecklistCard[] }>(() => `/api/collection/sets/${encodeURIComponent(props.code)}`, {
   query: { game: props.game, lang },
   server: false,
+  // Deep: a tap counts the copy in its pocket at once, before the server says so.
+  deep: true,
 })
+// The server's counts once a burst of taps settles.
 let timer: ReturnType<typeof setTimeout> | undefined
 watch(collection.copies, () => {
   clearTimeout(timer)
-  timer = setTimeout(() => void refresh(), 600)
+  timer = setTimeout(() => void refresh(), 1500)
 })
 onMounted(() => void wishlist.load())
 
