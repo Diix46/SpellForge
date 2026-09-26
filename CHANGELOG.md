@@ -1,3 +1,11 @@
+## [0.29.0](https://github.com/Diix46/SpellForge/compare/v0.28.1...v0.29.0) (2026-09-26)
+
+### Features
+
+* **cards:** finitions, cote foil et extensions dans la base Magic ([6b1cec4](https://github.com/Diix46/SpellForge/commit/6b1cec4ec520e4f1131118f02b9ef21b37600cdd))
+* **collection:** exemplaires en base et API de la collection ([add47f4](https://github.com/Diix46/SpellForge/commit/add47f45ef8b163dcf754e038bf0444b4e231078))
+* **collection:** page collection Magic et One Piece, ajout depuis les fiches ([2286577](https://github.com/Diix46/SpellForge/commit/228657707bd542c231e5c0550b4ea5d5249043a2))
+
 ## [0.28.1](https://github.com/Diix46/SpellForge/compare/v0.28.0...v0.28.1) (2026-09-26)
 
 ### Bug Fixes
