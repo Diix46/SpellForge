@@ -142,64 +142,106 @@ onMounted(() => {
       {{ t('build.searchTitle') }}
     </h3>
 
-    <BuilderSearchFilters
-      v-model:filters="filters"
-      :identity="identity"
-      :commander-name="commanderName"
-      :suggest-mode="suggestMode"
-      :autocomplete="autocomplete"
-      @change="runSearch"
-      @text-input="debouncedSearch"
-      @suggest="showSuggestions"
-    />
-
-    <!-- Results meta -->
-    <div class="mb-2 flex items-center justify-between text-xs text-(--color-text-muted)">
-      <span v-if="state.loading">{{ t('build.searching') }}</span>
-      <span v-else-if="state.total">{{ state.total }} {{ t('build.results') }}</span>
-      <span v-else />
-    </div>
-
-    <!-- Results grid (scrollable) -->
-    <div class="-mr-2 flex-1 overflow-y-auto pr-2">
-      <p v-if="!hasActiveQuery && !suggestMode && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">
-        {{ t('build.searchHint') }}
-      </p>
-      <p v-else-if="state.error && !state.loading && !state.cards.length" role="alert" class="py-10 text-center text-sm text-(--color-error)">
-        {{ state.error }}
-      </p>
-      <p v-else-if="!state.loading && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">
-        {{ t('build.noResults') }}
-      </p>
-
-      <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <BuilderSearchResultCard
-          v-for="card in state.cards"
-          :key="card.id"
-          :card="card"
-          :in-deck="inDeck.has(card.name.toLowerCase())"
-          @add="(card, from) => emit('add', card, from)"
-          @remove="emit('remove', $event)"
-          @details="emit('details', $event)"
+    <div class="search-body">
+      <!-- Filters: a rail on the left, as in One Piece -->
+      <div class="search-rail">
+        <BuilderSearchFilters
+          v-model:filters="filters"
+          :identity="identity"
+          :commander-name="commanderName"
+          :suggest-mode="suggestMode"
+          :autocomplete="autocomplete"
+          @change="runSearch"
+          @text-input="debouncedSearch"
+          @suggest="showSuggestions"
         />
       </div>
 
-      <div v-if="state.hasMore && state.cards.length" class="mt-3 flex justify-center">
-        <UButton
-          color="neutral"
-          variant="subtle"
-          size="sm"
-          :loading="state.loading"
-          @click="loadMore()"
-        >
-          {{ t('build.loadMore') }}
-        </UButton>
+      <div class="search-results">
+        <!-- Results meta -->
+        <div class="mb-2 flex items-center justify-between text-xs text-(--color-text-muted)">
+          <span v-if="state.loading">{{ t('build.searching') }}</span>
+          <span v-else-if="state.total">{{ state.total }} {{ t('build.results') }}</span>
+          <span v-else />
+        </div>
+
+        <!-- Results grid (scrollable) -->
+        <div class="-mr-2 min-h-0 flex-1 overflow-y-auto pr-2">
+          <p v-if="!hasActiveQuery && !suggestMode && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">
+            {{ t('build.searchHint') }}
+          </p>
+          <p v-else-if="state.error && !state.loading && !state.cards.length" role="alert" class="py-10 text-center text-sm text-(--color-error)">
+            {{ state.error }}
+          </p>
+          <p v-else-if="!state.loading && !state.cards.length" class="py-10 text-center text-sm text-(--color-text-muted)">
+            {{ t('build.noResults') }}
+          </p>
+
+          <div v-else class="results-grid">
+            <BuilderSearchResultCard
+              v-for="card in state.cards"
+              :key="card.id"
+              :card="card"
+              :in-deck="inDeck.has(card.name.toLowerCase())"
+              @add="(card, from) => emit('add', card, from)"
+              @remove="emit('remove', $event)"
+              @details="emit('details', $event)"
+            />
+          </div>
+
+          <div v-if="state.hasMore && state.cards.length" class="mt-3 flex justify-center">
+            <UButton
+              color="neutral"
+              variant="subtle"
+              size="sm"
+              :loading="state.loading"
+              @click="loadMore()"
+            >
+              {{ t('build.loadMore') }}
+            </UButton>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Spread wide beside the deck: the filters as a rail, the cards as a grid
+   (stacked when the room is short). */
+.search-body {
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
+}
+.search-rail {
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.search-results {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 40vw), 1fr));
+  gap: 14px 12px;
+}
+@media (max-width: 1279px) {
+  .search-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .search-rail {
+    overflow: visible;
+  }
+}
+
 /* The panel becomes a drop target when a deck card is dragged here (to remove). */
 .dnd-drop-active {
   outline: 2px dashed var(--color-error);

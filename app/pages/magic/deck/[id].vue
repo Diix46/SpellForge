@@ -277,8 +277,9 @@ function addSearchCard(card: ScryfallCard, from: HTMLElement | null = null) {
     return
   }
   builderOp(() => builder.addScryfallCard(card))
-  fx.spray(from, card.color_identity ?? [])
-  void fx.deal(card.name, getImageUris(card)?.normal ?? null, from)
+  // Cast, then dealt onto its line in the deck.
+  void fx.cast(from, card.mana_cost ?? card.card_faces?.[0]?.mana_cost, card.color_identity ?? [])
+    .then(() => fx.deal(card.name, getImageUris(card)?.normal ?? null, from))
   toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
   addAssociatedTokens(card)
 }
@@ -289,6 +290,8 @@ function removeSearchCard(card: ScryfallCard) {
 }
 function builderSetQty(name: string, qty: number) {
   builderOp(() => builder.setQuantity(name, qty))
+  if (qty > 0)
+    fx.landed(name)
 }
 function builderRemove(name: string) {
   builderOp(() => builder.removeCard(name))
@@ -461,9 +464,9 @@ const tokenCount = computed(() => builder.entries.value
 const deckSize = computed(() => cardCount.value - tokenCount.value)
 // The hundredth card, added by hand (not a deck opened or imported whole).
 watch(deckSize, (now, before) => {
-  // Once the dealt card has landed (useMtgFx.deal takes 620 ms).
+  // Rung once the hundredth card has landed in the deck (useMtgFx).
   if (now === 100 && before >= 90 && before < 100)
-    setTimeout(() => fx.complete(t('mtg.fx.complete')), 640)
+    fx.complete(t('mtg.fx.complete'))
 })
 const buyableCards = computed(() => resolvedCards.value.filter(rc => !tokenNames.value.has(rc.entry.name.trim().toLowerCase())))
 const buyableEntries = computed(() => allEntries.value.filter(e => !tokenNames.value.has(e.name.trim().toLowerCase())))
@@ -711,11 +714,11 @@ const {
 
     <!-- DECK WORKSPACE (the one primary surface; Preview/Buy are overlays) -->
     <div class="deck-tab">
-      <!-- Workspace: deck list is the hero (wide, left); card search is the
-           compact companion (right). The row fills the remaining viewport height
-           and each side scrolls on its own only if its content truly overflows —
-           no page scroll, no scrollbar reserved for a few stray pixels. -->
-      <div class="deck-workspace grid grid-cols-1 gap-6 lg:grid-cols-[1fr_minmax(320px,380px)]">
+      <!-- Workspace, as in One Piece: the deck in a column on the left, the
+           card search spread wide on the right (filters rail + grid). The row
+           fills the remaining viewport height and each side scrolls on its own
+           only if its content truly overflows. -->
+      <div class="deck-workspace grid grid-cols-1 gap-5 lg:grid-cols-[minmax(300px,400px)_1fr]">
         <div class="ws-col">
           <BuilderDeckListPanel
             :entries="builder.entries.value"
