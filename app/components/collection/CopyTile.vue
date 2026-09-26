@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CollectionCopy } from '#shared/collection'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { unitValue } from '#shared/collection'
 
 // One copy line in the grid: the card, how many, its finish (a foil shimmers),
@@ -15,11 +15,31 @@ const value = computed(() => {
   return unit == null ? null : (unit * props.copy.quantity).toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR' })
 })
 const shiny = computed(() => props.copy.finish !== 'nonfoil')
+
+// A foil under the mouse tilts towards it and the light follows the pointer.
+const art = ref<HTMLElement | null>(null)
+const tilting = ref(false)
+function tilt(e: PointerEvent) {
+  if (!shiny.value || e.pointerType !== 'mouse' || !art.value || matchMedia('(prefers-reduced-motion: reduce)').matches)
+    return
+  const r = art.value.getBoundingClientRect()
+  const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+  const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+  const st = art.value.style
+  st.setProperty('--mx', `${(x * 100).toFixed(1)}%`)
+  st.setProperty('--my', `${(y * 100).toFixed(1)}%`)
+  st.setProperty('--rx', `${((0.5 - y) * 14).toFixed(2)}deg`)
+  st.setProperty('--ry', `${((x - 0.5) * 18).toFixed(2)}deg`)
+  tilting.value = true
+}
+function untilt() {
+  tilting.value = false
+}
 </script>
 
 <template>
   <button type="button" class="tile" :class="{ 'is-selected': selected }" :aria-label="`${name}, ×${copy.quantity}`" :aria-pressed="selected ?? undefined" @click="$emit('open', copy)">
-    <span class="art" :class="{ shiny, etched: copy.finish === 'etched' }">
+    <span ref="art" class="art" :class="{ shiny, etched: copy.finish === 'etched', tilting }" @pointermove="tilt" @pointerleave="untilt">
       <span v-if="selected != null" class="pick" aria-hidden="true"><UIcon v-if="selected" name="i-lucide-check" class="h-3.5 w-3.5" /></span>
       <img v-if="copy.card" :src="copy.card.thumb" :alt="name" loading="lazy" decoding="async">
       <span v-else class="missing">{{ t('collection.unknownCard') }}</span>
@@ -104,6 +124,30 @@ const shiny = computed(() => props.copy.finish !== 'nonfoil')
   50% {
     background-position: 0 100%;
   }
+}
+/* Under the mouse: tilted towards it, the sheen and a glare following it. */
+.art.shiny::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.55), transparent 42%);
+  mix-blend-mode: soft-light;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.art.shiny.tilting {
+  transform: perspective(700px) rotateX(var(--rx, 0)) rotateY(var(--ry, 0)) translateY(-3px) scale(1.03);
+  box-shadow: var(--shadow-elev-2);
+  transition: transform 0.08s linear;
+}
+.art.shiny.tilting::before {
+  opacity: 1;
+}
+.art.shiny.tilting::after {
+  animation: none;
+  background-position: var(--mx, 50%) var(--my, 50%);
 }
 @media (prefers-reduced-motion: reduce) {
   .art.shiny::after {
