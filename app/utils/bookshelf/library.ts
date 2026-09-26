@@ -25,7 +25,7 @@ export interface LibraryEvents {
   /** A binder was chosen (click, second tap): the page opens it, with its pages. */
   pick: (binder: ShelfBinder) => void
   /** A binder was opened: its screen rectangle, open, and a still of the scene. */
-  opened: (binder: ShelfBinder, open: { rect: DOMRect, still: string }) => void
+  opened: (binder: ShelfBinder, open: { rect: DOMRect, stage: DOMRect, still: string }) => void
 }
 
 export interface LibraryOptions extends LibraryEvents {
@@ -444,6 +444,11 @@ export class Library {
     }, 2400)
   }
 
+  /** Open a binder the way a click does (its pages drawn by the page). */
+  pickBinder(binder: ShelfBinder): void {
+    this.opts.pick(binder)
+  }
+
   /** The binder picked (search or touch), to open it with Enter. */
   get selected(): ShelfBinder | null {
     return this.hovered?.binder ?? null
@@ -507,11 +512,13 @@ export class Library {
     const leather = new THREE.MeshStandardMaterial({ color, roughness: 0.58 })
     const lining = new THREE.MeshStandardMaterial({ color: color.clone().multiplyScalar(0.55), roughness: 0.8 })
     const metal = new THREE.MeshStandardMaterial({ color: 0xD8D8DE, metalness: 1, roughness: 0.25 })
+    this.pageTextures = []
     const pageMat = (canvas: HTMLCanvasElement | undefined) => {
       const tex = new THREE.CanvasTexture(canvas ?? pocketPage())
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = 8
       this.disposables.push(tex)
+      this.pageTextures.push(tex)
       return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 })
     }
     const group = new THREE.Group()
@@ -592,10 +599,18 @@ export class Library {
       o.done = true
       this.renderer.render(this.scene, this.camera)
       const still = this.renderer.domElement.toDataURL('image/jpeg', 0.85)
-      this.opts.opened(o.p.binder, { rect: this.openRect(o.rig), still })
+      this.opts.opened(o.p.binder, { rect: this.openRect(o.rig), stage: this.host.getBoundingClientRect(), still })
       return false
     }
     return true
+  }
+
+  private pageTextures: Three.CanvasTexture[] = []
+
+  /** The pages were drawn on (their cards arrived): show them. */
+  refreshPages(): void {
+    this.pageTextures.forEach(t => (t.needsUpdate = true))
+    this.invalidate()
   }
 
   /** How far from the camera the open binder stands: its two pages fill most of the view. */
@@ -876,4 +891,11 @@ export function pocketPage(): HTMLCanvasElement {
     }
   }
   return c
+}
+
+/** Where a pocket of `pocketPage()` sits: row, column → x, y, width, height. */
+export function pocketRect(slot: number): [number, number, number, number] {
+  const r = Math.floor(slot / 3)
+  const k = slot % 3
+  return [18 + k * 130, 18 + r * 172, 118, 158]
 }

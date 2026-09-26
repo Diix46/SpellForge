@@ -2,7 +2,9 @@
 import { computed } from 'vue'
 
 // A One Piece set as a binder: what the member owns of it, what is missing.
-definePageMeta({ universe: 'optcg' })
+// No page transition: the binder grows out of the library's 3D one.
+definePageMeta({ pageTransition: false, universe: 'optcg' })
+useShowUniverseOnMount()
 const route = useRoute()
 const { t } = useLocale()
 const code = computed(() => String(route.params.code))

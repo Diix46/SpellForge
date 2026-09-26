@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { SetProgress } from '#shared/collection'
+import type { ChecklistCard, SetProgress } from '#shared/collection'
 import type { GameId } from '#shared/game'
+import type { BinderEntry } from '~/utils/bookshelf/entry'
 import type { Bookcase, ShelfBinder } from '~/utils/bookshelf/layout'
 import type { Library } from '~/utils/bookshelf/library'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
@@ -22,6 +23,91 @@ const layout = shallowRef<Bookcase[]>([])
 const caseIndex = ref(0)
 const tip = ref<{ binder: ShelfBinder, x: number, y: number } | null>(null)
 const status = ref<'loading' | 'ready' | 'failed'>('loading')
+const { locale } = useLocale()
+// Handed to the binder page: its data (no loading), where the open binder
+// stood and a still of the scene (the page grows out of it).
+const entry = useState<BinderEntry | null>('binder-entry', () => null)
+// Coming back from a binder: the library shows that one.
+const back = useState<string | null>('binder-return', () => null)
+const box = (r: DOMRect) => ({ x: r.x, y: r.y, w: r.width, h: r.height })
+
+interface BinderData { set: SetProgress, cards: ChecklistCard[] }
+/**
+ * A binder's data, fetched as soon as it slides out (hover, search, first
+ * tap), its first cards' pictures set loading: by the click, they are here.
+ */
+const prefetched = new Map<string, Promise<BinderData | null>>()
+function prefetch(code: string): Promise<BinderData | null> {
+  let p = prefetched.get(code)
+  if (!p) {
+    p = $fetch<BinderData>(`/api/collection/sets/${encodeURIComponent(code)}`, {
+      query: { game: props.game, lang: locale.value === 'fr' ? 'fr' : 'en' },
+    }).then((data) => {
+      data.cards.slice(0, 18).forEach(card => thumb(card.thumb))
+      return data
+    }).catch(() => null)
+    prefetched.set(code, p)
+  }
+  return p
+}
+const thumbs = new Map<string, Promise<HTMLImageElement | null>>()
+function thumb(url: string): Promise<HTMLImageElement | null> {
+  let p = thumbs.get(url)
+  if (!p) {
+    p = new Promise((done) => {
+      const img = new Image()
+      img.decoding = 'async'
+      img.onload = () => done(img)
+      img.onerror = () => done(null)
+      img.src = url
+    })
+    thumbs.set(url, p)
+  }
+  return p
+}
+let prefetchTimer: ReturnType<typeof setTimeout> | undefined
+function soon(binder: ShelfBinder | null) {
+  clearTimeout(prefetchTimer)
+  if (binder)
+    prefetchTimer = setTimeout(() => void prefetch(binder.set.code), 120)
+}
+
+/** The binder being opened, with its data for the page. */
+let opening: { code: string, data: BinderData | null } | null = null
+
+/**
+ * Open a binder: it leaves the shelf at once; its first two pages fill in,
+ * card by card as the pictures come — owned in colour, missing faded, as
+ * the binder page shows them.
+ */
+async function openBinder(library: Library, blank: () => HTMLCanvasElement, pocket: (slot: number) => [number, number, number, number], binder: ShelfBinder) {
+  if (opening)
+    return
+  const code = binder.set.code
+  opening = { code, data: null }
+  const pages = [blank(), blank()] as const
+  library.open(code, { left: pages[0], right: pages[1] })
+  const data = await prefetch(code)
+  if (!data || opening?.code !== code)
+    return
+  opening.data = data
+  data.cards.slice(0, 18).forEach((card, i) => {
+    void thumb(card.thumb).then((img) => {
+      if (!img)
+        return
+      const g = pages[i < 9 ? 0 : 1].getContext('2d')!
+      const [x, y, w, h] = pocket(i % 9)
+      g.save()
+      if (!card.owned) {
+        g.globalAlpha = 0.25
+        g.filter = 'grayscale(1)'
+      }
+      g.drawImage(img, x + 3, y + 3, w - 6, h - 6)
+      g.restore()
+      library.refreshPages()
+    })
+  })
+}
 
 /** The icons and arts, loaded once, handed to the spines as they arrive. */
 const images = new Map<string, { icon: HTMLImageElement | null, art: HTMLImageElement | null }>()
@@ -88,7 +174,7 @@ function onSearchKey(e: KeyboardEvent) {
     // A binder already found: Enter opens it.
     const chosen = lib.value?.selected
     if (!searching.value && chosen) {
-      lib.value?.open(chosen.set.code)
+      lib.value?.pickBinder(chosen)
       return
     }
     const b = matches.value[Math.max(0, active.value)]
@@ -135,13 +221,24 @@ onMounted(async () => {
       reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       kit: { RoundedBoxGeometry: rounded.RoundedBoxGeometry, mergeGeometries: utils.mergeGeometries, RoomEnvironment: room.RoomEnvironment },
       buildAmbiance: amb.buildAmbiance,
-      hover: (binder, at) => (tip.value = binder && at ? { binder, ...at } : null),
+      hover: (binder, at) => {
+        tip.value = binder && at ? { binder, ...at } : null
+        soon(binder)
+      },
       caseChange: i => (caseIndex.value = i),
-      pick: binder => library.open(binder.set.code),
-      opened: binder => void router.push(collectionPath(props.game, `/sets/${binder.set.code}`)),
+      pick: binder => void openBinder(library, lib3d.pocketPage, lib3d.pocketRect, binder),
+      opened: (binder, open) => {
+        entry.value = { code: binder.set.code, rect: box(open.rect), stage: box(open.stage), still: open.still, data: opening?.code === binder.set.code ? opening.data : null }
+        opening = null
+        void router.push(collectionPath(props.game, `/sets/${binder.set.code}`))
+      },
     })
     library.build(layout.value, imagesOf)
     lib.value = library
+    if (back.value) {
+      library.focus(back.value)
+      back.value = null
+    }
     // Development: the scene's measures, for the browser tests.
     if (import.meta.dev)
       (el as HTMLElement & { __library?: Library }).__library = library
