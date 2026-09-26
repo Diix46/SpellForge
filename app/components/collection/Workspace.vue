@@ -104,6 +104,7 @@ const sortItems = computed(() => [
         v-model="view.filters"
         :game="game"
         :summary="collection.summary.value"
+        :copies="collection.copies.value"
         :sets="view.sets.value"
         :rarities="view.rarities.value"
         :active="view.active.value"
@@ -198,6 +199,7 @@ const sortItems = computed(() => [
 }
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   margin-bottom: 14px;

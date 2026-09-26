@@ -226,3 +226,27 @@ export function deckOwnership(needs: readonly { key: string, quantity: number }[
   }
   return { byKey, owned, total }
 }
+
+/** A card on a member's wishlist, with what it costs now and what is owned of it. */
+export interface WishItem {
+  id: string
+  game: 'mtg' | 'optcg'
+  printingId: string
+  /** Any printing of the card will do (its price: the cheapest one). */
+  anyPrinting: boolean
+  finish: Finish
+  quantity: number
+  targetPrice: number | null
+  note: string | null
+  createdAt: number
+  card: CollectionCard | null
+  /** Today's price for one copy (Magic), the cheapest printing when any will do. */
+  price: number | null
+  /** Copies of the card already in the collection, any printing. */
+  owned: number
+}
+
+/** A wish whose price came down to its target. */
+export function wishReached(w: Pick<WishItem, 'price' | 'targetPrice'>): boolean {
+  return w.price != null && w.targetPrice != null && w.price <= w.targetPrice
+}

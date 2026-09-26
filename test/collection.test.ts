@@ -5,7 +5,7 @@ import { setIconPath } from '../server/utils/cards/mtg-shape'
 import { collectionCards } from '../server/utils/collection/cards'
 import { daysBefore, today } from '../server/utils/collection/history'
 import { optcgSetOrder, setChecklist, setProgress } from '../server/utils/collection/sets'
-import { completion, deckOwnership, isCondition, isFinish, optcgPrintingId, ownershipKey, parseOptcgPrintingId, setKind, summarize, unitValue } from '../shared/collection'
+import { completion, deckOwnership, isCondition, isFinish, optcgPrintingId, ownershipKey, parseOptcgPrintingId, setKind, summarize, unitValue, wishReached } from '../shared/collection'
 
 function card(extra: Partial<CollectionCard> = {}): CollectionCard {
   return {
@@ -95,6 +95,16 @@ describe('a deck against the collection', () => {
     expect(r.byKey.get('island')).toEqual({ need: 12, have: 4 })
     expect(r.byKey.get('blood moon')).toEqual({ need: 1, have: 0 })
     expect({ owned: r.owned, total: r.total }).toEqual({ owned: 5, total: 14 })
+  })
+})
+
+describe('wishlist', () => {
+  it('flags a wish once its price comes down to the target', () => {
+    expect(wishReached({ price: 4, targetPrice: 5 })).toBe(true)
+    expect(wishReached({ price: 5, targetPrice: 5 })).toBe(true)
+    expect(wishReached({ price: 6, targetPrice: 5 })).toBe(false)
+    expect(wishReached({ price: null, targetPrice: 5 })).toBe(false)
+    expect(wishReached({ price: 1, targetPrice: null })).toBe(false)
   })
 })
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CollectionSummary } from '#shared/collection'
+import type { CollectionCopy, CollectionSummary } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import type { CollectionFilters } from '~/composables/useCollectionView'
 import { computed } from 'vue'
@@ -9,6 +9,7 @@ import { CONDITIONS, FINISHES } from '#shared/collection'
 const props = defineProps<{
   game: GameId
   summary: CollectionSummary
+  copies: readonly CollectionCopy[]
   sets: { code: string, name: string, icon: string | null }[]
   rarities: string[]
   active: boolean
@@ -50,6 +51,8 @@ const rarityItems = computed(() => [{ label: t('collection.allRarities'), value:
         {{ t('collection.unpriced').replace('{n}', count(summary.unpriced)) }}
       </p>
     </section>
+
+    <CollectionStats :game="game" :copies="copies" />
 
     <section class="filters">
       <UInput v-model="filters.q" icon="i-lucide-search" :placeholder="t('collection.filterPlaceholder')" class="w-full" />
