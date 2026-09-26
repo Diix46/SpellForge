@@ -116,6 +116,8 @@ const initials = computed(() => {
 // rendered separately below and never shows an active fill.
 const nav = computed(() => [
   { to: '/decks', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
+  // The collection of the game on screen (Magic elsewhere).
+  { to: universe.value === 'optcg' ? '/one-piece/collection' : '/magic/collection', label: t('nav.collection'), icon: 'i-lucide-gem' },
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
