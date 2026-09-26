@@ -2,11 +2,11 @@ import { nextTick } from 'vue'
 import { MANA_GLYPH, MANA_PIP } from '#shared/mtg/mana-glyphs'
 
 /**
- * The Magic builder's gestures, a card game's not a manga's: the card you add
- * is dealt from the search grid onto its line in the deck, its colours spray
- * from where it left as mana pips, the line lights up where it lands and the
- * counter ticks. Pure DOM (Web Animations), short-lived elements, nothing
- * under reduced motion.
+ * The Magic builder's gestures, a spell's not a manga's: the card you add is
+ * cast — its mana cost laid out and paid pip by pip, the spell resolving in
+ * its colours — then dealt onto its line in the deck, which lights up while
+ * the counter ticks. Pure DOM (Web Animations), short-lived elements,
+ * nothing under reduced motion.
  *
  * The deck list marks its lines `data-deck-row="<name, lower case>"` and its
  * counter `data-deck-count`; the effects find their target through them.
@@ -33,40 +33,106 @@ function replay(el: HTMLElement | null, cls: string, ms = 1200) {
   setTimeout(() => el.classList.remove(cls), ms)
 }
 
+// The colours a resolving spell glows with (the pips' own are too pale for light).
+const AURA: Record<string, string> = {
+  w: '#f1d46b',
+  u: '#3f86d8',
+  b: '#7b5a8c',
+  r: '#e2502e',
+  g: '#3a9a58',
+  c: '#a9b3bd',
+}
+const GENERIC_PIP = '#b3aca3'
+const wait = (ms: number) => new Promise(r => setTimeout(r, ms))
+// Cards on their way to the deck, and a "hundred cards" waiting for them to land.
+let inFlight = 0
+let completeWhenLanded: (() => void) | null = null
+
+/** One pip of a mana cost ("2", "r", "r/g", "u/p"…): its glyph and its colour. */
+function pipOf(token: string) {
+  // A hybrid or Phyrexian pip shows its first half.
+  const first = token.toLowerCase().split('/')[0] ?? ''
+  return {
+    glyph: MANA_GLYPH[first] ?? first.toUpperCase(),
+    figure: !MANA_GLYPH[first],
+    background: MANA_PIP[first] ?? GENERIC_PIP,
+  }
+}
+
 export function useMtgFx() {
-  /** Mana pips of the card's colours, thrown out from `from` and falling back. */
-  function spray(from: HTMLElement | null, colors: readonly string[]) {
+  /**
+   * Casting the card: its mana cost is laid out above it and paid pip by pip
+   * (each pip lights, then flows into the card), then the spell resolves in
+   * the card's colours. Resolves when the aura peaks, for the card to go on
+   * to the deck.
+   */
+  async function cast(from: HTMLElement | null, manaCost: string | null | undefined, colors: readonly string[]) {
     if (reduced() || !from)
       return
     const r = from.getBoundingClientRect()
-    const x = r.left + r.width / 2
-    const y = r.top + r.height / 2
-    const pips = colors.length ? colors.map(c => c.toLowerCase()) : ['c']
-    const n = 7
-    for (let i = 0; i < n; i++) {
-      const c = pips[i % pips.length]!
+    const cx = r.left + r.width / 2
+    const cy = r.top + r.height / 2
+    const tokens = (manaCost?.match(/\{([^}]+)\}/g) ?? []).map(t => t.slice(1, -1)).slice(0, 8)
+    const SIZE = 22
+    const GAP = 5
+    const row = tokens.length * SIZE + Math.max(0, tokens.length - 1) * GAP
+    const STAGGER = 75
+
+    const pips = tokens.map((token, i) => {
+      const p = pipOf(token)
       const el = document.createElement('span')
-      el.className = 'mtgfx-pip'
+      el.className = p.figure ? 'mtgfx-pip mtgfx-pip--figure' : 'mtgfx-pip'
       el.setAttribute('aria-hidden', 'true')
-      el.textContent = MANA_GLYPH[c] ?? ''
-      el.style.left = `${x}px`
-      el.style.top = `${y}px`
-      el.style.background = MANA_PIP[c] ?? '#b3aca3'
+      el.textContent = p.glyph
+      el.style.background = p.background
+      el.style.left = `${cx - row / 2 + i * (SIZE + GAP) + SIZE / 2}px`
+      el.style.top = `${r.top + r.height * 0.3}px`
       document.body.appendChild(el)
-      // Fanned upwards, a little random, then pulled down as they fade.
-      const angle = (-90 + (i - (n - 1) / 2) * 24 + (Math.random() * 12 - 6)) * Math.PI / 180
-      const dist = 38 + Math.random() * 26
-      const dx = Math.cos(angle) * dist
-      const dy = Math.sin(angle) * dist
-      const spin = Math.random() * 120 - 60
+      setTimeout(() => el.remove(), 2500)
+      // Laid out one by one, as a player taps a land for each.
+      el.animate([
+        { transform: 'translate(-50%, -50%) translateY(10px) scale(0.3)', opacity: 0 },
+        { transform: 'translate(-50%, -50%) scale(1.18)', opacity: 1, offset: 0.6 },
+        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+      ], { duration: 240, delay: i * STAGGER, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1.2)', fill: 'forwards' })
+      return el
+    })
+    if (pips.length)
+      await wait(pips.length * STAGGER + 240 + 90)
+
+    // Paid: the pips flow into the card.
+    pips.forEach((el, i) => {
+      const x = cx - Number.parseFloat(el.style.left)
+      const y = cy - Number.parseFloat(el.style.top)
       const a = el.animate([
-        { transform: 'translate(-50%, -50%) scale(0.2)', opacity: 0 },
-        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1) rotate(${spin / 2}deg)`, opacity: 1, offset: 0.45 },
-        { transform: `translate(calc(-50% + ${dx * 1.25}px), calc(-50% + ${dy * 0.4 + 26}px)) scale(0.7) rotate(${spin}deg)`, opacity: 0 },
-      ], { duration: 680 + Math.random() * 160, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' })
+        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+        { transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(0.35)`, opacity: 0 },
+      ], { duration: 280, delay: i * 35, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' })
       a.onfinish = () => el.remove()
-      setTimeout(() => el.remove(), 1500)
-    }
+    })
+    if (pips.length)
+      await wait(280 + (pips.length - 1) * 35)
+
+    // Resolves: an aura in the card's colours swells behind it.
+    const hues = (colors.length ? colors : ['c']).map(c => AURA[c.toLowerCase()] ?? AURA.c!)
+    const aura = document.createElement('span')
+    aura.className = 'mtgfx-aura'
+    aura.setAttribute('aria-hidden', 'true')
+    aura.style.left = `${r.left}px`
+    aura.style.top = `${r.top}px`
+    aura.style.width = `${r.width}px`
+    aura.style.height = `${r.height}px`
+    aura.style.background = hues.length > 1 ? `conic-gradient(${[...hues, hues[0]].join(', ')})` : hues[0]!
+    document.body.appendChild(aura)
+    const glow = aura.animate([
+      { transform: 'scale(0.92)', opacity: 0 },
+      { transform: 'scale(1.1)', opacity: 0.5, offset: 0.35 },
+      { transform: 'scale(1.22)', opacity: 0 },
+    ], { duration: 620, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' })
+    glow.onfinish = () => aura.remove()
+    setTimeout(() => aura.remove(), 1500)
+    replay(from, 'mtgfx-resolve', 700)
+    await wait(220)
   }
 
   /** The line lights up and the counter ticks: a card just joined the deck. */
@@ -75,6 +141,11 @@ export function useMtgFx() {
       return
     replay(rowOf(name), 'mtgfx-landed')
     replay(counter(), 'mtgfx-tick', 500)
+    if (!inFlight && completeWhenLanded) {
+      const done = completeWhenLanded
+      completeWhenLanded = null
+      done()
+    }
   }
 
   /**
@@ -116,7 +187,17 @@ export function useMtgFx() {
         scale: Math.max(0.1, Math.min(1, (onRow ? 36 : b.height) / a.height)),
       }
     }
-    const DURATION = 620
+    // Once, when the flight ends (or never ran: a hidden tab has no frames).
+    let over = false
+    const finish = () => {
+      if (over)
+        return
+      over = true
+      card.remove()
+      inFlight--
+      landed(name)
+    }
+    const DURATION = 540
     const ease = (t: number) => 1 - (1 - t) ** 3
     const start = performance.now()
     const step = (now: number) => {
@@ -127,24 +208,29 @@ export function useMtgFx() {
       const tilt = Math.sin(Math.PI * t) * -10
       card.style.transform = `translate(${to.x * k}px, ${to.y * k - lift}px) rotate(${tilt}deg) scale(${1 + (to.scale - 1) * k})`
       card.style.opacity = String(1 - 0.8 * t ** 3)
-      if (t < 1) {
+      if (t < 1 && !over) {
         requestAnimationFrame(step)
         return
       }
-      card.remove()
-      landed(name)
+      finish()
     }
+    inFlight++
     requestAnimationFrame(step)
-    setTimeout(() => card.remove(), 2000)
+    setTimeout(finish, DURATION + 800)
   }
 
-  /** The hundredth card: the counter rings and the table says so. */
+  /** The hundredth card: once it has landed, the counter rings and the table says so. */
   function complete(label: string) {
     if (reduced())
       return
-    const el = counter()
-    replay(el, 'mtgfx-complete', 1600)
-    useUniverseFx().burst(el, label, 'mtg')
+    const ring = () => {
+      const el = counter()
+      replay(el, 'mtgfx-complete', 1600)
+      // Above the counter, not over its figures.
+      const r = el?.getBoundingClientRect()
+      useUniverseFx().burst(r ? { x: r.left + r.width / 2, y: r.top - 16 } : null, label, 'mtg')
+    }
+    completeWhenLanded = ring
   }
 
   /** A commander chosen: its card glints once. */
@@ -154,5 +240,5 @@ export function useMtgFx() {
     void nextTick(() => replay(document.querySelector<HTMLElement>('[data-deck-commander]'), 'mtgfx-crowned', 1400))
   }
 
-  return { spray, deal, landed, complete, crowned }
+  return { cast, deal, landed, complete, crowned }
 }
