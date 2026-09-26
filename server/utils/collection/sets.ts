@@ -8,9 +8,9 @@
  * card).
  */
 import type { Client, InValue } from '@libsql/client'
-import type { ChecklistCard, SetProgress } from '../../../shared/collection'
+import type { ChecklistCard, Finish, SetProgress } from '../../../shared/collection'
 import type { GameId } from '../../../shared/game'
-import { parseOptcgPrintingId } from '../../../shared/collection'
+import { FINISHES, parseOptcgPrintingId } from '../../../shared/collection'
 import { useMtgCardsDb, useOptcgCardsDb } from '../cards/db'
 import { imageUrl, setIconPath } from '../cards/mtg-shape'
 import { optcgImageUrl } from '../cards/optcg-shape'
@@ -160,24 +160,34 @@ function byNumber(a: string, b: string): number {
   return (Number.isNaN(na) ? Infinity : na) - (Number.isNaN(nb) ? Infinity : nb) || a.localeCompare(b)
 }
 
+function finishesOf(mask: unknown): Finish[] {
+  const m = Number(mask ?? 1) || 1
+  const out = FINISHES.filter((_, i) => m & (1 << i))
+  return out.length ? out : ['nonfoil']
+}
+
 async function mtgChecklist(code: string, lang: 'fr' | 'en'): Promise<ChecklistCard[]> {
   // One row per collector number: the site's language when printed in it,
-  // else English.
+  // else English; each keeps its English and French printings.
   const { rows } = await useMtgCardsDb().execute({
-    sql: `SELECT p.id, p.lang, p.collector_number, p.rarity, p.printed_name, p.img_version, o.name,
+    sql: `SELECT p.id, p.lang, p.collector_number, p.rarity, p.printed_name, p.img_version, p.finishes, o.name,
                  (SELECT f.img_version FROM card_faces f WHERE f.printing_id = p.id AND f.face_index = 0) AS face_img
             FROM printings p
             JOIN oracle_cards o ON o.oracle_id = p.oracle_id
-           WHERE p.set_code = ? AND p.lang IN ('en', ?)
+           WHERE p.set_code = ? AND p.lang IN ('en', 'fr')
            ORDER BY p.lang = ? DESC`,
-    args: [code, lang, lang],
+    args: [code, lang],
   })
   const byNum = new Map<string, ChecklistCard>()
   for (const r of rows) {
     const number = String(r.collector_number)
-    if (byNum.has(number))
-      continue
     const id = String(r.id)
+    const rowLang = r.lang === 'fr' ? 'fr' : 'en'
+    const known = byNum.get(number)
+    if (known) {
+      known.printings[rowLang] ??= id
+      continue
+    }
     byNum.set(number, {
       key: number,
       number,
@@ -186,6 +196,8 @@ async function mtgChecklist(code: string, lang: 'fr' | 'en'): Promise<ChecklistC
       rarity: r.rarity == null ? null : String(r.rarity),
       thumb: imageUrl('normal', 'front', id, r.img_version ?? r.face_img, 'thumb'),
       printingId: id,
+      printings: { fr: rowLang === 'fr' ? id : null, en: rowLang === 'en' ? id : null },
+      finishes: finishesOf(r.finishes),
       owned: 0,
     })
   }
@@ -193,7 +205,8 @@ async function mtgChecklist(code: string, lang: 'fr' | 'en'): Promise<ChecklistC
 }
 
 async function optcgChecklist(code: string, lang: 'fr' | 'en'): Promise<ChecklistCard[]> {
-  const { rows } = await useOptcgCardsDb().execute({
+  const db = useOptcgCardsDb()
+  const { rows } = await db.execute({
     sql: `SELECT n.card_number, c.id, c.lang, c.name, c.rarity, c.img_version
             FROM op_numbers n
             JOIN op_best b ON b.card_number = n.card_number AND b.lang = ?
@@ -202,6 +215,13 @@ async function optcgChecklist(code: string, lang: 'fr' | 'en'): Promise<Checklis
            ORDER BY n.card_number`,
     args: [lang, code],
   })
+  // Each number's usual printing in each language, where it has one.
+  const { rows: best } = await db.execute({
+    sql: `SELECT b.card_number, b.lang, b.id FROM op_best b JOIN op_numbers n ON n.card_number = b.card_number
+           WHERE n.set_code = ? AND b.lang = b.row_lang`,
+    args: [code],
+  })
+  const usual = new Map(best.map(b => [`${String(b.card_number)}|${String(b.lang)}`, `${String(b.lang)}:${String(b.id)}`]))
   return rows.map(r => ({
     key: String(r.card_number),
     number: String(r.card_number),
@@ -210,6 +230,8 @@ async function optcgChecklist(code: string, lang: 'fr' | 'en'): Promise<Checklis
     rarity: r.rarity == null ? null : String(r.rarity),
     thumb: optcgImageUrl(String(r.lang), String(r.id), r.img_version, 'thumb'),
     printingId: `${String(r.lang)}:${String(r.id)}`,
+    printings: { fr: usual.get(`${String(r.card_number)}|fr`) ?? null, en: usual.get(`${String(r.card_number)}|en`) ?? null },
+    finishes: ['nonfoil' as const],
     owned: 0,
   }))
 }
