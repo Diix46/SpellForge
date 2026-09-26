@@ -1,3 +1,9 @@
+## [0.28.1](https://github.com/Diix46/SpellForge/compare/v0.28.0...v0.28.1) (2026-09-26)
+
+### Bug Fixes
+
+* **magic:** la carte ajoutée va droit dans la colonne de son type ([8b7e27b](https://github.com/Diix46/SpellForge/commit/8b7e27b2d52a22a401606ee9b3dd6cca273dcfea))
+
 ## [0.28.0](https://github.com/Diix46/SpellForge/compare/v0.27.0...v0.28.0) (2026-09-26)
 
 ### Features
