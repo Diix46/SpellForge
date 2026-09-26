@@ -3,6 +3,7 @@ import type { Condition, Finish } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import type { OptcgCard, OptcgPrint } from '#shared/optcg/types'
 import type { PrintChoice } from '~/composables/useCollection'
+import type { ImportSource } from '~/composables/useCollectionAdd'
 import type { PrintOption } from '~/composables/usePrintings'
 import { computed, reactive, ref, watch } from 'vue'
 import { CONDITIONS, MAX_COPIES, optcgPrintingId } from '#shared/collection'
@@ -60,8 +61,9 @@ async function suggest(q: string) {
   }
   try {
     if (props.game === 'mtg') {
-      const { names } = await $fetch<{ names: string[] }>('/api/cards/autocomplete', { query: { q } })
-      suggestions.value = names.slice(0, 8).map(n => ({ key: n, label: n }))
+      // English or French names; the card is then found by its English one.
+      const { cards } = await $fetch<{ cards: { name: string, label: string, hint: string | null, thumb: string | null }[] }>('/api/collection/suggest', { query: { q, lang: locale.value } })
+      suggestions.value = cards.map(c => ({ key: c.name, label: c.label, hint: c.hint ?? undefined, thumb: c.thumb ?? undefined }))
     }
     else {
       const { cards } = await $fetch<{ cards: OptcgCard[] }>('/api/optcg/autocomplete', { query: { q, lang: locale.value } })
@@ -71,6 +73,22 @@ async function suggest(q: string) {
   catch {
     suggestions.value = []
   }
+}
+
+const { openImport } = useCollectionImportDialog()
+function bulk(source: ImportSource) {
+  open.value = false
+  openImport(source)
+}
+
+/** Enter takes the first suggestion, once they have come (typed fast, they may not have). */
+async function pickFirst() {
+  clearTimeout(timer)
+  if (!suggestions.value.length)
+    await suggest(query.value.trim())
+  const first = suggestions.value[0]
+  if (first)
+    void choose(first)
 }
 
 async function choose(s: { key: string, label: string }) {
@@ -158,8 +176,21 @@ async function add() {
   <UModal v-model:open="open" :title="t('collection.add')" :ui="{ content: 'sm:max-w-4xl' }">
     <template #body>
       <div class="add">
+        <!-- Not one card but a whole deck: the import dialog, on that source. -->
+        <div class="whole">
+          <span>{{ t('collection.add.whole') }}</span>
+          <button v-if="game === 'mtg'" type="button" @click="bulk('precon')">
+            <UIcon name="i-lucide-box" class="h-4 w-4" /> {{ t('collection.import.sourcePrecon') }}
+          </button>
+          <button type="button" @click="bulk('deck')">
+            <UIcon name="i-lucide-layers" class="h-4 w-4" /> {{ t('collection.import.sourceDeck') }}
+          </button>
+          <button type="button" @click="bulk('file')">
+            <UIcon name="i-lucide-file-up" class="h-4 w-4" /> {{ t('collection.import.sourceFile') }}
+          </button>
+        </div>
         <div class="search">
-          <UInput v-model="query" icon="i-lucide-search" :placeholder="t('collection.searchCard')" size="lg" class="w-full" autofocus />
+          <UInput v-model="query" icon="i-lucide-search" :placeholder="t('collection.searchCard')" size="lg" class="w-full" autofocus @keydown.enter.prevent="pickFirst" />
           <ul v-if="suggestions.length" class="suggestions" role="listbox">
             <li v-for="s in suggestions" :key="`${s.key}-${s.label}`">
               <button type="button" @click="choose(s)">
@@ -213,6 +244,31 @@ async function add() {
 </template>
 
 <style scoped>
+.whole {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.whole button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  color: var(--color-text-high);
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.whole button:hover {
+  border-color: var(--ui-primary);
+  background: var(--accent-soft);
+}
 .add {
   display: grid;
   gap: 16px;
@@ -220,11 +276,10 @@ async function add() {
 .search {
   position: relative;
 }
+/* In the flow, not floating: the dialog is short until a card is chosen,
+   and would clip a floating list. */
 .suggestions {
-  position: absolute;
-  z-index: 5;
-  inset: calc(100% + 4px) 0 auto;
-  margin: 0;
+  margin: 4px 0 0;
   padding: 4px;
   list-style: none;
   border: 1px solid var(--color-border-subtle);

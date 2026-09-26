@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { ImportFormat } from '#shared/collection-csv'
+import type { ImportFormat, ImportRow } from '#shared/collection-csv'
 import type { GameId } from '#shared/game'
+import type { ImportSource } from '~/composables/useCollectionAdd'
 import type { PreviewRow } from '~/composables/useCollectionImport'
 import { computed, ref, watch } from 'vue'
 import { IMPORT_MAX_ROWS } from '#shared/collection-csv'
@@ -12,6 +13,8 @@ import { IMPORT_FORMAT_LABEL } from '~/composables/useCollectionImport'
 // tab lists the last imports, each one a click from undone.
 const props = defineProps<{ game: GameId }>()
 const open = defineModel<boolean>('open', { required: true })
+// What to bring in: a file or a pasted list, a precon (Magic), one of my decks.
+const source = defineModel<ImportSource>('source', { default: 'file' })
 
 const { t, locale } = useLocale()
 const imp = useCollectionImport(props.game)
@@ -73,6 +76,14 @@ async function undo(id: string) {
 }
 
 const FORMATS = ['ManaBox', 'Moxfield', 'Cardmarket', 'Delver Lens', 'Prism']
+const sources = computed(() => [
+  { value: 'file' as const, icon: 'i-lucide-file-up', label: 'collection.import.sourceFile' },
+  ...(props.game === 'mtg' ? [{ value: 'precon' as const, icon: 'i-lucide-box', label: 'collection.import.sourcePrecon' }] : []),
+  { value: 'deck' as const, icon: 'i-lucide-layers', label: 'collection.import.sourceDeck' },
+])
+function fromRows(rows: ImportRow[], name: string) {
+  void imp.analyzeRows(rows, source.value === 'precon' ? 'precon' : 'deck', name)
+}
 </script>
 
 <template>
@@ -112,28 +123,37 @@ const FORMATS = ['ManaBox', 'Moxfield', 'Cardmarket', 'Delver Lens', 'Prism']
 
       <!-- 1. Source -->
       <section v-else-if="imp.step.value === 'source'" class="source">
-        <label
-          class="drop"
-          :class="{ 'is-over': dragging }"
-          @dragover.prevent="dragging = true"
-          @dragleave="dragging = false"
-          @drop.prevent="onDrop"
-        >
-          <UIcon :name="imp.busy.value ? 'i-lucide-loader-circle' : 'i-lucide-file-up'" class="h-9 w-9" :class="{ 'animate-spin': imp.busy.value }" />
-          <b>{{ t('collection.import.drop') }}</b>
-          <span class="muted">{{ t('collection.import.dropHint').replace('{n}', nf.format(IMPORT_MAX_ROWS)) }}</span>
-          <input ref="fileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" class="sr-only" @change="onPick">
-        </label>
-        <div class="formats">
-          <span v-for="f in (game === 'mtg' ? FORMATS : ['Prism'])" :key="f" class="chip">{{ f }}</span>
-          <span class="chip chip--mono">{{ game === 'mtg' ? '4 Sol Ring (CMM) 400' : '4x OP01-016' }}</span>
+        <div class="sources" role="group">
+          <button v-for="s in sources" :key="s.value" type="button" :aria-pressed="source === s.value" @click="source = s.value">
+            <UIcon :name="s.icon" class="h-4 w-4" /> {{ t(s.label) }}
+          </button>
         </div>
-        <div class="paste">
-          <UTextarea v-model="pasted" :rows="5" :placeholder="t(`collection.import.pastePlaceholder.${game}`)" class="w-full" autoresize :maxrows="12" />
-          <UButton :disabled="!pasted.trim()" :loading="imp.busy.value" icon="i-lucide-scan-search" @click="imp.analyze(pasted)">
-            {{ t('collection.import.analyze') }}
-          </UButton>
-        </div>
+        <CollectionPreconPicker v-if="source === 'precon' && game === 'mtg'" @rows="fromRows" />
+        <CollectionDeckPicker v-else-if="source === 'deck'" :game="game" @rows="fromRows" />
+        <template v-else>
+          <label
+            class="drop"
+            :class="{ 'is-over': dragging }"
+            @dragover.prevent="dragging = true"
+            @dragleave="dragging = false"
+            @drop.prevent="onDrop"
+          >
+            <UIcon :name="imp.busy.value ? 'i-lucide-loader-circle' : 'i-lucide-file-up'" class="h-9 w-9" :class="{ 'animate-spin': imp.busy.value }" />
+            <b>{{ t('collection.import.drop') }}</b>
+            <span class="muted">{{ t('collection.import.dropHint').replace('{n}', nf.format(IMPORT_MAX_ROWS)) }}</span>
+            <input ref="fileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" class="sr-only" @change="onPick">
+          </label>
+          <div class="formats">
+            <span v-for="f in (game === 'mtg' ? FORMATS : ['Prism'])" :key="f" class="chip">{{ f }}</span>
+            <span class="chip chip--mono">{{ game === 'mtg' ? '4 Sol Ring (CMM) 400' : '4x OP01-016' }}</span>
+          </div>
+          <div class="paste">
+            <UTextarea v-model="pasted" :rows="5" :placeholder="t(`collection.import.pastePlaceholder.${game}`)" class="w-full" autoresize :maxrows="12" />
+            <UButton :disabled="!pasted.trim()" :loading="imp.busy.value" icon="i-lucide-scan-search" @click="imp.analyze(pasted)">
+              {{ t('collection.import.analyze') }}
+            </UButton>
+          </div>
+        </template>
       </section>
 
       <!-- 2. Preview -->
@@ -295,6 +315,28 @@ const FORMATS = ['ManaBox', 'Moxfield', 'Cardmarket', 'Delver Lens', 'Prism']
 .drop.is-over {
   border-color: var(--ui-primary);
   background: var(--accent-soft);
+}
+.sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px;
+}
+.sources button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-mid);
+}
+.sources button[aria-pressed='true'] {
+  border-color: var(--ui-primary);
+  background: var(--accent-soft);
+  color: var(--color-text-high);
 }
 .formats {
   display: flex;

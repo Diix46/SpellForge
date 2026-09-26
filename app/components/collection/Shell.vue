@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ExportFormat } from '#shared/collection-csv'
 import type { GameId } from '#shared/game'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { exportCollection } from '#shared/collection-csv'
 
 // Around every collection page: the title, the tabs (copies, sets), the add
@@ -28,7 +28,7 @@ watch(loggedIn, (v) => {
   }
 })
 
-const importing = ref(false)
+const { state: importState, openImport } = useCollectionImportDialog()
 
 /** The whole collection of this game as a file, saved by the browser. */
 function download(format: ExportFormat) {
@@ -71,7 +71,7 @@ const tabs = [
         </p>
       </div>
       <div v-if="loggedIn" class="actions">
-        <UButton color="neutral" variant="subtle" icon="i-lucide-upload" @click="importing = true">
+        <UButton color="neutral" variant="subtle" icon="i-lucide-upload" @click="openImport()">
           {{ t('collection.import.button') }}
         </UButton>
         <UDropdownMenu :items="exportItems" :content="{ align: 'end' }">
@@ -110,7 +110,7 @@ const tabs = [
         </NuxtLink>
       </nav>
       <slot />
-      <CollectionImportDialog v-model:open="importing" :game="game" />
+      <CollectionImportDialog v-model:open="importState.open" v-model:source="importState.source" :game="game" />
       <CollectionAddDialog v-model:open="add.open" :game="game" :initial-query="add.query" :initial-printing="add.printing" />
     </template>
   </div>

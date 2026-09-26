@@ -15,11 +15,12 @@ export interface RefreshStep {
   args?: string[]
 }
 
-/** One Piece first (its images are served from disk only), then Magic. */
+/** One Piece first (its images are served from disk only), then Magic, then its preconstructed decks. */
 export const REFRESH_STEPS: readonly RefreshStep[] = [
   { name: 'optcg', script: 'scripts/ingest-optcg.mjs' },
   { name: 'optcg-images', script: 'scripts/mirror-images-optcg.mjs' },
   { name: 'mtg', script: 'scripts/ingest-mtg.mjs' },
+  { name: 'precons', script: 'scripts/ingest-precons.mjs' },
 ]
 
 /** Waits between attempts: a network hiccup, then a longer outage. */

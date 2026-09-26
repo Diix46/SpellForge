@@ -55,7 +55,15 @@ export function useCollectionImport(game: GameId) {
 
   /** Read the text, have every row matched, show the preview. */
   async function analyze(text: string, name: string | null = null) {
-    const p = parseImport(text)
+    await analyzeParsed(parseImport(text), name)
+  }
+
+  /** Rows made elsewhere (a precon, a deck), previewed the same way. */
+  async function analyzeRows(rows: ImportRow[], format: ImportFormat, name: string) {
+    await analyzeParsed({ format, rows, errors: [], truncated: false }, name)
+  }
+
+  async function analyzeParsed(p: ParsedImport, name: string | null) {
     filename.value = name
     parsed.value = p
     if (!p.rows.length) {
@@ -138,7 +146,7 @@ export function useCollectionImport(game: GameId) {
     }
   }
 
-  return { step, busy, filename, parsed, preview, importable, counts, result, history, reset, analyze, commit, loadHistory, undo }
+  return { step, busy, filename, parsed, preview, importable, counts, result, history, reset, analyze, analyzeRows, commit, loadHistory, undo }
 }
 
 /** How each format is named to people. */
@@ -150,4 +158,6 @@ export const IMPORT_FORMAT_LABEL: Record<ImportFormat, string> = {
   delver: 'Delver Lens',
   csv: 'CSV',
   text: 'Liste',
+  precon: 'Precon',
+  deck: 'Deck',
 }
