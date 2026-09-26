@@ -1,3 +1,12 @@
+## [0.34.0](https://github.com/Diix46/SpellForge/compare/v0.33.0...v0.34.0) (2026-09-26)
+
+### Features
+
+* **collection:** onglet Wishlist, alerte prix atteint et ajout depuis fiches et checklists ([d04903b](https://github.com/Diix46/SpellForge/commit/d04903b541d6e2555401fc5c4e357309521fa120))
+* **collection:** reflet holographique qui suit la souris sur les foils ([952a953](https://github.com/Diix46/SpellForge/commit/952a953cc01108c65b1b04942693c1239211b949))
+* **collection:** répartition par rareté et couleur, finitions mobile ([30bc121](https://github.com/Diix46/SpellForge/commit/30bc121bf1ba27439c37e96c759c4894b742d4be))
+* **collection:** wishlist avec prix cible, cote du jour et exemplaires déjà possédés ([5ec3f43](https://github.com/Diix46/SpellForge/commit/5ec3f437a3b07fae6536c427b5ed12374063584b))
+
 ## [0.33.0](https://github.com/Diix46/SpellForge/compare/v0.32.0...v0.33.0) (2026-09-26)
 
 ### Features
