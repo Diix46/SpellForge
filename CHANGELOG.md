@@ -1,3 +1,9 @@
+## [0.43.0](https://github.com/Diix46/SpellForge/compare/v0.42.0...v0.43.0) (2026-09-26)
+
+### Features
+
+* **collection:** bibliothèque en plein écran, zoom à la molette, tranches nettes sur deux lignes ([35987f4](https://github.com/Diix46/SpellForge/commit/35987f43837c90f4d96fa5695191d07df40d1ffd))
+
 ## [0.42.0](https://github.com/Diix46/SpellForge/compare/v0.41.0...v0.42.0) (2026-09-26)
 
 ### Features
