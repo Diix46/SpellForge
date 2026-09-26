@@ -80,7 +80,6 @@ const tip = computed(() => {
       <path v-if="area" :d="area" fill="url(#value-fill)" class="area" />
       <path v-if="paid" :d="paid" class="paid" vector-effect="non-scaling-stroke" />
       <path :d="line" class="line" vector-effect="non-scaling-stroke" />
-      <circle v-if="points.length === 1" :cx="scale.x(0)" :cy="scale.y(points[0]!.value)" r="5" class="dot" />
       <g v-if="tip">
         <line :x1="tip.x" :x2="tip.x" :y1="PAD.top" :y2="H - PAD.bottom" class="cross" vector-effect="non-scaling-stroke" />
       </g>
@@ -92,6 +91,7 @@ const tip = computed(() => {
       class="tick"
       :style="{ left: `${(scale.x(tk.i) / W) * 100}%`, transform: tk.i === 0 ? 'none' : tk.i === points.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)' }"
     >{{ dayLabel(tk.day) }}</span>
+    <span v-if="points.length === 1 && !tip" class="marker" :style="{ left: `${(scale.x(0) / W) * 100}%`, top: `${(scale.y(points[0]!.value) / H) * 100}%` }" />
     <span v-if="tip" class="marker" :style="{ left: tip.left, top: `${(tip.y / H) * 100}%` }" />
     <div v-if="tip" class="tip" :style="{ left: tip.left }" :class="{ 'tip--left': hover! > points.length / 2 }">
       <b>{{ money(tip.p.value) }}</b>
@@ -132,9 +132,6 @@ svg {
   stroke: var(--color-text-muted);
   stroke-width: 1.5;
   stroke-dasharray: 5 5;
-}
-.dot {
-  fill: rgb(var(--accent-rgb));
 }
 .cross {
   stroke: var(--color-border-strong);
