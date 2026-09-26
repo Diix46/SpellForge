@@ -1,3 +1,5 @@
+import type { Finish } from '../collection'
+
 /**
  * A printing's look, as the ingest stores it: a bit mask in `printings.style`
  * (scripts/ingest-mtg.mjs, styleOf — a test holds the two together).
@@ -42,6 +44,10 @@ export interface PrintOption {
   styles: ArtStyle[]
   /** A sharp French card exists for it (scripts/recompose), on demand. */
   recomposable?: boolean
+  /** The finishes it exists in, and its foil price (collections). */
+  finishes?: Finish[]
+  priceEurFoil?: string | null
+  rarity?: string | null
 }
 
 /**

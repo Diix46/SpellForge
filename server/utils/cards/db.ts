@@ -15,7 +15,7 @@ export const MTG_CARDS_DB = process.env.MTG_CARDS_DB || '.data/cards-mtg.db'
  * The Magic schema this app reads — SCHEMA_VERSION in scripts/ingest-mtg.mjs
  * (a test holds the two together). An older database is rebuilt at boot.
  */
-export const MTG_SCHEMA_VERSION = '3'
+export const MTG_SCHEMA_VERSION = '4'
 export const OPTCG_CARDS_DB = process.env.OPTCG_CARDS_DB || '.data/cards-optcg.db'
 
 let mtg: Client | null = null

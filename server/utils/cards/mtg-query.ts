@@ -363,12 +363,19 @@ export function buildAutocompleteQuery(prefix: string, limit = 20) {
  * swapping the deck's playable card for an unplayable one. Exact full name
  * first, real cards before extras, then the most played.
  */
-export function buildPrintsQuery(name: string, lang: string, withEnglish = false, hasStyle = true) {
+// The English twin's column for a French printing (same set and number):
+// Cardmarket prices a printing whatever its language, and French ones are
+// rarely priced on their own.
+const EN_TWIN = (col: string) => `SELECT e.${col} FROM printings e WHERE e.set_code = p.set_code AND e.collector_number = p.collector_number AND e.lang = 'en' AND p.lang != 'en'`
+
+export function buildPrintsQuery(name: string, lang: string, withEnglish = false, hasStyle = true, hasFinishes = true) {
   const key = fold(name)
   return {
     sql: `SELECT p.id, p.set_code, p.set_name, p.collector_number, p.lang,
-                 p.img_version, p.price_eur, p.promo, p.is_highres, p.released_at,
-                 p.artist, ${hasStyle ? 'p.style' : '0 AS style'}
+                 p.img_version, p.price_eur, p.promo, p.is_highres, p.released_at, p.rarity,
+                 p.artist, ${hasStyle ? 'p.style' : '0 AS style'},
+                 ${hasFinishes ? `p.finishes, COALESCE(p.price_eur_foil, (${EN_TWIN('price_eur_foil')})) AS price_eur_foil` : '1 AS finishes, NULL AS price_eur_foil'},
+                 COALESCE(p.price_eur, (${EN_TWIN('price_eur')})) AS twin_price_eur
             FROM printings p
            WHERE p.is_real_image = 1
              AND p.oracle_id = (
