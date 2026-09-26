@@ -1,8 +1,10 @@
 import type { CollectionCard, CollectionCopy } from '../shared/collection'
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { setIconPath } from '../server/utils/cards/mtg-shape'
 import { collectionCards } from '../server/utils/collection/cards'
-import { isCondition, isFinish, optcgPrintingId, parseOptcgPrintingId, summarize, unitValue } from '../shared/collection'
+import { optcgSetOrder, setChecklist, setProgress } from '../server/utils/collection/sets'
+import { completion, isCondition, isFinish, optcgPrintingId, parseOptcgPrintingId, setKind, summarize, unitValue } from '../shared/collection'
 
 function card(extra: Partial<CollectionCard> = {}): CollectionCard {
   return {
@@ -79,6 +81,30 @@ describe('collection fields', () => {
   })
 })
 
+describe('set completion', () => {
+  it('adds up owned and total cards over the sets', () => {
+    expect(completion([{ owned: 10, total: 100 }, { owned: 2, total: 2 }])).toEqual({ owned: 12, total: 102, ratio: 12 / 102 })
+    expect(completion([]).ratio).toBe(0)
+  })
+
+  it('sorts sets into families', () => {
+    expect(setKind('mtg', 'expansion')).toBe('main')
+    expect(setKind('mtg', 'commander')).toBe('commander')
+    expect(setKind('mtg', 'funny')).toBe('other')
+    expect(setKind('optcg', 'EB')).toBe('special')
+    expect(setKind('optcg', null)).toBe('other')
+  })
+
+  it('lists One Piece sets boosters first, newest first', () => {
+    expect(['ST-01', 'P', 'OP-01', 'EB-01', 'OP-10'].sort(optcgSetOrder)).toEqual(['OP-10', 'OP-01', 'EB-01', 'ST-01', 'P'])
+  })
+
+  it('serves a set symbol under its own file name, shared or not', () => {
+    expect(setIconPath('https://svgs.scryfall.io/sets/star.svg?1789963200')).toBe('/api/images/sets/star.svg')
+    expect(setIconPath(null)).toBeNull()
+  })
+})
+
 describe.skipIf(!existsSync('.data/cards-mtg.db'))('collection cards from the card database', () => {
   it('describes a printing with its set, finishes and prices', async () => {
     const { createClient } = await import('@libsql/client')
@@ -92,5 +118,28 @@ describe.skipIf(!existsSync('.data/cards-mtg.db'))('collection cards from the ca
     expect(got.setIcon).toBe('/api/images/sets/blb.svg')
     expect(got.finishes).toEqual(['nonfoil', 'foil'])
     expect(got.image).toContain(`/api/images/mtg/normal/front/${id}.jpg`)
+  })
+})
+
+describe.skipIf(!existsSync('.data/cards-mtg.db'))('set completion from the card database', () => {
+  it('counts a collector number once, whatever its language or copies', async () => {
+    const { createClient } = await import('@libsql/client')
+    const db = createClient({ url: 'file:.data/cards-mtg.db' })
+    const { rows } = await db.execute(`SELECT en.id AS en, fr.id AS fr, other.id AS other FROM printings en
+      JOIN printings fr ON fr.set_code = en.set_code AND fr.collector_number = en.collector_number AND fr.lang = 'fr'
+      JOIN printings other ON other.set_code = en.set_code AND other.collector_number != en.collector_number AND other.lang = 'en'
+      WHERE en.set_code = 'blb' AND en.lang = 'en' LIMIT 1`)
+    db.close()
+    const r = rows[0]!
+    const lines = [{ printingId: String(r.en), quantity: 2 }, { printingId: String(r.fr), quantity: 1 }, { printingId: String(r.other), quantity: 1 }]
+    const [blb] = await setProgress('mtg', lines, { all: false, lang: 'fr' })
+    expect(blb).toMatchObject({ code: 'blb', name: 'Bloomburrow', owned: 2, total: 397 })
+
+    const checklist = await setChecklist('mtg', 'blb', lines, 'fr')
+    expect(checklist).toHaveLength(397)
+    expect(checklist.filter(c => c.owned).map(c => c.owned).sort()).toEqual([1, 3])
+    // In order, the French printing where there is one.
+    expect(checklist[0]!.number).toBe('1')
+    expect(checklist.find(c => c.owned === 3)!.printingId).toBe(String(r.fr))
   })
 })

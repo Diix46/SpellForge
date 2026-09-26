@@ -121,3 +121,73 @@ export function summarize(copies: readonly CollectionCopy[]): CollectionSummary 
   const round = (n: number) => Math.round(n * 100) / 100
   return { copies: count, cards: names.size, printings: printings.size, value: round(value), paid: round(paid), unpriced }
 }
+
+/** How far a collection goes into one set. */
+export interface SetProgress {
+  code: string
+  name: string
+  /** Magic: the set symbol (served by us). */
+  icon: string | null
+  releasedAt: string | null
+  /** Magic: Scryfall's set type; One Piece: the kind (OP, EB, ST…). */
+  type: string | null
+  /** Cards in the set. */
+  total: number
+  /** Distinct cards of the set owned, any language, finish or condition. */
+  owned: number
+}
+
+/** One card of a set's checklist. */
+export interface ChecklistCard {
+  /** What completion counts: Magic's collector number, One Piece's card number. */
+  key: string
+  number: string
+  name: string
+  printedName: string | null
+  rarity: string | null
+  thumb: string
+  /** The printing to add when it is missing (the site's language when printed in it). */
+  printingId: string
+  /** Copies owned of it, every printing of the card in the set together. */
+  owned: number
+}
+
+/** Owned and total cards over some sets, and the share done (0 to 1). */
+export function completion(sets: readonly Pick<SetProgress, 'owned' | 'total'>[]): { owned: number, total: number, ratio: number } {
+  let owned = 0
+  let total = 0
+  for (const s of sets) {
+    owned += s.owned
+    total += s.total
+  }
+  return { owned, total, ratio: total ? owned / total : 0 }
+}
+
+/** Families of sets, to narrow the list: the same words for both games. */
+export const SET_KINDS = ['main', 'special', 'commander', 'starter', 'promo', 'other'] as const
+export type SetKind = typeof SET_KINDS[number]
+
+const MTG_KIND: Record<string, SetKind> = {
+  expansion: 'main',
+  core: 'main',
+  masters: 'special',
+  draft_innovation: 'special',
+  eternal: 'special',
+  masterpiece: 'special',
+  arsenal: 'special',
+  from_the_vault: 'special',
+  spellbook: 'special',
+  premium_deck: 'special',
+  duel_deck: 'special',
+  commander: 'commander',
+  starter: 'starter',
+  planechase: 'other',
+  archenemy: 'other',
+  promo: 'promo',
+}
+const OPTCG_KIND: Record<string, SetKind> = { OP: 'main', EB: 'special', PRB: 'special', ST: 'starter', P: 'promo' }
+
+/** A set's family, from its type (Magic) or its code's kind (One Piece). */
+export function setKind(game: 'mtg' | 'optcg', type: string | null): SetKind {
+  return (type && (game === 'mtg' ? MTG_KIND : OPTCG_KIND)[type]) || 'other'
+}
