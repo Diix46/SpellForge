@@ -55,7 +55,50 @@ function imagesOf(b: ShelfBinder) {
   return entry
 }
 
-const labels = computed(() => layout.value.map(c => c.rows.find(r => r.kind !== 'fresh')?.label ?? c.rows[0]?.label ?? ''))
+const labels = computed(() => layout.value.map(c => [...new Set(c.rows.map(r => r.label))].join(' · ')))
+
+// ---- Finding a binder: the camera flies to it, it lights up ----
+const query = ref('')
+const searching = ref(false)
+const every = computed(() => layout.value.flatMap(c => c.rows.flatMap(r => r.binders)))
+const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+const matches = computed(() => {
+  const q = fold(query.value.trim())
+  if (!q)
+    return []
+  return every.value.filter(b => fold(b.set.name).includes(q) || b.set.code.toLowerCase().startsWith(q)).slice(0, 6)
+})
+const active = ref(-1)
+watch(matches, () => (active.value = matches.value.length ? 0 : -1))
+function find(b: ShelfBinder) {
+  if (lib.value?.focus(b.set.code)) {
+    query.value = b.set.name
+    searching.value = false
+  }
+}
+function onSearchKey(e: KeyboardEvent) {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    const n = matches.value.length
+    if (n)
+      active.value = (active.value + (e.key === 'ArrowDown' ? 1 : n - 1)) % n
+  }
+  else if (e.key === 'Enter') {
+    e.preventDefault()
+    // A binder already found: Enter opens it.
+    const chosen = lib.value?.selected
+    if (!searching.value && chosen) {
+      lib.value?.open(chosen.set.code)
+      return
+    }
+    const b = matches.value[Math.max(0, active.value)]
+    if (b)
+      find(b)
+  }
+  else if (e.key === 'Escape') {
+    searching.value = false
+  }
+}
 const pct = (s: SetProgress) => (s.total ? Math.floor((s.owned / s.total) * 100) : 0)
 
 onMounted(async () => {
@@ -142,6 +185,28 @@ function onKey(e: KeyboardEvent) {
 <template>
   <div class="library" :class="`library--${game}`" tabindex="0" :aria-label="t('collection.shelf.label')" @keydown="onKey">
     <div ref="host" class="stage" />
+    <div v-if="status === 'ready'" class="finder" @keydown.stop>
+      <UInput
+        v-model="query"
+        icon="i-lucide-search"
+        size="sm"
+        :placeholder="t('collection.shelf.find')"
+        :aria-label="t('collection.shelf.find')"
+        class="w-60"
+        @focus="searching = true"
+        @input="searching = true"
+        @keydown="onSearchKey"
+      />
+      <ul v-if="searching && matches.length" class="finds" role="listbox">
+        <li v-for="(b, i) in matches" :key="b.set.code">
+          <button type="button" :aria-selected="i === active" @mousedown.prevent="find(b)">
+            <img v-if="b.set.icon" :src="b.set.icon" alt="" class="sym">
+            <span class="fname">{{ b.set.name }}</span>
+            <span class="fcode">{{ b.fresh ? t('collection.shelf.new') : `${pct(b.set)}%` }}</span>
+          </button>
+        </li>
+      </ul>
+    </div>
     <div v-if="status === 'loading'" class="veil" role="status">
       <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin" />
     </div>
@@ -160,6 +225,9 @@ function onKey(e: KeyboardEvent) {
       <button type="button" class="arrow arrow--next" :disabled="caseIndex >= layout.length - 1" :aria-label="t('collection.shelf.next')" @click="lib?.goTo(caseIndex + 1)">
         <UIcon name="i-lucide-chevron-right" class="h-6 w-6" />
       </button>
+      <p class="case-label">
+        {{ labels[caseIndex] }}
+      </p>
       <div class="dots" role="tablist">
         <button v-for="(label, i) in labels" :key="i" type="button" role="tab" :aria-selected="i === caseIndex" :title="label" @click="lib?.goTo(i)">
           <span />
@@ -230,6 +298,73 @@ function onKey(e: KeyboardEvent) {
 .tip span {
   font-family: var(--font-mono);
   opacity: 0.8;
+}
+.finder {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  left: 12px;
+}
+.finder :deep(input) {
+  background: rgba(20, 14, 10, 0.72);
+  color: #f4efe6;
+  backdrop-filter: blur(6px);
+}
+.finds {
+  margin: 6px 0 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid rgba(255, 220, 160, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(18, 12, 8, 0.92);
+  backdrop-filter: blur(6px);
+}
+.finds button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13px;
+  color: #f4efe6;
+}
+.finds button[aria-selected='true'],
+.finds button:hover {
+  background: rgba(255, 220, 160, 0.14);
+}
+.sym {
+  width: 16px;
+  height: 16px;
+  filter: invert(1);
+  opacity: 0.85;
+}
+.fname {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fcode {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: 0.7;
+}
+.case-label {
+  position: absolute;
+  z-index: 2;
+  bottom: 36px;
+  left: 50%;
+  margin: 0;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(20, 14, 10, 0.55);
+  font-size: 12px;
+  white-space: nowrap;
+  color: rgba(255, 240, 220, 0.85);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 .arrow {
   position: absolute;

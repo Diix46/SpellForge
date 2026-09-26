@@ -409,14 +409,44 @@ export class Library {
   }
 
   /** Slide a binder out and light it (search, touch). */
-  focus(code: string): void {
+  focus(code: string): boolean {
     const found = this.find(code)
     if (!found)
-      return
-    if (found.caseIndex !== this.caseIndex)
+      return false
+    const travel = found.caseIndex !== this.caseIndex
+    if (travel)
       this.goTo(found.caseIndex)
     this.setHover(found)
-    setTimeout(() => this.opts.hover(found.binder, this.screenOf(found)), 700)
+    this.glow(found)
+    // Its label once the camera has arrived.
+    clearTimeout(this.tipTimer)
+    this.tipTimer = setTimeout(() => this.opts.hover(found.binder, this.screenOf(found)), travel ? 1300 : 350)
+    return true
+  }
+
+  private tipTimer: ReturnType<typeof setTimeout> | undefined
+
+  /** Light a binder up for a moment: it is the one you looked for. */
+  private glow(p: Placed): void {
+    const c = this.cases[p.caseIndex]
+    if (!c)
+      return
+    const base = new this.THREE.Color()
+    c.bodies.getColorAt(p.slot, base)
+    const lit = base.clone().lerp(new this.THREE.Color(0xFFE9B0), 0.45)
+    c.bodies.setColorAt(p.slot, lit)
+    c.bodies.instanceColor!.needsUpdate = true
+    this.life(2600)
+    setTimeout(() => {
+      c.bodies.setColorAt(p.slot, base)
+      c.bodies.instanceColor!.needsUpdate = true
+      this.invalidate()
+    }, 2400)
+  }
+
+  /** The binder picked (search or touch), to open it with Enter. */
+  get selected(): ShelfBinder | null {
+    return this.hovered?.binder ?? null
   }
 
   private find(code: string): Placed | null {
@@ -801,6 +831,7 @@ export class Library {
   dispose(): void {
     cancelAnimationFrame(this.raf)
     clearTimeout(this.wheelTimer)
+    clearTimeout(this.tipTimer)
     this.io.disconnect()
     this.ro.disconnect()
     const canvas = this.renderer.domElement
