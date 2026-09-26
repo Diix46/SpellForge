@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { ChecklistCard, CollectionCopy, Condition, Finish, SetProgress } from '#shared/collection'
 import type { GameId } from '#shared/game'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import type { BinderEntry } from '~/utils/bookshelf/entry'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { CONDITIONS } from '#shared/collection'
 
 // One set as a binder: pages of nine pockets in collector-number order, two
@@ -18,9 +19,16 @@ const wishlist = useWishlist(props.game)
 const { openAdd } = useCollectionAdd()
 const lang = computed(() => (locale.value === 'fr' ? 'fr' : 'en'))
 
+// Opened from the library: its data is already here, and where the 3D binder
+// stood, to grow out of it.
+const entry = useState<BinderEntry | null>('binder-entry', () => null)
+const arrival = entry.value?.code === props.code ? entry.value : null
+entry.value = null
+
 const { data, status, error, refresh } = useFetch<{ set: SetProgress, cards: ChecklistCard[] }>(() => `/api/collection/sets/${encodeURIComponent(props.code)}`, {
   query: { game: props.game, lang },
   server: false,
+  default: () => (arrival?.data ? structuredClone(toRaw(arrival.data)) : undefined) as { set: SetProgress, cards: ChecklistCard[] },
   // Deep: a tap counts the copy in its pocket at once, before the server says so.
   deep: true,
 })
@@ -185,6 +193,38 @@ function details(c: ChecklistCard) {
   openAdd({ query: props.game === 'mtg' ? c.name : c.number, printing: p?.id ?? c.printingId })
 }
 
+// ---- Arriving from the library: the binder grows out of the 3D one ----
+const still = ref(arrival?.still && arrival.stage ? { src: arrival.still, ...arrival.stage } : null)
+const binderEl = ref<HTMLElement | null>(null)
+onMounted(async () => {
+  if (!arrival?.rect || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    still.value = null
+    return
+  }
+  await nextTick()
+  const el = binderEl.value?.querySelector<HTMLElement>('.spread')
+  if (!el) {
+    still.value = null
+    return
+  }
+  const to = el.getBoundingClientRect()
+  const from = arrival.rect
+  el.style.transformOrigin = 'top left'
+  el.style.transform = `translate(${from.x - to.x}px, ${from.y - to.y}px) scale(${from.w / to.width}, ${from.h / to.height})`
+  el.getBoundingClientRect()
+  requestAnimationFrame(() => {
+    el.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)'
+    el.style.transform = ''
+    setTimeout(() => {
+      el.style.transition = ''
+      el.style.transformOrigin = ''
+    }, 650)
+  })
+  setTimeout(() => (still.value = null), 700)
+})
+// Back to the library: it shows this binder.
+const back = useState<string | null>('binder-return', () => null)
+
 // ---- Header ----
 const nf = computed(() => new Intl.NumberFormat(locale.value === 'fr' ? 'fr-FR' : 'en-US'))
 const pct = computed(() => (cards.value.length ? Math.floor((ownedCount.value / cards.value.length) * 100) : 0))
@@ -205,7 +245,7 @@ async function copyMissing() {
 
 <template>
   <div class="binder-view">
-    <NuxtLink :to="collectionPath(game)" class="back">
+    <NuxtLink :to="collectionPath(game)" class="back" @click="back = code">
       <UIcon name="i-lucide-arrow-left" class="h-4 w-4" />
       {{ t('collection.tabBinder') }}
     </NuxtLink>
@@ -276,7 +316,7 @@ async function copyMissing() {
         {{ show === 'missing' && !counts.missing ? t('collection.nothingMissing') : t('collection.noMatch') }}
       </p>
       <template v-else>
-        <div class="binder" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
+        <div ref="binderEl" class="binder" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
           <button type="button" class="turn turn--prev" :disabled="spread === 0" :aria-label="t('collection.binder.prev')" @click="turn(-1)">
             <UIcon name="i-lucide-chevron-left" class="h-6 w-6" />
           </button>
@@ -312,6 +352,10 @@ async function copyMissing() {
         </div>
       </template>
     </template>
+    <!-- The library's last image, fading while the binder takes its place. -->
+    <Teleport to="body">
+      <img v-if="still" :src="still.src" alt="" class="arrival" :style="{ left: `${still.x}px`, top: `${still.y}px`, width: `${still.w}px`, height: `${still.h}px` }">
+    </Teleport>
   </div>
 </template>
 
@@ -667,6 +711,22 @@ async function copyMissing() {
   .turn-prev-enter-active,
   .turn-prev-leave-active {
     transition: none;
+  }
+}
+.arrival {
+  position: fixed;
+  z-index: 60;
+  border-radius: var(--radius-xl);
+  pointer-events: none;
+  animation: arrival-fade 0.7s ease forwards;
+}
+@keyframes arrival-fade {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 </style>
