@@ -7,7 +7,7 @@ import type { CollectionCard, Finish } from '../../../shared/collection'
 import type { GameId } from '../../../shared/game'
 import { FINISHES, parseOptcgPrintingId } from '../../../shared/collection'
 import { useMtgCardsDb, useOptcgCardsDb } from '../cards/db'
-import { imageUrl } from '../cards/mtg-shape'
+import { imageUrl, setIconPath } from '../cards/mtg-shape'
 import { buildOptcgByIdQuery } from '../cards/optcg-query'
 import { toOptcgCard } from '../cards/optcg-shape'
 
@@ -59,7 +59,7 @@ async function mtgCards(db: Client, ids: readonly string[]): Promise<Map<string,
         set: String(r.set_code),
         setName: str(r.set_name),
         // Served by us (masks need the same origin), when Scryfall has one.
-        setIcon: r.set_icon ? `/api/images/sets/${String(r.set_code)}.svg` : null,
+        setIcon: setIconPath(r.set_icon),
         number: String(r.collector_number),
         rarity: str(r.rarity),
         releasedAt: str(r.released_at),

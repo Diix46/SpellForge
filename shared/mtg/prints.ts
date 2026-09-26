@@ -48,6 +48,8 @@ export interface PrintOption {
   finishes?: Finish[]
   priceEurFoil?: string | null
   rarity?: string | null
+  /** The set symbol, as served by us (none on an older database). */
+  setIcon?: string | null
 }
 
 /**

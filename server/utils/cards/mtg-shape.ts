@@ -194,3 +194,12 @@ export async function toScryfallShape(db: Client, rows: Row[], opts: ShapeOption
     return card
   })
 }
+
+/**
+ * A set symbol as we serve it (api/images/sets): named after Scryfall's file,
+ * which several sets share (promos use "star"), not after the set.
+ */
+export function setIconPath(icon: unknown): string | null {
+  const m = typeof icon === 'string' ? /\/sets\/([a-z0-9]{2,8})\.svg/.exec(icon) : null
+  return m ? `/api/images/sets/${m[1]}.svg` : null
+}

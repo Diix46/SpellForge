@@ -4,7 +4,7 @@ import { FINISHES } from '../../../shared/collection'
 import { stylesOf } from '../../../shared/mtg/prints'
 import { isRecomposed } from '../images/recomposed'
 import { buildPrintsQuery } from './mtg-query'
-import { imageUrl } from './mtg-shape'
+import { imageUrl, setIconPath } from './mtg-shape'
 
 // The columns a database handle's printings have. A database built by an
 // older ingest is still served while the new one builds: without `style`
@@ -26,16 +26,16 @@ function printingColumns(db: Client): Promise<Set<string>> {
   return known
 }
 
-/**
- * Every printing of one card that can show in `lang` (see buildPrintsQuery),
- * newest first; with `withEnglish`, the English ones follow.
- */
 /** The finishes of a `finishes` bit mask (nonfoil, foil, etched). */
 function finishesOf(mask: unknown) {
   const m = Number(mask ?? 1) || 1
   return FINISHES.filter((_, i) => m & (1 << i))
 }
 
+/**
+ * Every printing of one card that can show in `lang` (see buildPrintsQuery),
+ * newest first; with `withEnglish`, the English ones follow.
+ */
 export async function listPrints(db: Client, name: string, lang: string, withEnglish = false): Promise<PrintOption[]> {
   const columns = await printingColumns(db)
   const { rows } = await db.execute(buildPrintsQuery(name, lang, withEnglish, columns.has('style'), columns.has('finishes')))
@@ -62,6 +62,7 @@ export async function listPrints(db: Client, name: string, lang: string, withEng
       finishes: finishesOf(r.finishes),
       priceEurFoil: typeof r.price_eur_foil === 'number' ? r.price_eur_foil.toFixed(2) : null,
       rarity: r.rarity == null ? null : String(r.rarity),
+      setIcon: setIconPath(r.set_icon),
     }
   })
 }
