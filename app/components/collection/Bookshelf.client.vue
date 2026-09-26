@@ -33,7 +33,7 @@ function fit() {
   if (!root.value || fullscreen.value)
     return
   const top = root.value.getBoundingClientRect().top + window.scrollY
-  height.value = Math.max(440, window.innerHeight - top - 20)
+  height.value = Math.max(320, window.innerHeight - top - 20)
 }
 async function toggleFullscreen() {
   const el = root.value
@@ -49,12 +49,21 @@ function onFullscreen() {
   if (!fullscreen.value)
     requestAnimationFrame(fit)
 }
+// What stands above it settles after mounting (fonts, the summary, the
+// filters wrapping): measured again whenever the page's size changes.
+let pageObserver: ResizeObserver | null = null
 onMounted(() => {
   fit()
   window.addEventListener('resize', fit)
   document.addEventListener('fullscreenchange', onFullscreen)
+  pageObserver = new ResizeObserver(() => requestAnimationFrame(fit))
+  const above = root.value?.parentElement
+  if (above)
+    pageObserver.observe(above)
+  pageObserver.observe(document.body)
 })
 onBeforeUnmount(() => {
+  pageObserver?.disconnect()
   window.removeEventListener('resize', fit)
   document.removeEventListener('fullscreenchange', onFullscreen)
 })

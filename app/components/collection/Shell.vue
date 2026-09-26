@@ -7,6 +7,9 @@ import { exportCollection } from '#shared/collection-csv'
 // Around every collection page: the title, the tabs (copies, sets), the add
 // button and its dialog; guests are asked to sign in instead.
 const props = defineProps<{ game: GameId }>()
+// In a binder, the binder comes first: a slimmer header.
+const route = useRoute()
+const compact = computed(() => /\/sets\/[^/]+$/.test(route.path))
 
 const { t } = useLocale()
 const { loggedIn } = useAuth()
@@ -52,7 +55,6 @@ const exportItems = computed(() => [
 
 // The binder shelf first (and each set's binder under it), then the
 // inventory line by line, the value (Magic: the only game priced) and wishes.
-const route = useRoute()
 const base = collectionPath(props.game)
 const tabs = computed(() => [
   { to: base, label: 'collection.tabBinder', icon: 'i-lucide-book-open', active: route.path === base || route.path.startsWith(`${base}/sets`) },
@@ -63,7 +65,7 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <div class="collection fade-up">
+  <div class="collection fade-up" :class="{ compact }">
     <header class="head">
       <div class="min-w-0">
         <h1 class="title">
@@ -211,6 +213,20 @@ const tabs = computed(() => [
   gap: 12px;
   text-align: center;
   color: var(--color-text-mid);
+}
+/* In a binder: the title small, no subtitle, tighter spacing. */
+.compact {
+  gap: 10px;
+}
+.compact .title {
+  margin: 0;
+  font-size: 22px;
+}
+.compact .sub {
+  display: none;
+}
+.compact .head {
+  align-items: center;
 }
 /* A phone: the page's work (the binder) comes up the screen. */
 @media (max-width: 640px) {

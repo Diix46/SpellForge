@@ -225,6 +225,38 @@ onMounted(async () => {
 // Back to the library: it shows this binder.
 const back = useState<string | null>('binder-return', () => null)
 
+// ---- Fitting the screen: the binder as large as the window's height allows ----
+const binderWidth = ref<number | null>(null)
+function fitBinder() {
+  const el = binderEl.value
+  const spreadEl = el?.querySelector<HTMLElement>('.spread')
+  if (!el || !spreadEl || !spreadEl.offsetHeight)
+    return
+  // Width over height of the pages, arrows and gaps added around.
+  const ratio = spreadEl.offsetWidth / spreadEl.offsetHeight
+  const extra = el.offsetWidth - spreadEl.offsetWidth
+  const top = el.getBoundingClientRect().top + window.scrollY
+  // Room left under it: the pager and a margin.
+  const room = window.innerHeight - top - 52
+  binderWidth.value = Math.max(320, Math.min(1400, Math.floor(room * ratio + extra)))
+}
+let fitTimer: ReturnType<typeof setTimeout> | undefined
+function refit() {
+  clearTimeout(fitTimer)
+  fitTimer = setTimeout(fitBinder, 60)
+}
+onMounted(() => window.addEventListener('resize', refit))
+onBeforeUnmount(() => window.removeEventListener('resize', refit))
+// Once the pages exist (data in), and again as their size settles.
+watch(() => shown.value.length > 0, async (ready) => {
+  if (!ready)
+    return
+  await nextTick()
+  binderWidth.value = null
+  await nextTick()
+  requestAnimationFrame(fitBinder)
+}, { immediate: true })
+
 // ---- Header ----
 const nf = computed(() => new Intl.NumberFormat(locale.value === 'fr' ? 'fr-FR' : 'en-US'))
 const pct = computed(() => (cards.value.length ? Math.floor((ownedCount.value / cards.value.length) * 100) : 0))
@@ -261,12 +293,13 @@ async function copyMissing() {
     </div>
 
     <template v-else>
-      <section class="hero" :class="{ 'is-done': done }">
+      <!-- One bar: the set and how far it goes. -->
+      <section class="bar" :class="{ 'is-done': done }">
         <span class="emblem">
-          <CollectionSetSymbol v-if="set.icon" :icon="set.icon" :rarity="done ? 'rare' : null" :size="34" />
+          <CollectionSetSymbol v-if="set.icon" :icon="set.icon" :rarity="done ? 'rare' : null" :size="22" />
           <b v-else>{{ set.code }}</b>
         </span>
-        <div class="hero-body">
+        <div class="bar-name">
           <h2 class="name">
             {{ set.name }}
             <span v-if="done" class="badge"><UIcon name="i-lucide-trophy" class="h-3.5 w-3.5" /> {{ t('collection.complete') }}</span>
@@ -276,47 +309,45 @@ async function copyMissing() {
               · {{ date }}
             </template>
           </p>
-          <CollectionProgress :owned="ownedCount" :total="cards.length" size="lg" />
         </div>
+        <CollectionProgress class="bar-progress" :owned="ownedCount" :total="cards.length" />
         <p class="count">
-          <b>{{ nf.format(ownedCount) }}</b><span>/ {{ nf.format(cards.length) }}</span><em>{{ pct }}%</em>
+          <b>{{ nf.format(ownedCount) }}</b> / {{ nf.format(cards.length) }} <em>{{ pct }}%</em>
         </p>
       </section>
 
-      <!-- What a tap puts in the binder. -->
-      <section class="prefs" :aria-label="t('collection.binder.settings')">
-        <span class="prefs-title"><UIcon name="i-lucide-hand" class="h-4 w-4" /> {{ t('collection.binder.tapHint') }}</span>
-        <div class="seg" role="group" :aria-label="t('collection.copyLang')">
-          <button v-for="l in (['fr', 'en'] as const)" :key="l" type="button" :aria-pressed="prefs.lang === l" @click="prefs.lang = l">
-            {{ l.toUpperCase() }}
-          </button>
-        </div>
-        <div v-if="game === 'mtg'" class="seg" role="group" :aria-label="t('collection.finish')">
-          <button v-for="f in (['nonfoil', 'foil'] as const)" :key="f" type="button" :aria-pressed="prefs.finish === f" :class="{ shiny: f === 'foil' }" @click="prefs.finish = f">
-            {{ t(`collection.finish.${f}`) }}
-          </button>
-        </div>
-        <USelect v-model="prefs.condition" :items="conditionItems" size="sm" class="w-40" :aria-label="t('collection.condition')" />
-      </section>
-
+      <!-- One row: what to show, and what a tap files. -->
       <div class="toolbar">
         <div class="seg" role="group">
           <button v-for="s in (['all', 'owned', 'missing'] as const)" :key="s" type="button" :aria-pressed="show === s" @click="show = s">
             {{ t(`collection.show.${s}`) }} <span>{{ nf.format(counts[s]) }}</span>
           </button>
         </div>
-        <UInput v-model="q" icon="i-lucide-search" :placeholder="t('collection.checklistSearch')" class="grow sm:grow-0 sm:w-52" />
-        <USelect v-if="rarities.length > 1" v-model="rarity" :items="rarityItems" class="w-40" />
-        <UButton v-if="counts.missing" class="ml-auto" color="neutral" variant="ghost" icon="i-lucide-clipboard-list" @click="copyMissing">
-          {{ t('collection.copyMissing') }}
-        </UButton>
+        <UInput v-model="q" icon="i-lucide-search" size="sm" :placeholder="t('collection.checklistSearch')" class="w-44" />
+        <USelect v-if="rarities.length > 1" v-model="rarity" :items="rarityItems" size="sm" class="w-36" />
+        <UButton v-if="counts.missing" color="neutral" variant="ghost" size="sm" icon="i-lucide-clipboard-list" :title="t('collection.copyMissing')" :aria-label="t('collection.copyMissing')" @click="copyMissing" />
+        <span class="spacer" />
+        <span class="prefs" :aria-label="t('collection.binder.settings')" :title="t('collection.binder.tapHint')">
+          <UIcon name="i-lucide-hand" class="h-4 w-4 text-(--color-text-muted)" />
+          <div class="seg" role="group" :aria-label="t('collection.copyLang')">
+            <button v-for="l in (['fr', 'en'] as const)" :key="l" type="button" :aria-pressed="prefs.lang === l" @click="prefs.lang = l">
+              {{ l.toUpperCase() }}
+            </button>
+          </div>
+          <div v-if="game === 'mtg'" class="seg" role="group" :aria-label="t('collection.finish')">
+            <button v-for="f in (['nonfoil', 'foil'] as const)" :key="f" type="button" :aria-pressed="prefs.finish === f" :class="{ shiny: f === 'foil' }" @click="prefs.finish = f">
+              {{ t(`collection.finish.${f}`) }}
+            </button>
+          </div>
+          <USelect v-model="prefs.condition" :items="conditionItems" size="sm" class="w-36" :aria-label="t('collection.condition')" />
+        </span>
       </div>
 
       <p v-if="!shown.length" class="state">
         {{ show === 'missing' && !counts.missing ? t('collection.nothingMissing') : t('collection.noMatch') }}
       </p>
       <template v-else>
-        <div ref="binderEl" class="binder" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
+        <div ref="binderEl" class="binder" :style="binderWidth ? { maxWidth: `${binderWidth}px` } : undefined" @touchstart.passive="onTouchStart" @touchend="onTouchEnd">
           <button type="button" class="turn turn--prev" :disabled="spread === 0" :aria-label="t('collection.binder.prev')" @click="turn(-1)">
             <UIcon name="i-lucide-chevron-left" class="h-6 w-6" />
           </button>
@@ -362,7 +393,7 @@ async function copyMissing() {
 <style scoped>
 .binder-view {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 .back {
   display: inline-flex;
@@ -382,6 +413,63 @@ async function copyMissing() {
   padding: 44px 0;
   text-align: center;
   color: var(--color-text-muted);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-1);
+}
+.bar.is-done {
+  border-color: rgba(199, 154, 46, 0.6);
+}
+.bar .emblem {
+  width: 36px;
+  height: 36px;
+}
+.bar-name {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.bar .name {
+  overflow: hidden;
+  font-size: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.bar .meta {
+  font-size: 11px;
+}
+.bar-progress {
+  flex: 1 1 120px;
+  min-width: 80px;
+}
+.bar .count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.bar .count b {
+  font-size: 16px;
+}
+.bar .count em {
+  margin-left: 4px;
+}
+.spacer {
+  flex: 1;
+}
+.toolbar .prefs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
 }
 .hero {
   display: flex;
