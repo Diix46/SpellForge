@@ -1,3 +1,10 @@
+## [0.28.0](https://github.com/Diix46/SpellForge/compare/v0.27.0...v0.28.0) (2026-09-26)
+
+### Features
+
+* **magic:** ajouter une carte, c'est la lancer ([ee79ea9](https://github.com/Diix46/SpellForge/commit/ee79ea9d9160501f58fa419b245ad19f2e981bd7))
+* **magic:** le deckbuilder prend l'organisation de One Piece ([9969040](https://github.com/Diix46/SpellForge/commit/9969040374138eebed10d3759a50130cc9a9b60f))
+
 ## [0.27.0](https://github.com/Diix46/SpellForge/compare/v0.26.0...v0.27.0) (2026-09-26)
 
 ### Features
