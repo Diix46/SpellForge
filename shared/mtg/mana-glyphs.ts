@@ -40,3 +40,12 @@ export const MANA_GLYPH: Record<string, string> = {
   z: '\uE617',
   chaos: '\uE61D',
 }
+
+/** The pips' colours as printed (the recomposed cards and the builder's effects use them too). */
+export const MANA_PIP: Record<string, string> = {
+  w: '#f8f6d8',
+  u: '#c1d7e9',
+  b: '#bab1ab',
+  r: '#e49977',
+  g: '#a3c095',
+}

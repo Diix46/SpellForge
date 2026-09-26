@@ -1,7 +1,8 @@
 /**
- * The universe's wink when a card is added: a manga "DON!!" that pops and
- * bounces by day, a gold word that rises and fades by night. Pure DOM, one
- * short-lived element per burst; nothing under reduced motion.
+ * A universe's word on screen: One Piece's manga "DON!!" that pops and
+ * bounces when a card is added; Magic's quiet caption, dropped like a card on
+ * the mat (a finished deck, see useMtgFx). Pure DOM, one short-lived element
+ * per burst; nothing under reduced motion.
  */
 export function useUniverseFx() {
   function burst(at: { x: number, y: number } | HTMLElement | null, text: string, universe: 'optcg' | 'mtg') {

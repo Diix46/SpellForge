@@ -98,109 +98,112 @@ const groups = computed(() => {
           <span class="font-mono text-[10px] text-(--color-text-muted)">{{ group.count }}</span>
         </div>
 
-        <div
-          v-for="entry in group.cards"
-          :key="entry.name"
-          role="button"
-          tabindex="0"
-          draggable="true"
-          class="dnd-row group/row relative flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/60 focus-visible:outline-2 focus-visible:outline-(--accent-text)"
-          @dragstart="startDrag($event, { source: 'deck', name: entry.name }); hidePreview()"
-          @dragend="endDrag"
-          @mouseenter="showPreview(entry.name, $event)"
-          @mouseleave="hidePreview"
-          @click="emit('details', entry.name)"
-          @keydown.enter.self.prevent="emit('details', entry.name)"
-          @keydown.space.self.prevent="emit('details', entry.name)"
-        >
-          <!-- thumbnail: brightens + accent ring on hover; the big card pops up as
+        <TransitionGroup name="deck-row" tag="div" class="relative">
+          <div
+            v-for="entry in group.cards"
+            :key="entry.name"
+            :data-deck-row="entry.name.trim().toLowerCase()"
+            role="button"
+            tabindex="0"
+            draggable="true"
+            class="dnd-row group/row relative flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1 transition-colors hover:bg-(--color-surface-2)/60 focus-visible:outline-2 focus-visible:outline-(--accent-text)"
+            @dragstart="startDrag($event, { source: 'deck', name: entry.name }); hidePreview()"
+            @dragend="endDrag"
+            @mouseenter="showPreview(entry.name, $event)"
+            @mouseleave="hidePreview"
+            @click="emit('details', entry.name)"
+            @keydown.enter.self.prevent="emit('details', entry.name)"
+            @keydown.space.self.prevent="emit('details', entry.name)"
+          >
+            <!-- thumbnail: brightens + accent ring on hover; the big card pops up as
              a floating preview (teleported, below) so it isn't clipped by scroll.
              Shimmers while the card resolves. -->
-          <div class="h-9 w-7 shrink-0 overflow-hidden rounded-[3px] bg-(--color-surface-2) ring-1 ring-(--color-border-subtle) transition-all group-hover/row:ring-(--accent-border) group-hover/row:ring-2">
-            <img
-              v-if="metaOf(entry.name)?.thumb"
-              :src="metaOf(entry.name)!.thumb!"
-              :alt="displayNameOf(entry.name)"
-              loading="lazy"
-              class="h-full w-full object-cover transition-[filter] group-hover/row:brightness-110"
-            >
-            <div v-else-if="resolving" class="skeleton h-full w-full" />
-          </div>
+            <div class="h-9 w-7 shrink-0 overflow-hidden rounded-[3px] bg-(--color-surface-2) ring-1 ring-(--color-border-subtle) transition-all group-hover/row:ring-(--accent-border) group-hover/row:ring-2">
+              <img
+                v-if="metaOf(entry.name)?.thumb"
+                :src="metaOf(entry.name)!.thumb!"
+                :alt="displayNameOf(entry.name)"
+                loading="lazy"
+                class="h-full w-full object-cover transition-[filter] group-hover/row:brightness-110"
+              >
+              <div v-else-if="resolving" class="skeleton h-full w-full" />
+            </div>
 
-          <!-- qty (compact, becomes steppers on hover) -->
-          <div class="flex shrink-0 items-center">
-            <button
-              type="button"
-              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100 group-focus-within/row:opacity-100"
-              :aria-label="`- ${displayNameOf(entry.name)}`"
-              @click.stop="emit('setQty', entry.name, entry.quantity - 1)"
-            >
-              <UIcon name="i-lucide-minus" class="h-3 w-3" />
-            </button>
-            <span class="w-4 text-center font-mono text-xs text-(--color-text-high)">{{ entry.quantity }}</span>
-            <button
-              type="button"
-              class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100 group-focus-within/row:opacity-100"
-              :aria-label="`+ ${displayNameOf(entry.name)}`"
-              @click.stop="emit('setQty', entry.name, entry.quantity + 1)"
-            >
-              <UIcon name="i-lucide-plus" class="h-3 w-3" />
-            </button>
-          </div>
+            <!-- qty (compact, becomes steppers on hover) -->
+            <div class="flex shrink-0 items-center">
+              <button
+                type="button"
+                class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100 group-focus-within/row:opacity-100"
+                :aria-label="`- ${displayNameOf(entry.name)}`"
+                @click.stop="emit('setQty', entry.name, entry.quantity - 1)"
+              >
+                <UIcon name="i-lucide-minus" class="h-3 w-3" />
+              </button>
+              <span class="w-4 text-center font-mono text-xs text-(--color-text-high)">{{ entry.quantity }}</span>
+              <button
+                type="button"
+                class="grid h-5 w-4 place-items-center rounded text-(--color-text-muted) opacity-0 transition-opacity hover:text-(--color-text-high) focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-(--accent-border) group-hover/row:opacity-100 group-focus-within/row:opacity-100"
+                :aria-label="`+ ${displayNameOf(entry.name)}`"
+                @click.stop="emit('setQty', entry.name, entry.quantity + 1)"
+              >
+                <UIcon name="i-lucide-plus" class="h-3 w-3" />
+              </button>
+            </div>
 
-          <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-high)">{{ displayNameOf(entry.name) }}</span>
-          <!-- artwork picked by hand (pinned printing) -->
-          <UIcon
-            v-if="entry.set && entry.collectorNumber"
-            name="i-lucide-pin"
-            class="h-3 w-3 shrink-0 text-(--accent-text) transition-opacity group-hover/row:opacity-0"
-            :title="`${t('print.pinned')} · ${entry.set.toUpperCase()} #${entry.collectorNumber}${entry.lang === 'en' ? ' · EN' : ''}`"
-          />
-
-          <!-- mana cost pips (shimmer placeholders while the card resolves) -->
-          <span
-            v-if="manaSymbols(entry.name).length"
-            class="flex shrink-0 items-center gap-px transition-opacity group-hover/row:opacity-0"
-          >
-            <ManaSymbol
-              v-for="(s, i) in manaSymbols(entry.name)"
-              :key="i"
-              :sym="s"
-              :size="13"
+            <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-high)">{{ displayNameOf(entry.name) }}</span>
+            <!-- artwork picked by hand (pinned printing) -->
+            <UIcon
+              v-if="entry.set && entry.collectorNumber"
+              name="i-lucide-pin"
+              class="h-3 w-3 shrink-0 text-(--accent-text) transition-opacity group-hover/row:opacity-0"
+              :title="`${t('print.pinned')} · ${entry.set.toUpperCase()} #${entry.collectorNumber}${entry.lang === 'en' ? ' · EN' : ''}`"
             />
-          </span>
-          <span
-            v-else-if="resolving"
-            class="flex shrink-0 items-center gap-px transition-opacity group-hover/row:opacity-0"
-            aria-hidden="true"
-          >
-            <span class="skeleton h-[13px] w-[13px] rounded-full" />
-            <span class="skeleton h-[13px] w-[13px] rounded-full" />
-          </span>
 
-          <!-- actions (hover only, overlay the pips). A left-fading solid backing
+            <!-- mana cost pips (shimmer placeholders while the card resolves) -->
+            <span
+              v-if="manaSymbols(entry.name).length"
+              class="flex shrink-0 items-center gap-px transition-opacity group-hover/row:opacity-0"
+            >
+              <ManaSymbol
+                v-for="(s, i) in manaSymbols(entry.name)"
+                :key="i"
+                :sym="s"
+                :size="13"
+              />
+            </span>
+            <span
+              v-else-if="resolving"
+              class="flex shrink-0 items-center gap-px transition-opacity group-hover/row:opacity-0"
+              aria-hidden="true"
+            >
+              <span class="skeleton h-[13px] w-[13px] rounded-full" />
+              <span class="skeleton h-[13px] w-[13px] rounded-full" />
+            </span>
+
+            <!-- actions (hover only, overlay the pips). A left-fading solid backing
              masks the truncated card name beneath so the buttons never appear to
              sit on top of text (no see-through "empiètement"). -->
-          <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-[var(--radius-sm)] pl-6 pr-1.5 opacity-0 transition-opacity bg-gradient-to-l from-(--color-surface-2) from-65% to-transparent group-hover/row:opacity-100 group-focus-within/row:opacity-100">
-            <button
-              type="button"
-              class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
-              :title="t('build.setCommander')"
-              :aria-label="`${t('build.setCommander')}, ${displayNameOf(entry.name)}`"
-              @click.stop="emit('setCommander', entry.name)"
-            >
-              <UIcon name="i-lucide-crown" class="h-3 w-3" />
-            </button>
-            <button
-              type="button"
-              class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
-              :aria-label="`${t('build.removeFromDeck')}, ${displayNameOf(entry.name)}`"
-              @click.stop="emit('remove', entry.name)"
-            >
-              <UIcon name="i-lucide-trash-2" class="h-3 w-3" />
-            </button>
+            <div class="absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-[var(--radius-sm)] pl-6 pr-1.5 opacity-0 transition-opacity bg-gradient-to-l from-(--color-surface-2) from-65% to-transparent group-hover/row:opacity-100 group-focus-within/row:opacity-100">
+              <button
+                type="button"
+                class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--accent-text) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
+                :title="t('build.setCommander')"
+                :aria-label="`${t('build.setCommander')}, ${displayNameOf(entry.name)}`"
+                @click.stop="emit('setCommander', entry.name)"
+              >
+                <UIcon name="i-lucide-crown" class="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                class="grid h-5 w-5 place-items-center rounded bg-(--color-surface-3) text-(--color-text-muted) hover:text-(--color-error) focus-visible:ring-2 focus-visible:ring-(--accent-border)"
+                :aria-label="`${t('build.removeFromDeck')}, ${displayNameOf(entry.name)}`"
+                @click.stop="emit('remove', entry.name)"
+              >
+                <UIcon name="i-lucide-trash-2" class="h-3 w-3" />
+              </button>
+            </div>
           </div>
-        </div>
+        </TransitionGroup>
       </div>
     </div>
 
@@ -221,6 +224,28 @@ const groups = computed(() => {
 </template>
 
 <style scoped>
+/* Lines come in from the left and leave to the right; the others make room. */
+.deck-row-enter-active,
+.deck-row-leave-active {
+  transition:
+    opacity 0.24s var(--ease-out),
+    transform 0.24s var(--ease-out);
+}
+.deck-row-enter-from {
+  opacity: 0;
+  transform: translateX(-10px);
+}
+.deck-row-leave-to {
+  opacity: 0;
+  transform: translateX(12px);
+}
+.deck-row-leave-active {
+  position: absolute;
+  inset-inline: 0;
+}
+.deck-row-move {
+  transition: transform 0.28s var(--ease-out);
+}
 /* ---- Drag & drop ---- */
 .dnd-row {
   cursor: grab;
