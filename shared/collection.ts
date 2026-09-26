@@ -191,3 +191,38 @@ const OPTCG_KIND: Record<string, SetKind> = { OP: 'main', EB: 'special', PRB: 's
 export function setKind(game: 'mtg' | 'optcg', type: string | null): SetKind {
   return (type && (game === 'mtg' ? MTG_KIND : OPTCG_KIND)[type]) || 'other'
 }
+
+/**
+ * What a deck and a collection match on: Magic's card name (its front face,
+ * any case), One Piece's card number. Any printing, language or art counts.
+ */
+export function ownershipKey(game: 'mtg' | 'optcg', name: string): string {
+  return game === 'mtg' ? (name.split(' // ')[0] ?? '').trim().toLowerCase() : name.trim().toUpperCase()
+}
+
+/** Copies a deck needs of a card, and how many of them the collection covers. */
+export interface OwnedCount {
+  need: number
+  have: number
+}
+
+/**
+ * A deck against a collection: per card, the copies needed and those owned
+ * (never more than needed), and the totals.
+ */
+export function deckOwnership(needs: readonly { key: string, quantity: number }[], have: ReadonlyMap<string, number>) {
+  const byKey = new Map<string, OwnedCount>()
+  for (const n of needs) {
+    const c = byKey.get(n.key) ?? { need: 0, have: 0 }
+    c.need += n.quantity
+    byKey.set(n.key, c)
+  }
+  let owned = 0
+  let total = 0
+  for (const [key, c] of byKey) {
+    c.have = Math.min(c.need, have.get(key) ?? 0)
+    owned += c.have
+    total += c.need
+  }
+  return { byKey, owned, total }
+}

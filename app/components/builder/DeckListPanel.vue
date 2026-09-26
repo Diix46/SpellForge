@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { OwnedCount } from '#shared/collection'
 import type { ManaCurve, PriceSummary } from '~/composables/useDeckAnalysis'
 import type { ValidationIssue } from '~/composables/useDeckBuilder'
 import type { DeckEntry } from '~/composables/useDecklist'
@@ -37,6 +38,8 @@ const props = defineProps<{
   /** True while card images/prices are still being resolved in the background —
    *  drives shimmer placeholders on the not-yet-ready thumbnails + pips. */
   resolving?: boolean
+  /** A card's copies owned against those the deck needs (members, once the collection is loaded). */
+  ownedOf?: (name: string) => OwnedCount | null
 }>()
 
 const emit = defineEmits<{
@@ -315,6 +318,7 @@ function issueText(issue: ValidationIssue): string {
       :display-name-by-name="displayNameByName"
       :card-meta-by-name="cardMetaByName"
       :resolving="resolving"
+      :owned-of="ownedOf"
       @set-qty="(name, qty) => emit('setQty', name, qty)"
       @remove="name => emit('remove', name)"
       @set-commander="name => emit('setCommander', name)"

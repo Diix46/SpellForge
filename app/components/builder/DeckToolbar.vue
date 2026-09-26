@@ -20,7 +20,11 @@ withDefaults(defineProps<{
   printable?: boolean
   /** Buying links: Magic only. */
   buyable?: boolean
-}>(), { priceTotal: 0, printable: false, buyable: false })
+  /** The deck against the member's collection (none for a guest). */
+  owned?: { owned: number, total: number } | null
+  /** Where that collection lives. */
+  collectionTo?: string
+}>(), { priceTotal: 0, printable: false, buyable: false, owned: null, collectionTo: undefined })
 
 const emit = defineEmits<{
   'update:deckName': [value: string]
@@ -96,6 +100,18 @@ const { t } = useLocale()
       >
         ~{{ priceTotal.toFixed(0) }} €
       </span>
+      <!-- Owned: how much of the deck the collection already covers. -->
+      <NuxtLink
+        v-if="owned"
+        :to="collectionTo"
+        class="owned-pill shrink-0"
+        :class="{ 'is-full': owned.owned >= owned.total }"
+        :title="t('collection.deckOwnedHint').replace('{owned}', String(owned.owned)).replace('{total}', String(owned.total))"
+      >
+        <UIcon name="i-lucide-gem" class="h-3.5 w-3.5" />
+        {{ Math.floor((owned.owned / owned.total) * 100) }} %
+        <span class="owned-bar" aria-hidden="true"><span :style="{ transform: `scaleX(${owned.owned / owned.total})` }" /></span>
+      </NuxtLink>
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
@@ -161,3 +177,38 @@ const { t } = useLocale()
     </div>
   </div>
 </template>
+
+<style scoped>
+.owned-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  box-shadow: inset 0 0 0 1px var(--color-border-subtle);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-high);
+}
+.owned-pill.is-full {
+  color: #23945a;
+}
+.owned-bar {
+  position: relative;
+  overflow: hidden;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-surface-3);
+}
+.owned-bar span {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  border-radius: inherit;
+  background: currentColor;
+  transition: transform 0.4s ease-out;
+}
+</style>

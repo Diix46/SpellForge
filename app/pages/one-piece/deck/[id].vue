@@ -59,6 +59,9 @@ watch(raw, (v) => {
   optDeck.load()
 })
 
+// The deck against the member's collection, card number by card number.
+const ownership = useDeckOwnership('optcg', computed(() => optDeck.lines.value.map(l => ({ name: l.entry.name, quantity: l.entry.quantity }))))
+
 const autosave = useDeckAutosave({ deckId, raw, name })
 watch([raw, name], autosave.schedule)
 
@@ -184,6 +187,8 @@ const summary = computed(() => {
       v-model:deck-name="name"
       :dots="dots"
       :card-count="optDeck.stats.value.count"
+      :owned="ownership.summary.value"
+      :collection-to="collectionPath('optcg', '/sets')"
       :logged-in="loggedIn"
       :can-undo="autosave.canUndo.value"
       :can-redo="autosave.canRedo.value"
@@ -205,6 +210,7 @@ const summary = computed(() => {
         :unknown="optDeck.unknown.value"
         :unreadable="optDeck.unreadable.value"
         :lang="lang"
+        :owned-of="ownership.ownedOf"
         @set-quantity="optDeck.setQuantity"
         @remove="optDeck.remove"
         @open="openLine"

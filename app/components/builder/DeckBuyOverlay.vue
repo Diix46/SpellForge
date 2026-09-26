@@ -16,11 +16,16 @@ defineProps<{
   loading: boolean
   fetchProgress: { loaded: number, total: number }
   fmtEur: (n: number) => string
+  /** The deck against the member's collection; none for a guest. */
+  owned?: { owned: number, total: number } | null
+  /** Buy only the copies the collection does not have. */
+  missingOnly?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
   'update:buyLang': [value: BuyLang]
+  'update:missingOnly': [value: boolean]
   'buyWholeDeck': []
   'copyWants': []
   'openAll': []
@@ -104,11 +109,20 @@ const { t } = useLocale()
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div class="min-w-0">
                     <div class="font-display font-semibold text-(--color-text-high)">
-                      {{ t('buy.wholeDeckTitle') }}
+                      {{ missingOnly ? t('buy.missingTitle') : t('buy.wholeDeckTitle') }}
                     </div>
                     <p class="mt-0.5 text-sm text-(--color-text-mid)">
                       {{ t('buy.wholeDeckHint') }}
                     </p>
+                    <!-- With a collection: leave out the copies already owned. -->
+                    <USwitch
+                      v-if="owned && owned.owned > 0"
+                      class="mt-2.5"
+                      :model-value="missingOnly"
+                      :label="t('buy.missingOnly').replace('{n}', String(owned.total - owned.owned))"
+                      :description="t('buy.missingOnlyHint').replace('{n}', String(owned.owned))"
+                      @update:model-value="emit('update:missingOnly', $event)"
+                    />
                   </div>
                   <div class="flex shrink-0 items-center gap-3">
                     <!-- Cardmarket marketplace language -->
@@ -137,9 +151,10 @@ const { t } = useLocale()
                       variant="solid"
                       size="lg"
                       class="font-medium tracking-wide neon-ring"
+                      :disabled="!buyRows.length"
                       @click="emit('buyWholeDeck')"
                     >
-                      {{ t('buy.wholeDeck') }}
+                      {{ missingOnly ? t('buy.missingButton') : t('buy.wholeDeck') }}
                     </UButton>
                   </div>
                 </div>
