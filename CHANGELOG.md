@@ -1,3 +1,11 @@
+## [0.37.0](https://github.com/Diix46/SpellForge/compare/v0.36.0...v0.37.0) (2026-09-26)
+
+### Features
+
+* **collection:** checklist avec impressions FR/EN et finitions de chaque carte ([c91f92a](https://github.com/Diix46/SpellForge/commit/c91f92a96ad90317aa619e53494f44a1af324ecb))
+* **collection:** decks de démarrage One Piece, recettes depuis Limitless TCG ([4cc3e47](https://github.com/Diix46/SpellForge/commit/4cc3e474e2a4f8e2f1b836efb1e710dd4e4b2e85))
+* **collection:** la collection en classeur par extension, une pochette touchée range une carte ([d4e1817](https://github.com/Diix46/SpellForge/commit/d4e1817e16aa54a90452fc7fcd65ba75802dbf23))
+
 ## [0.36.0](https://github.com/Diix46/SpellForge/compare/v0.35.0...v0.36.0) (2026-09-26)
 
 ### Features
