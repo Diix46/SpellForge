@@ -48,6 +48,8 @@ const exportItems = computed(() => [
 const tabs = [
   { to: collectionPath(props.game), label: 'collection.tabCopies', icon: 'i-lucide-layers', exact: true },
   { to: collectionPath(props.game, '/sets'), label: 'collection.tabSets', icon: 'i-lucide-library-big', exact: false },
+  // Only Magic has prices to follow.
+  ...(props.game === 'mtg' ? [{ to: collectionPath(props.game, '/value'), label: 'collection.tabValue', icon: 'i-lucide-chart-line', exact: false }] : []),
 ]
 </script>
 

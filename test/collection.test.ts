@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { setIconPath } from '../server/utils/cards/mtg-shape'
 import { collectionCards } from '../server/utils/collection/cards'
+import { daysBefore, today } from '../server/utils/collection/history'
 import { optcgSetOrder, setChecklist, setProgress } from '../server/utils/collection/sets'
 import { completion, deckOwnership, isCondition, isFinish, optcgPrintingId, ownershipKey, parseOptcgPrintingId, setKind, summarize, unitValue } from '../shared/collection'
 
@@ -94,6 +95,14 @@ describe('a deck against the collection', () => {
     expect(r.byKey.get('island')).toEqual({ need: 12, have: 4 })
     expect(r.byKey.get('blood moon')).toEqual({ need: 1, have: 0 })
     expect({ owned: r.owned, total: r.total }).toEqual({ owned: 5, total: 14 })
+  })
+})
+
+describe('value history days', () => {
+  it('names days in UTC and counts back across months', () => {
+    expect(today(new Date('2026-03-01T23:30:00Z'))).toBe('2026-03-01')
+    expect(daysBefore('2026-03-01', 1)).toBe('2026-02-28')
+    expect(daysBefore('2026-01-15', 30)).toBe('2025-12-16')
   })
 })
 

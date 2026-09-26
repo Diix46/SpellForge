@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, integer, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { CONDITIONS, FINISHES } from '../../shared/collection'
 
 // ─── Users ────────────────────────────────────────────────────────────────
@@ -79,6 +79,32 @@ export const collectionImports = sqliteTable('collection_imports', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
 }, t => [
   index('collection_imports_user_idx').on(t.userId, t.game, t.createdAt),
+])
+
+// A collection's worth, one reading a day (the nightly task, or the first
+// visit of the day): the value chart.
+export const collectionSnapshots = sqliteTable('collection_snapshots', {
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  game: text('game', { enum: ['mtg', 'optcg'] }).notNull(),
+  // YYYY-MM-DD, UTC.
+  day: text('day').notNull(),
+  value: real('value').notNull(),
+  paid: real('paid').notNull(),
+  copies: integer('copies').notNull(),
+  cards: integer('cards').notNull(),
+}, t => [
+  primaryKey({ columns: [t.userId, t.game, t.day] }),
+])
+
+// The price of each owned printing and finish, one a day: what moved.
+export const collectionPrices = sqliteTable('collection_prices', {
+  printingId: text('printing_id').notNull(),
+  finish: text('finish', { enum: FINISHES }).notNull(),
+  day: text('day').notNull(),
+  price: real('price').notNull(),
+}, t => [
+  primaryKey({ columns: [t.printingId, t.finish, t.day] }),
+  index('collection_prices_day_idx').on(t.day),
 ])
 
 export type UserRow = typeof users.$inferSelect
