@@ -23,6 +23,41 @@ const layout = shallowRef<Bookcase[]>([])
 const caseIndex = ref(0)
 const tip = ref<{ binder: ShelfBinder, x: number, y: number } | null>(null)
 const status = ref<'loading' | 'ready' | 'failed'>('loading')
+
+// The library runs down to the bottom of the window (the page fits the
+// screen), or takes the whole screen.
+const root = ref<HTMLDivElement | null>(null)
+const height = ref(560)
+const fullscreen = ref(false)
+function fit() {
+  if (!root.value || fullscreen.value)
+    return
+  const top = root.value.getBoundingClientRect().top + window.scrollY
+  height.value = Math.max(440, window.innerHeight - top - 20)
+}
+async function toggleFullscreen() {
+  const el = root.value
+  if (!el)
+    return
+  if (document.fullscreenElement)
+    await document.exitFullscreen().catch(() => {})
+  else
+    await el.requestFullscreen?.().catch(() => {})
+}
+function onFullscreen() {
+  fullscreen.value = document.fullscreenElement === root.value
+  if (!fullscreen.value)
+    requestAnimationFrame(fit)
+}
+onMounted(() => {
+  fit()
+  window.addEventListener('resize', fit)
+  document.addEventListener('fullscreenchange', onFullscreen)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', fit)
+  document.removeEventListener('fullscreenchange', onFullscreen)
+})
 const { locale } = useLocale()
 // Handed to the binder page: its data (no loading), where the open binder
 // stood and a still of the scene (the page grows out of it).
@@ -196,6 +231,10 @@ onMounted(async () => {
   const low = (coarse && el.clientWidth < 900) || (navigator.hardwareConcurrency ?? 8) <= 4 || (nav.deviceMemory ?? 8) <= 4
   const perShelf = el.clientWidth < 640 ? 7 : el.clientWidth < 1100 ? 10 : 12
   try {
+    // The spines' title face: an engraved serif for Magic, the poster one for One Piece.
+    const font = props.game === 'mtg' ? '600 1px Cinzel' : '400 1px Anton'
+    const face = props.game === 'mtg' ? 'Cinzel, Georgia, serif' : 'Anton, Impact, sans-serif'
+    const fontReady = document.fonts?.load(font).catch(() => []) ?? Promise.resolve([])
     const [THREE, rounded, utils, room, lib3d, amb] = await Promise.all([
       import('three'),
       import('three/addons/geometries/RoundedBoxGeometry.js'),
@@ -204,6 +243,22 @@ onMounted(async () => {
       import('~/utils/bookshelf/library'),
       import('~/utils/bookshelf/ambiance'),
     ])
+    // Scanned materials (Poly Haven, CC0): the leather, this universe's wood and walls.
+    const loader = new THREE.TextureLoader()
+    const maps = (name: string, color = true) => Promise.all(['', '_n', '_r'].map(k => loader.loadAsync(`/textures/bookshelf/${name}${k}.jpg`))).then(([map, normal, rough]) => {
+      if (color)
+        map!.colorSpace = THREE.SRGBColorSpace
+      for (const t of [map!, normal!, rough!])
+        t.anisotropy = low ? 4 : 8
+      return { map: map!, normal: normal!, rough: rough! }
+    })
+    const [leather, wood, wall] = await Promise.all([
+      maps('leather'),
+      maps(props.game === 'mtg' ? 'wood_dark' : 'wood_planks'),
+      maps(props.game === 'mtg' ? 'wood_dark' : 'planks_wall'),
+      fontReady,
+    ])
+    const textures = { leather, wood, wall, grain: leather.map.image as HTMLImageElement, font: face, weight: props.game === 'mtg' ? 600 : 400 }
     layout.value = layoutLibrary(props.sets, props.fresh, {
       perShelf,
       // Three shelves: the binders stay large enough to read.
@@ -221,6 +276,7 @@ onMounted(async () => {
       reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       kit: { RoundedBoxGeometry: rounded.RoundedBoxGeometry, mergeGeometries: utils.mergeGeometries, RoomEnvironment: room.RoomEnvironment },
       buildAmbiance: amb.buildAmbiance,
+      textures,
       hover: (binder, at) => {
         tip.value = binder && at ? { binder, ...at } : null
         soon(binder)
@@ -280,8 +336,12 @@ function onKey(e: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="library" :class="`library--${game}`" tabindex="0" :aria-label="t('collection.shelf.label')" @keydown="onKey">
-    <div ref="host" class="stage" />
+  <div ref="root" class="library" :class="[`library--${game}`, { 'is-full': fullscreen }]" tabindex="0" :aria-label="t('collection.shelf.label')" @keydown="onKey">
+    <span class="face" aria-hidden="true">Aa</span>
+    <div ref="host" class="stage" :style="fullscreen ? undefined : { height: `${height}px` }" />
+    <button v-if="status === 'ready'" type="button" class="full" :aria-label="t(fullscreen ? 'collection.shelf.exitFull' : 'collection.shelf.full')" :title="t(fullscreen ? 'collection.shelf.exitFull' : 'collection.shelf.full')" @click="toggleFullscreen">
+      <UIcon :name="fullscreen ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'" class="h-5 w-5" />
+    </button>
     <div v-if="status === 'ready'" class="finder" @keydown.stop>
       <UInput
         v-model="query"
@@ -341,10 +401,6 @@ function onKey(e: KeyboardEvent) {
 .library {
   position: relative;
   overflow: hidden;
-  /* The page's centrepiece: out of the content column, the width of the
-     screen (a 16px margin each side). */
-  width: calc(100vw - 32px);
-  margin-left: calc(50% - 50vw + 16px);
   border-radius: var(--radius-xl);
   outline: none;
   box-shadow:
@@ -363,8 +419,42 @@ function onKey(e: KeyboardEvent) {
     inset 0 0 80px rgba(0, 0, 0, 0.55);
 }
 .stage {
-  height: clamp(420px, calc(100svh - 110px), 1100px);
+  height: 560px;
   touch-action: pan-y;
+}
+.is-full {
+  border-radius: 0;
+}
+.is-full .stage {
+  height: 100vh;
+}
+.full {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255, 230, 190, 0.25);
+  border-radius: 10px;
+  background: rgba(20, 14, 10, 0.6);
+  color: #f4efe6;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s;
+}
+.full:hover {
+  background: rgba(20, 14, 10, 0.85);
+}
+/* The spines' face, for the canvas: an invisible use makes it load. */
+.face {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  font-family: Cinzel, Anton, serif;
+  font-weight: 600;
 }
 .stage :deep(canvas) {
   display: block;

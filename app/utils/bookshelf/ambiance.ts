@@ -11,10 +11,11 @@
  * merged tube. `update` animates it while the scene is awake.
  */
 import type * as Three from 'three'
-import type { Quality, Universe } from './library'
+import type { MaterialMaps, Quality, Universe } from './library'
+import { scanned } from './library'
 
-/** Three.js addons the room may need (none yet). */
-export type AmbianceKit = Record<string, unknown>
+/** What the room is made of (scanned maps from the page). */
+export interface AmbianceKit { wall?: MaterialMaps, wood?: MaterialMaps }
 
 export interface Ambiance {
   /** Advance the room's life; `camX` is where the camera looks. */
@@ -74,13 +75,13 @@ function dust(THREE: typeof Three, span: Span, count: number, color: number, siz
   return { points, update, dispose: () => [geo, mat, tex].forEach(d => d.dispose()) }
 }
 
-export function buildAmbiance(THREE: typeof Three, _kit: AmbianceKit, scene: Three.Scene, span: Span, universe: Universe, quality: Quality): Ambiance {
-  return universe === 'mtg' ? arcanist(THREE, scene, span, quality) : cabin(THREE, scene, span, quality)
+export function buildAmbiance(THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: Span, universe: Universe, quality: Quality): Ambiance {
+  return universe === 'mtg' ? arcanist(THREE, scene, span, quality, kit) : cabin(THREE, scene, span, quality, kit)
 }
 
 // ---- Magic: an arcanist's library -----------------------------------------
 
-function arcanist(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality): Ambiance {
+function arcanist(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
   const disposables: { dispose: () => void }[] = []
   const high = quality === 'high'
   const cx = span.width / 2
@@ -113,7 +114,8 @@ function arcanist(THREE: typeof Three, scene: Three.Scene, span: Span, quality: 
   })
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping
   floorTex.repeat.set((span.width + 30) / 3, 5)
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.8 }))
+  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 5, { color: 0x6A4A3A }) : new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.8 })
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(cx, -0.3, 4)
   floor.receiveShadow = true
@@ -215,7 +217,7 @@ function arcanist(THREE: typeof Three, scene: Three.Scene, span: Span, quality: 
 
 // ---- One Piece: a ship's cabin ---------------------------------------------
 
-function cabin(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality): Ambiance {
+function cabin(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
   const disposables: { dispose: () => void }[] = []
   const high = quality === 'high'
   const cx = span.width / 2
@@ -243,10 +245,15 @@ function cabin(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Qua
   })
   wallTex.wrapS = THREE.RepeatWrapping
   wallTex.repeat.set((span.width + 30) / 5, 1)
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.85 }))
+  // Planks standing up the wall, the floor's running across.
+  const wallMat = kit.wall ? scanned(THREE, kit.wall, 1, (span.width + 30) / 4, { color: 0xE8C8A0 }) : new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.85 })
+  if (kit.wall)
+    [wallMat.map, wallMat.normalMap, wallMat.roughnessMap].forEach(t => t && (t.rotation = Math.PI / 2))
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), wallMat)
   wall.position.set(cx, span.height / 2 + 1.5, back)
   wall.receiveShadow = true
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, color: 0xC8A080 }))
+  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 4, { color: 0xB08A68 }) : new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, color: 0xC8A080 })
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(cx, -0.3, 4)
   floor.receiveShadow = true

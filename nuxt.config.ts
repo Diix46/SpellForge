@@ -108,6 +108,8 @@ export default defineNuxtConfig({
       { name: 'Geist Mono', provider: 'google', weights: [400, 500] },
       { name: 'Anton', provider: 'google', weights: [400] },
       { name: 'Bangers', provider: 'google', weights: [400] },
+      // Magic's binder spines: engraved capitals.
+      { name: 'Cinzel', provider: 'google', weights: [600] },
     ],
   },
 })
