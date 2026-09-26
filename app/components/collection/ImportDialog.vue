@@ -78,7 +78,7 @@ async function undo(id: string) {
 const FORMATS = ['ManaBox', 'Moxfield', 'Cardmarket', 'Delver Lens', 'Prism']
 const sources = computed(() => [
   { value: 'file' as const, icon: 'i-lucide-file-up', label: 'collection.import.sourceFile' },
-  ...(props.game === 'mtg' ? [{ value: 'precon' as const, icon: 'i-lucide-box', label: 'collection.import.sourcePrecon' }] : []),
+  { value: 'precon' as const, icon: 'i-lucide-box', label: 'collection.import.sourcePrecon' },
   { value: 'deck' as const, icon: 'i-lucide-layers', label: 'collection.import.sourceDeck' },
 ])
 function fromRows(rows: ImportRow[], name: string) {
@@ -128,7 +128,7 @@ function fromRows(rows: ImportRow[], name: string) {
             <UIcon :name="s.icon" class="h-4 w-4" /> {{ t(s.label) }}
           </button>
         </div>
-        <CollectionPreconPicker v-if="source === 'precon' && game === 'mtg'" @rows="fromRows" />
+        <CollectionPreconPicker v-if="source === 'precon'" :game="game" @rows="fromRows" />
         <CollectionDeckPicker v-else-if="source === 'deck'" :game="game" @rows="fromRows" />
         <template v-else>
           <label

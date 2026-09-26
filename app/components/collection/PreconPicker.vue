@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import type { ImportRow } from '#shared/collection-csv'
 import type { PreconCard, PreconKind, PreconSummary } from '#shared/collection-decks'
+import type { GameId } from '#shared/game'
 import { computed, ref, watch } from 'vue'
 import { PRECON_KINDS, preconImportRows } from '#shared/collection-decks'
 
 // A Magic preconstructed deck to add whole: found by name, set or commander,
 // narrowed by family, then its cards in the box's exact printings and
 // foiling, in the chosen language, handed to the import preview.
+const props = withDefaults(defineProps<{ game?: GameId }>(), { game: 'mtg' })
 const emit = defineEmits<{ rows: [rows: ImportRow[], name: string] }>()
 
 const { t, locale } = useLocale()
 const q = ref('')
-const kind = ref<PreconKind | 'all'>('commander')
+const kind = ref<PreconKind | 'all'>(props.game === 'mtg' ? 'commander' : 'all')
 const list = ref<PreconSummary[]>([])
 const loading = ref(false)
 const picked = ref<PreconSummary | null>(null)
@@ -22,7 +24,7 @@ const location = ref('')
 async function search() {
   loading.value = true
   try {
-    list.value = (await $fetch<{ precons: PreconSummary[] }>('/api/collection/precons', { query: { q: q.value, kind: kind.value === 'all' ? undefined : kind.value, lang: locale.value } })).precons
+    list.value = (await $fetch<{ precons: PreconSummary[] }>('/api/collection/precons', { query: { q: q.value, kind: kind.value === 'all' ? undefined : kind.value, lang: locale.value, game: props.game } })).precons
   }
   catch {
     list.value = []
@@ -62,15 +64,15 @@ function typeLabel(type: string): string {
 function preview() {
   if (!picked.value || !cards.value.length)
     return
-  emit('rows', preconImportRows(cards.value, lang.value, location.value.trim() || null), picked.value.name)
+  emit('rows', preconImportRows(cards.value, lang.value, location.value.trim() || null, props.game), picked.value.name)
 }
 </script>
 
 <template>
   <div class="precons">
     <template v-if="!picked">
-      <UInput v-model="q" icon="i-lucide-search" :placeholder="t('collection.precon.search')" size="lg" class="w-full" autofocus />
-      <div class="chips" role="group">
+      <UInput v-model="q" icon="i-lucide-search" :placeholder="t(`collection.precon.search.${game}`)" size="lg" class="w-full" autofocus />
+      <div v-if="game === 'mtg'" class="chips" role="group">
         <button v-for="k in (['all', ...PRECON_KINDS] as const)" :key="k" type="button" :aria-pressed="kind === k" @click="kind = k">
           {{ t(`collection.precon.kind.${k}`) }}
         </button>
@@ -88,7 +90,9 @@ function preview() {
             <span v-else class="noimg"><UIcon name="i-lucide-box" class="h-5 w-5" /></span>
             <span class="body">
               <b>{{ p.name }}</b>
-              <span class="meta">{{ p.setName ?? p.code.toUpperCase() }} · {{ year(p.released) }}</span>
+              <span class="meta">{{ p.setName ?? p.code.toUpperCase() }}<template v-if="p.released">
+                · {{ year(p.released) }}
+              </template></span>
               <span class="meta">{{ p.commanderLocal ?? typeLabel(p.type) }} · {{ p.cards }} {{ t('collection.cards') }}</span>
             </span>
           </button>
@@ -105,7 +109,9 @@ function preview() {
         <div>
           <h3>{{ picked.name }}</h3>
           <p class="meta">
-            {{ picked.setName ?? picked.code.toUpperCase() }} · {{ year(picked.released) }} · {{ typeLabel(picked.type) }}
+            {{ picked.setName ?? picked.code.toUpperCase() }}<template v-if="picked.released">
+              · {{ year(picked.released) }}
+            </template> · {{ typeLabel(picked.type) }}
           </p>
           <p v-if="commander" class="meta">
             <UIcon name="i-lucide-crown" class="h-3.5 w-3.5" /> {{ commander }}
