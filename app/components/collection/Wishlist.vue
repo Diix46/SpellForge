@@ -79,7 +79,7 @@ async function copyList() {
       </div>
       <h2>{{ t('collection.wish.emptyTitle') }}</h2>
       <p>{{ t(`collection.wish.emptyBody.${game}`) }}</p>
-      <UButton color="neutral" variant="subtle" icon="i-lucide-library-big" :to="collectionPath(game, '/sets')">
+      <UButton color="neutral" variant="subtle" icon="i-lucide-library-big" :to="collectionPath(game)">
         {{ t('collection.wish.browseSets') }}
       </UButton>
     </section>

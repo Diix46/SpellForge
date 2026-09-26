@@ -71,7 +71,10 @@ function row(line: number, fields: Partial<ImportRow> & Pick<ImportRow, 'quantit
  * Scryfall id is the printing; in French the same set and number, in French
  * when it was printed so (the import says when it was not).
  */
-export function preconImportRows(cards: readonly PreconCard[], lang: 'fr' | 'en', location: string | null = null): ImportRow[] {
+export function preconImportRows(cards: readonly PreconCard[], lang: 'fr' | 'en', location: string | null = null, game: GameId = 'mtg'): ImportRow[] {
+  // One Piece: a card number, in its usual printing for the language.
+  if (game === 'optcg')
+    return cards.map((c, i) => row(i + 1, { name: c.number, lang, quantity: c.count, location }))
   return cards.map((c, i) => row(i + 1, {
     name: c.name,
     set: c.set,

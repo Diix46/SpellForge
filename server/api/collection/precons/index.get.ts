@@ -1,8 +1,9 @@
 import type { InValue } from '@libsql/client'
 import type { PreconSummary } from '../../../../shared/collection-decks'
 import { PRECON_KINDS } from '../../../../shared/collection-decks'
-import { useMtgCardsDb, usePreconsDb } from '../../../utils/cards/db'
+import { useMtgCardsDb, useOptcgCardsDb, usePreconsDb } from '../../../utils/cards/db'
 import { imageUrl } from '../../../utils/cards/mtg-shape'
+import { optcgImageUrl } from '../../../utils/cards/optcg-shape'
 import { ftsPhrase } from '../../../utils/cards/text'
 
 const KIND_TYPES: Record<string, string[]> = {
@@ -22,8 +23,10 @@ export default defineEventHandler(async (event): Promise<{ precons: PreconSummar
   const text = typeof q.q === 'string' ? q.q.trim().slice(0, 80).toLowerCase() : ''
   const kind = PRECON_KINDS.includes(q.kind as never) ? String(q.kind) : null
   const lang = q.lang === 'en' ? 'en' : 'fr'
+  if (q.game === 'optcg')
+    return { precons: await optcgPrecons(text, lang) }
   const mtg = useMtgCardsDb()
-  const where: string[] = []
+  const where: string[] = ['game = \'mtg\'']
   const args: InValue[] = []
   if (text) {
     // Commanders typed by their French name: their English names.
@@ -50,7 +53,7 @@ export default defineEventHandler(async (event): Promise<{ precons: PreconSummar
   try {
     rows = (await usePreconsDb().execute({
       sql: `SELECT file, code, name, type, released, cards, commander, face_id FROM precons
-            ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+            WHERE ${where.join(' AND ')}
             ORDER BY released DESC, name LIMIT 60`,
       args,
     })).rows
@@ -111,3 +114,50 @@ export default defineEventHandler(async (event): Promise<{ precons: PreconSummar
     }),
   }
 })
+
+/**
+ * One Piece starter decks (scripts/ingest-precons.mjs): names in the site's
+ * language (Bandai's titles), the Leader as face, newest first.
+ */
+async function optcgPrecons(text: string, lang: 'fr' | 'en'): Promise<PreconSummary[]> {
+  let rows
+  try {
+    rows = (await usePreconsDb().execute({
+      sql: `SELECT file, code, name, name_fr, type, cards, commander FROM precons
+             WHERE game = 'optcg' ${text ? 'AND (lower(name) LIKE ? OR lower(name_fr) LIKE ? OR lower(code) LIKE ?)' : ''}
+             ORDER BY code DESC`,
+      args: text ? [`%${text}%`, `%${text}%`, `%${text.replace('-', '')}%`] : [],
+    })).rows
+  }
+  catch {
+    return []
+  }
+  const leaders = [...new Set(rows.map(r => String(r.commander)).filter(Boolean))]
+  const shown = new Map<string, { name: string, thumb: string }>()
+  if (leaders.length) {
+    const { rows: cards } = await useOptcgCardsDb().execute({
+      sql: `SELECT b.card_number, c.id, c.lang, c.name, c.img_version FROM op_best b
+              JOIN op_cards c ON c.id = b.id AND c.lang = b.row_lang
+             WHERE b.lang = ? AND b.card_number IN (${leaders.map(() => '?').join(',')})`,
+      args: [lang, ...leaders],
+    })
+    for (const c of cards)
+      shown.set(String(c.card_number), { name: String(c.name), thumb: optcgImageUrl(String(c.lang), String(c.id), c.img_version, 'thumb') })
+  }
+  return rows.map((r) => {
+    const leader = shown.get(String(r.commander))
+    const code = String(r.file)
+    return {
+      file: code,
+      code,
+      name: (lang === 'fr' && r.name_fr ? String(r.name_fr) : String(r.name)),
+      type: String(r.type),
+      released: null,
+      cards: Number(r.cards),
+      commander: r.commander == null ? null : String(r.commander),
+      commanderLocal: leader?.name ?? null,
+      setName: code,
+      thumb: leader?.thumb ?? null,
+    }
+  })
+}

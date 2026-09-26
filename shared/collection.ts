@@ -150,6 +150,10 @@ export interface ChecklistCard {
   thumb: string
   /** The printing to add when it is missing (the site's language when printed in it). */
   printingId: string
+  /** The card's printing in each language, where there is one: what a binder pocket adds. */
+  printings: { fr: string | null, en: string | null }
+  /** The finishes it was printed in. */
+  finishes: Finish[]
   /** Copies owned of it, every printing of the card in the set together. */
   owned: number
 }

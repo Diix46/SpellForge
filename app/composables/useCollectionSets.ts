@@ -40,6 +40,14 @@ export function useCollectionSets(game: GameId) {
   })
 
   const sets = computed(() => data.value?.sets ?? [])
+  // Nothing started yet: every binder on the shelf, to start one.
+  let widened = false
+  watch(data, (d) => {
+    if (!widened && d && !filters.all && !d.sets.length) {
+      widened = true
+      filters.all = true
+    }
+  })
   const started = computed(() => sets.value.filter(s => s.owned > 0))
   const overall = computed(() => completion(started.value))
   const completed = computed(() => started.value.filter(s => s.owned >= s.total).length)
