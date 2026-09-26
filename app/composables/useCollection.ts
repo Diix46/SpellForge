@@ -8,12 +8,15 @@ export interface NewCopy {
   finish: Finish
   condition: Condition
   quantity: number
+  /** Magic: the copy's language when it is not its printing's. */
+  lang?: 'fr' | 'en'
   purchasePrice?: number | null
   location?: string | null
   note?: string | null
 }
 
-export type CopyEdit = Partial<Omit<NewCopy, 'printingId'>>
+/** A line edited: any field, another printing of the card included. */
+export type CopyEdit = Partial<NewCopy>
 
 /** A printing to pick when adding copies. */
 export interface PrintChoice {
