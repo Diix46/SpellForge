@@ -162,28 +162,54 @@ function paint(g: CanvasRenderingContext2D, s: SpineSpec): void {
   g.lineWidth = 2
   g.strokeRect(ax + 1, ay + 1, aw - 2, ah - 2)
 
-  // The name, reading bottom to top, as large as it fits.
+  // The name, reading bottom to top: one line as large as it fits, else
+  // two lines split at a space, else shortened.
   g.save()
   g.translate(64, 430)
   g.rotate(-Math.PI / 2)
   g.textAlign = 'left'
   g.textBaseline = 'middle'
   g.fillStyle = ink
-  const room = 170
-  let size = 34
-  g.font = `700 ${size}px system-ui, sans-serif`
-  while (g.measureText(s.name).width > room && size > 17) {
-    size -= 1
+  const room = 180
+  const fits = (text: string, size: number) => {
     g.font = `700 ${size}px system-ui, sans-serif`
+    return g.measureText(text).width <= room
   }
-  let name = s.name
-  if (g.measureText(name).width > room) {
-    while (name.length > 3 && g.measureText(`${name}…`).width > room)
-      name = name.slice(0, -1)
-    name = `${name.trimEnd()}…`
+  let size = 34
+  while (size > 22 && !fits(s.name, size))
+    size -= 1
+  if (fits(s.name, size)) {
+    g.fillText(s.name, 0, 0)
   }
-  // Two lines when it breaks well and is still long.
-  g.fillText(name, 0, 0)
+  else {
+    // Two lines: the split that balances them best.
+    const words = s.name.split(' ')
+    let best: [string, string] = [s.name, '']
+    let worst = Infinity
+    for (let k = 1; k < words.length; k++) {
+      const a = words.slice(0, k).join(' ')
+      const b = words.slice(k).join(' ')
+      g.font = '700 20px system-ui, sans-serif'
+      const w = Math.max(g.measureText(a).width, g.measureText(b).width)
+      if (w < worst) {
+        worst = w
+        best = [a, b]
+      }
+    }
+    size = 22
+    while (size > 13 && !(fits(best[0], size) && fits(best[1], size)))
+      size -= 1
+    const clip = (text: string) => {
+      g.font = `700 ${size}px system-ui, sans-serif`
+      let out = text
+      while (out.length > 3 && g.measureText(out).width > room)
+        out = `${out.slice(0, -2)}…`
+      return out
+    }
+    g.font = `700 ${size}px system-ui, sans-serif`
+    g.fillText(clip(best[0]), 0, -size * 0.62)
+    g.fillText(clip(best[1]), 0, size * 0.62)
+  }
   g.restore()
 
   // Progress at the foot, or the "new" tag.

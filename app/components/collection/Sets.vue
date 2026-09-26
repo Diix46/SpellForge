@@ -42,10 +42,9 @@ const shelfSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(
 const gridSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(s => !s.owned) : view.shown.value))
 // The library is built again when its binders change, not their progress
 // (it repaints those spines itself).
-const shelfKey = computed(() => shelfSets.value.map(s => s.code).join('|'))
 
 // The new releases shelf: the latest main sets not started, to start one.
-const { data: every, execute: loadEvery } = useFetch<{ sets: SetProgress[] }>('/api/collection/sets', {
+const { data: every, status: everyStatus, execute: loadEvery } = useFetch<{ sets: SetProgress[] }>('/api/collection/sets', {
   key: `collection-every-${props.game}`,
   query: { game: props.game, all: '1', lang: computed(() => (locale.value === 'fr' ? 'fr' : 'en')) },
   server: false,
@@ -59,6 +58,9 @@ const today = new Date().toISOString().slice(0, 10)
 const fresh = computed(() => (every.value?.sets ?? [])
   .filter(s => !s.owned && setKind(props.game, s.type) === 'main' && (!s.releasedAt || s.releasedAt <= today))
   .slice(0, 12))
+// Built once the new releases are known (not twice, before and after).
+const shelfKey = computed(() => [...shelfSets.value, ...fresh.value].map(s => s.code).join('|'))
+const shelfReady = computed(() => mode.value === '3d' && everyStatus.value !== 'pending' && everyStatus.value !== 'idle' && (shelfSets.value.length > 0 || fresh.value.length > 0))
 
 const sortItems = computed(() => [
   { label: t('collection.setSortRecent'), value: 'recent' },
@@ -136,7 +138,7 @@ const sortItems = computed(() => [
     </p>
 
     <template v-else>
-      <CollectionBookshelf v-if="shelfSets.length" :key="shelfKey" :sets="shelfSets" :fresh="fresh" :game="game" />
+      <CollectionBookshelf v-if="shelfReady" :key="shelfKey" :sets="shelfSets" :fresh="fresh" :game="game" />
       <h3 v-if="shelfSets.length && gridSets.length" class="subhead">
         {{ t('collection.shelf.startNew') }}
       </h3>
