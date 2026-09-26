@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
-// How far the collection goes into each set: the overall progress over the
-// sets started, then a card per set (symbol, name, bar), filtered and sorted;
-// each opens the set's checklist.
+// The binder shelf: the overall progress, then the binders of the sets
+// started on a 3D bookcase (or as a list), and the other sets to start one.
+// Each opens its binder.
 const props = defineProps<{ game: GameId }>()
 
 const { t, locale } = useLocale()
@@ -19,6 +19,28 @@ const kindItems = computed(() => [
   { label: t('collection.allKinds'), value: 'all' },
   ...view.kinds.value.map(k => ({ label: t(`collection.kind.${k}`), value: k })),
 ])
+// The bookcase or a plain list, as last chosen in this browser.
+const MODE_KEY = 'prism_shelf_mode'
+const mode = ref<'3d' | 'list'>('3d')
+onMounted(() => {
+  try {
+    if (localStorage.getItem(MODE_KEY) === 'list')
+      mode.value = 'list'
+  }
+  catch {}
+})
+watch(mode, (m) => {
+  try {
+    localStorage.setItem(MODE_KEY, m)
+  }
+  catch {}
+})
+/** On the bookcase: the binders started; the others wait in the list below. */
+const shelfSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(s => s.owned > 0) : []))
+const gridSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(s => !s.owned) : view.shown.value))
+// The bookcase is built again when what it shows changes.
+const shelfKey = computed(() => shelfSets.value.map(s => `${s.code}:${s.owned}`).join('|'))
+
 const sortItems = computed(() => [
   { label: t('collection.setSortRecent'), value: 'recent' },
   { label: t('collection.setSortProgress'), value: 'progress' },
@@ -60,6 +82,14 @@ const sortItems = computed(() => [
       <UInput v-model="filters.q" icon="i-lucide-search" :placeholder="t('collection.setSearch')" class="grow sm:grow-0 sm:w-64" />
       <USelect v-if="view.kinds.value.length > 1" v-model="filters.kind" :items="kindItems" class="w-44" />
       <USelect v-model="filters.sort" :items="sortItems" icon="i-lucide-arrow-down-wide-narrow" class="w-44" :aria-label="t('discover.sort')" />
+      <div class="seg" role="group" :aria-label="t('collection.shelf.mode')">
+        <button type="button" :aria-pressed="mode === '3d'" :title="t('collection.shelf.library')" @click="mode = '3d'">
+          <UIcon name="i-lucide-library" class="h-4 w-4" /> {{ t('collection.shelf.library') }}
+        </button>
+        <button type="button" :aria-pressed="mode === 'list'" :title="t('collection.shelf.list')" @click="mode = 'list'">
+          <UIcon name="i-lucide-layout-grid" class="h-4 w-4" /> {{ t('collection.shelf.list') }}
+        </button>
+      </div>
       <div class="switches">
         <USwitch v-model="filters.hideComplete" :label="t('collection.hideComplete')" />
         <USwitch v-model="filters.all" :label="t('collection.showAllSets')" />
@@ -86,38 +116,43 @@ const sortItems = computed(() => [
       {{ t('collection.noSetMatch') }}
     </p>
 
-    <div v-else class="grid">
-      <NuxtLink
-        v-for="s in view.shown.value"
-        :key="s.code"
-        :to="collectionPath(game, `/sets/${s.code}`)"
-        class="set"
-        :class="{ 'is-done': s.owned >= s.total, 'is-new': !s.owned }"
-      >
-        <div class="set-top">
-          <span class="emblem">
-            <CollectionSetSymbol v-if="s.icon" :icon="s.icon" :rarity="s.owned >= s.total ? 'rare' : null" :size="26" />
-            <b v-else>{{ s.code.replace('-', '') }}</b>
+    <template v-else>
+      <CollectionBookshelf v-if="shelfSets.length" :key="shelfKey" :sets="shelfSets" :game="game" />
+      <h3 v-if="shelfSets.length && gridSets.length" class="subhead">
+        {{ t('collection.shelf.startNew') }}
+      </h3>
+      <div v-if="gridSets.length" class="grid">
+        <NuxtLink
+          v-for="s in gridSets"
+          :key="s.code"
+          :to="collectionPath(game, `/sets/${s.code}`)"
+          class="set"
+          :class="{ 'is-done': s.owned >= s.total, 'is-new': !s.owned }"
+        >
+          <span class="art" :class="{ card: game === 'optcg' }">
+            <img v-if="s.art" :src="s.art" alt="" loading="lazy" decoding="async">
+            <span class="emblem">
+              <CollectionSetSymbol v-if="s.icon" :icon="s.icon" :rarity="s.owned >= s.total ? 'rare' : null" :size="22" />
+              <b v-else>{{ s.code.replace('-', '') }}</b>
+            </span>
+            <UIcon v-if="s.owned >= s.total" name="i-lucide-trophy" class="trophy" :aria-label="t('collection.complete')" />
           </span>
-          <div class="min-w-0">
-            <p class="name">
-              {{ s.name }}
-            </p>
-            <p class="meta">
+          <span class="body">
+            <span class="name" :title="s.name">{{ s.name }}</span>
+            <span class="meta">
               {{ s.code.toUpperCase() }}<template v-if="s.releasedAt">
                 · {{ year(s.releasedAt) }}
               </template>
-            </p>
-          </div>
-          <UIcon v-if="s.owned >= s.total" name="i-lucide-trophy" class="trophy" :aria-label="t('collection.complete')" />
-        </div>
-        <CollectionProgress :owned="s.owned" :total="s.total" />
-        <p class="count">
-          <span><b>{{ nf.format(s.owned) }}</b> / {{ nf.format(s.total) }}</span>
-          <span class="pct">{{ pct(s.owned, s.total) }}%</span>
-        </p>
-      </NuxtLink>
-    </div>
+            </span>
+            <CollectionProgress :owned="s.owned" :total="s.total" />
+            <span class="count">
+              <span><b>{{ nf.format(s.owned) }}</b> / {{ nf.format(s.total) }}</span>
+              <span class="pct">{{ pct(s.owned, s.total) }}%</span>
+            </span>
+          </span>
+        </NuxtLink>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -202,15 +237,42 @@ const sortItems = computed(() => [
   text-align: center;
   color: var(--color-text-muted);
 }
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-sm);
+}
+.seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.seg button[aria-pressed='true'] {
+  background: var(--color-surface-3);
+  color: var(--color-text-high);
+}
+.subhead {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-mid);
+}
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
 }
 .set {
-  display: grid;
-  gap: 12px;
-  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   background: var(--color-surface-1);
@@ -220,41 +282,87 @@ const sortItems = computed(() => [
     box-shadow 0.18s;
 }
 .set:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-elev-1);
+  box-shadow: var(--shadow-elev-2);
 }
 .set.is-new {
-  opacity: 0.72;
+  opacity: 0.8;
 }
 .set.is-new:hover {
   opacity: 1;
 }
 .set.is-done {
-  border-color: rgba(199, 154, 46, 0.55);
-  background: linear-gradient(160deg, rgba(240, 210, 122, 0.14), transparent 55%), var(--color-surface-1);
+  border-color: rgba(199, 154, 46, 0.7);
+  box-shadow: 0 0 0 2px rgba(240, 210, 122, 0.25);
 }
-.set-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.art {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  height: 104px;
+  background: linear-gradient(135deg, var(--color-surface-3), var(--color-surface-2));
+}
+.art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  transition: transform 0.4s var(--ease-out, ease-out);
+}
+/* One Piece: a whole card, its picture sits high on it. */
+.art.card img {
+  object-position: center 22%;
+}
+.set:hover .art img {
+  transform: scale(1.05);
+}
+.set.is-new .art img {
+  filter: saturate(0.55);
+}
+.art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 45%, rgba(0, 0, 0, 0.45));
 }
 .emblem {
+  position: absolute;
+  z-index: 1;
+  bottom: -18px;
+  left: 12px;
   display: grid;
   place-items: center;
-  flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-surface-1);
   border-radius: 50%;
   background: var(--color-surface-2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 .emblem b {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 9px;
   color: var(--color-text-mid);
 }
+.trophy {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  color: #f0d27a;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 24px 14px 12px;
+}
 .name {
-  margin: 0;
+  display: block;
   overflow: hidden;
   font-size: 14px;
   font-weight: 600;
@@ -263,22 +371,13 @@ const sortItems = computed(() => [
   color: var(--color-text-high);
 }
 .meta {
-  margin: 2px 0 0;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--color-text-muted);
 }
-.trophy {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  margin-left: auto;
-  color: #c79a2e;
-}
 .count {
   display: flex;
   justify-content: space-between;
-  margin: 0;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--color-text-muted);

@@ -93,6 +93,57 @@ export function optcgSetOrder(a: string, b: string): number {
   return ka - kb || na - nb
 }
 
+// A set's picture never changes between two card refreshes: read once.
+const artCache = new Map<string, string | null>()
+
+/**
+ * Each set's picture. Magic: the art crop of its first mythic (else rare,
+ * else any card), a real scan, English. One Piece: its first Leader (else its
+ * rarest card), in the site's language when printed so.
+ */
+export async function setArts(game: GameId, codes: readonly string[], lang: 'fr' | 'en'): Promise<Map<string, string | null>> {
+  const key = (code: string) => `${game}|${lang}|${code}`
+  const todo = codes.filter(c => !artCache.has(key(c)))
+  for (let i = 0; i < todo.length; i += CHUNK) {
+    const chunk = todo.slice(i, i + CHUNK)
+    const found = new Map<string, string>()
+    if (game === 'mtg') {
+      const { rows } = await useMtgCardsDb().execute({
+        sql: `SELECT set_code, id, img_version FROM (
+                SELECT p.set_code, p.id, p.img_version,
+                       ROW_NUMBER() OVER (PARTITION BY p.set_code
+                         ORDER BY (p.rarity = 'mythic') DESC, (p.rarity = 'rare') DESC, p.promo, CAST(p.collector_number AS INTEGER)) AS rn
+                  FROM printings p
+                 WHERE p.lang = 'en' AND p.is_real_image = 1 AND p.img_version IS NOT NULL
+                   AND p.set_code IN (${placeholders(chunk.length)})
+              ) WHERE rn = 1`,
+        args: chunk as InValue[],
+      })
+      for (const r of rows)
+        found.set(String(r.set_code), imageUrl('art_crop', 'front', String(r.id), r.img_version))
+    }
+    else {
+      const { rows } = await useOptcgCardsDb().execute({
+        sql: `SELECT set_code, id, lang, img_version FROM (
+                SELECT n.set_code, c.id, c.lang, c.img_version,
+                       ROW_NUMBER() OVER (PARTITION BY n.set_code
+                         ORDER BY (n.category = 'Leader') DESC, (c.rarity = 'SEC') DESC, (c.rarity = 'SR') DESC, n.card_number) AS rn
+                  FROM op_numbers n
+                  JOIN op_best b ON b.card_number = n.card_number AND b.lang = ?
+                  JOIN op_cards c ON c.id = b.id AND c.lang = b.row_lang
+                 WHERE n.set_code IN (${placeholders(chunk.length)})
+              ) WHERE rn = 1`,
+        args: [lang, ...chunk] as InValue[],
+      })
+      for (const r of rows)
+        found.set(String(r.set_code), optcgImageUrl(String(r.lang), String(r.id), r.img_version))
+    }
+    for (const c of chunk)
+      artCache.set(key(c), found.get(c) ?? null)
+  }
+  return new Map(codes.map(c => [c, artCache.get(key(c)) ?? null]))
+}
+
 /** "BOOSTER PACK -ROMANCE DAWN- [OP-01]" → "ROMANCE DAWN". */
 export function optcgSetName(title: unknown, code: string): string {
   const m = typeof title === 'string' ? /-(.+)-\s*\[/.exec(title) : null
@@ -119,6 +170,7 @@ async function mtgSets(owned: Map<string, Map<string, number>>, all: boolean): P
       code,
       name: String(r.name),
       icon: setIconPath(r.icon),
+      art: null,
       releasedAt: r.released_at == null ? null : String(r.released_at),
       type: r.set_type == null ? null : String(r.set_type),
       total,
@@ -142,7 +194,7 @@ async function optcgSets(owned: Map<string, Map<string, number>>, all: boolean, 
     .map((r) => {
       const code = String(r.code)
       const total = Number(r.cards)
-      return { code, name: optcgSetName(r.title, code), icon: null, releasedAt: null, type: code.split('-')[0] ?? null, total, owned: Math.min(total, owned.get(code)?.size ?? 0) }
+      return { code, name: optcgSetName(r.title, code), icon: null, art: null, releasedAt: null, type: code.split('-')[0] ?? null, total, owned: Math.min(total, owned.get(code)?.size ?? 0) }
     })
     .sort((a, b) => optcgSetOrder(a.code, b.code))
 }
@@ -150,7 +202,9 @@ async function optcgSets(owned: Map<string, Map<string, number>>, all: boolean, 
 /** The sets a collection has started (or every set, with `all`). */
 export async function setProgress(game: GameId, lines: readonly OwnedLine[], opts: { all: boolean, lang: 'fr' | 'en' }): Promise<SetProgress[]> {
   const owned = await ownedBySet(game, lines)
-  return game === 'mtg' ? mtgSets(owned, opts.all) : optcgSets(owned, opts.all, opts.lang)
+  const sets = game === 'mtg' ? await mtgSets(owned, opts.all) : await optcgSets(owned, opts.all, opts.lang)
+  const arts = await setArts(game, sets.map(s => s.code), opts.lang)
+  return sets.map(s => ({ ...s, art: arts.get(s.code) ?? null }))
 }
 
 /** "12", "12a", "★12": by the number first, then as text. */
@@ -251,11 +305,11 @@ export async function checklistSet(game: GameId, code: string, cards: readonly C
   const owned = cards.filter(c => c.owned > 0).length
   if (game === 'optcg') {
     const { rows } = await useOptcgCardsDb().execute({ sql: 'SELECT title FROM op_packs WHERE label = ? ORDER BY (lang = ?) DESC LIMIT 1', args: [code, lang] })
-    return total ? { code, name: optcgSetName(rows[0]?.title, code), icon: null, releasedAt: null, type: code.split('-')[0] ?? null, total, owned } : null
+    return total ? { code, name: optcgSetName(rows[0]?.title, code), icon: null, art: (await setArts(game, [code], lang)).get(code) ?? null, releasedAt: null, type: code.split('-')[0] ?? null, total, owned } : null
   }
   const { rows } = await useMtgCardsDb().execute({ sql: 'SELECT name, released_at, set_type, icon FROM sets WHERE code = ?', args: [code] })
   const r = rows[0]
   return r
-    ? { code, name: String(r.name), icon: setIconPath(r.icon), releasedAt: r.released_at == null ? null : String(r.released_at), type: r.set_type == null ? null : String(r.set_type), total, owned }
+    ? { code, name: String(r.name), icon: setIconPath(r.icon), art: (await setArts(game, [code], lang)).get(code) ?? null, releasedAt: r.released_at == null ? null : String(r.released_at), type: r.set_type == null ? null : String(r.set_type), total, owned }
     : null
 }

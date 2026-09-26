@@ -130,6 +130,8 @@ export interface SetProgress {
   name: string
   /** Magic: the set symbol (served by us). */
   icon: string | null
+  /** A picture of the set: Magic, the art of its signature card; One Piece, a Leader's card. */
+  art: string | null
   releasedAt: string | null
   /** Magic: Scryfall's set type; One Piece: the kind (OP, EB, ST…). */
   type: string | null
