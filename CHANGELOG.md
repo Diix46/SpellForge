@@ -1,3 +1,15 @@
+## [0.36.0](https://github.com/Diix46/SpellForge/compare/v0.35.0...v0.36.0) (2026-09-26)
+
+### Features
+
+* **collection:** changer l'impression et la langue d'un exemplaire depuis sa fiche ([194bb7d](https://github.com/Diix46/SpellForge/commit/194bb7dc2bbe7a19924d2f0340dd4f6916b6713b))
+* **collection:** langue propre à chaque exemplaire, pour les impressions que Scryfall n'a pas en français ([61685c2](https://github.com/Diix46/SpellForge/commit/61685c23f1528b83e537aa6d2e064ecd45409547))
+* **collection:** precons en français (types, commandant, visuel) et recherche par commandant FR ([149218d](https://github.com/Diix46/SpellForge/commit/149218dce7b3ac50cd0e48d5a1e758ba64d03a3b))
+
+### Bug Fixes
+
+* **collection:** ajout sans prix payé, emplacement facultatif, la modale se ferme après l'ajout ([690c48a](https://github.com/Diix46/SpellForge/commit/690c48acb350183077a0ac4b1c821f8f59ca0aaa))
+
 ## [0.35.0](https://github.com/Diix46/SpellForge/compare/v0.34.0...v0.35.0) (2026-09-26)
 
 ### Features
