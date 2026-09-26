@@ -2,30 +2,19 @@
 import type { CollectionCopy } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import type { CopyEdit } from '~/composables/useCollection'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 
-// A member's collection for one game: the totals and filters on the side, the
-// copies as a grid or a list, a sheet to edit one, a dialog to add more.
+// A member's copies for one game: the totals and filters on the side, the
+// copies as a grid or a list, a sheet to edit one.
 const props = defineProps<{ game: GameId }>()
 
 const { t, locale } = useLocale()
 const toast = useToast()
-const { loggedIn } = useAuth()
-const members = useMembersOnly()
 const collection = useCollection(props.game)
 const lang = computed<'fr' | 'en'>(() => (locale.value === 'fr' ? 'fr' : 'en'))
 const view = useCollectionView(collection.copies, lang)
 
-onMounted(() => {
-  if (loggedIn.value)
-    void collection.load()
-})
-watch(loggedIn, (v) => {
-  if (v)
-    void collection.load(true)
-})
-
-const adding = ref(false)
+const { openAdd } = useCollectionAdd()
 const editing = ref<CollectionCopy | null>(null)
 const sheetOpen = ref(false)
 function edit(copy: CollectionCopy) {
@@ -52,30 +41,8 @@ const sortItems = computed(() => [
 </script>
 
 <template>
-  <div class="collection fade-up">
-    <header class="head">
-      <div class="min-w-0">
-        <h1 class="title">
-          {{ t('collection.title') }}
-        </h1>
-        <p class="sub">
-          {{ t(`collection.subtitle.${game}`) }}
-        </p>
-      </div>
-      <UButton v-if="loggedIn" icon="i-lucide-plus" size="lg" @click="adding = true">
-        {{ t('collection.add') }}
-      </UButton>
-    </header>
-
-    <section v-if="!loggedIn" class="panel center">
-      <UIcon name="i-lucide-gem" class="h-9 w-9 text-(--accent-text)" />
-      <p>{{ t('members.collection') }}</p>
-      <UButton icon="i-lucide-log-in" @click="members.require('collection')">
-        {{ t('members.login') }}
-      </UButton>
-    </section>
-
-    <div v-else-if="collection.loading.value && !collection.loaded.value" class="panel center" role="status">
+  <div>
+    <div v-if="!collection.loaded.value && !collection.error.value" class="panel center" role="status">
       <UIcon name="i-lucide-loader-circle" class="h-7 w-7 animate-spin" />
     </div>
 
@@ -92,7 +59,7 @@ const sortItems = computed(() => [
       </div>
       <h2>{{ t('collection.emptyTitle') }}</h2>
       <p>{{ t('collection.emptyBody') }}</p>
-      <UButton icon="i-lucide-plus" size="lg" @click="adding = true">
+      <UButton icon="i-lucide-plus" size="lg" @click="openAdd()">
         {{ t('collection.add') }}
       </UButton>
     </section>
@@ -134,36 +101,10 @@ const sortItems = computed(() => [
     </div>
 
     <CollectionCopySheet v-model:open="sheetOpen" :copy="editing" :name="editing ? view.nameOf(editing) : ''" @save="save" @remove="remove" />
-    <CollectionAddDialog v-if="loggedIn" v-model:open="adding" :game="game" />
   </div>
 </template>
 
 <style scoped>
-.collection {
-  display: grid;
-  gap: 20px;
-}
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-}
-.title {
-  margin: 0 0 6px;
-  font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--color-text-high);
-}
-.sub {
-  margin: 0;
-  max-width: 62ch;
-  font-size: 14px;
-  color: var(--color-text-muted);
-}
 .panel {
   padding: 36px 24px;
   border: 1px solid var(--color-border-subtle);
