@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { OwnedCount } from '#shared/collection'
 import type { DeckEntry } from '~/composables/useDecklist'
 import { computed } from 'vue'
 import { useCardDnd } from '~/composables/useCardDnd'
@@ -21,6 +22,8 @@ const props = defineProps<{
   /** True while card images/prices are still being resolved in the background —
    *  drives shimmer placeholders on the not-yet-ready thumbnails + pips. */
   resolving?: boolean
+  /** A card's copies owned against those the deck needs (members, once the collection is loaded). */
+  ownedOf?: (name: string) => OwnedCount | null
 }>()
 
 const emit = defineEmits<{
@@ -151,6 +154,7 @@ const groups = computed(() => {
             </div>
 
             <span class="min-w-0 flex-1 truncate text-sm text-(--color-text-high)">{{ displayNameOf(entry.name) }}</span>
+            <CollectionOwnedMark v-if="ownedOf?.(entry.name)" :count="ownedOf(entry.name)!" class="transition-opacity group-hover/row:opacity-0" />
             <!-- artwork picked by hand (pinned printing) -->
             <UIcon
               v-if="entry.set && entry.collectorNumber"

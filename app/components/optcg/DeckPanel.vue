@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { OwnedCount } from '#shared/collection'
 import type { DeckEntry } from '#shared/decklist'
 import type { OptcgDeckLine, OptcgDeckStats } from '#shared/optcg/deck'
 import type { OptcgIssue, OptcgValidation } from '#shared/optcg/rules'
@@ -21,6 +22,8 @@ const props = defineProps<{
   lang: 'fr' | 'en'
   /** A shared deck: quantities are shown, never edited. */
   readonly?: boolean
+  /** A card's copies owned against those the deck needs (members, once the collection is loaded). */
+  ownedOf?: (number: string) => OwnedCount | null
 }>()
 
 const emit = defineEmits<{
@@ -119,6 +122,7 @@ function cardTitle(card: OptcgCard | null, entry: DeckEntry): string {
           </p>
           <h3 class="leader-name u-display">
             {{ leader.card.name }}
+            <CollectionOwnedMark v-if="ownedOf?.(leader.entry.name)" :count="ownedOf(leader.entry.name)!" />
           </h3>
           <p class="leader-meta">
             <span
@@ -196,6 +200,7 @@ function cardTitle(card: OptcgCard | null, entry: DeckEntry): string {
               <span v-else class="thumb thumb--empty" />
               <span class="line-name">{{ cardTitle(line.card, line.entry) }}</span>
               <span class="line-num">{{ line.entry.art ?? line.entry.name }}</span>
+              <CollectionOwnedMark v-if="ownedOf?.(line.entry.name)" :count="ownedOf(line.entry.name)!" />
             </button>
             <span v-if="readonly" class="qty qty--ro">×{{ line.entry.quantity }}</span>
             <span v-else class="stepper">

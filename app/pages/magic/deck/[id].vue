@@ -693,6 +693,25 @@ const {
   doExport,
 } = useDeckExport({ resolvedCards, successCards, deckName, lang })
 
+// The deck against the member's collection: a gem per owned row, the share
+// owned in the toolbar, and buying only what is missing.
+const enNameOf = (name: string) => resolvedFor(name)?.card?.name ?? name
+const ownership = useDeckOwnership('mtg', computed(() => buyableEntries.value.map(e => ({ name: enNameOf(e.name), quantity: e.quantity }))))
+const ownedOfEntry = (name: string) => ownership.ownedOf(enNameOf(name))
+const buyMissingOnly = ref(false)
+// Opening the checkout with part of the deck owned starts on what is missing.
+watch(buyOpen, (open) => {
+  if (open)
+    buyMissingOnly.value = (ownership.summary.value?.owned ?? 0) > 0
+})
+const buyCards = computed(() => (buyMissingOnly.value
+  ? ownership.keepMissing(buyableCards.value, rc => rc.card?.name ?? rc.entry.name, rc => rc.entry.quantity, (rc, quantity) => ({ ...rc, entry: { ...rc.entry, quantity } }))
+  : buyableCards.value))
+const buyEntries = computed(() => (buyMissingOnly.value
+  ? ownership.keepMissing(buyableEntries.value, e => enNameOf(e.name), e => e.quantity, (e, quantity) => ({ ...e, quantity }))
+  : buyableEntries.value))
+const buyPrice = computed(() => (buyMissingOnly.value ? priceSummary(buyCards.value) : price.value))
+
 // Buy / checkout (per-card pricing, cost summary, Cardmarket links). See useDeckBuy.
 const {
   buyLang,
@@ -702,7 +721,7 @@ const {
   openAllCardmarket,
   copyWantsList,
   buyWholeDeck,
-} = useDeckBuy({ resolvedCards: buyableCards, allEntries: buyableEntries, price, resolvedFor, locale: lang })
+} = useDeckBuy({ resolvedCards: buyCards, allEntries: buyEntries, price: buyPrice, resolvedFor, locale: lang })
 </script>
 
 <template>
@@ -717,6 +736,8 @@ const {
       :dots="toolbarDots"
       :card-count="deckSize"
       :price-total="price.total"
+      :owned="ownership.summary.value"
+      :collection-to="collectionPath('mtg', '/sets')"
       :logged-in="loggedIn"
       :can-undo="autosave.canUndo.value"
       :can-redo="autosave.canRedo.value"
@@ -748,6 +769,7 @@ const {
             :commander-type="commanderType"
             :commander-colors="themeColors"
             :resolving="fetching"
+            :owned-of="ownedOfEntry"
             :validation="validation"
             :category-by-name="categoryByName"
             :color-by-name="identityByName"
@@ -860,6 +882,8 @@ const {
     <BuilderDeckBuyOverlay
       v-model:open="buyOpen"
       v-model:buy-lang="buyLang"
+      v-model:missing-only="buyMissingOnly"
+      :owned="ownership.summary.value"
       :buy-rows="buyRows"
       :buy-summary="buySummary"
       :loading="resolvedCards.length === 0 && fetching"
