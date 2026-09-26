@@ -1,3 +1,10 @@
+## [0.31.0](https://github.com/Diix46/SpellForge/compare/v0.30.0...v0.31.0) (2026-09-26)
+
+### Features
+
+* **collection:** possession d'un deck calculée depuis la collection ([425fa0c](https://github.com/Diix46/SpellForge/commit/425fa0c20603dd1002225ad1f91b74bc6cfb5eff))
+* **decks:** cartes possédées par ligne, % possédé et achat des seules manquantes ([6e2f352](https://github.com/Diix46/SpellForge/commit/6e2f35284ee5912e4debf4c473074810b9e587c4))
+
 ## [0.30.0](https://github.com/Diix46/SpellForge/compare/v0.29.0...v0.30.0) (2026-09-26)
 
 ### Features
