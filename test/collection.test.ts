@@ -38,6 +38,7 @@ function copy(extra: Partial<CollectionCopy> = {}): CollectionCopy {
     finish: 'nonfoil',
     condition: 'NM',
     quantity: 1,
+    lang: 'en',
     purchasePrice: null,
     location: null,
     note: null,

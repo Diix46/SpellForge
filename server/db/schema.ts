@@ -53,6 +53,10 @@ export const collectionItems = sqliteTable('collection_items', {
   finish: text('finish', { enum: FINISHES }).notNull().default('nonfoil'),
   condition: text('condition', { enum: CONDITIONS }).notNull().default('NM'),
   quantity: integer('quantity').notNull().default(1),
+  // The copy's own language when it is not its printing's: a French copy of a
+  // printing Scryfall only lists in English (a commander deck's reprints).
+  // Empty: the printing's language.
+  lang: text('lang').notNull().default(''),
   // What was paid for one copy, in euros.
   purchasePrice: real('purchase_price'),
   // Binder, box, deck… free text.
@@ -61,7 +65,7 @@ export const collectionItems = sqliteTable('collection_items', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
 }, t => [
-  uniqueIndex('collection_copy_idx').on(t.userId, t.game, t.printingId, t.finish, t.condition),
+  uniqueIndex('collection_copy_idx').on(t.userId, t.game, t.printingId, t.finish, t.condition, t.lang),
   index('collection_user_game_idx').on(t.userId, t.game),
 ])
 

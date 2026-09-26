@@ -23,7 +23,7 @@ const unit = computed(() => unitValue(props.copy.card, props.copy.finish))
       <CollectionSetSymbol v-if="copy.card" :icon="copy.card.setIcon" :rarity="copy.card.rarity" :size="15" />
       <span class="code">{{ copy.card?.set.toUpperCase() }} #{{ copy.card?.number }}</span>
     </span>
-    <span class="tag">{{ copy.card?.lang.toUpperCase() }}</span>
+    <span class="tag">{{ copy.lang.toUpperCase() }}</span>
     <span class="tag" :class="{ shiny: copy.finish !== 'nonfoil' }">{{ t(`collection.finish.${copy.finish}`) }}</span>
     <span class="tag" :title="t(`collection.condition.${copy.condition}`)">{{ copy.condition }}</span>
     <span class="loc">{{ copy.location }}</span>

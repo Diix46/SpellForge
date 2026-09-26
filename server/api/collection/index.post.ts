@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import { MAX_COPIES } from '../../../shared/collection'
 import { requireAppUser } from '../../utils/appUser'
 import { collectionCards } from '../../utils/collection/cards'
-import { copyFields, gameOf, withCards } from '../../utils/collection/copies'
+import { copyFields, gameOf, storedLang, withCards } from '../../utils/collection/copies'
 import { schema, useDb } from '../../utils/db'
 import { genId } from '../../utils/id'
 
@@ -32,11 +32,12 @@ export default defineEventHandler(async (event) => {
     finish: fields.finish!,
     condition: fields.condition!,
     quantity: fields.quantity!,
+    lang: storedLang(fields.lang, card.lang),
     purchasePrice: fields.purchasePrice ?? null,
     location: fields.location ?? null,
     note: fields.note ?? null,
   }).onConflictDoUpdate({
-    target: [t.userId, t.game, t.printingId, t.finish, t.condition],
+    target: [t.userId, t.game, t.printingId, t.finish, t.condition, t.lang],
     set: {
       quantity: sql`min(${t.quantity} + ${fields.quantity!}, ${MAX_COPIES})`,
       updatedAt: new Date(),

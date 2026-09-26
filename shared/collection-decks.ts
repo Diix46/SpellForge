@@ -31,6 +31,8 @@ export interface PreconSummary {
   released: string | null
   cards: number
   commander: string | null
+  /** The commander's name in the site's language (MTGJSON names decks in English only). */
+  commanderLocal: string | null
   setName: string | null
   thumb: string | null
 }

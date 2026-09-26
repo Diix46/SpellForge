@@ -4,12 +4,14 @@ import type { GameId } from '#shared/game'
 import { computed, ref, shallowRef } from 'vue'
 import { parseImport } from '#shared/collection-csv'
 
-export type ImportIssue = 'notFound' | 'otherLang' | 'noLangPrinting' | 'setNotFound' | 'finishChanged'
+export type ImportIssue = 'notFound' | 'otherLang' | 'noLangPrinting' | 'langKept' | 'setNotFound' | 'finishChanged'
 
 /** A file row with the printing the server matched (see server/utils/collection/import.ts). */
 export interface PreviewRow {
   row: ImportRow
   printingId: string | null
+  /** Magic: the copy's language, kept when Scryfall lists no printing in it. */
+  lang: 'fr' | 'en' | null
   finish: Finish
   card: CollectionCard | null
   error: ImportIssue | null
@@ -85,9 +87,11 @@ export function useCollectionImport(game: GameId) {
   }
 
   const importable = computed(() => preview.value.filter(r => r.printingId))
+  /** What deserves a look: a copy's language kept is only information. */
+  const problems = (r: PreviewRow) => r.warnings.filter(w => w !== 'langKept')
   const counts = computed(() => ({
-    ok: importable.value.filter(r => !r.warnings.length).length,
-    warned: importable.value.filter(r => r.warnings.length).length,
+    ok: importable.value.filter(r => !problems(r).length).length,
+    warned: importable.value.filter(r => problems(r).length).length,
     missing: preview.value.length - importable.value.length,
     unreadable: parsed.value?.errors.length ?? 0,
     copies: importable.value.reduce((n, r) => n + r.row.quantity, 0),
@@ -101,6 +105,7 @@ export function useCollectionImport(game: GameId) {
         printingId: r.printingId,
         finish: r.finish,
         condition: r.row.condition,
+        lang: r.lang ?? undefined,
         quantity: r.row.quantity,
         purchasePrice: r.row.purchasePrice,
         location: r.row.location ?? (location.trim() || null),
@@ -146,7 +151,7 @@ export function useCollectionImport(game: GameId) {
     }
   }
 
-  return { step, busy, filename, parsed, preview, importable, counts, result, history, reset, analyze, analyzeRows, commit, loadHistory, undo }
+  return { step, busy, filename, parsed, preview, importable, problems, counts, result, history, reset, analyze, analyzeRows, commit, loadHistory, undo }
 }
 
 /** How each format is named to people. */

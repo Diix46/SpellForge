@@ -53,6 +53,8 @@ export interface CollectionCopy {
   finish: Finish
   condition: Condition
   quantity: number
+  /** The copy's language: its own when set, else its printing's. */
+  lang: 'fr' | 'en'
   purchasePrice: number | null
   location: string | null
   note: string | null

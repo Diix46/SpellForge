@@ -21,7 +21,11 @@ export function copyFields(body: Record<string, unknown>, partial: boolean) {
   const bad = (message: string): never => {
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message })
   }
-  const out: Partial<Pick<CollectionItemRow, 'finish' | 'condition' | 'quantity' | 'purchasePrice' | 'location' | 'note'>> = {}
+  const out: Partial<Pick<CollectionItemRow, 'finish' | 'condition' | 'quantity' | 'purchasePrice' | 'location' | 'note'> & { lang: 'fr' | 'en', printingId: string }> = {}
+  if (body.lang !== undefined && body.lang !== null && body.lang !== '')
+    out.lang = body.lang === 'fr' || body.lang === 'en' ? body.lang : bad('Langue : fr, en')
+  if (partial && typeof body.printingId === 'string' && body.printingId.trim())
+    out.printingId = body.printingId.trim().slice(0, 64)
   if (body.finish !== undefined || !partial)
     out.finish = body.finish === undefined ? 'nonfoil' : isFinish(body.finish) ? body.finish : bad(`Finition : ${FINISHES.join(', ')}`)
   if (body.condition !== undefined || !partial)
@@ -67,6 +71,7 @@ export async function withCards(rows: readonly CollectionItemRow[]): Promise<Col
     finish: r.finish,
     condition: r.condition,
     quantity: r.quantity,
+    lang: (r.lang || cards.get(r.game)?.get(r.printingId)?.lang || 'en') as 'fr' | 'en',
     purchasePrice: r.purchasePrice,
     location: r.location,
     note: r.note,
@@ -77,6 +82,15 @@ export async function withCards(rows: readonly CollectionItemRow[]): Promise<Col
 }
 
 type CopyFields = ReturnType<typeof copyFields>
+
+/**
+ * What the row stores for a copy's language: nothing when it is its
+ * printing's own, else the language (a French copy of a printing Scryfall
+ * only lists in English).
+ */
+export function storedLang(lang: 'fr' | 'en' | undefined, printingLang: string | undefined): string {
+  return lang && lang !== printingLang ? lang : ''
+}
 
 /**
  * Edit a copy line. Quantity 0 removes it. A new finish or condition that
@@ -90,20 +104,29 @@ export async function editCopy(row: CollectionItemRow, fields: CopyFields): Prom
     await db.delete(t).where(eq(t.id, row.id))
     return { row: null, removed: row.id }
   }
-  const finish = fields.finish ?? row.finish
-  if (fields.finish && fields.finish !== row.finish) {
-    const card = (await collectionCards(row.game, [row.printingId])).get(row.printingId)
-    if (card && !card.finishes.includes(finish))
+  // Another printing of the card (the wrong set was picked): it must exist,
+  // and the copy keeps its finish when that printing has it.
+  const printingId = fields.printingId ?? row.printingId
+  const card = (await collectionCards(row.game, [printingId])).get(printingId)
+  if (fields.printingId && !card)
+    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Impression inconnue' })
+  let finish = fields.finish ?? row.finish
+  if (card && !card.finishes.includes(finish)) {
+    if (fields.finish)
       throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Cette impression n\'existe pas dans cette finition' })
+    finish = card.finishes[0] ?? 'nonfoil'
   }
+  // A new printing drops an override that became its own language.
+  const lang = fields.lang !== undefined || fields.printingId ? storedLang(fields.lang ?? ((row.lang || undefined) as 'fr' | 'en' | undefined), card?.lang) : row.lang
   const condition = fields.condition ?? row.condition
-  const twin = (finish !== row.finish || condition !== row.condition)
+  const twin = (printingId !== row.printingId || finish !== row.finish || condition !== row.condition || lang !== row.lang)
     ? await db.select().from(t).where(and(
         eq(t.userId, row.userId),
         eq(t.game, row.game),
-        eq(t.printingId, row.printingId),
+        eq(t.printingId, printingId),
         eq(t.finish, finish),
         eq(t.condition, condition),
+        eq(t.lang, lang),
         ne(t.id, row.id),
       )).get()
     : undefined
@@ -115,6 +138,6 @@ export async function editCopy(row: CollectionItemRow, fields: CopyFields): Prom
     await db.delete(t).where(eq(t.id, row.id))
     return { row: merged!, removed: row.id }
   }
-  const [updated] = await db.update(t).set({ ...fields, finish, condition, updatedAt: new Date() }).where(eq(t.id, row.id)).returning()
+  const [updated] = await db.update(t).set({ ...fields, printingId, finish, condition, lang, updatedAt: new Date() }).where(eq(t.id, row.id)).returning()
   return { row: updated! }
 }
