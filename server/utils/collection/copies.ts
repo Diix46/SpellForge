@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import type { CollectionCopy } from '../../../shared/collection'
 import type { GameId } from '../../../shared/game'
 import type { CollectionItemRow } from '../../db/schema'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, ne } from 'drizzle-orm'
 import { CONDITIONS, FINISHES, isCondition, isFinish, MAX_COPIES } from '../../../shared/collection'
 import { parseGameId } from '../../../shared/game'
 import { requireAppUser } from '../appUser'
@@ -74,4 +74,47 @@ export async function withCards(rows: readonly CollectionItemRow[]): Promise<Col
     updatedAt: r.updatedAt.getTime(),
     card: cards.get(r.game)?.get(r.printingId) ?? null,
   }))
+}
+
+type CopyFields = ReturnType<typeof copyFields>
+
+/**
+ * Edit a copy line. Quantity 0 removes it. A new finish or condition that
+ * another line of the same printing already has merges the two.
+ * `removed`: the line id gone (deleted, or merged into `row`).
+ */
+export async function editCopy(row: CollectionItemRow, fields: CopyFields): Promise<{ row: CollectionItemRow | null, removed?: string }> {
+  const db = useDb()
+  const t = schema.collectionItems
+  if (fields.quantity === 0) {
+    await db.delete(t).where(eq(t.id, row.id))
+    return { row: null, removed: row.id }
+  }
+  const finish = fields.finish ?? row.finish
+  if (fields.finish && fields.finish !== row.finish) {
+    const card = (await collectionCards(row.game, [row.printingId])).get(row.printingId)
+    if (card && !card.finishes.includes(finish))
+      throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Cette impression n\'existe pas dans cette finition' })
+  }
+  const condition = fields.condition ?? row.condition
+  const twin = (finish !== row.finish || condition !== row.condition)
+    ? await db.select().from(t).where(and(
+        eq(t.userId, row.userId),
+        eq(t.game, row.game),
+        eq(t.printingId, row.printingId),
+        eq(t.finish, finish),
+        eq(t.condition, condition),
+        ne(t.id, row.id),
+      )).get()
+    : undefined
+  if (twin) {
+    const [merged] = await db.update(t).set({
+      quantity: Math.min(twin.quantity + (fields.quantity ?? row.quantity), MAX_COPIES),
+      updatedAt: new Date(),
+    }).where(eq(t.id, twin.id)).returning()
+    await db.delete(t).where(eq(t.id, row.id))
+    return { row: merged!, removed: row.id }
+  }
+  const [updated] = await db.update(t).set({ ...fields, finish, condition, updatedAt: new Date() }).where(eq(t.id, row.id)).returning()
+  return { row: updated! }
 }

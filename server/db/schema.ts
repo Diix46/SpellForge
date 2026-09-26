@@ -65,6 +65,23 @@ export const collectionItems = sqliteTable('collection_items', {
   index('collection_user_game_idx').on(t.userId, t.game),
 ])
 
+// One import of a file into a collection, kept so it can be undone: what it
+// added, line by line (JSON of ImportedItem[]).
+export const collectionImports = sqliteTable('collection_imports', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  game: text('game', { enum: ['mtg', 'optcg'] }).notNull(),
+  format: text('format').notNull(),
+  filename: text('filename'),
+  lines: integer('lines').notNull(),
+  copies: integer('copies').notNull(),
+  items: text('items').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
+}, t => [
+  index('collection_imports_user_idx').on(t.userId, t.game, t.createdAt),
+])
+
 export type UserRow = typeof users.$inferSelect
 export type DeckRow = typeof decks.$inferSelect
 export type CollectionItemRow = typeof collectionItems.$inferSelect
+export type CollectionImportRow = typeof collectionImports.$inferSelect

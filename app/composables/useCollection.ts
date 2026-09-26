@@ -118,6 +118,27 @@ export function useCollection(game: GameId) {
     }
   }
 
+  /**
+   * Several lines at once: removed, or given a condition or a location. The
+   * server may merge lines (a condition another line has), so the collection
+   * is read again after.
+   */
+  async function bulk(ids: string[], change: { action: 'delete' } | { action: 'edit', fields: { condition?: Condition, location?: string | null } }): Promise<boolean> {
+    const before = copies.value
+    if (change.action === 'delete')
+      copies.value = before.filter(c => !ids.includes(c.id))
+    try {
+      await $fetch('/api/collection/bulk', { method: 'POST', body: { ids, ...change } })
+      await load(true)
+      return true
+    }
+    catch (e) {
+      copies.value = before
+      toast.add({ title: message(e), color: 'error', icon: 'i-lucide-circle-alert' })
+      return false
+    }
+  }
+
   /** Copies owned of each printing, all finishes and conditions together. */
   const ownedByPrinting = computed(() => {
     const m = new Map<string, number>()
@@ -126,5 +147,5 @@ export function useCollection(game: GameId) {
     return m
   })
 
-  return { copies, loaded, loading, error, summary, ownedByPrinting, load, add, update, remove }
+  return { copies, loaded, loading, error, summary, ownedByPrinting, load, add, update, remove, bulk }
 }

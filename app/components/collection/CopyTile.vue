@@ -5,7 +5,8 @@ import { unitValue } from '#shared/collection'
 
 // One copy line in the grid: the card, how many, its finish (a foil shimmers),
 // condition and set, and what it is worth.
-const props = defineProps<{ copy: CollectionCopy, name: string }>()
+// While picking several lines, `selected` says whether this one is.
+const props = defineProps<{ copy: CollectionCopy, name: string, selected?: boolean | null }>()
 defineEmits<{ open: [copy: CollectionCopy] }>()
 
 const { t, locale } = useLocale()
@@ -17,8 +18,9 @@ const shiny = computed(() => props.copy.finish !== 'nonfoil')
 </script>
 
 <template>
-  <button type="button" class="tile" :aria-label="`${name}, ×${copy.quantity}`" @click="$emit('open', copy)">
+  <button type="button" class="tile" :class="{ 'is-selected': selected }" :aria-label="`${name}, ×${copy.quantity}`" :aria-pressed="selected ?? undefined" @click="$emit('open', copy)">
     <span class="art" :class="{ shiny, etched: copy.finish === 'etched' }">
+      <span v-if="selected != null" class="pick" aria-hidden="true"><UIcon v-if="selected" name="i-lucide-check" class="h-3.5 w-3.5" /></span>
       <img v-if="copy.card" :src="copy.card.thumb" :alt="name" loading="lazy" decoding="async">
       <span v-else class="missing">{{ t('collection.unknownCard') }}</span>
       <span v-if="copy.quantity > 1" class="qty">×{{ copy.quantity }}</span>
@@ -180,5 +182,28 @@ const shiny = computed(() => props.copy.finish !== 'nonfoil')
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--accent-text);
+}
+.pick {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  left: 7px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: rgba(10, 10, 14, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+.is-selected .pick {
+  border-color: var(--ui-primary);
+  background: var(--ui-primary);
+}
+.is-selected .art {
+  outline: 3px solid var(--ui-primary);
+  outline-offset: 2px;
 }
 </style>

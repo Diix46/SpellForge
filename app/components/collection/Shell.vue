@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { ExportFormat } from '#shared/collection-csv'
 import type { GameId } from '#shared/game'
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { exportCollection } from '#shared/collection-csv'
 
 // Around every collection page: the title, the tabs (copies, sets), the add
 // button and its dialog; guests are asked to sign in instead.
@@ -21,6 +23,28 @@ watch(loggedIn, (v) => {
     void collection.load(true)
 })
 
+const importing = ref(false)
+
+/** The whole collection of this game as a file, saved by the browser. */
+function download(format: ExportFormat) {
+  const text = exportCollection(collection.copies.value, format)
+  const ext = format === 'text' ? 'txt' : 'csv'
+  // A BOM, so a spreadsheet opens the accents right.
+  const blob = new Blob([format === 'text' ? text : `\uFEFF${text}`], { type: format === 'text' ? 'text/plain' : 'text/csv' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `prism-${props.game === 'mtg' ? 'magic' : 'one-piece'}-${format}-${new Date().toISOString().slice(0, 10)}.${ext}`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+const exportItems = computed(() => [
+  (props.game === 'mtg' ? ['prism', 'manabox', 'moxfield', 'text'] as const : ['prism', 'text'] as const).map(f => ({
+    label: t(`collection.export.${f}`),
+    icon: f === 'text' ? 'i-lucide-file-text' : 'i-lucide-file-spreadsheet',
+    onSelect: () => download(f),
+  })),
+])
+
 const tabs = [
   { to: collectionPath(props.game), label: 'collection.tabCopies', icon: 'i-lucide-layers', exact: true },
   { to: collectionPath(props.game, '/sets'), label: 'collection.tabSets', icon: 'i-lucide-library-big', exact: false },
@@ -38,9 +62,19 @@ const tabs = [
           {{ t(`collection.subtitle.${game}`) }}
         </p>
       </div>
-      <UButton v-if="loggedIn" icon="i-lucide-plus" size="lg" @click="openAdd()">
-        {{ t('collection.add') }}
-      </UButton>
+      <div v-if="loggedIn" class="actions">
+        <UButton color="neutral" variant="subtle" icon="i-lucide-upload" @click="importing = true">
+          {{ t('collection.import.button') }}
+        </UButton>
+        <UDropdownMenu :items="exportItems" :content="{ align: 'end' }">
+          <UButton color="neutral" variant="subtle" icon="i-lucide-download" trailing-icon="i-lucide-chevron-down" :disabled="!collection.copies.value.length">
+            {{ t('collection.export.button') }}
+          </UButton>
+        </UDropdownMenu>
+        <UButton icon="i-lucide-plus" size="lg" @click="openAdd()">
+          {{ t('collection.add') }}
+        </UButton>
+      </div>
     </header>
 
     <section v-if="!loggedIn" class="panel center">
@@ -66,6 +100,7 @@ const tabs = [
         </NuxtLink>
       </nav>
       <slot />
+      <CollectionImportDialog v-model:open="importing" :game="game" />
       <CollectionAddDialog v-model:open="add.open" :game="game" :initial-query="add.query" :initial-printing="add.printing" />
     </template>
   </div>
@@ -96,6 +131,12 @@ const tabs = [
   max-width: 62ch;
   font-size: 14px;
   color: var(--color-text-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 .tabs {
   display: flex;
