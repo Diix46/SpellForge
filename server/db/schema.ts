@@ -107,7 +107,27 @@ export const collectionPrices = sqliteTable('collection_prices', {
   index('collection_prices_day_idx').on(t.day),
 ])
 
+// Cards a member is after: a printing (or any printing of the card), how many,
+// and the price under which to buy.
+export const wishlistItems = sqliteTable('wishlist_items', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  game: text('game', { enum: ['mtg', 'optcg'] }).notNull(),
+  // The printing picked; with anyPrinting, just the card's face.
+  printingId: text('printing_id').notNull(),
+  anyPrinting: integer('any_printing', { mode: 'boolean' }).notNull().default(true),
+  finish: text('finish', { enum: FINISHES }).notNull().default('nonfoil'),
+  quantity: integer('quantity').notNull().default(1),
+  // Euros, for one copy.
+  targetPrice: real('target_price'),
+  note: text('note'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
+}, t => [
+  uniqueIndex('wishlist_card_idx').on(t.userId, t.game, t.printingId, t.finish),
+])
+
 export type UserRow = typeof users.$inferSelect
 export type DeckRow = typeof decks.$inferSelect
 export type CollectionItemRow = typeof collectionItems.$inferSelect
 export type CollectionImportRow = typeof collectionImports.$inferSelect
+export type WishlistItemRow = typeof wishlistItems.$inferSelect
