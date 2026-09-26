@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CollectionCopy } from '#shared/collection'
+import type { CollectionCopy, Condition } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import type { CopyEdit } from '~/composables/useCollection'
 import { computed, ref } from 'vue'
@@ -17,9 +17,44 @@ const view = useCollectionView(collection.copies, lang)
 const { openAdd } = useCollectionAdd()
 const editing = ref<CollectionCopy | null>(null)
 const sheetOpen = ref(false)
+// Picking several lines for one action (bulk bar).
+const selecting = ref(false)
+const picked = ref(new Set<string>())
+function toggle(id: string) {
+  const next = new Set(picked.value)
+  if (!next.delete(id))
+    next.add(id)
+  picked.value = next
+}
 function edit(copy: CollectionCopy) {
+  if (selecting.value) {
+    toggle(copy.id)
+    return
+  }
   editing.value = copy
   sheetOpen.value = true
+}
+
+function stopSelecting() {
+  selecting.value = false
+  picked.value = new Set()
+}
+const pickedCopies = computed(() => collection.copies.value.filter(c => picked.value.has(c.id)).reduce((n, c) => n + c.quantity, 0))
+const pickedIds = () => [...picked.value]
+async function bulkCondition(condition: Condition) {
+  if (await collection.bulk(pickedIds(), { action: 'edit', fields: { condition } }))
+    stopSelecting()
+}
+async function bulkLocation(location: string | null) {
+  if (await collection.bulk(pickedIds(), { action: 'edit', fields: { location } }))
+    stopSelecting()
+}
+async function bulkRemove() {
+  const n = picked.value.size
+  if (await collection.bulk(pickedIds(), { action: 'delete' })) {
+    toast.add({ title: t('collection.bulk.removed').replace('{n}', String(n)), color: 'neutral', icon: 'i-lucide-trash-2' })
+    stopSelecting()
+  }
 }
 async function save(id: string, change: CopyEdit) {
   await collection.update(id, change)
@@ -77,6 +112,9 @@ const sortItems = computed(() => [
       <section class="content">
         <div class="toolbar">
           <span class="shown">{{ t('collection.shown').replace('{n}', String(view.shown.value.length)) }}</span>
+          <UButton :color="selecting ? 'primary' : 'neutral'" :variant="selecting ? 'soft' : 'ghost'" icon="i-lucide-list-checks" size="sm" @click="selecting ? stopSelecting() : (selecting = true)">
+            {{ t('collection.bulk.select') }}
+          </UButton>
           <USelect v-model="view.filters.sort" :items="sortItems" icon="i-lucide-arrow-down-wide-narrow" class="w-48" :aria-label="t('discover.sort')" />
           <div class="seg" role="group">
             <button type="button" :aria-pressed="view.filters.view === 'grid'" :aria-label="t('collection.viewGrid')" :title="t('collection.viewGrid')" @click="view.filters.view = 'grid'">
@@ -92,11 +130,23 @@ const sortItems = computed(() => [
           {{ t('collection.noMatch') }}
         </p>
         <div v-else-if="view.filters.view === 'grid'" class="grid">
-          <CollectionCopyTile v-for="c in view.shown.value" :key="c.id" :copy="c" :name="view.nameOf(c)" @open="edit" />
+          <CollectionCopyTile v-for="c in view.shown.value" :key="c.id" :copy="c" :name="view.nameOf(c)" :selected="selecting ? picked.has(c.id) : null" @open="edit" />
         </div>
         <div v-else class="list">
-          <CollectionCopyRow v-for="c in view.shown.value" :key="c.id" :copy="c" :name="view.nameOf(c)" @open="edit" @quantity="quantity" />
+          <CollectionCopyRow v-for="c in view.shown.value" :key="c.id" :copy="c" :name="view.nameOf(c)" :selected="selecting ? picked.has(c.id) : null" @open="edit" @quantity="quantity" />
         </div>
+        <CollectionBulkBar
+          v-if="selecting"
+          :count="picked.size"
+          :total="view.shown.value.length"
+          :copies="pickedCopies"
+          @all="picked = new Set(view.shown.value.map(c => c.id))"
+          @none="picked = new Set()"
+          @condition="bulkCondition"
+          @location="bulkLocation"
+          @remove="bulkRemove"
+          @close="stopSelecting"
+        />
       </section>
     </div>
 

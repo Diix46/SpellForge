@@ -4,7 +4,8 @@ import { computed } from 'vue'
 import { MAX_COPIES, unitValue } from '#shared/collection'
 
 // One copy line in the list: everything at a glance, the quantity steps in place.
-const props = defineProps<{ copy: CollectionCopy, name: string }>()
+// While picking several lines, `selected` says whether this one is.
+const props = defineProps<{ copy: CollectionCopy, name: string, selected?: boolean | null }>()
 const emit = defineEmits<{ open: [copy: CollectionCopy], quantity: [copy: CollectionCopy, quantity: number] }>()
 
 const { t, locale } = useLocale()
@@ -13,8 +14,9 @@ const unit = computed(() => unitValue(props.copy.card, props.copy.finish))
 </script>
 
 <template>
-  <div class="row" role="button" tabindex="0" @click="emit('open', copy)" @keydown.enter.self="emit('open', copy)">
-    <img v-if="copy.card" :src="copy.card.thumb" alt="" class="thumb" loading="lazy">
+  <div class="row" :class="{ 'is-selected': selected }" role="button" tabindex="0" :aria-pressed="selected ?? undefined" @click="emit('open', copy)" @keydown.enter.self="emit('open', copy)">
+    <span v-if="selected != null" class="thumb pick" aria-hidden="true"><UIcon v-if="selected" name="i-lucide-check" class="h-4 w-4" /></span>
+    <img v-else-if="copy.card" :src="copy.card.thumb" alt="" class="thumb" loading="lazy">
     <span v-else class="thumb" />
     <span class="name">{{ name }}</span>
     <span class="set">
@@ -141,5 +143,20 @@ const unit = computed(() => unitValue(props.copy.card, props.copy.finish))
   .loc {
     display: none;
   }
+}
+.pick {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 6px;
+  color: #fff;
+}
+.is-selected {
+  background: var(--accent-soft);
+}
+.is-selected .pick {
+  border-color: var(--ui-primary);
+  background: var(--ui-primary);
 }
 </style>
