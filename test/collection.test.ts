@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { setIconPath } from '../server/utils/cards/mtg-shape'
 import { collectionCards } from '../server/utils/collection/cards'
 import { optcgSetOrder, setChecklist, setProgress } from '../server/utils/collection/sets'
-import { completion, isCondition, isFinish, optcgPrintingId, parseOptcgPrintingId, setKind, summarize, unitValue } from '../shared/collection'
+import { completion, deckOwnership, isCondition, isFinish, optcgPrintingId, ownershipKey, parseOptcgPrintingId, setKind, summarize, unitValue } from '../shared/collection'
 
 function card(extra: Partial<CollectionCard> = {}): CollectionCard {
   return {
@@ -78,6 +78,22 @@ describe('collection fields', () => {
     expect(optcgPrintingId('fr', 'OP01-016_p1')).toBe('fr:OP01-016_p1')
     expect(parseOptcgPrintingId('fr:OP01-016_p1')).toEqual({ lang: 'fr', artId: 'OP01-016_p1' })
     expect(parseOptcgPrintingId('OP01-016')).toBeNull()
+  })
+})
+
+describe('a deck against the collection', () => {
+  it('matches Magic by front-face name and One Piece by number', () => {
+    expect(ownershipKey('mtg', ' Delver of Secrets // Insectile Aberration')).toBe('delver of secrets')
+    expect(ownershipKey('optcg', 'op01-016')).toBe('OP01-016')
+  })
+
+  it('counts owned copies up to what the deck needs', () => {
+    const have = new Map([['sol ring', 3], ['island', 4]])
+    const r = deckOwnership([{ key: 'sol ring', quantity: 1 }, { key: 'island', quantity: 10 }, { key: 'blood moon', quantity: 1 }, { key: 'island', quantity: 2 }], have)
+    expect(r.byKey.get('sol ring')).toEqual({ need: 1, have: 1 })
+    expect(r.byKey.get('island')).toEqual({ need: 12, have: 4 })
+    expect(r.byKey.get('blood moon')).toEqual({ need: 1, have: 0 })
+    expect({ owned: r.owned, total: r.total }).toEqual({ owned: 5, total: 14 })
   })
 })
 
