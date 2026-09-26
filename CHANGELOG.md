@@ -1,3 +1,9 @@
+## [0.41.0](https://github.com/Diix46/SpellForge/compare/v0.40.0...v0.41.0) (2026-09-26)
+
+### Features
+
+* **collection:** trouver un classeur — la caméra vole jusqu'à lui, il s'illumine ([ada9bb9](https://github.com/Diix46/SpellForge/commit/ada9bb9da0c11a0b4a5b8e3aa66546ccb25f5f9b))
+
 ## [0.40.0](https://github.com/Diix46/SpellForge/compare/v0.39.0...v0.40.0) (2026-09-26)
 
 ### Features
