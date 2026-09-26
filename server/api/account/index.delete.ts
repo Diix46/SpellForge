@@ -13,6 +13,7 @@ export default defineEventHandler(async (event) => {
   await db.batch([
     db.delete(schema.collectionItems).where(eq(schema.collectionItems.userId, user.id)),
     db.delete(schema.collectionImports).where(eq(schema.collectionImports.userId, user.id)),
+    db.delete(schema.collectionSnapshots).where(eq(schema.collectionSnapshots.userId, user.id)),
     db.delete(schema.decks).where(eq(schema.decks.userId, user.id)),
     db.delete(schema.users).where(eq(schema.users.id, user.id)),
   ])

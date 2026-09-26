@@ -80,9 +80,11 @@ export default defineNuxtConfig({
   nitro: {
     // Gzip and Brotli copies of the built assets, served to browsers that take them.
     compressPublicAssets: true,
-    // The card databases refresh every night (server/tasks/cards/refresh.ts).
+    // The card databases refresh every night (server/tasks/cards/refresh.ts),
+    // then every collection takes its reading of the day with the new prices
+    // (server/tasks/collection/snapshot.ts).
     experimental: { tasks: true },
-    scheduledTasks: { '30 4 * * *': ['cards:refresh'] },
+    scheduledTasks: { '30 4 * * *': ['cards:refresh'], '30 6 * * *': ['collection:snapshot'] },
     storage: {
       cache: { driver: 'fs', base: './.data/cache' },
     },
