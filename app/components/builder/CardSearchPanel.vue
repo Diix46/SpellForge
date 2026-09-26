@@ -18,7 +18,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  add: [card: ScryfallCard]
+  add: [card: ScryfallCard, from: HTMLElement | null]
   remove: [card: ScryfallCard]
   details: [card: ScryfallCard]
   /** A deck card was dropped onto the search panel → remove it from the deck. */
@@ -178,7 +178,7 @@ onMounted(() => {
           :key="card.id"
           :card="card"
           :in-deck="inDeck.has(card.name.toLowerCase())"
-          @add="emit('add', $event)"
+          @add="(card, from) => emit('add', card, from)"
           @remove="emit('remove', $event)"
           @details="emit('details', $event)"
         />

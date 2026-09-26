@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { MANA_GLYPH } from '#shared/mtg/mana-glyphs'
+import { MANA_GLYPH, MANA_PIP } from '#shared/mtg/mana-glyphs'
 
 // One Magic mana/cost symbol, as printed on the cards: the Mana font's glyph
 // (sun, drop, skull, flame, tree, tap arrow…) in black on the symbol's pip.
@@ -12,14 +12,7 @@ const props = defineProps<{
   size?: number
 }>()
 
-// The pips' colours as printed (the recomposed cards use the same).
-const PIP: Record<string, string> = {
-  w: '#f8f6d8',
-  u: '#c1d7e9',
-  b: '#bab1ab',
-  r: '#e49977',
-  g: '#a3c095',
-}
+const PIP = MANA_PIP
 // Generic and colorless: a shade darker than print, or it vanishes on the light page.
 const GENERIC = '#b3aca3'
 

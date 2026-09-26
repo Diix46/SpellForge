@@ -269,12 +269,16 @@ async function addAssociatedTokens(card: ScryfallCard) {
     })
   }
 }
-function addSearchCard(card: ScryfallCard) {
+// The gestures of an add, a commander, a finished deck (useMtgFx).
+const fx = useMtgFx()
+function addSearchCard(card: ScryfallCard, from: HTMLElement | null = null) {
   if (!isWithinIdentity(card)) {
     toast.add({ title: t('toast.outOfIdentity'), description: card.name, color: 'warning', icon: 'i-lucide-shield-alert' })
     return
   }
   builderOp(() => builder.addScryfallCard(card))
+  fx.spray(from, card.color_identity ?? [])
+  void fx.deal(card.name, getImageUris(card)?.normal ?? null, from)
   toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
   addAssociatedTokens(card)
 }
@@ -318,6 +322,7 @@ async function onDropAdd(name: string) {
     return
   }
   builderOp(() => builder.addCard(name))
+  void fx.deal(name, null, null)
   toast.add({ title: t('toast.added'), description: name, color: 'success', icon: 'i-lucide-plus' })
 }
 // Drop a DECK card onto the search panel → remove it.
@@ -337,6 +342,8 @@ function chooseCommander(name: string) {
   // survives edits above it, a reload and a deck switch.
   builderOp(() => builder.setCommander(name))
   page.value = 1
+  fx.crowned()
+  toast.add({ title: t('toast.commanderSet'), description: name, color: 'success', icon: 'i-lucide-crown' })
 }
 
 // Card detail modal
@@ -452,6 +459,12 @@ const tokenCount = computed(() => builder.entries.value
   .filter(e => tokenNames.value.has(e.name.trim().toLowerCase()))
   .reduce((n, e) => n + e.quantity, 0))
 const deckSize = computed(() => cardCount.value - tokenCount.value)
+// The hundredth card, added by hand (not a deck opened or imported whole).
+watch(deckSize, (now, before) => {
+  // Once the dealt card has landed (useMtgFx.deal takes 620 ms).
+  if (now === 100 && before >= 90 && before < 100)
+    setTimeout(() => fx.complete(t('mtg.fx.complete')), 640)
+})
 const buyableCards = computed(() => resolvedCards.value.filter(rc => !tokenNames.value.has(rc.entry.name.trim().toLowerCase())))
 const buyableEntries = computed(() => allEntries.value.filter(e => !tokenNames.value.has(e.name.trim().toLowerCase())))
 
@@ -612,7 +625,6 @@ watch([previewOpen, buyOpen], ([p, b]) => {
 function setCommander(card: ResolvedCard) {
   const name = card.card?.name ?? card.entry.name
   chooseCommander(name)
-  toast.add({ title: t('toast.commanderSet'), description: name, icon: 'i-lucide-crown', color: 'success' })
 }
 
 // Artworks: a pick in the detail view (the modal stays open, the toast undoes),

@@ -132,7 +132,8 @@ function issueText(issue: ValidationIssue): string {
         {{ t('build.deckTitle') }}
       </h3>
       <span
-        class="rounded-full px-2.5 py-0.5 font-mono text-sm font-semibold"
+        data-deck-count
+        class="inline-block rounded-full px-2.5 py-0.5 font-mono text-sm font-semibold"
         :class="total === 100 ? 'text-(--color-success)' : 'text-(--accent-text)'"
       >
         {{ total }} / 100
@@ -143,6 +144,7 @@ function issueText(issue: ValidationIssue): string {
          is immediately identifiable instead of lost among the créatures. -->
     <button
       v-if="hasCommander"
+      data-deck-commander
       type="button"
       class="group/cmd accent-border-c mb-2 flex w-full shrink-0 items-center gap-2.5 rounded-[var(--radius-lg)] accent-soft-bg p-2 text-left ring-1 transition-colors hover:bg-[rgba(var(--accent-rgb),0.18)]"
       @click="emit('showCommander')"
@@ -232,7 +234,7 @@ function issueText(issue: ValidationIssue): string {
             >
               <div class="flex h-8 w-full items-end overflow-hidden rounded bg-(--color-surface-2)/50">
                 <div
-                  class="w-full rounded transition-all"
+                  class="bar w-full rounded"
                   :style="{
                     height: `${(barCount(c) / distribution.max) * 100}%`,
                     background: c === 'c' ? 'var(--color-ink-500)' : colorVar(c as 'w'),
@@ -258,7 +260,7 @@ function issueText(issue: ValidationIssue): string {
             >
               <div class="flex h-8 w-full items-end overflow-hidden rounded bg-(--color-surface-2)/50">
                 <div
-                  class="w-full rounded transition-all"
+                  class="bar w-full rounded"
                   :style="{
                     height: `${(n / curve.max) * 100}%`,
                     background: 'var(--accent)',
@@ -336,6 +338,10 @@ function issueText(issue: ValidationIssue): string {
 </template>
 
 <style scoped>
+/* The stats bars grow with a spring, as the One Piece curve does. */
+.bar {
+  transition: height var(--dur-slow) var(--ease-spring);
+}
 /* ---- Drag & drop ---- */
 /* The panel becomes a drop target when a search card is dragged here (to add). */
 .dnd-drop-active {

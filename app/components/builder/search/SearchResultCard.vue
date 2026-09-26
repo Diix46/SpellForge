@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ScryfallCard } from '~/composables/useScryfall'
-import { computed } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { useCardDnd } from '~/composables/useCardDnd'
 import { useLocale } from '~/composables/useLocale'
 import { displayName } from '~/composables/useMtg'
@@ -17,7 +17,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  add: [card: ScryfallCard]
+  /** `from`: the card on screen, where the add gesture starts (useMtgFx). */
+  add: [card: ScryfallCard, from: HTMLElement | null]
   remove: [card: ScryfallCard]
   details: [card: ScryfallCard]
 }>()
@@ -28,10 +29,12 @@ const { startDrag, endDrag } = useCardDnd()
 const name = computed(() => displayName(props.card, isFr.value))
 const image = computed(() => getImageUris(props.card)?.normal ?? null)
 const price = computed(() => props.card.prices?.eur ? `${props.card.prices.eur} €` : '')
+const root = useTemplateRef<HTMLElement>('root')
 </script>
 
 <template>
   <div
+    ref="root"
     v-tilt="{ max: 12, scale: 1.06 }"
     class="dnd-draggable group relative overflow-hidden rounded-[var(--radius-md)]"
     draggable="true"
@@ -68,7 +71,7 @@ const price = computed(() => props.card.prices?.eur ? `${props.card.prices.eur} 
         class="add-toggle pointer-events-auto flex flex-1 items-center justify-center gap-1 rounded-[var(--radius-sm)] py-1 text-xs font-semibold text-(--color-bg-base)"
         :class="{ 'is-in-deck': inDeck }"
         :aria-label="`${inDeck ? t('build.removeFromDeck') : t('build.add')}, ${name}${price ? ` (${price})` : ''}`"
-        @click="inDeck ? emit('remove', card) : emit('add', card)"
+        @click="inDeck ? emit('remove', card) : emit('add', card, root)"
       >
         <UIcon v-if="!inDeck" name="i-lucide-plus" class="h-3.5 w-3.5" />
         <template v-else>
