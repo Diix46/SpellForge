@@ -341,6 +341,10 @@ function onKey(e: KeyboardEvent) {
 .library {
   position: relative;
   overflow: hidden;
+  /* The page's centrepiece: out of the content column, the width of the
+     screen (a 16px margin each side). */
+  width: calc(100vw - 32px);
+  margin-left: calc(50% - 50vw + 16px);
   border-radius: var(--radius-xl);
   outline: none;
   box-shadow:
@@ -359,7 +363,7 @@ function onKey(e: KeyboardEvent) {
     inset 0 0 80px rgba(0, 0, 0, 0.55);
 }
 .stage {
-  height: clamp(380px, 62vh, 680px);
+  height: clamp(420px, calc(100svh - 110px), 1100px);
   touch-action: pan-y;
 }
 .stage :deep(canvas) {
@@ -457,8 +461,11 @@ function onKey(e: KeyboardEvent) {
   padding: 3px 12px;
   border-radius: 999px;
   background: rgba(20, 14, 10, 0.55);
+  overflow: hidden;
+  max-width: calc(100% - 140px);
   font-size: 12px;
   white-space: nowrap;
+  text-overflow: ellipsis;
   color: rgba(255, 240, 220, 0.85);
   transform: translateX(-50%);
   pointer-events: none;

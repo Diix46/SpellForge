@@ -85,6 +85,11 @@ export class Library {
   private camTargetX = 0
   private camZ = 8
   private camY = 3
+  // Zoom (1: the whole bookcase) and the view's vertical offset when zoomed.
+  private zoom = 1
+  private zoomTarget = 1
+  private offY = 0
+  private offYTarget = 0
   private parallax = { x: 0, y: 0, tx: 0, ty: 0 }
   private hovered: Placed | null = null
   private raf = 0
@@ -93,7 +98,7 @@ export class Library {
   private shadowDirty = true
   private visible = true
   private opening: { p: Placed, t0: number, rig: Three.Group, cover: Three.Object3D, done: boolean } | null = null
-  private drag: { x: number, camX: number, moved: boolean, pointer: string } | null = null
+  private drag: { x: number, y: number, camX: number, offY: number, moved: boolean, pointer: string } | null = null
   private readonly io: IntersectionObserver
   private readonly ro: ResizeObserver
   /** Draw calls of the last frame, frames drawn since the start (measures). */
@@ -139,6 +144,7 @@ export class Library {
     canvas.addEventListener('pointerup', this.onUp)
     canvas.addEventListener('pointerleave', this.onLeave)
     canvas.addEventListener('wheel', this.onWheel, { passive: false })
+    canvas.addEventListener('dblclick', this.onDblClick)
     document.addEventListener('visibilitychange', this.onVisibility)
   }
 
@@ -191,7 +197,7 @@ export class Library {
 
       // The binders: one instanced mesh for the bodies, one for the spines.
       const count = bookcase.rows.reduce((n, r) => n + r.binders.length, 0)
-      const atlas = new SpineAtlas(THREE, Math.max(1, count), high ? 128 : 80, high ? 512 : 320)
+      const atlas = new SpineAtlas(THREE, Math.max(1, count), high ? 192 : 112, high ? 768 : 448)
       const spineMat = new THREE.MeshStandardMaterial({ map: atlas.texture, roughness: 0.55 })
       // Each instance reads its own cell of the atlas.
       spineMat.onBeforeCompile = (shader) => {
@@ -399,6 +405,8 @@ export class Library {
   goTo(index: number): void {
     const i = Math.max(0, Math.min(this.cases.length - 1, index))
     this.caseIndex = i
+    this.zoomTarget = 1
+    this.offYTarget = 0
     this.camTargetX = this.caseCenter(i)
     this.opts.caseChange(i)
     this.life()
@@ -489,6 +497,8 @@ export class Library {
     this.opts.hover(null, null)
     if (p.caseIndex !== this.caseIndex)
       this.goTo(p.caseIndex)
+    else if (this.zoomed)
+      this.resetZoom()
     const rig = this.rig(p, pages)
     rig.group.position.set(p.base.x, p.base.y, p.base.z + p.out)
     this.scene.add(rig.group)
@@ -658,10 +668,15 @@ export class Library {
     }
     if (this.drag) {
       const dx = e.clientX - this.drag.x
-      if (Math.abs(dx) > 6)
+      const dy = e.clientY - this.drag.y
+      if (Math.hypot(dx, dy) > 6)
         this.drag.moved = true
       if (this.drag.moved) {
-        this.camTargetX = this.camX = this.drag.camX - dx * (this.visibleWidth() / this.width)
+        const perPx = this.visibleWidth() / this.width
+        this.camTargetX = this.camX = this.clampX(this.drag.camX - dx * perPx)
+        // Zoomed: the view moves up and down too.
+        if (this.zoomTarget > 1.05)
+          this.offYTarget = this.offY = this.clampY(this.drag.offY + dy * perPx)
         this.opts.hover(null, null)
         this.life()
       }
@@ -679,7 +694,7 @@ export class Library {
   private readonly onDown = (e: PointerEvent) => {
     if (this.opening)
       return
-    this.drag = { x: e.clientX, camX: this.camX, moved: false, pointer: e.pointerType }
+    this.drag = { x: e.clientX, y: e.clientY, camX: this.camTargetX, offY: this.offYTarget, moved: false, pointer: e.pointerType }
   }
 
   private readonly onUp = (e: PointerEvent) => {
@@ -688,6 +703,9 @@ export class Library {
     if (this.opening || !drag)
       return
     if (drag.moved) {
+      // Zoomed in: the view stays where it was dragged.
+      if (this.zoomTarget > 1.05)
+        return
       // Settle on the nearest bookcase.
       let best = 0
       this.cases.forEach((_, i) => {
@@ -724,11 +742,17 @@ export class Library {
   }
 
   private readonly onWheel = (e: WheelEvent) => {
-    if (this.cases.length < 2 || this.opening)
+    if (this.opening)
       return
-    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0)
-    if (!d)
+    const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey
+    if (!sideways) {
+      e.preventDefault()
+      this.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0022))
       return
+    }
+    if (this.cases.length < 2 || this.zoomTarget > 1.05)
+      return
+    const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
     e.preventDefault()
     this.wheelAcc += d
     clearTimeout(this.wheelTimer)
@@ -737,6 +761,61 @@ export class Library {
         this.goTo(this.caseIndex + Math.sign(this.wheelAcc))
       this.wheelAcc = 0
     }, 80)
+  }
+
+  private readonly onDblClick = (e: MouseEvent) => {
+    if (this.opening)
+      return
+    // Back to the whole bookcase, or a close look where clicked.
+    if (this.zoomTarget > 1.05)
+      this.resetZoom()
+    else
+      this.zoomAt(e.clientX, e.clientY, 2.4)
+  }
+
+  /** Zoom by `factor`, the point under (x, y) staying under the pointer. */
+  zoomAt(clientX: number, clientY: number, factor: number): void {
+    const z0 = this.zoomTarget
+    const z1 = Math.min(4.2, Math.max(1, z0 * factor))
+    if (z1 === z0)
+      return
+    if (z1 <= 1.02) {
+      this.resetZoom()
+      return
+    }
+    const r = this.renderer.domElement.getBoundingClientRect()
+    // The pointer's offset from the centre, in scene units at the spines' depth.
+    const half = Math.tan((this.camera.fov * Math.PI) / 360) * (this.camZ / z0 - DIM.D / 2)
+    const px = ((clientX - r.left) / r.width - 0.5) * 2 * half * this.camera.aspect
+    const py = -((clientY - r.top) / r.height - 0.5) * 2 * half
+    const k = 1 - z0 / z1
+    this.camTargetX = this.clampX(this.camTargetX + px * k)
+    this.offYTarget = this.clampY(this.offYTarget + py * k)
+    this.zoomTarget = z1
+    this.opts.hover(null, null)
+    this.life()
+  }
+
+  resetZoom(): void {
+    this.zoomTarget = 1
+    this.offYTarget = 0
+    this.camTargetX = this.caseCenter(this.caseIndex)
+    this.life()
+  }
+
+  get zoomed(): boolean {
+    return this.zoomTarget > 1.05
+  }
+
+  private clampX(x: number): number {
+    const first = this.cases[0]
+    const last = this.cases.at(-1)
+    return first && last ? Math.min(last.x + last.width, Math.max(first.x, x)) : x
+  }
+
+  private clampY(y: number): number {
+    const h = this.camY
+    return Math.min(h, Math.max(-h, y))
   }
 
   private wheelAcc = 0
@@ -798,11 +877,17 @@ export class Library {
     // Camera: glide to the bookcase, a touch of parallax with the mouse.
     const k = Math.min(1, dt * 7)
     this.camX += (this.camTargetX - this.camX) * k
+    this.zoom += (this.zoomTarget - this.zoom) * k
+    this.offY += (this.offYTarget - this.offY) * k
+    busy ||= Math.abs(this.zoomTarget - this.zoom) > 0.001 || Math.abs(this.offYTarget - this.offY) > 0.001
     this.parallax.x += (this.parallax.tx - this.parallax.x) * k
     this.parallax.y += (this.parallax.ty - this.parallax.y) * k
     busy ||= Math.abs(this.camTargetX - this.camX) > 0.002 || Math.abs(this.parallax.tx - this.parallax.x) > 0.001
-    this.camera.position.set(this.camX + this.parallax.x, this.camY - this.parallax.y, this.camZ)
-    this.camera.lookAt(this.camX, this.camY, 0)
+    // The closer, the less the view sways with the mouse.
+    const sway = 1 / this.zoom
+    const lookY = this.camY + this.offY
+    this.camera.position.set(this.camX + this.parallax.x * sway, lookY - this.parallax.y * sway, DIM.D / 2 + (this.camZ - DIM.D / 2) / this.zoom)
+    this.camera.lookAt(this.camX, lookY, 0)
 
     // Binders sliding out or back.
     for (const c of this.cases) {
@@ -855,6 +940,7 @@ export class Library {
     canvas.removeEventListener('pointerup', this.onUp)
     canvas.removeEventListener('pointerleave', this.onLeave)
     canvas.removeEventListener('wheel', this.onWheel)
+    canvas.removeEventListener('dblclick', this.onDblClick)
     document.removeEventListener('visibilitychange', this.onVisibility)
     this.ambiance?.dispose()
     this.scene.traverse((o) => {
