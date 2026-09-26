@@ -1,3 +1,10 @@
+## [0.33.0](https://github.com/Diix46/SpellForge/compare/v0.32.0...v0.33.0) (2026-09-26)
+
+### Features
+
+* **collection:** onglet Valeur avec courbe, variation, mouvements et valeur par extension ([cb2af47](https://github.com/Diix46/SpellForge/commit/cb2af47d2306c096d4b5be4800331bc532ba5847))
+* **collection:** relevé quotidien de la valeur et des cotes, cartes en hausse et en baisse ([8993beb](https://github.com/Diix46/SpellForge/commit/8993beb1dc0fddc624a7f4a67c8aeace45ed52c6))
+
 ## [0.32.0](https://github.com/Diix46/SpellForge/compare/v0.31.0...v0.32.0) (2026-09-26)
 
 ### Features
