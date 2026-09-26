@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import type { Condition, Finish } from '#shared/collection'
 import type { GameId } from '#shared/game'
-import type { OptcgCard, OptcgPrint } from '#shared/optcg/types'
+import type { OptcgCard } from '#shared/optcg/types'
 import type { PrintChoice } from '~/composables/useCollection'
 import type { ImportSource } from '~/composables/useCollectionAdd'
-import type { PrintOption } from '~/composables/usePrintings'
 import { computed, reactive, ref, watch } from 'vue'
 import { CONDITIONS, MAX_COPIES, optcgPrintingId } from '#shared/collection'
 
 // Adding copies: find the card, pick its exact printing, say which finish,
-// condition and how many (and what was paid, where they are). Stays open, for
-// the next card.
+// condition, language and how many (where they are, if you like). Closes once
+// they are in.
 const props = defineProps<{ game: GameId, initialQuery?: string, initialPrinting?: string }>()
 const open = defineModel<boolean>('open', { required: true })
 
@@ -24,10 +23,15 @@ const picked = ref<{ key: string, label: string } | null>(null)
 const prints = ref<PrintChoice[]>([])
 const loadingPrints = ref(false)
 const selected = ref<string | null>(null)
-const form = reactive({ finish: 'nonfoil' as Finish, condition: 'NM' as Condition, quantity: 1, purchasePrice: '', location: '' })
+const form = reactive({ finish: 'nonfoil' as Finish, condition: 'NM' as Condition, quantity: 1, location: '' })
 const adding = ref(false)
-// One Piece: the same art in either language.
+// Where the copies are: optional, behind a button.
+const showLocation = ref(false)
+// The copy's language. One Piece: the same art in either language. Magic: the
+// printing's, unless the copy is in the other one (a French copy of a
+// printing Scryfall only lists in English).
 const copyLang = ref<'fr' | 'en'>(locale.value === 'fr' ? 'fr' : 'en')
+const { loadPrints, relang } = usePrintChoices(props.game)
 
 const current = computed(() => prints.value.find(p => p.printingId === selected.value) ?? null)
 const finishes = computed<Finish[]>(() => current.value?.finishes ?? ['nonfoil'])
@@ -40,6 +44,22 @@ watch(open, (v) => {
     query.value = props.initialQuery
     void choose({ key: props.initialQuery, label: props.initialQuery })
   }
+})
+// Magic: a printing picked brings its language.
+watch(current, (c) => {
+  if (c && props.game === 'mtg')
+    copyLang.value = c.lang === 'fr' ? 'fr' : 'en'
+})
+// Closed: the next opening starts afresh.
+watch(open, (v) => {
+  if (v)
+    return
+  query.value = ''
+  picked.value = null
+  prints.value = []
+  selected.value = null
+  showLocation.value = false
+  Object.assign(form, { finish: 'nonfoil', condition: 'NM', quantity: 1, location: '' })
 })
 watch(finishes, (f) => {
   if (!f.includes(form.finish))
@@ -98,38 +118,7 @@ async function choose(s: { key: string, label: string }) {
   selected.value = null
   loadingPrints.value = true
   try {
-    if (props.game === 'mtg') {
-      const { prints: list } = await $fetch<{ prints: PrintOption[] }>('/api/cards/prints', { query: { name: s.key, lang: locale.value, all: '1' } })
-      prints.value = list.map(p => ({
-        printingId: p.id,
-        image: p.image,
-        set: p.set,
-        setName: p.setName,
-        setIcon: p.setIcon ?? null,
-        rarity: p.rarity ?? null,
-        number: p.collectorNumber,
-        lang: p.lang,
-        price: p.priceEur,
-        finishes: p.finishes?.length ? p.finishes : ['nonfoil'],
-        priceFoil: p.priceEurFoil ?? null,
-      }))
-    }
-    else {
-      const { prints: list } = await $fetch<{ prints: OptcgPrint[] }>('/api/optcg/prints', { query: { number: s.key, lang: locale.value } })
-      prints.value = list.map(p => ({
-        printingId: optcgPrintingId(copyLang.value, p.id),
-        image: p.thumb,
-        set: p.set ?? s.key.split('-')[0] ?? '',
-        setName: p.set ?? '',
-        setIcon: null,
-        rarity: p.rarity,
-        number: p.id,
-        lang: copyLang.value,
-        price: null,
-        finishes: ['nonfoil'],
-        priceFoil: null,
-      }))
-    }
+    prints.value = await loadPrints(s.key, copyLang.value)
     // The printing the dialog was opened on, else the newest.
     selected.value = prints.value.find(p => p.printingId === props.initialPrinting)?.printingId ?? prints.value[0]?.printingId ?? null
   }
@@ -146,7 +135,7 @@ watch(copyLang, (lang) => {
   if (props.game !== 'optcg')
     return
   const art = selected.value?.split(':')[1]
-  prints.value = prints.value.map(p => ({ ...p, printingId: optcgPrintingId(lang, p.printingId.split(':')[1]!), lang }))
+  prints.value = relang(prints.value, lang)
   selected.value = art ? optcgPrintingId(lang, art) : null
 })
 
@@ -154,20 +143,19 @@ async function add() {
   if (!current.value || adding.value)
     return
   adding.value = true
-  const price = form.purchasePrice === '' ? null : Number(form.purchasePrice)
   const quantity = Math.max(1, Math.min(MAX_COPIES, Math.round(Number(form.quantity) || 1)))
   const copy = await collection.add({
     printingId: current.value.printingId,
     finish: form.finish,
     condition: form.condition,
     quantity,
-    purchasePrice: price != null && Number.isFinite(price) ? price : undefined,
+    lang: props.game === 'mtg' ? copyLang.value : undefined,
     location: form.location.trim() || undefined,
   })
   adding.value = false
   if (copy) {
-    toast.add({ title: t('collection.added'), description: `${picked.value?.label} · ${current.value.set.toUpperCase()} #${current.value.number} ×${quantity}`, color: 'success', icon: 'i-lucide-check' })
-    form.quantity = 1
+    toast.add({ title: t('collection.added'), description: `${picked.value?.label} · ${current.value.set.toUpperCase()} #${current.value.number} · ${copyLang.value.toUpperCase()} ×${quantity}`, color: 'success', icon: 'i-lucide-check' })
+    open.value = false
   }
 }
 </script>
@@ -205,7 +193,7 @@ async function add() {
         <div v-if="picked" class="prints">
           <div class="prints-head">
             <span>{{ t('collection.choosePrinting') }}</span>
-            <div v-if="game === 'optcg'" class="langs" role="group" :aria-label="t('collection.copyLang')">
+            <div class="langs" role="group" :aria-label="t('collection.copyLang')" :title="t('collection.copyLang')">
               <button type="button" :aria-pressed="copyLang === 'fr'" @click="copyLang = 'fr'">
                 FR
               </button>
@@ -233,8 +221,11 @@ async function add() {
         </div>
         <USelect v-model="form.condition" :items="conditions" class="w-44" :aria-label="t('collection.condition')" />
         <UInputNumber v-model="form.quantity" :min="1" :max="MAX_COPIES" class="w-28" :aria-label="t('collection.quantity')" />
-        <UInput v-model="form.purchasePrice" type="number" min="0" step="0.01" icon="i-lucide-euro" :placeholder="t('collection.paid')" class="w-28" :aria-label="t('collection.purchasePrice')" />
-        <UInput v-model="form.location" icon="i-lucide-archive" :placeholder="t('collection.location')" maxlength="80" class="min-w-0 flex-1" :aria-label="t('collection.location')" />
+        <UInput v-if="showLocation" v-model="form.location" icon="i-lucide-archive" :placeholder="t('collection.locationPlaceholder')" maxlength="80" class="min-w-0 flex-1" :aria-label="t('collection.location')" autofocus />
+        <UButton v-else color="neutral" variant="ghost" icon="i-lucide-archive" @click="showLocation = true">
+          {{ t('collection.addLocation') }}
+        </UButton>
+        <span class="grow" />
         <UButton type="submit" icon="i-lucide-plus" :loading="adding">
           {{ t('collection.addCopies').replace('{n}', String(form.quantity || 1)) }}
         </UButton>
@@ -355,6 +346,9 @@ async function add() {
   max-height: min(52vh, 520px);
   overflow-y: auto;
   padding-right: 4px;
+}
+.grow {
+  flex: 1;
 }
 .options {
   display: flex;
