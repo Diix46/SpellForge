@@ -1,3 +1,9 @@
+## [0.44.1](https://github.com/Diix46/SpellForge/compare/v0.44.0...v0.44.1) (2026-09-26)
+
+### Bug Fixes
+
+* **collection:** le classeur et la bibliothèque tiennent dans la hauteur de l'écran ([be77bd4](https://github.com/Diix46/SpellForge/commit/be77bd42dca6f6aeb0d239f0f75135ec05c837e0))
+
 ## [0.44.0](https://github.com/Diix46/SpellForge/compare/v0.43.0...v0.44.0) (2026-09-26)
 
 ### Features
