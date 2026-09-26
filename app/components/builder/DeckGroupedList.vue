@@ -254,18 +254,9 @@ const groups = computed(() => {
   cursor: grabbing;
 }
 
-/* Category groups flow as a responsive grid: as many columns as the (now wide)
-   panel allows, wrapping to new rows and scrolling VERTICALLY only on real
-   overflow. Grid (not CSS multicol) so we never get a horizontal scrollbar. */
-/* Category columns laid side by side (a real deck plan). The grid fits as many
-   ~170px columns as the width allows, each category in its own column; tall
-   categories make their column taller and the whole grid scrolls VERTICALLY
-   only on genuine overflow. overflow-x is clipped so there's never a sideways
-   bar — columns always share the available width. */
-/* Outer = the scroll viewport (gets its height from the flex workspace and
-   scrolls VERTICALLY only on real overflow). Inner = a balanced multi-column
-   flow: cards fill the available width across columns and grow downward, so a
-   tall category spreads across columns instead of forcing a sideways scroll. */
+/* The scroll viewport (height from the workspace, vertical scroll on real
+   overflow only) around a multi-column flow of ~248 px columns: a single
+   column in the deck's side column, more on a wide screen stacked layout. */
 .deck-cols {
   overflow-x: hidden;
 }
