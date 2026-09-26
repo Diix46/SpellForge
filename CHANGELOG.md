@@ -1,3 +1,9 @@
+## [0.40.0](https://github.com/Diix46/SpellForge/compare/v0.39.0...v0.40.0) (2026-09-26)
+
+### Features
+
+* **collection:** ambiances de la bibliothèque — arcaniste pour Magic, cabine de navire pour One Piece ([e2344ee](https://github.com/Diix46/SpellForge/commit/e2344ee45f44cbd1e6b107b01c64abc3d9607e9d))
+
 ## [0.39.0](https://github.com/Diix46/SpellForge/compare/v0.38.0...v0.39.0) (2026-09-26)
 
 ### Features
