@@ -1,3 +1,11 @@
+## [0.32.0](https://github.com/Diix46/SpellForge/compare/v0.31.0...v0.32.0) (2026-09-26)
+
+### Features
+
+* **collection:** dialogue d'import avec aperçu, export et sélection multiple ([ea8cb81](https://github.com/Diix46/SpellForge/commit/ea8cb81f3c17ec83bb094c3009cb5c879df14735))
+* **collection:** import rapproché des impressions, historique annulable et actions groupées ([6fe9d4e](https://github.com/Diix46/SpellForge/commit/6fe9d4e5b3ddcd602ea39881536c82a1fbf4046f))
+* **collection:** lecture des exports CSV et listes, écriture aux formats ManaBox, Moxfield et Prism ([9fcf7dc](https://github.com/Diix46/SpellForge/commit/9fcf7dc71057afc3d67263aa4ec8c8236f46152f))
+
 ## [0.31.0](https://github.com/Diix46/SpellForge/compare/v0.30.0...v0.31.0) (2026-09-26)
 
 ### Features
