@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import type { SetProgress } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import { computed, onMounted, ref, watch } from 'vue'
+import { setKind } from '#shared/collection'
 
 // The binder shelf: the overall progress, then the binders of the sets
 // started on a 3D bookcase (or as a list), and the other sets to start one.
@@ -38,8 +40,25 @@ watch(mode, (m) => {
 /** On the bookcase: the binders started; the others wait in the list below. */
 const shelfSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(s => s.owned > 0) : []))
 const gridSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(s => !s.owned) : view.shown.value))
-// The bookcase is built again when what it shows changes.
-const shelfKey = computed(() => shelfSets.value.map(s => `${s.code}:${s.owned}`).join('|'))
+// The library is built again when its binders change, not their progress
+// (it repaints those spines itself).
+const shelfKey = computed(() => shelfSets.value.map(s => s.code).join('|'))
+
+// The new releases shelf: the latest main sets not started, to start one.
+const { data: every, execute: loadEvery } = useFetch<{ sets: SetProgress[] }>('/api/collection/sets', {
+  key: `collection-every-${props.game}`,
+  query: { game: props.game, all: '1', lang: computed(() => (locale.value === 'fr' ? 'fr' : 'en')) },
+  server: false,
+  immediate: false,
+})
+watch(mode, (m) => {
+  if (m === '3d' && !every.value)
+    void loadEvery()
+}, { immediate: true })
+const today = new Date().toISOString().slice(0, 10)
+const fresh = computed(() => (every.value?.sets ?? [])
+  .filter(s => !s.owned && setKind(props.game, s.type) === 'main' && (!s.releasedAt || s.releasedAt <= today))
+  .slice(0, 12))
 
 const sortItems = computed(() => [
   { label: t('collection.setSortRecent'), value: 'recent' },
@@ -117,7 +136,7 @@ const sortItems = computed(() => [
     </p>
 
     <template v-else>
-      <CollectionBookshelf v-if="shelfSets.length" :key="shelfKey" :sets="shelfSets" :game="game" />
+      <CollectionBookshelf v-if="shelfSets.length" :key="shelfKey" :sets="shelfSets" :fresh="fresh" :game="game" />
       <h3 v-if="shelfSets.length && gridSets.length" class="subhead">
         {{ t('collection.shelf.startNew') }}
       </h3>
