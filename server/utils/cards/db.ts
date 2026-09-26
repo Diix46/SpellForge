@@ -18,8 +18,12 @@ export const MTG_CARDS_DB = process.env.MTG_CARDS_DB || '.data/cards-mtg.db'
 export const MTG_SCHEMA_VERSION = '4'
 export const OPTCG_CARDS_DB = process.env.OPTCG_CARDS_DB || '.data/cards-optcg.db'
 
+/** Magic preconstructed decks (scripts/ingest-precons.mjs), updated in place. */
+export const PRECONS_DB = process.env.PRECONS_DB || '.data/precons.db'
+
 let mtg: Client | null = null
 let optcg: Client | null = null
+let precons: Client | null = null
 
 // Reads already running when the databases are reopened finish on the old
 // handles, which close after this delay.
@@ -36,9 +40,10 @@ export function useMtgCardsDb(): Client {
  * after a rebuild so the next request opens the new one.
  */
 export function reopenCardDbs(): void {
-  const old = [mtg, optcg]
+  const old = [mtg, optcg, precons]
   mtg = null
   optcg = null
+  precons = null
   setTimeout(() => old.forEach(c => c?.close()), CLOSE_DELAY_MS).unref()
 }
 
@@ -46,4 +51,10 @@ export function reopenCardDbs(): void {
 export function useOptcgCardsDb(): Client {
   optcg ??= createClient({ url: `file:${OPTCG_CARDS_DB}` })
   return optcg
+}
+
+/** The preconstructed decks — same lifecycle as the card databases. */
+export function usePreconsDb(): Client {
+  precons ??= createClient({ url: `file:${PRECONS_DB}` })
+  return precons
 }

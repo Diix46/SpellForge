@@ -1,7 +1,7 @@
 import { existsSync, statSync } from 'node:fs'
 import process from 'node:process'
 import { createClient } from '@libsql/client'
-import { MTG_CARDS_DB, MTG_SCHEMA_VERSION, OPTCG_CARDS_DB } from '../utils/cards/db'
+import { MTG_CARDS_DB, MTG_SCHEMA_VERSION, OPTCG_CARDS_DB, PRECONS_DB } from '../utils/cards/db'
 
 // A new install has no card database: build them at boot instead of waiting
 // for the nightly refresh. An empty file counts as missing (the server creates
@@ -29,7 +29,9 @@ async function mtgSchemaBehind(): Promise<boolean> {
 export default defineNitroPlugin(async () => {
   if (import.meta.dev || process.env.CARDS_REFRESH_ON_BOOT === 'false')
     return
-  const missing = !hasCards(MTG_CARDS_DB) || !hasCards(OPTCG_CARDS_DB)
+  // The steps whose base is current do nothing, so a missing precon base
+  // costs only its own download.
+  const missing = !hasCards(MTG_CARDS_DB) || !hasCards(OPTCG_CARDS_DB) || !hasCards(PRECONS_DB)
   const behind = !missing && await mtgSchemaBehind()
   if (!missing && !behind)
     return
