@@ -375,7 +375,8 @@ export function buildPrintsQuery(name: string, lang: string, withEnglish = false
                  p.img_version, p.price_eur, p.promo, p.is_highres, p.released_at, p.rarity,
                  p.artist, ${hasStyle ? 'p.style' : '0 AS style'},
                  ${hasFinishes ? `p.finishes, COALESCE(p.price_eur_foil, (${EN_TWIN('price_eur_foil')})) AS price_eur_foil` : '1 AS finishes, NULL AS price_eur_foil'},
-                 COALESCE(p.price_eur, (${EN_TWIN('price_eur')})) AS twin_price_eur
+                 COALESCE(p.price_eur, (${EN_TWIN('price_eur')})) AS twin_price_eur,
+                 ${hasFinishes ? '(SELECT s.icon FROM sets s WHERE s.code = p.set_code)' : 'NULL'} AS set_icon
             FROM printings p
            WHERE p.is_real_image = 1
              AND p.oracle_id = (

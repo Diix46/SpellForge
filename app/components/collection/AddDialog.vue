@@ -87,7 +87,7 @@ async function choose(s: { key: string, label: string }) {
         image: p.image,
         set: p.set,
         setName: p.setName,
-        setIcon: `/api/images/sets/${p.set}.svg`,
+        setIcon: p.setIcon ?? null,
         rarity: p.rarity ?? null,
         number: p.collectorNumber,
         lang: p.lang,

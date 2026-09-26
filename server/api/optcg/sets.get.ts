@@ -4,25 +4,12 @@
  * starter decks and promos.
  */
 import { useOptcgCardsDb } from '../../utils/cards/db'
+import { optcgSetName, optcgSetOrder } from '../../utils/collection/sets'
 
 export interface OptcgSet {
   code: string
   name: string
   cards: number
-}
-
-const KIND_ORDER = ['OP', 'EB', 'PRB', 'ST', 'P']
-
-/** "BOOSTER PACK -ROMANCE DAWN- [OP-01]" → "ROMANCE DAWN". */
-function shortName(title: unknown, code: string): string {
-  const m = typeof title === 'string' ? /-(.+)-\s*\[/.exec(title) : null
-  return m?.[1]?.trim() || code
-}
-
-function sortKey(code: string): [number, number] {
-  const [kind = '', num = '0'] = code.split('-')
-  const rank = KIND_ORDER.indexOf(kind)
-  return [rank === -1 ? KIND_ORDER.length : rank, -Number(num)]
 }
 
 export default defineEventHandler(async (event) => {
@@ -38,13 +25,9 @@ export default defineEventHandler(async (event) => {
   })
   const sets: OptcgSet[] = rows.map(r => ({
     code: String(r.code),
-    name: shortName(r.title, String(r.code)),
+    name: optcgSetName(r.title, String(r.code)),
     cards: Number(r.cards),
   }))
-  sets.sort((a, b) => {
-    const [ka, na] = sortKey(a.code)
-    const [kb, nb] = sortKey(b.code)
-    return ka - kb || na - nb
-  })
+  sets.sort((a, b) => optcgSetOrder(a.code, b.code))
   return { sets }
 })
