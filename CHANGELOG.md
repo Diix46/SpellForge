@@ -1,3 +1,9 @@
+## [0.42.0](https://github.com/Diix46/SpellForge/compare/v0.41.0...v0.42.0) (2026-09-26)
+
+### Features
+
+* **collection:** ouverture continue — le classeur 3D s'ouvre sur ses cartes et devient le classeur de la page ([a9087a0](https://github.com/Diix46/SpellForge/commit/a9087a02fc4092ba014d6dda081d391f427ce6c2))
+
 ## [0.41.0](https://github.com/Diix46/SpellForge/compare/v0.40.0...v0.41.0) (2026-09-26)
 
 ### Features
