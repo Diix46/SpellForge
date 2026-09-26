@@ -87,9 +87,10 @@ withDb('against the real card database', () => {
 
   it('matches Scryfall on Commander legality', async () => {
     const r = await rows({ sql: `SELECT COUNT(*) AS n FROM oracle_cards WHERE legal_commander = 1`, args: [] })
-    // Scryfall reports 31 830 for `legal:commander unique=cards`. An exact match
-    // means our derivation from the bulk `legalities` object is sound.
-    expect(Number(r[0]!.n)).toBe(31830)
+    // Scryfall reports 32 116 for `legal:commander unique=cards` (September
+    // 2026; it grows with each set). An exact match means our derivation from
+    // the bulk `legalities` object is sound.
+    expect(Number(r[0]!.n)).toBe(32116)
   })
 
   it('returns the most-played cards first, localised', async () => {

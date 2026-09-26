@@ -171,6 +171,8 @@ const hdShown = computed(() => !shownPrint.value && (!!c.value?.recomposed || (h
 
 // Choosing artworks (the gallery, the HD card) is for members.
 const members = useMembersOnly()
+// Adding the printing on display to the collection (members too).
+const collectionOpen = ref(false)
 function toggleHd() {
   const on = !hdShown.value
   members.require('artwork', () => setHd(on))
@@ -378,6 +380,17 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
             >{{ t('card.priceNa') }}</span>
             <div class="ml-auto flex gap-2">
               <UButton
+                v-if="c"
+                icon="i-lucide-gem"
+                size="sm"
+                color="neutral"
+                variant="subtle"
+                :title="t('collection.addToCollection')"
+                @click="members.require('collection', () => (collectionOpen = true))"
+              >
+                <span class="hidden sm:inline">{{ t('collection.addToCollection') }}</span>
+              </UButton>
+              <UButton
                 :to="cmUrl"
                 target="_blank"
                 icon="i-lucide-shopping-cart"
@@ -444,6 +457,7 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
       </div>
     </template>
   </UModal>
+  <CollectionAddDialog v-if="c" v-model:open="collectionOpen" game="mtg" :initial-query="c.name" :initial-printing="c.id" />
 </template>
 
 <style scoped>

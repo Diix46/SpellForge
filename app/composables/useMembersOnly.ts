@@ -4,7 +4,7 @@ import { useState } from '#app'
  * What an account unlocks. A guest browses the libraries and starts a deck
  * (kept in this browser, joined to the account on sign-in); these need one.
  */
-export type MembersFeature = 'decks' | 'preview' | 'artwork'
+export type MembersFeature = 'decks' | 'preview' | 'artwork' | 'collection'
 
 // What to do once the guest has signed in (the click that asked for it). A
 // function, so module state rather than useState: client-only, never sent.

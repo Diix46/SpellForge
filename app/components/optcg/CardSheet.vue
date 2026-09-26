@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { OptcgCard, OptcgPrint } from '#shared/optcg/types'
 import { computed, ref, shallowRef, watch } from 'vue'
+import { optcgPrintingId } from '#shared/collection'
 import { cardPath } from '#shared/game'
 
 // The card view in a dialog. In a deck it also adds, removes and swaps the art
@@ -48,6 +49,15 @@ const inDeck = computed(() => props.quantity !== null)
 const opened = computed(() => props.lineArt ?? props.card?.id)
 const artChanged = computed(() => inDeck.value && shown.value !== (props.lineArt ?? props.card?.number))
 
+// Adding the art on display to the collection, in its language (members only).
+const members = useMembersOnly()
+const collectionOpen = ref(false)
+const collectionPrinting = ref<string | undefined>()
+function addToCollection(card: OptcgCard) {
+  collectionPrinting.value = optcgPrintingId(card.lang, card.id)
+  members.require('collection', () => (collectionOpen.value = true))
+}
+
 function onAdd(e: MouseEvent, card: OptcgCard) {
   emit('add', card, e.currentTarget as HTMLElement, shown.value !== opened.value)
 }
@@ -67,6 +77,9 @@ function onAdd(e: MouseEvent, card: OptcgCard) {
           <footer v-if="!inDeck" class="actions">
             <UButton v-if="card.category === 'Leader'" color="primary" icon="i-lucide-anchor" @click="emit('start', shownCard)">
               {{ t('optcg.library.startWith') }}
+            </UButton>
+            <UButton color="neutral" variant="subtle" icon="i-lucide-gem" @click="addToCollection(shownCard)">
+              {{ t('collection.addToCollection') }}
             </UButton>
             <UButton color="neutral" variant="ghost" icon="i-lucide-link" :to="cardPath('optcg', card.number)">
               {{ t('card.page') }}
@@ -88,6 +101,7 @@ function onAdd(e: MouseEvent, card: OptcgCard) {
       </OptcgCardView>
     </template>
   </UModal>
+  <CollectionAddDialog v-if="card" v-model:open="collectionOpen" game="optcg" :initial-query="card.number" :initial-printing="collectionPrinting" />
 </template>
 
 <style scoped>

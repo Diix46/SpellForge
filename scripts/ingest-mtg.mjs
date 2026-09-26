@@ -48,6 +48,8 @@ const LANGS = new Set(['en', 'fr'])
 
 const UA = 'Prism/0.3.2 (+https://github.com/Diix46/SpellForge)'
 const COLOR_BIT = { W: 1, U: 2, B: 4, R: 8, G: 16 }
+// The finishes a printing exists in, as a bit mask (collections track the copy's).
+const FINISH_BIT = { nonfoil: 1, foil: 2, etched: 4 }
 
 // Scryfall hides these from search by default. Mirror that, or our result
 // counts silently diverge from everyone's expectations.
@@ -59,7 +61,7 @@ const force = process.argv.includes('--force')
 // Bump whenever the schema changes. A database built by an older script is
 // rebuilt even when the Scryfall dump has not moved: the app would otherwise
 // query columns that do not exist yet.
-const SCHEMA_VERSION = '3'
+const SCHEMA_VERSION = '4'
 const log = (...a) => console.log(...a)
 const mb = n => `${(n / 1048576).toFixed(1)} MB`
 
@@ -301,7 +303,23 @@ const SCHEMA = [
      set_type         TEXT,
      -- Full-art, borderless, showcase… as a bit mask (see styleOf): the deck
      -- themes pick printings on it.
-     style            INTEGER NOT NULL DEFAULT 0
+     style            INTEGER NOT NULL DEFAULT 0,
+     -- Nonfoil, foil, etched as a bit mask (FINISH_BIT), and the foil price:
+     -- a collection prices each copy in its own finish.
+     finishes         INTEGER NOT NULL DEFAULT 1,
+     price_eur_foil   REAL
+   )`,
+  // The sets, from Scryfall's set list: what a collection completes. `cards`
+  // counts the English numbers this database holds for it (finalize).
+  `CREATE TABLE sets (
+     code        TEXT PRIMARY KEY,
+     name        TEXT NOT NULL,
+     released_at TEXT,
+     set_type    TEXT,
+     parent_code TEXT,
+     icon        TEXT,
+     digital     INTEGER NOT NULL DEFAULT 0,
+     cards       INTEGER NOT NULL DEFAULT 0
    )`,
   `CREATE TABLE card_faces (
      printing_id       TEXT NOT NULL,
@@ -375,6 +393,23 @@ const INDEXES = [
   `CREATE INDEX idx_print_rarity   ON printings(rarity, oracle_id)`,
   `CREATE INDEX idx_parts_oracle   ON card_parts(oracle_id)`,
 ]
+
+// ─── sets ──────────────────────────────────────────────────────────────────
+
+/** Scryfall's set list (one request): names, dates, types and icons. */
+async function ingestSets(db) {
+  const res = await fetchRetry('https://api.scryfall.com/sets', { headers: { 'User-Agent': UA, 'Accept': 'application/json' } })
+  if (!res.ok)
+    throw new Error(`sets: HTTP ${res.status}`)
+  const { data } = await res.json()
+  const sets = new Batch(db, 'sets', ['code', 'name', 'released_at', 'set_type', 'parent_code', 'icon', 'digital'])
+  await db.execute('BEGIN')
+  for (const x of data)
+    await sets.push([x.code, x.name, x.released_at || null, x.set_type || null, x.parent_set_code || null, x.icon_svg_uri || null, x.digital ? 1 : 0])
+  await sets.flush()
+  await db.execute('COMMIT')
+  return data.length
+}
 
 // ─── step 1 — bulk metadata ────────────────────────────────────────────────
 
@@ -521,6 +556,8 @@ async function ingest(db) {
     'is_ub',
     'set_type',
     'style',
+    'finishes',
+    'price_eur_foil',
   ])
   const faces = new Batch(db, 'card_faces', [
     'printing_id',
@@ -684,6 +721,8 @@ async function ingest(db) {
       c.promo_types?.includes('universesbeyond') ? 1 : 0,
       c.set_type || null,
       styleOf(c),
+      (c.finishes ?? ['nonfoil']).reduce((m, f) => m | (FINISH_BIT[f] ?? 0), 0) || FINISH_BIT.nonfoil,
+      num(c.prices?.eur_foil ?? c.prices?.eur_etched),
     ])
 
     if (c.card_faces?.length) {
@@ -750,6 +789,11 @@ async function finalize(db, meta) {
                                           AND COALESCE(p.set_type, '') != 'funny')
                        AND NOT EXISTS (SELECT 1 FROM json_each(oracle_cards.legalities)
                                         WHERE value IN ('legal', 'restricted'))`)
+
+  // How many English cards each set holds here: a collection's 100 %.
+  log('  · extensions')
+  await db.execute(`UPDATE sets SET cards = (SELECT COUNT(*) FROM printings p
+                                              WHERE p.set_code = sets.code AND p.lang = 'en')`)
 
   // Only 1.9% of French printings carry a EUR price. Filtering on the French
   // row's own price would drop 98% of the catalogue; rolling the cheapest
@@ -874,6 +918,7 @@ async function main() {
   await db.execute('PRAGMA synchronous = OFF')
   for (const sql of SCHEMA) await db.execute(sql)
 
+  log(`  · ${await ingestSets(db)} extensions`)
   log('  · lecture du flux')
   const stats = await ingest(db)
   await finalize(db, meta)
