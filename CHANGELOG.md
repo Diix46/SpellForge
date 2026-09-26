@@ -1,3 +1,14 @@
+## [0.35.0](https://github.com/Diix46/SpellForge/compare/v0.34.0...v0.35.0) (2026-09-26)
+
+### Features
+
+* **collection:** ajouter un precon ou un de ses decks, par l'aperçu d'import ([2541682](https://github.com/Diix46/SpellForge/commit/25416823240fad0378fc3950e3ae71b5bcb5e96a))
+* **collection:** decks préconstruits Magic en local depuis MTGJSON, rafraîchis chaque nuit ([dc8de85](https://github.com/Diix46/SpellForge/commit/dc8de85b6fd79256ed4a6d927687a5ada86527b3))
+
+### Bug Fixes
+
+* **collection:** recherche par nom français, suggestions visibles et Entrée pour choisir ([d5936c3](https://github.com/Diix46/SpellForge/commit/d5936c3ad3ba9d49f859c10a4a37df273484200f))
+
 ## [0.34.0](https://github.com/Diix46/SpellForge/compare/v0.33.0...v0.34.0) (2026-09-26)
 
 ### Features
