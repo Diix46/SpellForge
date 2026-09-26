@@ -22,7 +22,7 @@ const location = ref('')
 async function search() {
   loading.value = true
   try {
-    list.value = (await $fetch<{ precons: PreconSummary[] }>('/api/collection/precons', { query: { q: q.value, kind: kind.value === 'all' ? undefined : kind.value } })).precons
+    list.value = (await $fetch<{ precons: PreconSummary[] }>('/api/collection/precons', { query: { q: q.value, kind: kind.value === 'all' ? undefined : kind.value, lang: locale.value } })).precons
   }
   catch {
     list.value = []
@@ -49,9 +49,15 @@ async function pick(p: PreconSummary) {
   }
 }
 
-const commander = computed(() => cards.value.filter(c => c.section === 'commander').map(c => c.name).join(' · '))
+const commander = computed(() => picked.value?.commanderLocal ?? cards.value.filter(c => c.section === 'commander').map(c => c.name).join(' · '))
 const foils = computed(() => cards.value.filter(c => c.foil).reduce((n, c) => n + c.count, 0))
 const year = (d: string | null) => d?.slice(0, 4) ?? ''
+/** MTGJSON's product types, in the site's language when known. */
+function typeLabel(type: string): string {
+  const key = `collection.precon.type.${type.replace(/\W+/g, '')}`
+  const label = t(key)
+  return label === key ? type : label
+}
 
 function preview() {
   if (!picked.value || !cards.value.length)
@@ -83,7 +89,7 @@ function preview() {
             <span class="body">
               <b>{{ p.name }}</b>
               <span class="meta">{{ p.setName ?? p.code.toUpperCase() }} · {{ year(p.released) }}</span>
-              <span class="meta">{{ p.commander ?? p.type }} · {{ p.cards }} {{ t('collection.cards') }}</span>
+              <span class="meta">{{ p.commanderLocal ?? typeLabel(p.type) }} · {{ p.cards }} {{ t('collection.cards') }}</span>
             </span>
           </button>
         </li>
@@ -99,7 +105,7 @@ function preview() {
         <div>
           <h3>{{ picked.name }}</h3>
           <p class="meta">
-            {{ picked.setName ?? picked.code.toUpperCase() }} · {{ year(picked.released) }} · {{ picked.type }}
+            {{ picked.setName ?? picked.code.toUpperCase() }} · {{ year(picked.released) }} · {{ typeLabel(picked.type) }}
           </p>
           <p v-if="commander" class="meta">
             <UIcon name="i-lucide-crown" class="h-3.5 w-3.5" /> {{ commander }}
