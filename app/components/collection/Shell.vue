@@ -13,14 +13,19 @@ const { loggedIn } = useAuth()
 const members = useMembersOnly()
 const collection = useCollection(props.game)
 const { state: add, openAdd } = useCollectionAdd()
+const wishlist = useWishlist(props.game)
 
 onMounted(() => {
-  if (loggedIn.value)
+  if (loggedIn.value) {
     void collection.load()
+    void wishlist.load()
+  }
 })
 watch(loggedIn, (v) => {
-  if (v)
+  if (v) {
     void collection.load(true)
+    void wishlist.load(true)
+  }
 })
 
 const importing = ref(false)
@@ -50,6 +55,7 @@ const tabs = [
   { to: collectionPath(props.game, '/sets'), label: 'collection.tabSets', icon: 'i-lucide-library-big', exact: false },
   // Only Magic has prices to follow.
   ...(props.game === 'mtg' ? [{ to: collectionPath(props.game, '/value'), label: 'collection.tabValue', icon: 'i-lucide-chart-line', exact: false }] : []),
+  { to: collectionPath(props.game, '/wishlist'), label: 'collection.tabWishlist', icon: 'i-lucide-heart', exact: false },
 ]
 </script>
 
@@ -99,6 +105,8 @@ const tabs = [
         >
           <UIcon :name="tab.icon" class="h-4 w-4" />
           {{ t(tab.label) }}
+          <!-- Wishes whose price came down to their target. -->
+          <span v-if="tab.label === 'collection.tabWishlist' && wishlist.reached.value.length" class="badge" :title="t('collection.wish.reachedCount').replace('{n}', String(wishlist.reached.value.length))">{{ wishlist.reached.value.length }}</span>
         </NuxtLink>
       </nav>
       <slot />
@@ -111,6 +119,7 @@ const tabs = [
 <style scoped>
 .collection {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 .head {
@@ -143,10 +152,18 @@ const tabs = [
 .tabs {
   display: flex;
   gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
   border-bottom: 1px solid var(--color-border-subtle);
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 .tab {
   display: inline-flex;
+  flex: 0 0 auto;
+  white-space: nowrap;
   align-items: center;
   gap: 8px;
   margin-bottom: -1px;
@@ -158,6 +175,19 @@ const tabs = [
   transition:
     color 0.15s,
     border-color 0.15s;
+}
+.badge {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #23945a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
 }
 .tab:hover {
   color: var(--color-text-high);

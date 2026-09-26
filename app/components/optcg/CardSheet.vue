@@ -58,6 +58,11 @@ function addToCollection(card: OptcgCard) {
   members.require('collection', () => (collectionOpen.value = true))
 }
 
+const wishlist = useWishlist('optcg')
+function addToWishlist(card: OptcgCard) {
+  members.require('collection', () => wishlist.add(optcgPrintingId(card.lang, card.id)))
+}
+
 function onAdd(e: MouseEvent, card: OptcgCard) {
   emit('add', card, e.currentTarget as HTMLElement, shown.value !== opened.value)
 }
@@ -81,6 +86,7 @@ function onAdd(e: MouseEvent, card: OptcgCard) {
             <UButton color="neutral" variant="subtle" icon="i-lucide-gem" @click="addToCollection(shownCard)">
               {{ t('collection.addToCollection') }}
             </UButton>
+            <UButton color="neutral" variant="subtle" icon="i-lucide-heart" :aria-label="t('collection.wish.add')" :title="t('collection.wish.add')" @click="addToWishlist(shownCard)" />
             <UButton color="neutral" variant="ghost" icon="i-lucide-link" :to="cardPath('optcg', card.number)">
               {{ t('card.page') }}
             </UButton>

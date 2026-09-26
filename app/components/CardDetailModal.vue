@@ -171,8 +171,10 @@ const hdShown = computed(() => !shownPrint.value && (!!c.value?.recomposed || (h
 
 // Choosing artworks (the gallery, the HD card) is for members.
 const members = useMembersOnly()
-// Adding the printing on display to the collection (members too).
+// Adding the printing on display to the collection (members too), or to the
+// wishlist.
 const collectionOpen = ref(false)
+const wishlist = useWishlist('mtg')
 function toggleHd() {
   const on = !hdShown.value
   members.require('artwork', () => setHd(on))
@@ -390,6 +392,17 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
               >
                 <span class="hidden sm:inline">{{ t('collection.addToCollection') }}</span>
               </UButton>
+              <UButton
+                v-if="c"
+                icon="i-lucide-heart"
+                size="sm"
+                :color="wishlist.wished.value.has(c.id) ? 'error' : 'neutral'"
+                variant="subtle"
+                :title="t('collection.wish.add')"
+                :aria-label="t('collection.wish.add')"
+                :disabled="wishlist.wished.value.has(c.id)"
+                @click="members.require('collection', () => wishlist.add(c!.id))"
+              />
               <UButton
                 :to="cmUrl"
                 target="_blank"

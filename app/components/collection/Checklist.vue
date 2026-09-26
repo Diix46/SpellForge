@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ChecklistCard, SetProgress } from '#shared/collection'
 import type { GameId } from '#shared/game'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 // One set's checklist: its cards in order, owned ones in colour with how many,
 // missing ones faded, a click away from the add dialog. Magic's missing cards
@@ -12,6 +12,8 @@ const { t, locale, rarityLabel } = useLocale()
 const toast = useToast()
 const collection = useCollection(props.game)
 const { openAdd } = useCollectionAdd()
+const wishlist = useWishlist(props.game)
+onMounted(() => void wishlist.load())
 const lang = computed(() => (locale.value === 'fr' ? 'fr' : 'en'))
 
 const { data, status, error, refresh } = useFetch<{ set: SetProgress, cards: ChecklistCard[] }>(() => `/api/collection/sets/${encodeURIComponent(props.code)}`, {
@@ -132,6 +134,18 @@ async function copyMissing() {
       </p>
       <ul v-else class="grid">
         <li v-for="c in shown" :key="c.key">
+          <button
+            v-if="!c.owned"
+            type="button"
+            class="wish"
+            :class="{ on: wishlist.wished.value.has(c.printingId) }"
+            :aria-label="`${t('collection.wish.add')} : ${nameOf(c)}`"
+            :title="t('collection.wish.add')"
+            :disabled="wishlist.wished.value.has(c.printingId)"
+            @click="wishlist.add(c.printingId)"
+          >
+            <UIcon name="i-lucide-heart" class="h-3.5 w-3.5" />
+          </button>
           <button type="button" class="card" :class="{ 'is-owned': c.owned > 0 }" :aria-label="`${nameOf(c)} #${c.number}, ${c.owned ? `×${c.owned}` : t('collection.missing')}`" @click="add(c)">
             <span class="art">
               <img :src="c.thumb" :alt="nameOf(c)" loading="lazy" decoding="async">
@@ -289,6 +303,37 @@ async function copyMissing() {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.grid li {
+  position: relative;
+}
+.wish {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(10, 10, 14, 0.6);
+  color: #fff;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.grid li:hover .wish,
+.wish:focus-visible,
+.wish.on {
+  opacity: 1;
+}
+.wish:hover {
+  transform: scale(1.1);
+}
+.wish.on {
+  background: #d63b66;
 }
 .card {
   display: grid;
