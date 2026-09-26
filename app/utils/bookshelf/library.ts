@@ -40,7 +40,36 @@ export interface LibraryOptions extends LibraryEvents {
     mergeGeometries: (g: Three.BufferGeometry[]) => Three.BufferGeometry | null
     RoomEnvironment: new () => Three.Scene
   }
+  /** Scanned materials (Poly Haven, CC0), loaded by the page before building. */
+  textures: LibraryTextures
   buildAmbiance: (THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: { width: number, height: number, depth: number, cases: number, caseWidth: number, gap: number }, universe: Universe, quality: Quality) => Ambiance
+}
+
+/** A material's maps: colour, relief, roughness. */
+export interface MaterialMaps { map: Three.Texture, normal: Three.Texture, rough: Three.Texture }
+export interface LibraryTextures {
+  leather: MaterialMaps
+  /** The leather's colour as an image, for the spines' grain. */
+  grain: HTMLImageElement | null
+  /** The bookcases' wood. */
+  wood: MaterialMaps
+  /** The room's walls and floor. */
+  wall: MaterialMaps
+  /** The spines' title face, loaded, and its weight. */
+  font: string
+  weight: number
+}
+
+/** A material from scanned maps, the maps repeated `rx` × `ry` (clones share the image). */
+export function scanned(THREE: typeof Three, m: MaterialMaps, rx: number, ry: number, extra: Three.MeshStandardMaterialParameters = {}): Three.MeshStandardMaterial {
+  const rep = (t: Three.Texture) => {
+    const c = t.clone()
+    c.wrapS = c.wrapT = THREE.RepeatWrapping
+    c.repeat.set(rx, ry)
+    c.needsUpdate = true
+    return c
+  }
+  return new THREE.MeshStandardMaterial({ map: rep(m.map), normalMap: rep(m.normal), roughnessMap: rep(m.rough), roughness: 1, ...extra })
 }
 
 // Sizes, in scene units: a binder, the step between two, a shelf's height.
@@ -166,7 +195,8 @@ export class Library {
     const bodyGeo = new kit.RoundedBoxGeometry(W, H, D, high ? 3 : 2, 0.035)
     const spineGeo = new THREE.PlaneGeometry(W * 0.86, H * 0.965)
     spineGeo.translate(0, 0, D / 2 + 0.004)
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.62, metalness: 0.02 })
+    const tex = this.opts.textures
+    const bodyMat = scanned(THREE, tex.leather, 1, 1, { normalScale: new THREE.Vector2(0.9, 0.9) })
     this.disposables.push(bodyGeo, spineGeo, bodyMat, woodMat)
 
     layout.forEach((bookcase, ci) => {
@@ -198,7 +228,7 @@ export class Library {
       // The binders: one instanced mesh for the bodies, one for the spines.
       const count = bookcase.rows.reduce((n, r) => n + r.binders.length, 0)
       const atlas = new SpineAtlas(THREE, Math.max(1, count), high ? 192 : 112, high ? 768 : 448)
-      const spineMat = new THREE.MeshStandardMaterial({ map: atlas.texture, roughness: 0.55 })
+      const spineMat = new THREE.MeshStandardMaterial({ map: atlas.texture, normalMap: tex.leather.normal, normalScale: new THREE.Vector2(0.7, 0.7), roughnessMap: tex.leather.rough, roughness: 0.9, metalness: 0.05 })
       // Each instance reads its own cell of the atlas.
       spineMat.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader
@@ -251,7 +281,7 @@ export class Library {
 
     const span = { width: layout.length * (caseW + GAP) - GAP, height: caseH, depth: D, cases: layout.length, caseWidth: caseW, gap: GAP }
     this.lights(span)
-    this.ambiance = this.opts.buildAmbiance(THREE, kit, this.scene, span, this.opts.universe, this.opts.quality)
+    this.ambiance = this.opts.buildAmbiance(THREE, { wall: tex.wall, wood: tex.wood }, this.scene, span, this.opts.universe, this.opts.quality)
     // Centred between the plinth and what stands on the cornice (candles, a lantern).
     this.camY = (caseH - 0.35) / 2 + 0.15
     this.resize()
@@ -261,7 +291,7 @@ export class Library {
   }
 
   private spec(b: ShelfBinder, icon: HTMLImageElement | null, art: HTMLImageElement | null) {
-    return { name: b.set.name, code: b.set.code, hue: hueOf(b.set.code), owned: b.set.owned, total: b.set.total, fresh: b.fresh, icon, art, freshLabel: this.opts.freshLabel }
+    return { name: b.set.name, code: b.set.code, hue: hueOf(b.set.code), owned: b.set.owned, total: b.set.total, fresh: b.fresh, icon, art, freshLabel: this.opts.freshLabel, grain: this.opts.textures.grain, font: this.opts.textures.font, weight: this.opts.textures.weight }
   }
 
   /** Repaint one spine (its symbol or art arrived, its progress moved). */
@@ -276,35 +306,9 @@ export class Library {
   }
 
   private woodMaterial(): Three.MeshStandardMaterial {
-    const { THREE } = this
-    const c = document.createElement('canvas')
-    c.width = 1024
-    c.height = 256
-    const g = c.getContext('2d')!
-    const optcg = this.opts.universe === 'optcg'
-    g.fillStyle = optcg ? '#8a5a32' : '#3b2415'
-    g.fillRect(0, 0, 1024, 256)
-    // Grain: long wavy streaks, a knot now and then.
-    for (let i = 0; i < 140; i++) {
-      const y = Math.random() * 256
-      g.strokeStyle = optcg
-        ? `rgba(${60 + Math.random() * 40},${35 + Math.random() * 20},15,${0.12 + Math.random() * 0.2})`
-        : `rgba(${15 + Math.random() * 20},${8 + Math.random() * 10},4,${0.18 + Math.random() * 0.25})`
-      g.lineWidth = 0.6 + Math.random() * 2.2
-      g.beginPath()
-      g.moveTo(0, y)
-      for (let x = 0; x <= 1024; x += 64)
-        g.lineTo(x, y + Math.sin(x / 90 + i) * 3 + (Math.random() - 0.5) * 2)
-      g.stroke()
-    }
-    const tex = new THREE.CanvasTexture(c)
-    tex.colorSpace = THREE.SRGBColorSpace
-    tex.wrapS = THREE.RepeatWrapping
-    tex.wrapT = THREE.RepeatWrapping
-    tex.repeat.set(2, 2)
-    tex.anisotropy = 8
-    this.disposables.push(tex)
-    return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.72, metalness: 0.02 })
+    const mat = scanned(this.THREE, this.opts.textures.wood, 2, 2, { roughness: 0.95 })
+    this.disposables.push(mat, mat.map!, mat.normalMap!, mat.roughnessMap!)
+    return mat
   }
 
   /** Brass plates on each shelf's front edge, their labels from one texture. */
@@ -519,7 +523,7 @@ export class Library {
     const kit = this.opts.kit
     const hue = hueOf(p.binder.set.code)
     const color = p.binder.fresh ? new THREE.Color('#e8e1d2') : new THREE.Color(`hsl(${hue}, 38%, 26%)`)
-    const leather = new THREE.MeshStandardMaterial({ color, roughness: 0.58 })
+    const leather = scanned(THREE, this.opts.textures.leather, 1, 1, { color })
     const lining = new THREE.MeshStandardMaterial({ color: color.clone().multiplyScalar(0.55), roughness: 0.8 })
     const metal = new THREE.MeshStandardMaterial({ color: 0xD8D8DE, metalness: 1, roughness: 0.25 })
     this.pageTextures = []

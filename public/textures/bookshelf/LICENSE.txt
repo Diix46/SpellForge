@@ -1,0 +1,3 @@
+Textures from Poly Haven (https://polyhaven.com), CC0 1.0 — public domain.
+fabric_leather_02 (leather*), dark_wood (wood_dark*), wood_planks (wood_planks*),
+brown_planks_09 (planks_wall*); resized and recompressed, leather desaturated.

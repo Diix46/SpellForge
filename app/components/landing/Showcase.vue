@@ -42,7 +42,8 @@ const { t, formatShortDate } = useLocale()
 <style scoped>
 .showcase {
   padding: 90px clamp(20px, 5vw, 88px);
-  background: #0e0b12;
+  /* The light paper of the sections around it: its text is dark. */
+  background: linear-gradient(90deg, #efe6d4, #eff0ed);
   color: #1b1f22;
 }
 .head {
@@ -75,7 +76,7 @@ const { t, formatShortDate } = useLocale()
   align-items: center;
   gap: 8px;
   padding: 9px 16px;
-  border: 1px solid rgba(243, 236, 218, 0.35);
+  border: 1px solid rgba(27, 31, 34, 0.25);
   border-radius: 999px;
   color: #1b1f22;
   font-size: 14px;
