@@ -1,3 +1,10 @@
+## [0.39.0](https://github.com/Diix46/SpellForge/compare/v0.38.0...v0.39.0) (2026-09-26)
+
+### Features
+
+* **collection:** bibliothèque en meubles et étagères étiquetées, étagère des nouveautés ([aef834b](https://github.com/Diix46/SpellForge/commit/aef834b0b931f76a0ab7f76b221baee33849dd3b))
+* **collection:** moteur de la bibliothèque 3D — classeurs instanciés, atlas de tranches, rendu à la demande ([8509d76](https://github.com/Diix46/SpellForge/commit/8509d76b6d47fe83aa3d070b9e4d6b6b50465af5))
+
 ## [0.38.0](https://github.com/Diix46/SpellForge/compare/v0.37.0...v0.38.0) (2026-09-26)
 
 ### Features
