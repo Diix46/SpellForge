@@ -1,3 +1,13 @@
+## [0.44.0](https://github.com/Diix46/SpellForge/compare/v0.43.0...v0.44.0) (2026-09-26)
+
+### Features
+
+* **collection:** classeurs en cuir scanné, titres dorés à chaud, meubles en bois réel, hauteur de l'écran et plein écran ([beecf6e](https://github.com/Diix46/SpellForge/commit/beecf6e9fad1b8d3e7925ba4ed7e3ee078259110))
+
+### Bug Fixes
+
+* **accueil:** section « Fraîchement publiés » lisible, sur le papier clair de ses voisines ([5e55c36](https://github.com/Diix46/SpellForge/commit/5e55c36bb55b7a2c13f115b4adaefb0a8a97abdd))
+
 ## [0.43.0](https://github.com/Diix46/SpellForge/compare/v0.42.0...v0.43.0) (2026-09-26)
 
 ### Features
