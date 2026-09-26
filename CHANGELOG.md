@@ -1,3 +1,14 @@
+## [0.30.0](https://github.com/Diix46/SpellForge/compare/v0.29.0...v0.30.0) (2026-09-26)
+
+### Features
+
+* **collection:** complétion par extension et checklist côté serveur ([10ee105](https://github.com/Diix46/SpellForge/commit/10ee105cbc0b6900e59032c9c98fd1b8973ac088))
+* **collection:** onglet Extensions, progression globale et checklist par extension ([1662908](https://github.com/Diix46/SpellForge/commit/16629083fe47cf5b34a3fe87b5d18ba1570aceba))
+
+### Bug Fixes
+
+* **collection:** symbole d'extension servi sous son propre fichier (promos partagées) ([4637fb9](https://github.com/Diix46/SpellForge/commit/4637fb9dfd237940338cbf23bb49c54048383831))
+
 ## [0.29.0](https://github.com/Diix46/SpellForge/compare/v0.28.1...v0.29.0) (2026-09-26)
 
 ### Features
