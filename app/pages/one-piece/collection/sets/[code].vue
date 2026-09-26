@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// A One Piece set's checklist: what the member owns of it, what is missing.
+// A One Piece set as a binder: what the member owns of it, what is missing.
 definePageMeta({ universe: 'optcg' })
 const route = useRoute()
 const { t } = useLocale()
@@ -11,6 +11,6 @@ useSeoMeta({ title: () => `One Piece · ${t('collection.tabSets')} · ${code.val
 
 <template>
   <CollectionShell game="optcg">
-    <CollectionChecklist :key="code" game="optcg" :code="code" />
+    <CollectionBinder :key="code" game="optcg" :code="code" />
   </CollectionShell>
 </template>

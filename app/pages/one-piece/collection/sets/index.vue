@@ -1,12 +1,8 @@
 <script setup lang="ts">
-// How far the member's One Piece collection goes into each set.
-definePageMeta({ universe: 'optcg' })
-const { t } = useLocale()
-useSeoMeta({ title: () => `One Piece · ${t('collection.tabSets')}`, robots: 'noindex' })
+// The sets are the binder shelf now, the collection's first page.
+definePageMeta({ universe: 'optcg', redirect: '/one-piece/collection' })
 </script>
 
 <template>
-  <CollectionShell game="optcg">
-    <CollectionSets game="optcg" />
-  </CollectionShell>
+  <div />
 </template>

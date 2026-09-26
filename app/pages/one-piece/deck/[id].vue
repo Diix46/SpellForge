@@ -188,7 +188,7 @@ const summary = computed(() => {
       :dots="dots"
       :card-count="optDeck.stats.value.count"
       :owned="ownership.summary.value"
-      :collection-to="collectionPath('optcg', '/sets')"
+      :collection-to="collectionPath('optcg')"
       :logged-in="loggedIn"
       :can-undo="autosave.canUndo.value"
       :can-redo="autosave.canRedo.value"

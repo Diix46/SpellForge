@@ -1,12 +1,8 @@
 <script setup lang="ts">
-// How far the member's Magic collection goes into each set.
-definePageMeta({ universe: 'mtg' })
-const { t } = useLocale()
-useSeoMeta({ title: () => `Magic · ${t('collection.tabSets')}`, robots: 'noindex' })
+// The sets are the binder shelf now, the collection's first page.
+definePageMeta({ universe: 'mtg', redirect: '/magic/collection' })
 </script>
 
 <template>
-  <CollectionShell game="mtg">
-    <CollectionSets game="mtg" />
-  </CollectionShell>
+  <div />
 </template>

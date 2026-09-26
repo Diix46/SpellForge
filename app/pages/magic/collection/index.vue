@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The member's Magic collection: every copy (components/collection).
+// The member's Magic collection as binders: one per set, the sets started first.
 definePageMeta({ universe: 'mtg' })
 const { t } = useLocale()
 useSeoMeta({ title: () => `Magic · ${t('collection.title')}`, robots: 'noindex' })
@@ -7,6 +7,6 @@ useSeoMeta({ title: () => `Magic · ${t('collection.title')}`, robots: 'noindex'
 
 <template>
   <CollectionShell game="mtg">
-    <CollectionWorkspace game="mtg" />
+    <CollectionSets game="mtg" />
   </CollectionShell>
 </template>

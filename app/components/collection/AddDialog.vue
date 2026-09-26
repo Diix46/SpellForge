@@ -167,7 +167,7 @@ async function add() {
         <!-- Not one card but a whole deck: the import dialog, on that source. -->
         <div class="whole">
           <span>{{ t('collection.add.whole') }}</span>
-          <button v-if="game === 'mtg'" type="button" @click="bulk('precon')">
+          <button type="button" @click="bulk('precon')">
             <UIcon name="i-lucide-box" class="h-4 w-4" /> {{ t('collection.import.sourcePrecon') }}
           </button>
           <button type="button" @click="bulk('deck')">

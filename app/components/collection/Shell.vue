@@ -50,13 +50,16 @@ const exportItems = computed(() => [
   })),
 ])
 
-const tabs = [
-  { to: collectionPath(props.game), label: 'collection.tabCopies', icon: 'i-lucide-layers', exact: true },
-  { to: collectionPath(props.game, '/sets'), label: 'collection.tabSets', icon: 'i-lucide-library-big', exact: false },
-  // Only Magic has prices to follow.
-  ...(props.game === 'mtg' ? [{ to: collectionPath(props.game, '/value'), label: 'collection.tabValue', icon: 'i-lucide-chart-line', exact: false }] : []),
-  { to: collectionPath(props.game, '/wishlist'), label: 'collection.tabWishlist', icon: 'i-lucide-heart', exact: false },
-]
+// The binder shelf first (and each set's binder under it), then the
+// inventory line by line, the value (Magic: the only game priced) and wishes.
+const route = useRoute()
+const base = collectionPath(props.game)
+const tabs = computed(() => [
+  { to: base, label: 'collection.tabBinder', icon: 'i-lucide-book-open', active: route.path === base || route.path.startsWith(`${base}/sets`) },
+  { to: `${base}/inventory`, label: 'collection.tabInventory', icon: 'i-lucide-layers', active: route.path.startsWith(`${base}/inventory`) },
+  ...(props.game === 'mtg' ? [{ to: `${base}/value`, label: 'collection.tabValue', icon: 'i-lucide-chart-line', active: route.path.startsWith(`${base}/value`) }] : []),
+  { to: `${base}/wishlist`, label: 'collection.tabWishlist', icon: 'i-lucide-heart', active: route.path.startsWith(`${base}/wishlist`) },
+])
 </script>
 
 <template>
@@ -72,11 +75,11 @@ const tabs = [
       </div>
       <div v-if="loggedIn" class="actions">
         <UButton color="neutral" variant="subtle" icon="i-lucide-upload" @click="openImport()">
-          {{ t('collection.import.button') }}
+          <span class="label">{{ t('collection.import.button') }}</span>
         </UButton>
         <UDropdownMenu :items="exportItems" :content="{ align: 'end' }">
           <UButton color="neutral" variant="subtle" icon="i-lucide-download" trailing-icon="i-lucide-chevron-down" :disabled="!collection.copies.value.length">
-            {{ t('collection.export.button') }}
+            <span class="label">{{ t('collection.export.button') }}</span>
           </UButton>
         </UDropdownMenu>
         <UButton icon="i-lucide-plus" size="lg" @click="openAdd()">
@@ -100,8 +103,8 @@ const tabs = [
           :key="tab.to"
           :to="tab.to"
           class="tab"
-          :active-class="tab.exact ? '' : 'is-active'"
-          :exact-active-class="tab.exact ? 'is-active' : ''"
+          :class="{ 'is-active': tab.active }"
+          :aria-current="tab.active ? 'page' : undefined"
         >
           <UIcon :name="tab.icon" class="h-4 w-4" />
           {{ t(tab.label) }}
@@ -208,5 +211,22 @@ const tabs = [
   gap: 12px;
   text-align: center;
   color: var(--color-text-mid);
+}
+/* A phone: the page's work (the binder) comes up the screen. */
+@media (max-width: 640px) {
+  .collection {
+    gap: 14px;
+  }
+  .title {
+    font-size: 24px;
+  }
+  .sub,
+  .actions .label {
+    display: none;
+  }
+  .head {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
 }
 </style>

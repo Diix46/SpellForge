@@ -737,7 +737,7 @@ const {
       :card-count="deckSize"
       :price-total="price.total"
       :owned="ownership.summary.value"
-      :collection-to="collectionPath('mtg', '/sets')"
+      :collection-to="collectionPath('mtg')"
       :logged-in="loggedIn"
       :can-undo="autosave.canUndo.value"
       :can-redo="autosave.canRedo.value"

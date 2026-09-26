@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The member's One Piece collection: every copy (components/collection).
+// The member's One Piece collection as binders: one per set, the sets started first.
 definePageMeta({ universe: 'optcg' })
 const { t } = useLocale()
 useSeoMeta({ title: () => `One Piece · ${t('collection.title')}`, robots: 'noindex' })
@@ -7,6 +7,6 @@ useSeoMeta({ title: () => `One Piece · ${t('collection.title')}`, robots: 'noin
 
 <template>
   <CollectionShell game="optcg">
-    <CollectionWorkspace game="optcg" />
+    <CollectionSets game="optcg" />
   </CollectionShell>
 </template>
