@@ -1,3 +1,15 @@
+## [0.38.0](https://github.com/Diix46/SpellForge/compare/v0.37.0...v0.38.0) (2026-09-26)
+
+### Features
+
+* **collection:** bibliothèque 3D des classeurs, qu'on sort et qu'on ouvre (Three.js) ([7f8f090](https://github.com/Diix46/SpellForge/commit/7f8f09022faa375cf4ce45a72e827fc84093f299))
+* **collection:** étagère en bibliothèque ou en liste illustrée, sans débordement ([4d23e8f](https://github.com/Diix46/SpellForge/commit/4d23e8f9cb9a0428a064302e7323fa1bd89bca86))
+* **collection:** une illustration par extension (carte phare Magic, leader One Piece) ([73f98ca](https://github.com/Diix46/SpellForge/commit/73f98ca1eff057a93f8f499c3df5abeb26d9d413))
+
+### Bug Fixes
+
+* **collection:** une carte rangée apparaît aussitôt dans sa pochette ([4a10983](https://github.com/Diix46/SpellForge/commit/4a109832bdce549f6c8903ed32da37aaa9d1de9e))
+
 ## [0.37.0](https://github.com/Diix46/SpellForge/compare/v0.36.0...v0.37.0) (2026-09-26)
 
 ### Features
