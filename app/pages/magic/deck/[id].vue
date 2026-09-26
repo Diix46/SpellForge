@@ -2,7 +2,7 @@
 import type { ResolvedRow } from '~/composables/scryfall/toResolved'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { isDefaultDeckName } from '#shared/decks'
 import { deckPath } from '#shared/game'
 import { samePin } from '#shared/mtg/prints'
@@ -176,10 +176,22 @@ function builderOp(fn: () => void) {
 const inDeckNames = computed(() => new Set(builder.entries.value.map(e => e.name.trim().toLowerCase())))
 
 // Maps derived from resolved cards (when loaded) for grouping + EDH validation.
+// Cards added from the search, known in full at once: their line goes straight
+// to its type's column, with its art, name and cost, before the deck resolves.
+const knownCards = shallowRef(new Map<string, ScryfallCard>())
+function remember(card: ScryfallCard) {
+  knownCards.value = new Map(knownCards.value).set(card.name.trim().toLowerCase(), card)
+}
 const categoryByName = computed(() => {
   const m = new Map<string, string>()
-  for (const rc of resolvedCards.value)
-    m.set(rc.entry.name.trim().toLowerCase(), classifyType(rc.card?.typeLine ?? ''))
+  for (const [key, c] of knownCards.value)
+    m.set(key, classifyType(c.type_line ?? ''))
+  for (const rc of resolvedCards.value) {
+    if (rc.card)
+      m.set(rc.entry.name.trim().toLowerCase(), classifyType(rc.card.typeLine ?? ''))
+    else if (!m.has(rc.entry.name.trim().toLowerCase()))
+      m.set(rc.entry.name.trim().toLowerCase(), classifyType(''))
+  }
   return m
 })
 const identityByName = computed(() => {
@@ -194,6 +206,8 @@ const identityByName = computed(() => {
 const displayNameByName = computed(() => {
   const m = new Map<string, string>()
   const isFr = locale.value === 'fr'
+  for (const [key, c] of knownCards.value)
+    m.set(key, displayName(c, isFr))
   for (const rc of resolvedCards.value) {
     if (rc.card)
       m.set(rc.entry.name.trim().toLowerCase(), displayName(mtgRaw(rc.card), isFr))
@@ -203,6 +217,10 @@ const displayNameByName = computed(() => {
 // name(lower) → { thumbnail, large image, mana cost } for the enriched deck rows.
 const cardMetaByName = computed(() => {
   const m = new Map<string, { thumb: string | null, image: string | null, manaCost: string }>()
+  for (const [key, c] of knownCards.value) {
+    const uris = getImageUris(c)
+    m.set(key, { thumb: uris?.small ?? uris?.normal ?? null, image: uris?.normal ?? null, manaCost: c.mana_cost ?? c.card_faces?.[0]?.mana_cost ?? '' })
+  }
   for (const rc of resolvedCards.value) {
     const c = mtgRaw(rc.card)
     if (!c)
@@ -276,6 +294,7 @@ function addSearchCard(card: ScryfallCard, from: HTMLElement | null = null) {
     toast.add({ title: t('toast.outOfIdentity'), description: card.name, color: 'warning', icon: 'i-lucide-shield-alert' })
     return
   }
+  remember(card)
   builderOp(() => builder.addScryfallCard(card))
   // Cast, then dealt onto its line in the deck.
   void fx.cast(from, card.mana_cost ?? card.card_faces?.[0]?.mana_cost, card.color_identity ?? [])
