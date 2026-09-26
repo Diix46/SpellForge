@@ -619,3 +619,60 @@ leur propre dossier.
 
 Les images s'ajoutent sur le serveur comme au §13 (archive servie par le Mac, commande dans
 le terminal Unraid) ; rien n'est écrasé, seules des cartes gagnent leur version HD.
+
+---
+
+## 15. Bibliothèque 3D, refonte (26/09)
+
+> Viktor, sur la première version (0.38.0) : « dans l'idée pas mal, mais vraiment pas assez
+> travaillé et performant ». Gêné par le **rendu trop simple** et l'**ergonomie**.
+
+**Constat (0.38.0).** ~19 appels de dessin par classeur (4 boîtes, 6 matériaux par face),
+géométries et matériaux recréés pour chacun, une texture de tranche de 1,3 Mo de mémoire
+graphique par classeur, rendu 60 fois/s même immobile, scène entière reconstruite au moindre
+changement. Boîtes à arêtes vives, lumière plate sans ombre, meuble générique, caméra figée,
+ouverture qui finit en flash blanc puis rupture vers la page 2D ; rien au toucher.
+
+**Choix de Viktor.**
+- Ambiance **par univers** : Magic en bibliothèque d'arcaniste (bois sombre, bougies, lueur
+  magique, poussière en suspension) ; One Piece en étagère de cabine de navire (bois de pont,
+  cordages, lanterne, reflets d'eau).
+- Ouverture en **continuité 3D → 2D** : le classeur s'ouvre à plat face à soi et ses pages
+  deviennent, sans coupure, le classeur interactif (même cadrage, mêmes pochettes).
+- **Beau partout, allégé sur mobile.**
+- Contenu : **mes classeurs + une étagère « Nouveautés »** (dernières extensions, classeurs
+  neufs) pour en commencer un d'un clic.
+- Navigation : **étagères étiquetées** (par famille, plaque gravée), **recherche qui vole
+  jusqu'au classeur**, **plusieurs meubles côte à côte** (flèches / glisser de l'un à l'autre).
+- Tranche : **nom lisible** (langue du site quand elle existe), **progression** (dorée une fois
+  complète), **bandeau illustré**.
+
+**Architecture.**
+
+| Sujet | Décision |
+|---|---|
+| Classeurs | Un vrai modèle de classeur à anneaux (coins et dos arrondis, étiquette de tranche) construit une fois ; **InstancedMesh** : 1 appel de dessin pour tous les classeurs d'un meuble (+1 pour les tranches) |
+| Tranches | **Un atlas unique** (toutes les tranches dans une texture, régénéré par morceaux), UV décalées par instance ; libellés en police du site, rendus à la bonne résolution selon l'appareil |
+| Couvertures | Illustration chargée à la demande (survol, focus recherche, ouverture), une seule en mémoire à la fois hors ouverture |
+| Rendu | **À la demande** : on ne redessine que s'il se passe quelque chose (caméra, survol, animation, particules visibles) ; pause hors écran et onglet caché |
+| Lumière | Éclairage d'ambiance précalculé (environnement léger), une ombre douce par meuble (projetée une fois, pas à chaque image), occlusion simulée au pied des classeurs |
+| Décor | Par univers, modélisé simplement et partagé (instances) ; particules (poussière, lueurs) en un seul nuage de points ; allégé sur mobile |
+| Mise à jour | Un changement de progression **met à jour la tranche concernée**, pas toute la scène |
+| Mobile | Moins de particules, résolution adaptée, ombre précalculée seulement ; toucher = sortir le classeur (1er toucher) puis l'ouvrir (2e) |
+| Accessibilité | Liste illustrée toujours disponible ; recherche au clavier ; mouvement réduit = ouverture directe |
+| Poids | Three.js chargé seulement sur cette vue, importé au plus juste (pas de modules inutiles) |
+
+**Lots** (une PR et un déploiement chacun, vérification visuelle à chaque étape) :
+
+| Lot | Contenu |
+|---|---|
+| B1. Moteur | Scène à la demande, classeur modélisé + instanciation, atlas de tranches, ombres/lumière de base, mesures (appels de dessin, images/s, mémoire) avant/après |
+| B2. Ambiances | Magic (arcaniste) et One Piece (cabine), décor, lumière, particules ; version mobile allégée |
+| B3. Rangement | Meubles côte à côte, étagères par famille avec plaques gravées, étagère « Nouveautés » (classeurs neufs pour commencer), navigation flèches/glisser/clavier |
+| B4. Recherche | Champ « Trouver un classeur » : la caméra vole jusqu'au classeur, qui s'illumine et dépasse |
+| B5. Ouverture continue | Sortir → face à soi → la couverture s'ouvre à plat → cadrage calé sur le classeur 2D → bascule sans coupure (même position des pochettes, fondu enchaîné), retour à la bibliothèque en sens inverse |
+| B6. Finitions | Tranches (nom dans la langue du site, bandeau illustré, jauge dorée), toucher sur mobile, états vides, réglages de qualité automatiques selon l'appareil |
+
+**Critères de réussite.** Ordinateur : 60 images/s, moins de 20 appels de dessin par meuble.
+Téléphone récent : fluide au glisser ; rien ne tourne quand on ne touche à rien ; scène prête
+en moins d'une seconde après le chargement de Three.js.
