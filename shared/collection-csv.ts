@@ -365,12 +365,12 @@ export function exportCollection(copies: readonly CollectionCopy[], format: Expo
     case 'manabox':
       return csv(
         ['Name', 'Set code', 'Set name', 'Collector number', 'Foil', 'Rarity', 'Quantity', 'Scryfall ID', 'Purchase price', 'Condition', 'Language', 'Purchase price currency'],
-        known.map(c => [c.card!.name, c.card!.set.toUpperCase(), c.card!.setName ?? '', c.card!.number, c.finish === 'nonfoil' ? 'normal' : c.finish, c.card!.rarity ?? '', c.quantity, c.printingId, c.purchasePrice ?? '', MANABOX_CONDITION[c.condition], c.card!.lang, 'EUR']),
+        known.map(c => [c.card!.name, c.card!.set.toUpperCase(), c.card!.setName ?? '', c.card!.number, c.finish === 'nonfoil' ? 'normal' : c.finish, c.card!.rarity ?? '', c.quantity, c.printingId, c.purchasePrice ?? '', MANABOX_CONDITION[c.condition], c.lang, 'EUR']),
       )
     case 'moxfield':
       return csv(
         ['Count', 'Tradelist Count', 'Name', 'Edition', 'Condition', 'Language', 'Foil', 'Tags', 'Last Modified', 'Collector Number', 'Alter', 'Proxy', 'Purchase Price'],
-        known.map(c => [c.quantity, 0, c.card!.name, c.card!.set, MOXFIELD_CONDITION[c.condition], LANG_NAME[c.card!.lang] ?? 'English', c.finish === 'nonfoil' ? '' : c.finish, '', '', c.card!.number, 'False', 'False', c.purchasePrice ?? '']),
+        known.map(c => [c.quantity, 0, c.card!.name, c.card!.set, MOXFIELD_CONDITION[c.condition], LANG_NAME[c.lang] ?? 'English', c.finish === 'nonfoil' ? '' : c.finish, '', '', c.card!.number, 'False', 'False', c.purchasePrice ?? '']),
       )
     case 'text':
       return known.map(c => c.game === 'optcg'
@@ -379,7 +379,7 @@ export function exportCollection(copies: readonly CollectionCopy[], format: Expo
     default:
       return csv(
         ['Printing ID', 'Name', 'Set code', 'Set name', 'Collector number', 'Language', 'Finish', 'Condition', 'Quantity', 'Purchase price', 'Location', 'Note'],
-        known.map(c => [c.printingId, c.card!.name, c.card!.set, c.card!.setName ?? '', c.card!.number, c.card!.lang, c.finish, c.condition, c.quantity, c.purchasePrice ?? '', c.location ?? '', c.note ?? '']),
+        known.map(c => [c.printingId, c.card!.name, c.card!.set, c.card!.setName ?? '', c.card!.number, c.lang, c.finish, c.condition, c.quantity, c.purchasePrice ?? '', c.location ?? '', c.note ?? '']),
       )
   }
 }

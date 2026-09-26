@@ -57,7 +57,7 @@ function onPick(e: Event) {
 // The preview shows the first few hundred rows of the chosen kind: enough to
 // check, light enough to scroll.
 const SHOWN = 300
-const filtered = computed(() => imp.preview.value.filter(r => show.value === 'all' || (show.value === 'warned' ? r.printingId && r.warnings.length : !r.printingId)))
+const filtered = computed(() => imp.preview.value.filter(r => show.value === 'all' || (show.value === 'warned' ? r.printingId && imp.problems(r).length : !r.printingId)))
 const visible = computed(() => filtered.value.slice(0, SHOWN))
 
 const nf = computed(() => new Intl.NumberFormat(locale.value === 'fr' ? 'fr-FR' : 'en-US'))
@@ -189,7 +189,7 @@ function fromRows(rows: ImportRow[], name: string) {
         </div>
 
         <div class="table" role="table">
-          <div v-for="r in visible" :key="r.row.line" class="tr" :class="{ 'is-bad': !r.printingId, 'is-warn': r.printingId && r.warnings.length }" role="row">
+          <div v-for="r in visible" :key="r.row.line" class="tr" :class="{ 'is-bad': !r.printingId, 'is-warn': r.printingId && imp.problems(r).length }" role="row">
             <img v-if="r.card?.thumb" :src="r.card.thumb" alt="" class="thumb" loading="lazy">
             <span v-else class="thumb thumb--empty"><UIcon name="i-lucide-help-circle" class="h-4 w-4" /></span>
             <div class="min-w-0 flex-1">
@@ -198,7 +198,7 @@ function fromRows(rows: ImportRow[], name: string) {
               </p>
               <p class="t-meta">
                 <template v-if="r.card">
-                  {{ r.card.set.toUpperCase() }} · #{{ r.card.number }} · {{ r.card.lang.toUpperCase() }}
+                  {{ r.card.set.toUpperCase() }} · #{{ r.card.number }} · {{ (r.lang ?? r.card.lang).toUpperCase() }}
                 </template>
                 <template v-else>
                   {{ t('collection.import.lineN').replace('{n}', String(r.row.line)) }}<template v-if="r.row.set">
@@ -208,7 +208,7 @@ function fromRows(rows: ImportRow[], name: string) {
                   </template>
                 </template>
               </p>
-              <p v-if="r.error || r.warnings.length" class="t-issue">
+              <p v-if="r.error || r.warnings.length" class="t-issue" :class="{ info: !r.error && !imp.problems(r).length }">
                 {{ issueText(r) }}
               </p>
             </div>
@@ -495,6 +495,9 @@ function fromRows(rows: ImportRow[], name: string) {
   margin: 2px 0 0;
   font-size: 11px;
   color: #b27510;
+}
+.t-issue.info {
+  color: var(--color-text-muted);
 }
 .is-bad .t-issue {
   color: var(--color-error, #c0392b);

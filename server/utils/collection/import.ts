@@ -18,11 +18,13 @@ import { collectionCards } from './cards'
 const CHUNK = 400
 
 /** Why a row was bent or left out (the client words it). */
-export type ImportIssue = 'notFound' | 'otherLang' | 'noLangPrinting' | 'setNotFound' | 'finishChanged'
+export type ImportIssue = 'notFound' | 'otherLang' | 'noLangPrinting' | 'langKept' | 'setNotFound' | 'finishChanged'
 
 export interface ResolvedImportRow {
   line: number
   printingId: string | null
+  /** The copy's language, when the file gave one. */
+  lang: 'fr' | 'en' | null
   finish: Finish
   quantity: number
   card: CollectionCard | null
@@ -205,8 +207,10 @@ export async function resolveImport(game: GameId, rows: readonly ImportRow[]): P
     const m = matched.get(r.line)
     const card = m ? cards.get(m.id) ?? null : null
     if (!m || !card)
-      return { line: r.line, printingId: null, finish: r.finish, quantity: r.quantity, card: null, error: 'notFound', warnings: [] }
-    const warnings = [...m.warnings]
+      return { line: r.line, printingId: null, lang: r.lang, finish: r.finish, quantity: r.quantity, card: null, error: 'notFound', warnings: [] }
+    // Magic: no printing in the copy's language means Scryfall lacks it, not
+    // that the copy is not French; the copy keeps its language (a note, not a fix).
+    const warnings = m.warnings.map(w => (w === 'noLangPrinting' && game === 'mtg' && r.lang ? 'langKept' as const : w))
     if (r.otherLang)
       warnings.push('otherLang')
     let finish = r.finish
@@ -214,6 +218,8 @@ export async function resolveImport(game: GameId, rows: readonly ImportRow[]): P
       finish = card.finishes[0] ?? 'nonfoil'
       warnings.push('finishChanged')
     }
-    return { line: r.line, printingId: m.id, finish, quantity: r.quantity, card, error: null, warnings }
+    // Magic: a French copy of a printing only listed in English stays French.
+    // One Piece carries the language in the printing itself.
+    return { line: r.line, printingId: m.id, lang: game === 'mtg' ? r.lang : null, finish, quantity: r.quantity, card, error: null, warnings }
   })
 }

@@ -4,12 +4,12 @@ import { MAX_COPIES } from '../../../../shared/collection'
 import { IMPORT_MAX_ROWS } from '../../../../shared/collection-csv'
 import { requireAppUser } from '../../../utils/appUser'
 import { collectionCards } from '../../../utils/collection/cards'
-import { copyFields, gameOf } from '../../../utils/collection/copies'
+import { copyFields, gameOf, storedLang } from '../../../utils/collection/copies'
 import { schema, useDb } from '../../../utils/db'
 import { genId } from '../../../utils/id'
 
 /** What an import added, line by line, for undoing it. */
-interface ImportedItem { printingId: string, finish: Finish, condition: Condition, quantity: number }
+interface ImportedItem { printingId: string, finish: Finish, condition: Condition, lang: string, quantity: number }
 
 const BATCH = 400
 
@@ -28,6 +28,7 @@ export default defineEventHandler(async (event) => {
   const items = raw.map(r => ({ printingId: typeof r.printingId === 'string' ? r.printingId : '', ...copyFields(r, false) }))
   const cards = await collectionCards(game, [...new Set(items.map(i => i.printingId))])
   const valid = items.filter(i => cards.get(i.printingId)?.finishes.includes(i.finish!))
+    .map(i => ({ ...i, lang: storedLang(i.lang, cards.get(i.printingId)!.lang) }))
   if (!valid.length)
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Aucune ligne à importer' })
 
@@ -41,11 +42,12 @@ export default defineEventHandler(async (event) => {
     finish: i.finish!,
     condition: i.condition!,
     quantity: i.quantity!,
+    lang: i.lang,
     purchasePrice: i.purchasePrice ?? null,
     location: i.location ?? null,
     note: i.note ?? null,
   }).onConflictDoUpdate({
-    target: [t.userId, t.game, t.printingId, t.finish, t.condition],
+    target: [t.userId, t.game, t.printingId, t.finish, t.condition, t.lang],
     set: {
       quantity: sql`min(${t.quantity} + ${i.quantity!}, ${MAX_COPIES})`,
       updatedAt: new Date(),
@@ -58,9 +60,9 @@ export default defineEventHandler(async (event) => {
   // One entry per line key, the quantities added summed: what undo takes back.
   const added = new Map<string, ImportedItem>()
   for (const i of valid) {
-    const key = `${i.printingId}|${i.finish}|${i.condition}`
+    const key = `${i.printingId}|${i.finish}|${i.condition}|${i.lang}`
     const prev = added.get(key)
-    added.set(key, { printingId: i.printingId, finish: i.finish!, condition: i.condition!, quantity: (prev?.quantity ?? 0) + i.quantity! })
+    added.set(key, { printingId: i.printingId, finish: i.finish!, condition: i.condition!, lang: i.lang, quantity: (prev?.quantity ?? 0) + i.quantity! })
   }
   const copies = valid.reduce((n, i) => n + i.quantity!, 0)
   const record = db.insert(schema.collectionImports).values({

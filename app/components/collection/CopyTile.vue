@@ -49,7 +49,7 @@ function untilt() {
     <span class="meta">
       <CollectionSetSymbol v-if="copy.card" :icon="copy.card.setIcon" :rarity="copy.card.rarity" :size="14" :title="copy.card.setName ?? ''" />
       <span class="code">{{ copy.card?.set.toUpperCase() }} · {{ copy.card?.number }}</span>
-      <span class="lang">{{ copy.card?.lang.toUpperCase() }}</span>
+      <span class="lang">{{ copy.lang.toUpperCase() }}</span>
       <span class="cond" :title="t(`collection.condition.${copy.condition}`)">{{ copy.condition }}</span>
     </span>
     <span class="name">{{ name }}</span>

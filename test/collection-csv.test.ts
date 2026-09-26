@@ -77,6 +77,7 @@ describe('export', () => {
     finish: 'foil',
     condition: 'LP',
     quantity: 2,
+    lang: 'fr',
     purchasePrice: 3,
     location: 'Classeur, rouge',
     note: null,
@@ -132,5 +133,14 @@ describe.skipIf(!existsSync('.data/cards-mtg.db'))('import defaults', () => {
     const got = await resolveImport('mtg', parseImport('1 Blood Moon\n1 Lightning Bolt').rows)
     for (const r of got)
       expect(['sld', 'plst']).not.toContain(r.card?.set)
+  })
+})
+
+describe.skipIf(!existsSync('.data/cards-mtg.db'))('a copy\'s own language', () => {
+  it('keeps a French copy of a printing Scryfall only lists in English', async () => {
+    const { resolveImport } = await import('../server/utils/collection/import')
+    // Arcane Signet from the Doctor Doom deck: no French printing at Scryfall.
+    const [got] = await resolveImport('mtg', parseImport('Name,Set code,Collector number,Language\nArcane Signet,msc,193,fr').rows)
+    expect(got).toMatchObject({ lang: 'fr', warnings: ['langKept'], card: { set: 'msc', number: '193', lang: 'en' } })
   })
 })
