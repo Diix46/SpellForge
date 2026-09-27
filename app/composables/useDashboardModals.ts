@@ -21,7 +21,7 @@ export function useDashboardModals(route: RouteLocationNormalizedLoaded, router:
   // New deck: the game is chosen in the modal (or preset by ?new=optcg).
   const showNewDeck = ref(false)
   const newDeckName = ref('')
-  const newDeckGame = ref<GameId>('mtg')
+  const newDeckGame = ref<GameId>(useFavoriteGame().preferred.value)
 
   // Rename
   const showRename = ref(false)

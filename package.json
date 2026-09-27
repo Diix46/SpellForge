@@ -34,6 +34,7 @@
     "marked": "^17.0.6",
     "nuxt": "^4.4.8",
     "nuxt-auth-utils": "^0.5.29",
+    "opentype.js": "^2.0.0",
     "sharp": "^0.35.4",
     "tailwindcss": "^4.3.1",
     "three": "^0.186.1"

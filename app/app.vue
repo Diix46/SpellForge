@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
 import { computed, onMounted, ref, watch } from 'vue'
-import { DEFAULT_GAME, GAME_IDS, GAME_LIST, GAMES, libraryPath } from '#shared/game'
+import { GAME_IDS, GAME_LIST, GAMES, libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { parseLocale } from '~/composables/useLocale'
 import { applyUniverseMode, forcedModeOf } from '~/utils/universeMode'
@@ -120,10 +120,11 @@ const initials = computed(() => {
 // Primary nav — real destinations only (these get the active state).
 // "Importer" is an ACTION (opens the import modal), not a destination, so it's
 // rendered separately below and never shows an active fill.
+const { preferred: favoriteGame } = useFavoriteGame()
 const nav = computed(() => [
   { to: '/decks', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
-  // The collection of the game on screen (Magic elsewhere).
-  { to: collectionPath(universe.value ?? DEFAULT_GAME), label: t('nav.collection'), icon: 'i-lucide-gem' },
+  // The collection of the game on screen (the favourite one elsewhere).
+  { to: collectionPath(universe.value ?? favoriteGame.value), label: t('nav.collection'), icon: 'i-lucide-gem' },
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
@@ -221,6 +222,11 @@ function isActive(to: string) {
               <template #fallback>
                 <span class="icon-btn" />
               </template>
+            </ClientOnly>
+
+            <!-- Price alerts: wished cards under their price. -->
+            <ClientOnly>
+              <DealsBell v-if="loggedIn" />
             </ClientOnly>
 
             <UDropdownMenu v-if="loggedIn" :items="userMenu">
