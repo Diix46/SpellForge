@@ -38,4 +38,8 @@ export function reopenTcgDbs(): void {
 }
 
 /** Every game's ingest script, for the nightly refresh. */
-export const TCG_REFRESH_STEPS = TCG_GAME_IDS.map(game => ({ name: game, script: `scripts/ingest-${game}.mjs` }))
+export const TCG_REFRESH_STEPS = [
+  ...TCG_GAME_IDS.map(game => ({ name: game, script: `scripts/ingest-${game}.mjs` })),
+  // Riftbound in French, unofficially: the cards not translated yet.
+  { name: 'riftbound-fr', script: 'scripts/translate-riftbound.mjs' },
+]

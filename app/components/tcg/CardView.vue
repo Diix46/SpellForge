@@ -27,6 +27,11 @@ const frame = computed(() => TCG_UI[props.game].frame?.(shownCard.value) ?? null
 // A Battlefield lies on its side.
 const aspect = computed(() => (shownCard.value.landscape ? 1 / TCG_UI[props.game].aspect : TCG_UI[props.game].aspect))
 const c = computed(() => shownCard.value)
+// An unofficial translation: the official English words one click away.
+const official = ref(false)
+const name = computed(() => (official.value && c.value.translated ? c.value.nameEn ?? c.value.name : c.value.name))
+const text = computed(() => (official.value && c.value.translated ? c.value.textEn : c.value.text))
+const flavour = computed(() => (official.value && c.value.translated ? c.value.flavourEn : c.value.flavour))
 const money = (v: number | null) => (v == null ? null : `${v.toLocaleString(props.lang === 'fr' ? 'fr-FR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`)
 const formats = computed(() => TCG_RULES[props.game].formats)
 const kind = computed(() => [label('category', c.value.category), label('subtype', c.value.subtype)].filter(Boolean).join(' · '))
@@ -69,7 +74,7 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
     <div class="sheet-info">
       <header>
         <component :is="heading" class="sheet-name u-display">
-          {{ c.name }}
+          {{ name }}
           <span v-if="c.stats.hp" class="hp"><small>{{ t('pokemon.hp') }}</small>{{ c.stats.hp }}</span>
         </component>
         <p class="sheet-meta">
@@ -126,11 +131,18 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
           </p>
         </div>
       </section>
-      <p v-else-if="c.text" class="text">
-        {{ c.text }}
+      <p v-else-if="text" class="text">
+        {{ text }}
       </p>
-      <p v-if="c.flavour" class="flavour">
-        {{ c.flavour }}
+      <p v-if="flavour" class="flavour">
+        {{ flavour }}
+      </p>
+      <p v-if="c.translated" class="unofficial">
+        <UIcon name="i-lucide-languages" class="h-4 w-4 shrink-0" />
+        <span>{{ official ? t('tcg.officialText') : t('tcg.unofficial') }}</span>
+        <button type="button" @click="official = !official">
+          {{ official ? t('tcg.showTranslation') : t('tcg.showOfficial') }}
+        </button>
       </p>
 
       <dl v-if="c.weaknesses.length || c.resistances.length || c.stats.retreat != null" class="facts">
@@ -174,7 +186,7 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
       <p v-if="c.illustrator" class="note">
         {{ t('tcg.illustrator') }} {{ c.illustrator }}
       </p>
-      <p v-if="c.lang !== lang" class="note">
+      <p v-if="c.lang !== lang && !c.translated" class="note">
         {{ t('tcg.otherLang') }}
       </p>
 
@@ -314,6 +326,22 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
   margin: 6px 0 0;
   font-size: 13px;
   color: var(--color-text-muted);
+}
+.unofficial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0;
+  padding: 6px 10px;
+  border: 1px dashed var(--color-border-strong);
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+.unofficial button {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .flavour {
   margin: 0;

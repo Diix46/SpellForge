@@ -108,10 +108,12 @@ export default defineNuxtConfig({
       { name: 'Bangers', provider: 'google', weights: [400] },
       // Magic's binder spines: engraved capitals.
       { name: 'Cinzel', provider: 'google', weights: [600, 700] },
-      // Pokémon: round and bold, a Pokédex screen's voice.
-      { name: 'Fredoka', provider: 'google', weights: [500, 700] },
-      // Yu-Gi-Oh: Master Duel's condensed capitals.
-      { name: 'Oswald', provider: 'google', weights: [500, 600, 700] },
+      // The generic engine's games speak with their cards' type (free
+      // look-alikes of the printed ones): Pokémon's Gill Sans, Yu-Gi-Oh's
+      // Matrix small caps, Riftbound's Spiegel under League's Beaufort.
+      { name: 'Cabin', provider: 'google', weights: [500, 600, 700] },
+      { name: 'Spectral SC', provider: 'google', weights: [600, 700] },
+      { name: 'Source Sans 3', provider: 'google', weights: [400, 600] },
     ],
   },
 })

@@ -75,6 +75,10 @@ export interface TcgCard {
   flavour: string | null
   /** The illustration alone, when the source publishes it (Yu-Gi-Oh). */
   art: string | null
+  /** An unofficial translation (Riftbound in French): the official English words beside it. */
+  translated: boolean
+  textEn: string | null
+  flavourEn: string | null
 }
 
 export interface TcgSet {

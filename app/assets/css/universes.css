@@ -183,8 +183,8 @@ html[data-universe='mtg'] {
 html[data-universe='pokemon'] {
   color-scheme: light;
 
-  --font-display: 'Fredoka', 'Geist', ui-sans-serif, system-ui, sans-serif;
-  --font-sfx: 'Fredoka', 'Geist', ui-sans-serif, sans-serif;
+  --font-display: 'Cabin', 'Gill Sans', ui-sans-serif, sans-serif;
+  --font-sfx: 'Cabin', 'Gill Sans', ui-sans-serif, sans-serif;
   --u-case: none;
   --u-track: 0;
 
@@ -298,6 +298,7 @@ html.dark[data-universe='pokemon'] {
 html[data-universe='pokemon'] .u-display {
   font-weight: 700;
 }
+/* Pokémon cards name their creatures in Gill Sans: Cabin is its free look-alike. */
 html[data-universe='pokemon'] :where(h1, h2) {
   font-weight: 700;
 }
@@ -309,17 +310,17 @@ html[data-universe='pokemon'] body {
 
 /* ------------------------------------------------------------------ Yu-Gi-Oh! */
 /* Master Duel: always at night (GameDef.forcedMode). Deep duel-field blue,
-   gold trim, the cyan light of the zones; condensed capitals as the game's
-   own UI sets them. The card frames' official colours dress the cards
+   gold trim, the cyan light of the zones; the cards' own small caps (Matrix,
+   its free look-alike Spectral SC). The card frames' official colours dress the cards
    (utils/games/tcg YGO_FRAME). */
 html[data-universe='yugioh'],
 html.dark[data-universe='yugioh'] {
   color-scheme: dark;
 
-  --font-display: 'Oswald', 'Arial Narrow', ui-sans-serif, sans-serif;
-  --font-sfx: 'Oswald', 'Arial Narrow', sans-serif;
-  --u-case: uppercase;
-  --u-track: 0.04em;
+  --font-display: 'Spectral SC', 'Matrix Small Caps', Georgia, serif;
+  --font-sfx: 'Spectral SC', 'Matrix Small Caps', Georgia, serif;
+  --u-case: none;
+  --u-track: 0.01em;
 
   --color-bg-base: #070b1a;
   --color-bg-base-2: #0a1024;
@@ -417,6 +418,8 @@ html.dark[data-universe='riftbound'] {
 
   --font-display: var(--rift-face);
   --font-sfx: var(--rift-face);
+  /* The cards' text face, Spiegel: Source Sans 3 is its free twin. */
+  --font-sans: 'Spiegel', 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
   --u-case: uppercase;
   --u-track: 0.08em;
 
@@ -736,7 +739,7 @@ html[data-universe] :focus-visible {
   animation: ufx-land 0.8s cubic-bezier(0.2, 0.9, 0.3, 1.1) forwards;
 }
 .ufx--pokemon {
-  font-family: 'Fredoka', 'Geist', ui-sans-serif, sans-serif;
+  font-family: 'Cabin', 'Gill Sans', ui-sans-serif, sans-serif;
   font-weight: 700;
   font-size: 34px;
   color: #ffcc33;
@@ -745,7 +748,7 @@ html[data-universe] :focus-visible {
   animation: ufx-don 0.8s cubic-bezier(0.25, 1.4, 0.45, 1) forwards;
 }
 .ufx--yugioh {
-  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-family: 'Spectral SC', 'Matrix Small Caps', Georgia, serif;
   text-transform: uppercase;
   font-weight: 700;
   font-size: 30px;
