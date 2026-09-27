@@ -1,3 +1,13 @@
+## [0.55.0](https://github.com/Diix46/SpellForge/compare/v0.54.2...v0.55.0) (2026-09-27)
+
+### Features
+
+* **collection:** vitrine, valeur, il me manque, échanges, profil public, j'aime ([088b3e6](https://github.com/Diix46/SpellForge/commit/088b3e64904b7e8606f0641fe3f845c166d47742))
+
+### Bug Fixes
+
+* **collection:** rafale déclarée avant usage ([cfd72e8](https://github.com/Diix46/SpellForge/commit/cfd72e83f425c097595534d90d3af5699e929ba9))
+
 ## [0.54.2](https://github.com/Diix46/SpellForge/compare/v0.54.1...v0.54.2) (2026-09-27)
 
 ### Bug Fixes
