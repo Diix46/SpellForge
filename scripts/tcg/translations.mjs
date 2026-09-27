@@ -1,6 +1,6 @@
 /**
- * Unofficial translations for a game its publisher only prints in English
- * (Riftbound). They live apart from the card database — which each ingest
+ * Unofficial translations for what a publisher does not print in French
+ * (Riftbound, the newest Yu-Gi-Oh! cards). They live apart from the card database — which each ingest
  * rebuilds — in `.data/translations-<game>.db`, keyed by the hash of the
  * English words, so a card is translated once and an edited one again.
  *
@@ -38,14 +38,22 @@ export function sourceOf(row) {
   return { hash, ...src }
 }
 
-/** A French row beside every English one the cache has a translation for. */
-export async function applyTranslations(db, tdb) {
+/**
+ * A French row beside every English one the cache has a translation for.
+ * `onlyMissing`: the game has official French rows, kept; only the cards with
+ * none get a translated one.
+ */
+export async function applyTranslations(db, tdb, { onlyMissing = false } = {}) {
   await ensureTranslations(tdb)
   const { rows: tr } = await tdb.execute('SELECT hash, name, text, flavour FROM translations')
   const byHash = new Map(tr.map(r => [String(r.hash), r]))
   if (!byHash.size)
     return 0
-  const { rows } = await db.execute('SELECT * FROM cards WHERE lang = \'en\'')
+  // Translations of a previous run go; official French rows stay.
+  await db.execute(onlyMissing ? 'DELETE FROM cards WHERE lang = \'fr\' AND extra LIKE \'%"translated":true%\'' : 'DELETE FROM cards WHERE lang = \'fr\'')
+  const { rows } = await db.execute(onlyMissing
+    ? 'SELECT * FROM cards e WHERE lang = \'en\' AND NOT EXISTS (SELECT 1 FROM cards f WHERE f.card_key = e.card_key AND f.lang = \'fr\')'
+    : 'SELECT * FROM cards WHERE lang = \'en\'')
   const inserts = []
   for (const r of rows) {
     const src = sourceOf(r)
@@ -68,11 +76,10 @@ export async function applyTranslations(db, tdb) {
       args: cols.map(k => values[k] ?? null),
     })
   }
-  await db.execute('DELETE FROM cards WHERE lang = \'fr\'')
   for (let i = 0; i < inserts.length; i += 500)
     await db.batch(inserts.slice(i, i + 500), 'write')
   // The sets in French too (their names are the same, English).
-  await db.execute(`INSERT OR REPLACE INTO sets (code, lang, name, abbr, series, released, total, symbol, logo, signature)
+  await db.execute(`INSERT OR ${onlyMissing ? 'IGNORE' : 'REPLACE'} INTO sets (code, lang, name, abbr, series, released, total, symbol, logo, signature)
                     SELECT code, 'fr', name, abbr, series, released, total, symbol, logo, signature FROM sets WHERE lang = 'en'`)
   return inserts.length
 }

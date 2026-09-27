@@ -130,13 +130,23 @@ const nav = computed(() => [
 // The libraries, in the phone's menu (the bar has "Libraries ▾").
 const libraries = GAME_LIST.map(g => ({ game: g.id, to: libraryPath(g.id), label: g.label }))
 
-// The footer: the credits of the game on screen, or of every game.
+// The footer: the credits of the game on screen, or of every game — its
+// sources in one line, each game's rights under it (folded away when there
+// are five of them).
 const footerGames = computed(() => (universe.value ? [universe.value] : GAME_IDS))
+const footerSources = computed(() => [...new Map(footerGames.value.flatMap(g => GAMES[g].sources).map(s => [s.url, s])).values()])
 
-// A nav link is active only when it's the current route (exact); the query of
-// a transient ?import/?new modal does not count.
+// A nav link is active on its own route and under it (a game's collection
+// has its tabs and binders, "My decks" every deck page); the query of a
+// transient ?import/?new modal does not count.
 function isActive(to: string) {
-  return route.path === to
+  if (route.path === to)
+    return true
+  if (to.endsWith('/collection'))
+    return route.path.startsWith(`${to}/`)
+  if (to === '/decks')
+    return /\/deck\//.test(route.path)
+  return false
 }
 </script>
 
@@ -290,18 +300,26 @@ function isActive(to: string) {
             <AppLogo :wordmark="false" :size="20" />
             <span>{{ t(`footer.tagline.${universe ?? 'all'}`) }}</span>
           </div>
-          <!-- Each game's sources and rights; on a page of no game, all of them. -->
-          <p v-for="g in footerGames" :key="g">
+          <p class="foot-sources">
             {{ t('footer.dataVia') }}
-            <template v-for="(src, i) in GAMES[g].sources" :key="src.url">
+            <template v-for="(src, i) in footerSources" :key="src.url">
               <template v-if="i">
                 ·
               </template>
               <a :href="src.url" target="_blank" rel="noopener">{{ src.label }}</a>
             </template>
-            • {{ t(`footer.rights.${g}`) }}
           </p>
         </div>
+        <!-- The rights: the game on screen's, or all five folded away. -->
+        <p v-if="footerGames.length === 1" class="foot-legal">
+          {{ t(`footer.rights.${footerGames[0]}`) }}
+        </p>
+        <details v-else class="foot-legal">
+          <summary>{{ t('footer.legal') }}</summary>
+          <p v-for="g in footerGames" :key="g">
+            {{ t(`footer.rights.${g}`) }}
+          </p>
+        </details>
       </footer>
     </div>
 
@@ -344,6 +362,9 @@ function isActive(to: string) {
 }
 .app-shell--fullscreen .foot-inner {
   padding-top: 12px;
+  padding-bottom: 12px;
+}
+.app-shell--fullscreen .foot-legal {
   padding-bottom: 12px;
 }
 /* On small screens the deck workspace stacks and needs natural page flow — don't
@@ -603,7 +624,12 @@ function isActive(to: string) {
 
 /* ---------- Footer ---------- */
 .foot {
+  position: relative;
   border-top: 1px solid var(--color-border-hairline);
+  /* Over a universe's backdrop (the meadow's grass, the sea) it keeps its own ground. */
+  background: color-mix(in srgb, var(--color-bg-base) 90%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 .foot-inner {
   max-width: 1720px;
@@ -619,6 +645,28 @@ function isActive(to: string) {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.foot-sources {
+  margin: 0;
+}
+.foot-legal {
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 0 16px 22px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.foot-legal summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.foot-legal summary:hover {
+  color: var(--color-text-high);
+}
+.foot-legal p {
+  margin: 6px 0 0;
+  max-width: 110ch;
 }
 .foot a {
   color: var(--color-text-mid);

@@ -2,6 +2,7 @@
 import type { GameId } from '#shared/game'
 import { GAME_LIST } from '#shared/game'
 import { useLocale } from '~/composables/useLocale'
+import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
 
 // The dashboard's modals (new deck / rename / delete). Pure
 // presentation: open-state and input values are v-models; the page wires them to
@@ -59,12 +60,11 @@ const modalUi = {
           :key="g.id"
           type="button"
           class="world"
-          :class="`world--${g.id}`"
-          :style="{ '--world': g.swatch }"
+          :style="{ ...lookVars(g.id), '--world': g.swatch }"
           :aria-pressed="newDeckGame === g.id"
           @click="emit('update:newDeckGame', g.id)"
         >
-          <span class="world-name">{{ g.label }}</span>
+          <span class="world-name" :class="{ upper: WORLD_LOOK[g.id].upper }">{{ g.label }}</span>
           <span class="world-rule">{{ t(`modal.world.${g.id}`) }}</span>
         </button>
       </fieldset>
@@ -168,8 +168,13 @@ const modalUi = {
   display: grid;
   gap: 4px;
   padding: 14px;
-  text-align: left;
   border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  /* Each world in its own light, as on the landing's doors. */
+  background: var(--bg);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: inset 0 3px 0 var(--world);
   transition:
     transform 0.3s cubic-bezier(0.3, 1.7, 0.5, 1),
     border-color 0.2s ease;
@@ -177,47 +182,27 @@ const modalUi = {
 .world:hover {
   transform: translateY(-2px);
 }
-/* A game without its own look: its colour. */
-.world {
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
-  color: var(--color-text-high);
-}
 .world[aria-pressed='true'] {
   border-color: var(--world);
+  box-shadow:
+    inset 0 3px 0 var(--world),
+    0 10px 24px -12px var(--world);
 }
-.world--optcg {
-  rotate: -1deg;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #fbf3e3, #efdfc0);
-  color: #231708;
-}
-.world--mtg {
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, #ffffff, #f2f3f0);
-  color: #1b1f22;
-}
-.world--optcg[aria-pressed='true'] {
-  border-color: #c9312a;
-}
-.world--mtg[aria-pressed='true'] {
-  border-color: #2d4f7c;
+.world:focus-visible {
+  outline: 2px solid var(--world);
+  outline-offset: 2px;
 }
 .world-name {
+  font-family: var(--face);
   font-size: 20px;
+  font-weight: var(--weight);
   line-height: 1;
 }
-.world--optcg .world-name {
-  font-family: 'Anton', Impact, sans-serif;
+.world-name.upper {
   text-transform: uppercase;
 }
-.world--mtg .world-name {
-  font-family: var(--mtg-face);
-  font-weight: 700;
-  color: #2d4f7c;
-}
 .world-rule {
+  color: var(--muted);
   font-size: 12px;
-  opacity: 0.8;
 }
 </style>

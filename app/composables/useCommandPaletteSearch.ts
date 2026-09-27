@@ -1,4 +1,6 @@
 import type { Ref } from 'vue'
+import type { GameId } from '#shared/game'
+import type { LandingSearch } from '#shared/landing'
 import type { OptcgCard } from '#shared/optcg/types'
 import type { TcgCard } from '#shared/tcg/types'
 import { computed, ref, watch } from 'vue'
@@ -10,8 +12,9 @@ import { useLocale } from '~/composables/useLocale'
 // The ⌘K palette's data layer: static actions, deck-navigation items, live card
 // autocomplete from the local card database, plus the filter + group logic.
 // It follows the universe: inside One Piece it suggests One Piece cards and
-// lists One Piece decks first; elsewhere it suggests Magic cards. A card opens
-// in its library. Extracted from CommandPalette so the component only owns
+// lists One Piece decks first, a card opening in its library; elsewhere it
+// searches the five games at once, a group per game, a card opening on its
+// own page. Extracted from CommandPalette so the component only owns
 // focus, keyboard nav, and rendering.
 
 export interface CommandItem {
@@ -30,7 +33,7 @@ interface Handlers {
   go: (path: string) => void
 }
 
-interface CardHit { key: string, label: string, hint: string, query: string }
+interface CardHit { key: string, label: string, hint: string, query: string, game: GameId, path?: string }
 
 export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
   const { t, locale } = useLocale()
@@ -71,19 +74,24 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
   const cardHits = ref<CardHit[]>([])
   let seq = 0
   async function fetchHits(term: string): Promise<CardHit[]> {
-    const game = cardGame.value
+    const game = universe.value
+    // Outside a game: every game at once, three cards each.
+    if (!game) {
+      const found = await $fetch<LandingSearch>('/api/landing/search', { params: { q: term, lang: locale.value } })
+      return GAME_LIST.flatMap(g => (found[g.id] ?? []).slice(0, 3).map(h => ({ key: `${g.id}-${h.id}`, label: h.name, hint: h.meta, query: h.name, game: g.id, path: h.path })))
+    }
     if (isTcgGame(game)) {
       const { cards } = await $fetch<{ cards: TcgCard[] }>(`/api/tcg/${game}/autocomplete`, { params: { q: term, lang: locale.value } })
-      return cards.map(c => ({ key: c.id, label: c.name, hint: c.setName ?? c.set, query: c.name }))
+      return cards.map(c => ({ key: c.id, label: c.name, hint: c.setName ?? c.set, query: c.name, game }))
     }
     if (game === 'optcg') {
       const { cards } = await $fetch<{ cards: OptcgCard[] }>('/api/optcg/autocomplete', { params: { q: term, lang: locale.value } })
-      return cards.map(c => ({ key: c.id, label: c.name, hint: c.number, query: c.number }))
+      return cards.map(c => ({ key: c.id, label: c.name, hint: c.number, query: c.number, game }))
     }
     const { names } = await $fetch<{ names: string[] }>('/api/cards/autocomplete', { params: { q: term } })
-    return names.map(name => ({ key: name, label: name, hint: t('cmd.card'), query: name }))
+    return names.map(name => ({ key: name, label: name, hint: t('cmd.card'), query: name, game }))
   }
-  watch([q, cardGame], async ([val]) => {
+  watch([q, universe], async ([val]) => {
     const term = val.trim()
     const mine = ++seq
     if (term.length < 2) {
@@ -93,7 +101,7 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
     try {
       const hits = await fetchHits(term)
       if (mine === seq)
-        cardHits.value = hits.slice(0, 6)
+        cardHits.value = universe.value ? hits.slice(0, 6) : hits
     }
     catch {
       if (mine === seq)
@@ -105,9 +113,10 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
       id: `card-${hit.key}`,
       label: hit.label,
       hint: hit.hint,
-      icon: cardGame.value === 'mtg' ? 'i-lucide-sparkles' : GAMES[cardGame.value].icon,
-      group: t('cmd.grpCards'),
-      run: () => go(`/${UNIVERSE_SLUG[cardGame.value]}?q=${encodeURIComponent(hit.query)}`),
+      icon: GAMES[hit.game].icon,
+      // Outside a game, a group per game.
+      group: universe.value ? t('cmd.grpCards') : `${t('cmd.grpCards')} · ${GAMES[hit.game].label}`,
+      run: () => go(hit.path ?? `/${UNIVERSE_SLUG[hit.game]}?q=${encodeURIComponent(hit.query)}`),
     })),
   )
 

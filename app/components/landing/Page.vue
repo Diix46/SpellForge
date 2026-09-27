@@ -49,6 +49,13 @@ const worlds = computed(() => worldsData.value?.worlds ?? [])
   --l-chip: #1b1f22;
   --l-chip-ink: #f7f7f5;
   --l-empty: #e2e4e0;
+  /* One rhythm for every section: the same breath above and below, the same
+     side gutter, the same content width. */
+  --l-section: clamp(64px, 7vw, 96px);
+  --l-gutter: clamp(16px, 5vw, 80px);
+  --l-width: 1320px;
+  /* Between a section's heading and what it shows. */
+  --l-head-gap: 40px;
   min-height: 100vh;
   background: var(--l-bg);
   color: var(--l-ink);

@@ -494,6 +494,10 @@ html[data-universe='riftbound'] :where(h1, h2) {
 }
 /* Titles in Gold 1 → Gold 3, as the client prints them. */
 html[data-universe='riftbound'] h1 {
+  /* The gradient only paints inside the box: room above the capitals for
+     their accents (È), given back by the margin. */
+  padding-top: 0.16em;
+  margin-top: -0.16em;
   /* Over the pages' own heading colour. */
   background: linear-gradient(180deg, #f0e6d2 0%, #c8aa6e 60%, #c89b3c 100%);
   -webkit-background-clip: text !important;

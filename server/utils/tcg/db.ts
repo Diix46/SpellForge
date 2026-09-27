@@ -40,6 +40,8 @@ export function reopenTcgDbs(): void {
 /** Every game's ingest script, for the nightly refresh. */
 export const TCG_REFRESH_STEPS = [
   ...TCG_GAME_IDS.map(game => ({ name: game, script: `scripts/ingest-${game}.mjs` })),
-  // Riftbound in French, unofficially: the cards not translated yet.
-  { name: 'riftbound-fr', script: 'scripts/translate-riftbound.mjs' },
+  // In French, unofficially, what the publisher doesn't print in French: all
+  // of Riftbound, the newest Yu-Gi-Oh! cards. The cards not translated yet.
+  { name: 'riftbound-fr', script: 'scripts/translate-tcg.mjs', args: ['riftbound'] },
+  { name: 'yugioh-fr', script: 'scripts/translate-tcg.mjs', args: ['yugioh'] },
 ]

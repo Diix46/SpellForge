@@ -50,7 +50,7 @@ const { t } = useLocale()
   flex-direction: column;
   align-items: center;
   gap: 0;
-  padding: 96px clamp(16px, 5vw, 88px) 104px;
+  padding: var(--l-section) var(--l-gutter);
   background: radial-gradient(50% 60% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 70%), #09090d;
   color: #f6f4ee;
   text-align: center;
@@ -61,7 +61,7 @@ const { t } = useLocale()
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  width: min(1180px, 100%);
+  width: min(var(--l-width), 100%);
   padding-bottom: 36px;
 }
 .rays {
@@ -104,7 +104,7 @@ const { t } = useLocale()
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
-  width: min(1180px, 100%);
+  width: min(var(--l-width), 100%);
 }
 .door {
   position: relative;

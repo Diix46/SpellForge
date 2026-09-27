@@ -133,6 +133,8 @@ export interface SetProgress {
   icon: string | null
   /** A picture of the set: Magic, the art of its signature card; One Piece, a Leader's card. */
   art: string | null
+  /** The set's own logo (Pokémon, Yu-Gi-Oh!'s pack art), for its binder's header. */
+  logo?: string | null
   releasedAt: string | null
   /** Magic: Scryfall's set type; One Piece: the kind (OP, EB, ST…). */
   type: string | null

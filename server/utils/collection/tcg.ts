@@ -189,12 +189,12 @@ export function tcgCollection(game: TcgGameId): GameCollection {
 
   async function setHeader(code: string, lang: Lang) {
     const { rows } = await db().execute({
-      sql: `SELECT name, released, (SELECT o.symbol FROM sets o WHERE o.code = s.code AND o.symbol IS NOT NULL LIMIT 1) AS symbol
+      sql: `SELECT name, released, logo, (SELECT o.symbol FROM sets o WHERE o.code = s.code AND o.symbol IS NOT NULL LIMIT 1) AS symbol
               FROM sets s WHERE code = ? ORDER BY (lang = ?) DESC LIMIT 1`,
       args: [code, lang],
     })
     const r = rows[0]
-    return r ? { code, name: String(r.name), icon: tcgImageUrl(game, r.symbol), releasedAt: r.released == null ? null : String(r.released), type: tcgSetType(code) } : null
+    return r ? { code, name: String(r.name), icon: tcgImageUrl(game, r.symbol), logo: tcgImageUrl(game, r.logo), releasedAt: r.released == null ? null : String(r.released), type: tcgSetType(code) } : null
   }
 
   /** Each set's most sought-after card (its highest price), in the site's language. */

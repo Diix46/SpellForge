@@ -145,9 +145,15 @@ html.dark .mon img {
     transform: translateY(-26px) rotate(3deg);
   }
 }
+/* A phone: no room above the page's text for fliers, smaller runners in the grass. */
 @media (max-width: 700px) {
+  .flier,
   .mon:nth-child(n + 7) {
     display: none;
+  }
+  .mon img {
+    width: 72px;
+    height: 72px;
   }
   .hills--back {
     height: 100px;

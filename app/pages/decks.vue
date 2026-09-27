@@ -5,6 +5,7 @@ import { deckPath, GAME_LIST } from '#shared/game'
 import { useDashboardModals } from '~/composables/useDashboardModals'
 import { useDeckFingerprints } from '~/composables/useDeckFingerprints'
 import { useDeckStore } from '~/composables/useDeckStore'
+import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
 
 // The workshop's home: every deck of the account, both worlds together. A
 // guest gets the way in instead (DashboardMembersGate): the list is for
@@ -135,10 +136,21 @@ const restDecks = computed(() =>
         <p class="empty-body">
           {{ t('dash.empty.body') }}
         </p>
+        <!-- A deck of each game, one click away. -->
+        <div class="empty-worlds">
+          <button
+            v-for="g in GAME_LIST"
+            :key="g.id"
+            type="button"
+            class="empty-world"
+            :style="{ ...lookVars(g.id), '--world': g.swatch }"
+            @click="modals.newDeckGame.value = g.id; modals.showNewDeck.value = true"
+          >
+            <span class="empty-world-name" :class="{ upper: WORLD_LOOK[g.id].upper }">{{ g.label }}</span>
+            <span class="empty-world-rule">{{ t(`modal.world.${g.id}`) }}</span>
+          </button>
+        </div>
         <div class="empty-cta">
-          <UButton icon="i-lucide-plus" color="primary" variant="solid" size="lg" @click="modals.showNewDeck.value = true">
-            {{ t('dash.empty.create') }}
-          </UButton>
           <UButton icon="i-lucide-download" color="neutral" variant="subtle" size="lg" @click="importOverlay.show()">
             {{ t('dash.empty.import') }}
           </UButton>
@@ -286,6 +298,46 @@ const restDecks = computed(() =>
   margin: 8px 0 24px;
   color: var(--color-text-muted);
   font-size: 14px;
+}
+.empty-worlds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  width: min(960px, 100%);
+  margin-bottom: 18px;
+}
+.empty-world {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: inset 0 3px 0 var(--world);
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+.empty-world:hover {
+  transform: translateY(-3px);
+}
+.empty-world:focus-visible {
+  outline: 2px solid var(--world);
+  outline-offset: 2px;
+}
+.empty-world-name {
+  font-family: var(--face);
+  font-size: 20px;
+  font-weight: var(--weight);
+  line-height: 1;
+}
+.empty-world-name.upper {
+  text-transform: uppercase;
+}
+.empty-world-rule {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 .empty-cta {
   display: flex;

@@ -73,6 +73,9 @@ const errored = computed(() => !!error.value)
       <p class="text-(--color-text-muted)">
         {{ t('discover.empty') }}
       </p>
+      <UButton color="primary" icon="i-lucide-share-2" to="/decks">
+        {{ t('discover.publish') }}
+      </UButton>
     </div>
 
     <div v-else-if="!results.length" class="discover-state">
@@ -84,37 +87,62 @@ const errored = computed(() => !!error.value)
       </UButton>
     </div>
 
-    <div v-else class="discover-grid">
-      <DeckTile
-        v-for="d in results"
-        :key="d.id"
-        :deck="d"
-        :fingerprint="fingerprints.get(d.id)!"
-        :to="sharedPath(d.game, d.id)"
-        :owner="d.owner"
-      />
-    </div>
+    <template v-else>
+      <div class="discover-grid">
+        <DeckTile
+          v-for="d in results"
+          :key="d.id"
+          :deck="d"
+          :fingerprint="fingerprints.get(d.id)!"
+          :to="sharedPath(d.game, d.id)"
+          :owner="d.owner"
+        />
+      </div>
+      <!-- Few decks yet: the way to add one's own. -->
+      <aside v-if="decks.length < 12" class="discover-invite">
+        <UIcon name="i-lucide-share-2" class="h-5 w-5 shrink-0" />
+        <p>{{ t('discover.invite') }}</p>
+        <UButton color="neutral" variant="subtle" to="/decks" trailing-icon="i-lucide-arrow-right">
+          {{ t('discover.publish') }}
+        </UButton>
+      </aside>
+    </template>
   </div>
 </template>
 
 <style scoped>
 .discover-page {
-  max-width: 1720px;
-  margin: 0 auto;
-  padding: 32px 20px 60px;
-}
-.discover-head {
-  margin-bottom: 18px;
+  /* The app frame's gutter, as every page: no second one of its own. */
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 .discover-title {
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 600;
+  letter-spacing: -0.03em;
   color: var(--color-text-high);
 }
 .discover-subtitle {
-  margin-top: 6px;
+  margin: 6px 0 0;
   color: var(--color-text-muted);
+  font-size: 14px;
+}
+.discover-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 18px 20px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-mid);
+}
+.discover-invite p {
+  flex: 1 1 280px;
+  margin: 0;
   font-size: 14px;
 }
 .discover-state {
@@ -129,6 +157,5 @@ const errored = computed(() => !!error.value)
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-  margin-top: 22px;
 }
 </style>
