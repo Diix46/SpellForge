@@ -130,7 +130,7 @@ const typeCounts = computed(() => {
     <div class="status">
       <span v-for="z in zones" :key="z.id" class="count u-display" :class="{ full: z.count >= z.min && z.count <= z.max, over: z.count > z.max }">
         <small v-if="zones.length > 1">{{ z.label }}</small>
-        {{ z.count }} / {{ z.max }}
+        {{ z.count }} / {{ z.max >= 99 ? `${z.min}+` : z.min === z.max ? z.max : `${z.min}-${z.max}` }}
       </span>
       <UIcon v-if="resolving" name="i-lucide-loader-circle" class="h-4 w-4 animate-spin text-(--color-text-muted)" />
       <span v-if="validation.legal && total" class="legal">

@@ -58,14 +58,14 @@ export interface CollectionClient {
     wood: string
     wall: string
     /** The room: see utils/bookshelf/ambiance.ts. */
-    room: 'arcanist' | 'cabin' | 'lab' | 'shrine'
+    room: 'arcanist' | 'cabin' | 'lab' | 'shrine' | 'hextech'
   }
 }
 
 const MTG_COLOR: Record<string, string> = { W: '#efe3bf', U: '#1f6fb0', B: '#2b2622', R: '#d3202a', G: '#1f7a45', C: '#b0a8a0' }
 
 // The apps whose lists each generic-engine game's import reads.
-const TCG_IMPORT_APPS: Record<TcgGameId, readonly string[]> = { pokemon: ['Prism', 'Pokémon TCG Live'], yugioh: ['Prism', 'YGOPRODeck'] }
+const TCG_IMPORT_APPS: Record<TcgGameId, readonly string[]> = { pokemon: ['Prism', 'Pokémon TCG Live'], yugioh: ['Prism', 'YGOPRODeck'], riftbound: ['Prism', 'Piltover Archive'] }
 
 export const COLLECTION_CLIENT: Record<GameId, CollectionClient> = {
   mtg: {
@@ -139,6 +139,7 @@ export const COLLECTION_CLIENT: Record<GameId, CollectionClient> = {
   },
   pokemon: tcgClient('pokemon', { face: 'Fredoka, Verdana, sans-serif', weight: 700, wood: 'wood_planks', wall: 'planks_wall', room: 'lab' }),
   yugioh: tcgClient('yugioh', { face: 'Cinzel, Georgia, serif', weight: 600, wood: 'wood_dark', wall: 'wood_dark', room: 'shrine' }),
+  riftbound: tcgClient('riftbound', { face: 'Marcellus, Georgia, serif', weight: 400, wood: 'wood_dark', wall: 'wood_dark', room: 'hextech' }),
 }
 
 /** The finishes of a generic-engine printing, as the collection names them (server/utils/collection/tcg.ts). */

@@ -20,13 +20,14 @@ const { createDeck } = useDeckStore()
 const { fromUrl, fromText } = useDeckImport()
 
 // Per game: its rule under its name, the help and the example of a list.
-const IMPORT_RULE: Record<GameId, string> = { optcg: 'modal.importOpRule', mtg: 'modal.importMtgRule', pokemon: 'modal.world.pokemon', yugioh: 'modal.world.yugioh' }
-const LIST_HELP: Record<GameId, string> = { optcg: 'modal.importListHelp', mtg: 'modal.importMtgListHelp', pokemon: 'modal.importTcgListHelp', yugioh: 'modal.importYgoListHelp' }
+const IMPORT_RULE: Record<GameId, string> = { optcg: 'modal.importOpRule', mtg: 'modal.importMtgRule', pokemon: 'modal.world.pokemon', yugioh: 'modal.world.yugioh', riftbound: 'modal.world.riftbound' }
+const LIST_HELP: Record<GameId, string> = { optcg: 'modal.importListHelp', mtg: 'modal.importMtgListHelp', pokemon: 'modal.importTcgListHelp', yugioh: 'modal.importYgoListHelp', riftbound: 'modal.importRbListHelp' }
 const PLACEHOLDER: Record<GameId, string> = {
   optcg: '1xOP05-060\n4xOP05-067',
   mtg: '1 Atraxa, Praetors\' Voice\n1 Sol Ring',
   pokemon: '4 Charizard ex OBF 125\n4 sv03.5-006',
   yugioh: '#main\n46986414\n46986414\n#extra\n!side',
+  riftbound: '1 Jinx - Loose Cannon\n3 Get Excited!',
 }
 
 const url = ref('')
@@ -307,6 +308,10 @@ async function onFile(e: Event) {
 .world--yugioh[aria-pressed='true'] {
   border-color: #6b3fa0;
   background: rgba(107, 63, 160, 0.12);
+}
+.world--riftbound[aria-pressed='true'] {
+  border-color: #1f8a9a;
+  background: rgba(31, 138, 154, 0.12);
 }
 .world--pokemon[aria-pressed='true'] {
   border-color: #e3b22b;

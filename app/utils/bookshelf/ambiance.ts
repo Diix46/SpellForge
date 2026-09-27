@@ -9,6 +9,8 @@
  * red-and-white lamp on each bookcase, daylight and floating sparkles.
  * Yu-Gi-Oh, a pharaoh's shrine: sandstone carved with glyphs, a golden eye
  * glowing between the bookcases, torches, and sand in the air.
+ * Riftbound, a Piltover hextech workshop: slate and brass, blue hextech
+ * crystals turning between the bookcases, sparks of arcane in the air.
  *
  * Kept cheap: the moving lights follow the camera (two of them, whatever the
  * number of bookcases), flames and dust are one point cloud each, ropes one
@@ -79,7 +81,7 @@ function dust(THREE: typeof Three, span: Span, count: number, color: number, siz
   return { points, update, dispose: () => [geo, mat, tex].forEach(d => d.dispose()) }
 }
 
-const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a), lab: (...a) => lab(...a), shrine: (...a) => shrine(...a) }
+const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a), lab: (...a) => lab(...a), shrine: (...a) => shrine(...a), hextech: (...a) => hextech(...a) }
 
 export function buildAmbiance(THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: Span, room: Room, quality: Quality): Ambiance {
   return ROOMS[room](THREE, scene, span, quality, kit)
@@ -646,6 +648,91 @@ function shrine(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Qu
       flameMat.size = 0.7 * flicker
       eyeMat.opacity = 0.5 + Math.sin(t * 0.8) * 0.15
       sand.update(t, dt)
+      return true
+    },
+    dispose: () => disposables.forEach(d => d.dispose()),
+  }
+}
+
+// ---- Riftbound: a hextech workshop -----------------------------------------
+
+function hextech(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
+  const disposables: { dispose: () => void }[] = []
+  const high = quality === 'high'
+  const cx = span.width / 2
+  const back = -span.depth / 2 - 0.25
+
+  // Slate panels framed in brass, rivets at the corners.
+  const wallTex = canvasTexture(THREE, 512, 512, (g) => {
+    g.fillStyle = '#1c2a30'
+    g.fillRect(0, 0, 512, 512)
+    for (let x = 0; x < 512; x += 128) {
+      for (let y = 0; y < 512; y += 256) {
+        const tone = 38 + Math.random() * 10
+        g.fillStyle = `rgb(${tone},${tone + 14},${tone + 20})`
+        g.fillRect(x + 6, y + 6, 116, 244)
+        g.strokeStyle = 'rgba(201,160,74,0.45)'
+        g.lineWidth = 3
+        g.strokeRect(x + 6, y + 6, 116, 244)
+        g.fillStyle = 'rgba(214,176,90,0.8)'
+        for (const [rx, ry] of [[14, 14], [114, 14], [14, 242], [114, 242]] as const) {
+          g.beginPath()
+          g.arc(x + rx, y + ry, 3, 0, Math.PI * 2)
+          g.fill()
+        }
+      }
+    }
+  })
+  wallTex.wrapS = THREE.RepeatWrapping
+  wallTex.repeat.set((span.width + 30) / 6, 1)
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.7, metalness: 0.2 }))
+  wall.position.set(cx, span.height / 2 + 1.5, back)
+  wall.receiveShadow = true
+  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 5, { color: 0x5A6A70 }) : new THREE.MeshStandardMaterial({ color: 0x223036, roughness: 0.8 })
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
+  floor.rotation.x = -Math.PI / 2
+  floor.position.set(cx, -0.3, 4)
+  floor.receiveShadow = true
+  scene.add(wall, floor)
+  disposables.push(wallTex, wall.geometry, wall.material as Three.Material, floor.geometry, floor.material as Three.Material)
+
+  // A hextech crystal between the bookcases, turning in a brass ring.
+  const crystalGeo = new THREE.OctahedronGeometry(0.42, 0)
+  crystalGeo.scale(0.75, 1.3, 0.75)
+  const crystalMat = new THREE.MeshStandardMaterial({ color: 0x5FD4F0, emissive: 0x2AB0E0, emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.9 })
+  const ringGeo = new THREE.TorusGeometry(0.72, 0.045, 10, 48)
+  const brass = new THREE.MeshStandardMaterial({ color: 0xC9A04A, metalness: 1, roughness: 0.3 })
+  const crystals: Three.Mesh[] = []
+  const spots = [-span.gap - 1.2, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + 1.2]
+  for (const x of spots) {
+    const c = new THREE.Mesh(crystalGeo, crystalMat)
+    c.position.set(x, span.height * 0.62, back + 0.5)
+    const ring = new THREE.Mesh(ringGeo, brass)
+    ring.position.set(x, span.height * 0.62, back + 0.3)
+    scene.add(c, ring)
+    crystals.push(c)
+  }
+  disposables.push(crystalGeo, crystalMat, ringGeo, brass)
+
+  const glow = new THREE.PointLight(0x4CC8F0, high ? 7 : 5, 10, 1.6)
+  const lamp = new THREE.PointLight(0xFFD9A0, high ? 6 : 4, 10, 1.6)
+  scene.add(glow, lamp)
+  scene.fog = new THREE.FogExp2(0x0E1C22, 0.02)
+
+  const sparks = dust(THREE, span, high ? 300 : 100, 0x7FDFFF, 0.04)
+  scene.add(sparks.points)
+  disposables.push(sparks)
+
+  return {
+    update(t, dt, camX) {
+      crystals.forEach((c, i) => {
+        c.rotation.y = t * 0.6 + i
+        c.position.y = span.height * 0.62 + Math.sin(t * 1.3 + i) * 0.06
+      })
+      crystalMat.emissiveIntensity = 1.4 + Math.sin(t * 2) * 0.3
+      glow.position.set(camX + 3, span.height * 0.62, back + 1)
+      lamp.position.set(camX - 1, span.height + 1, 1.6)
+      sparks.update(t, dt)
       return true
     },
     dispose: () => disposables.forEach(d => d.dispose()),

@@ -87,7 +87,7 @@ export function useTcgDeck(options: {
 
   /** One more copy of this printing, in its zone (or the one asked: the Side Deck). */
   function add(card: TcgCard, into?: string) {
-    const verdict = canAdd(rules, lines.value, card, into ?? rules.zoneFor(card))
+    const verdict = canAdd(rules, lines.value, card, into ?? rules.zoneFor(card, lines.value))
     if (!verdict.ok)
       return verdict
     remember(card)

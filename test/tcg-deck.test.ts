@@ -44,6 +44,9 @@ function card(id: string, over: Partial<TcgCard> = {}): TcgCard {
     archetype: null,
     linkMarkers: [],
     extraDeck: false,
+    tags: [],
+    landscape: false,
+    flavour: null,
     ...over,
   }
 }
@@ -71,11 +74,11 @@ describe('generic decklist', () => {
   })
 
   it('writes zone by zone, the format first when not the default', () => {
-    const entries = [{ quantity: 1, name: 'b', zone: 'extra' }, { quantity: 3, name: 'a' }]
+    const entries = [{ quantity: 1, name: 'b-2', zone: 'extra' }, { quantity: 3, name: 'a-1' }]
     expect(writeTcgDecklist(entries, zones, ['??'], { value: 'expanded', formats: ['standard', 'expanded'] }))
-      .toBe('// format: expanded\n3 a\n## Extra\n1 b\n??')
+      .toBe('// format: expanded\n3 a-1\n## Extra\n1 b-2\n??')
     const text = writeTcgDecklist(entries, zones)
-    expect(parseTcgDecklist(text, zones).mainboard).toEqual([{ quantity: 3, name: 'a' }, { quantity: 1, name: 'b', zone: 'extra' }])
+    expect(parseTcgDecklist(text, zones).mainboard).toEqual([{ quantity: 3, name: 'a-1' }, { quantity: 1, name: 'b-2', zone: 'extra' }])
   })
 
   it('reads the format a list names, else the first one', () => {
@@ -191,5 +194,51 @@ describe('yu-gi-oh rules', () => {
       { code: '1561110', zone: 'extra', quantity: 1 },
       { code: '46986414', zone: 'side', quantity: 1 },
     ])
+  })
+})
+
+describe('riftbound rules', () => {
+  const rb = (id: string, over: Partial<TcgCard>) => card(id, { legal: ['standard'], ...over })
+  const jinx = rb('ogn-251-298', { name: 'Jinx - Loose Cannon', category: 'Legend', subtype: null, types: ['Fury', 'Chaos'], tags: ['Jinx'] })
+  const jinxUnit = rb('ogn-030-298', { name: 'Jinx - Rebel', category: 'Unit', subtype: 'Champion', types: ['Fury'], tags: ['Jinx'] })
+  const viUnit = rb('ogn-100-298', { name: 'Vi - Destructive', category: 'Unit', subtype: 'Champion', types: ['Fury'], tags: ['Vi'] })
+  const calm = rb('ogn-050-298', { name: 'Calm Unit', category: 'Unit', subtype: null, types: ['Calm'] })
+  const fury = rb('ogn-010-298', { name: 'Get Excited!', category: 'Spell', subtype: null, types: ['Fury'] })
+  const sig = rb('ogn-300-298', { name: 'Super Mega Death Rocket!', category: 'Spell', subtype: 'Signature', types: ['Fury'], tags: ['Jinx'] })
+  const rune = rb('ogn-rune-f', { name: 'Fury Rune', category: 'Rune', subtype: 'Basic', types: ['Fury'] })
+  const field = rb('ogn-bf-1', { name: 'Zaun Warrens', category: 'Battlefield', subtype: null, types: [] })
+  const r = TCG_RULES.riftbound
+
+  it('places each card in its zone, the first champion of the Legend as the Chosen Champion', () => {
+    const lines = [line(jinx, 1, 'legend')]
+    expect(canAdd(r, [], jinx)).toEqual({ ok: true, zone: 'legend' })
+    expect(canAdd(r, lines, jinxUnit)).toEqual({ ok: true, zone: 'champion' })
+    expect(canAdd(r, [...lines, line(jinxUnit, 1, 'champion')], jinxUnit)).toEqual({ ok: true, zone: 'main' })
+    expect(canAdd(r, lines, rune)).toEqual({ ok: true, zone: 'runes' })
+    expect(canAdd(r, lines, field)).toEqual({ ok: true, zone: 'battlefields' })
+    expect(canAdd(r, [...lines, line(field, 1, 'battlefields')], field)).toEqual({ ok: false, reason: 'maxCopies' })
+  })
+
+  it('keeps the deck within the Legend\'s domains and its signatures to three', () => {
+    const lines = [line(jinx, 1, 'legend')]
+    expect(canAdd(r, lines, calm)).toEqual({ ok: false, reason: 'offDomain' })
+    expect(canAdd(r, [...lines, line(sig, 3)], card('ogn-301-298', { ...sig, id: 'ogn-301-298', name: 'Other', key: 'other' }))).toEqual({ ok: false, reason: 'signatureCount' })
+    expect(validateTcgDeck(r, [...lines, line(viUnit, 1, 'champion')]).issues.map(i => i.code)).toContain('chosenChampion')
+  })
+
+  it('validates a whole deck', () => {
+    const fillers = Array.from({ length: 13 }, (_, i) => line(rb(`ogn-f${i}`, { name: `Filler ${i}`, category: 'Unit', subtype: null, types: ['Chaos'] }), 3))
+    const deck = [line(jinx, 1, 'legend'), line(jinxUnit, 1, 'champion'), ...fillers, ...[0, 1].map(() => line(fury, 0)), line(rune, 12, 'runes'), ...['a', 'b', 'c'].map(x => line(rb(`bf-${x}`, { name: `Field ${x}`, category: 'Battlefield', subtype: null, types: [] }), 1, 'battlefields'))]
+    const v = validateTcgDeck(r, deck)
+    expect(v.issues).toEqual([])
+    expect(v.counts).toMatchObject({ main: 39, legend: 1, champion: 1, runes: 12, battlefields: 3 })
+  })
+})
+
+describe('generic decklist, names', () => {
+  it('leaves a line naming a card to the import', () => {
+    const r = parseTcgDecklist('1 Jinx - Loose Cannon\n3 ogn-001-298', [{ id: 'main', min: 0, max: 60 }])
+    expect(r.mainboard).toEqual([{ quantity: 3, name: 'ogn-001-298' }])
+    expect(r.errors).toEqual(['1 Jinx - Loose Cannon'])
   })
 })

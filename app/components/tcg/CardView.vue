@@ -23,13 +23,15 @@ const label = (kind: string, v: string | null | undefined) => tcgLabel(t, props.
 
 const shownCard = computed<TcgCard>(() => props.prints.find(p => p.id === shown.value) ?? props.card)
 const broken = ref<string | null>(null)
-const aspect = computed(() => TCG_UI[props.game].aspect)
+// A Battlefield lies on its side.
+const aspect = computed(() => (shownCard.value.landscape ? 1 / TCG_UI[props.game].aspect : TCG_UI[props.game].aspect))
 const c = computed(() => shownCard.value)
 const money = (v: number | null) => (v == null ? null : `${v.toLocaleString(props.lang === 'fr' ? 'fr-FR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`)
 const formats = computed(() => TCG_RULES[props.game].formats)
 const kind = computed(() => [label('category', c.value.category), label('subtype', c.value.subtype)].filter(Boolean).join(' · '))
-// Numbers the card prints besides Pokémon's (Yu-Gi-Oh: Level or Rank, ATK/DEF, Link, Scale).
-const STAT_ORDER = ['level', 'rank', 'link', 'atk', 'def', 'scale']
+// Numbers the card prints besides Pokémon's (Yu-Gi-Oh: Level or Rank, ATK/DEF, Link,
+// Scale; Riftbound: Energy, Might, Power).
+const STAT_ORDER = ['energy', 'might', 'power', 'level', 'rank', 'link', 'atk', 'def', 'scale']
 const statFacts = computed(() => STAT_ORDER.filter(k => c.value.stats[k] != null).map(k => ({ id: k, label: t(`${props.game}.${k}`), value: String(c.value.stats[k]) })))
 const race = computed(() => [c.value.race, c.value.archetype && c.value.archetype !== c.value.race ? c.value.archetype : null].filter(Boolean).join(' · '))
 </script>
@@ -125,6 +127,9 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
       </section>
       <p v-else-if="c.text" class="text">
         {{ c.text }}
+      </p>
+      <p v-if="c.flavour" class="flavour">
+        {{ c.flavour }}
       </p>
 
       <dl v-if="c.weaknesses.length || c.resistances.length || c.stats.retreat != null" class="facts">
@@ -301,6 +306,13 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
 .evolve {
   margin: 6px 0 0;
   font-size: 13px;
+  color: var(--color-text-muted);
+}
+.flavour {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
   color: var(--color-text-muted);
 }
 .limit {

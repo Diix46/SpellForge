@@ -4,7 +4,7 @@
  * components/tcg. Magic and One Piece keep their own engines.
  */
 
-export const TCG_GAME_IDS = ['pokemon', 'yugioh'] as const
+export const TCG_GAME_IDS = ['pokemon', 'yugioh', 'riftbound'] as const
 export type TcgGameId = typeof TCG_GAME_IDS[number]
 
 export function isTcgGame(game: unknown): game is TcgGameId {
@@ -69,6 +69,10 @@ export interface TcgCard {
   archetype: string | null
   linkMarkers: string[]
   extraDeck: boolean
+  /** Riftbound: champion and region tags ("Vi", "Piltover"), a landscape card (Battlefield), a signature card. */
+  tags: string[]
+  landscape: boolean
+  flavour: string | null
 }
 
 export interface TcgSet {
