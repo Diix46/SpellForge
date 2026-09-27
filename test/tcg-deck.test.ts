@@ -38,6 +38,12 @@ function card(id: string, over: Partial<TcgCard> = {}): TcgCard {
     resistances: [],
     evolveFrom: null,
     suffix: null,
+    code: null,
+    limit: null,
+    race: null,
+    archetype: null,
+    linkMarkers: [],
+    extraDeck: false,
     ...over,
   }
 }
@@ -132,5 +138,58 @@ describe('generic engine registry', () => {
   it('has rules for every game', () => {
     for (const g of TCG_GAME_IDS)
       expect(TCG_RULES[g].zones.length).toBeGreaterThan(0)
+  })
+})
+
+describe('the generic ingest and the app agree', () => {
+  it('on the schema version the boot rebuild compares', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { TCG_SCHEMA_VERSION } = await import('../server/utils/tcg/db')
+    expect(readFileSync('scripts/tcg/schema.mjs', 'utf8')).toContain(`const SCHEMA_VERSION = '${TCG_SCHEMA_VERSION}'`)
+  })
+
+  it('has an ingest script per game', async () => {
+    const { existsSync } = await import('node:fs')
+    for (const g of TCG_GAME_IDS)
+      expect(existsSync(`scripts/ingest-${g}.mjs`)).toBe(true)
+  })
+})
+
+describe('yu-gi-oh rules', () => {
+  const mon = (id: string, over: Partial<TcgCard> = {}) => card(id, { category: 'Monster', subtype: 'Effect', types: ['DARK'], legal: ['tcg'], ...over })
+  const ash = mon('RA01-EN008', { name: 'Ash Blossom' })
+  const limited = mon('LOB-EN001', { name: 'Pot of Greed', category: 'Spell', limit: 1 })
+  const fusion = mon('LOB-EN050', { name: 'Thousand Dragon', subtype: 'Fusion', extraDeck: true })
+
+  it('holds three copies, fewer under the banlist', () => {
+    const r = TCG_RULES.yugioh
+    expect(canAdd(r, [line(ash, 3)], ash)).toEqual({ ok: false, reason: 'maxCopies' })
+    expect(canAdd(r, [line(limited, 1)], limited)).toEqual({ ok: false, reason: 'maxCopies' })
+  })
+
+  it('sends Extra Deck monsters to the Extra Deck, anything may go to the Side', () => {
+    const r = TCG_RULES.yugioh
+    expect(canAdd(r, [], fusion)).toEqual({ ok: true, zone: 'extra' })
+    expect(canAdd(r, [], fusion, 'main')).toEqual({ ok: false, reason: 'wrongZone' })
+    expect(canAdd(r, [], ash, 'side')).toEqual({ ok: true, zone: 'side' })
+  })
+
+  it('checks each deck size, the three copies spanning them', () => {
+    const r = TCG_RULES.yugioh
+    const fillers = Array.from({ length: 13 }, (_, i) => line(mon(`X-${i}`), 3))
+    const v = validateTcgDeck(r, [line(ash, 2), line(ash, 2, 'side'), ...fillers])
+    expect(v.issues.map(i => i.code)).toEqual(['tooManyCopies'])
+    expect(validateTcgDeck(r, [line(mon('X-1'), 30)]).issues[0]).toMatchObject({ code: 'zoneSize', zone: 'main', count: 30, max: 40 })
+  })
+
+  it('reads a YDK file', async () => {
+    const { isYdk, parseYdk } = await import('../shared/tcg/deck')
+    const ydk = '#created by me\n#main\n46986414\n46986414\n#extra\n1561110\n!side\n46986414\n'
+    expect(isYdk(ydk)).toBe(true)
+    expect(parseYdk(ydk)).toEqual([
+      { code: '46986414', zone: 'main', quantity: 2 },
+      { code: '1561110', zone: 'extra', quantity: 1 },
+      { code: '46986414', zone: 'side', quantity: 1 },
+    ])
   })
 })

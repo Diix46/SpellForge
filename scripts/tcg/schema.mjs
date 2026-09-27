@@ -10,7 +10,7 @@
 import { copyFileSync, existsSync, renameSync, rmSync } from 'node:fs'
 import { createClient } from '@libsql/client'
 
-export const SCHEMA_VERSION = '2'
+export const SCHEMA_VERSION = '3'
 
 export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS sets (
@@ -32,6 +32,8 @@ export const SCHEMA = [
      id          TEXT NOT NULL,
      lang        TEXT NOT NULL,
      card_key    TEXT NOT NULL,
+     -- The game's own code for the card (Yu-Gi-Oh: its passcode, what YDK lists name).
+     code        TEXT,
      name        TEXT NOT NULL,
      name_en     TEXT,
      name_folded TEXT NOT NULL,
@@ -63,6 +65,10 @@ export const SCHEMA = [
   'CREATE INDEX IF NOT EXISTS idx_cards_key ON cards(card_key)',
   'CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_code, lang)',
   'CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name_folded)',
+  'CREATE INDEX IF NOT EXISTS idx_cards_code ON cards(code)',
+  // Other codes of a card (Yu-Gi-Oh: the passcodes of its alternate artworks,
+  // any of which a YDK file may name).
+  `CREATE TABLE IF NOT EXISTS aliases (alias TEXT PRIMARY KEY, code TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)`,
 ]
 

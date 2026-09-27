@@ -133,6 +133,11 @@ export function zoneCount(lines: readonly TcgLine[], zone: string, rules: TcgRul
   return lines.reduce((n, l) => n + (zoneOf(l.entry, rules) === zone ? l.entry.quantity : 0), 0)
 }
 
+/** Copies of a card a deck may hold: the rules', lowered by the banlist. */
+export function limitOf(rules: TcgRules, card: TcgCard): number {
+  return Math.min(rules.copyLimit(card), card.limit ?? Infinity)
+}
+
 export type TcgAddVerdict = { ok: true, zone: string } | { ok: false, reason: string }
 
 /** Whether one more copy of a card fits, and where. */
@@ -141,7 +146,7 @@ export function canAdd(rules: TcgRules, lines: readonly TcgLine[], card: TcgCard
     return { ok: false, reason: 'banned' }
   if (rules.fits && !rules.fits(card, zone))
     return { ok: false, reason: 'wrongZone' }
-  if (copiesOf(lines, card.key) >= rules.copyLimit(card))
+  if (copiesOf(lines, card.key) >= limitOf(rules, card))
     return { ok: false, reason: 'maxCopies' }
   const z = rules.zones.find(x => x.id === zone)
   if (z && zoneCount(lines, zone, rules) >= z.max)
@@ -174,7 +179,7 @@ export function validateTcgDeck(rules: TcgRules, lines: readonly TcgLine[], form
   }
   const notLegal: string[] = []
   for (const { card, n } of seen.values()) {
-    const max = rules.copyLimit(card)
+    const max = limitOf(rules, card)
     if (n > max)
       issues.push({ code: 'tooManyCopies', level: 'error', cards: [card.name], count: n, max })
     if (card.banned)
@@ -232,4 +237,31 @@ export function parseForeignLines(lines: readonly string[]): { lines: ForeignLin
     out.push({ quantity: Number.parseInt(words[0]!, 10), name, set, number })
   }
   return { lines: out, rest }
+}
+
+/** A YDK file (YGOPRODeck, EDOPro, Master Duel): passcodes one per line under #main, #extra, !side. */
+export function isYdk(text: string): boolean {
+  return /^#main\s*$/m.test(text)
+}
+
+/** Passcodes and their copies, zone by zone, in the order they come. */
+export function parseYdk(text: string): { code: string, zone: string, quantity: number }[] {
+  const out: { code: string, zone: string, quantity: number }[] = []
+  let zone = 'main'
+  for (const raw of text.split('\n')) {
+    const line = raw.trim()
+    const head = /^[#!](main|extra|side)\s*$/i.exec(line)
+    if (head) {
+      zone = head[1]!.toLowerCase()
+      continue
+    }
+    if (!/^\d{1,10}$/.test(line))
+      continue
+    const same = out.find(e => e.code === line && e.zone === zone)
+    if (same)
+      same.quantity++
+    else
+      out.push({ code: line, zone, quantity: 1 })
+  }
+  return out
 }
