@@ -23,6 +23,7 @@ const label = (kind: string, v: string | null | undefined) => tcgLabel(t, props.
 
 const shownCard = computed<TcgCard>(() => props.prints.find(p => p.id === shown.value) ?? props.card)
 const broken = ref<string | null>(null)
+const frame = computed(() => TCG_UI[props.game].frame?.(shownCard.value) ?? null)
 // A Battlefield lies on its side.
 const aspect = computed(() => (shownCard.value.landscape ? 1 / TCG_UI[props.game].aspect : TCG_UI[props.game].aspect))
 const c = computed(() => shownCard.value)
@@ -39,7 +40,7 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
 <template>
   <div class="sheet-grid">
     <div class="sheet-art">
-      <div class="frame" :style="{ aspectRatio: aspect }">
+      <div class="frame" :class="{ framed: frame }" :style="{ 'aspectRatio': aspect, '--frame': frame ?? undefined }">
         <img v-if="c.image && broken !== c.image" :src="c.image" :alt="c.name" width="600" height="825" @error="broken = c.image">
         <span v-else class="blank u-display">{{ c.name }}</span>
       </div>
@@ -218,6 +219,12 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
   text-align: center;
   font-size: 22px;
   color: var(--color-text-muted);
+}
+.frame.framed {
+  box-shadow:
+    0 0 0 3px var(--frame),
+    0 0 40px -8px color-mix(in srgb, var(--frame) 60%, transparent),
+    var(--shadow-elev-3);
 }
 .arts-title {
   margin: 0 0 6px;

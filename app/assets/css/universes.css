@@ -308,252 +308,226 @@ html[data-universe='pokemon'] body {
 }
 
 /* ------------------------------------------------------------------ Yu-Gi-Oh! */
-/* A pharaoh's tomb in the sun: sand and papyrus, gold leaf, the violet of the
-   Dark Magician; engraved capitals. At night, the shrine by torchlight. */
-html[data-universe='yugioh'] {
-  color-scheme: light;
+/* Master Duel: always at night (GameDef.forcedMode). Deep duel-field blue,
+   gold trim, the cyan light of the zones; condensed capitals as the game's
+   own UI sets them. The card frames' official colours dress the cards
+   (utils/games/tcg YGO_FRAME). */
+html[data-universe='yugioh'],
+html.dark[data-universe='yugioh'] {
+  color-scheme: dark;
 
-  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
-  --font-sfx: 'Cinzel', Georgia, serif;
-  --u-case: none;
-  --u-track: 0.01em;
+  --font-display: 'Oswald', 'Arial Narrow', ui-sans-serif, sans-serif;
+  --font-sfx: 'Oswald', 'Arial Narrow', sans-serif;
+  --u-case: uppercase;
+  --u-track: 0.04em;
 
-  --color-bg-base: #efe6d2;
-  --color-bg-base-2: #e8dcc2;
-  --color-surface-1: #f8f1e1;
-  --color-surface-2: #f1e7d1;
-  --color-surface-3: #e5d7b8;
+  --color-bg-base: #070b1a;
+  --color-bg-base-2: #0a1024;
+  --color-surface-1: #0f1631;
+  --color-surface-2: #141d3e;
+  --color-surface-3: #1c2750;
 
-  --color-ink-50: #faf6ec;
-  --color-ink-100: #f0e8d6;
-  --color-ink-200: #dfd2b4;
-  --color-ink-300: #c5b28b;
-  --color-ink-400: #a08b62;
-  --color-ink-500: #7a6744;
-  --color-ink-600: #5d4d33;
-  --color-ink-700: #463a26;
-  --color-ink-800: #30281b;
-  --color-ink-900: #211b12;
-  --color-ink-950: #140f09;
+  --color-text-high: #eef1fb;
+  --color-text-mid: #c4cbe3;
+  --color-text-muted: #8f99bd; /* 6.6:1 on the field */
+  --color-text-disabled: #646e93;
 
-  --color-text-high: #221a2e;
-  --color-text-mid: #45394f;
-  --color-text-muted: #66596a; /* 5.6:1 on the papyrus */
-  --color-text-disabled: #8b7e86;
+  --color-border-hairline: rgba(212, 175, 55, 0.12);
+  --color-border-subtle: rgba(212, 175, 55, 0.22);
+  --color-border-strong: rgba(212, 175, 55, 0.45);
 
-  --color-border-hairline: rgba(58, 40, 22, 0.13);
-  --color-border-subtle: rgba(58, 40, 22, 0.2);
-  --color-border-strong: rgba(58, 40, 22, 0.32);
+  /* Gold trim; the zones' cyan light. */
+  --accent-rgb: 212, 175, 55;
+  --accent-rgb-2: 79, 195, 247;
+  --u-sea: #4fc3f7;
+  --accent-text: #ecc95a; /* 10:1 on the field */
 
-  /* Dark Magician violet, gold leaf. */
-  --accent-rgb: 107, 63, 160;
-  --accent-rgb-2: 201, 161, 61;
-  --u-sea: #2f7fd0;
-  --accent-text: #5a2f8c; /* 7.4:1 on the papyrus */
-
-  --ui-primary: #6b3fa0;
-  --ui-secondary: #b08a3a;
+  --ui-primary: #d4af37;
+  --ui-secondary: #4fc3f7;
+  /* The primary buttons' plate (main.css), gold leaf with dark ink. */
+  --gradient-accent: linear-gradient(180deg, #f1d57a, #c99a2b 55%, #8f6a17);
+  --color-text-on-neon: #140f04;
 
   --radius-xs: 2px;
   --radius-sm: 3px;
-  --radius-md: 5px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 14px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
   --u-tilt: 0deg;
 
   /* A card slapped on the duel disk: quick, then still. */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.2, 1.2, 0.4, 1);
-  --dur-fast: 0.15s;
-  --dur: 0.26s;
-  --dur-slow: 0.45s;
+  --dur-fast: 0.14s;
+  --dur: 0.24s;
+  --dur-slow: 0.42s;
 
-  --shadow-elev-1: 0 1px 2px rgba(58, 40, 22, 0.1);
-  --shadow-elev-2: 0 8px 18px -10px rgba(58, 40, 22, 0.35);
-  --shadow-elev-3: 0 20px 44px -18px rgba(58, 40, 22, 0.45);
-  --accent-glow: 0 0 0 2px rgba(107, 63, 160, 0.25), 0 6px 18px -8px rgba(201, 161, 61, 0.6);
-  --accent-glow-soft: 0 4px 12px -6px rgba(107, 63, 160, 0.45);
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-elev-2: 0 10px 22px -10px rgba(0, 0, 0, 0.8);
+  --shadow-elev-3: 0 24px 50px -18px rgba(0, 0, 0, 0.9);
+  --accent-glow: 0 0 0 1px rgba(212, 175, 55, 0.55), 0 0 22px -4px rgba(79, 195, 247, 0.55);
+  --accent-glow-soft: 0 0 18px -6px rgba(79, 195, 247, 0.5);
 
-  --glass-bg: rgba(248, 241, 225, 0.82);
-  --glass-bg-strong: rgba(248, 241, 225, 0.94);
-  --glass-highlight: rgba(255, 255, 255, 0.5);
-  --glass-solid-sheen: rgba(58, 40, 22, 0.02);
-  --texture-line: rgba(58, 40, 22, 0.05);
-
-  /* Papyrus fibres, crossing. */
-  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02 .6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .08 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
-}
-
-html.dark[data-universe='yugioh'] {
-  color-scheme: dark;
-
-  --color-bg-base: #120f1c;
-  --color-bg-base-2: #171324;
-  --color-surface-1: #1d182c;
-  --color-surface-2: #251f37;
-  --color-surface-3: #2f2845;
-
-  --color-text-high: #f3ecdc;
-  --color-text-mid: #d6ccb8;
-  --color-text-muted: #a89e8c; /* 7:1 by torchlight */
-  --color-text-disabled: #7c7466;
-
-  --color-border-hairline: rgba(243, 236, 220, 0.07);
-  --color-border-subtle: rgba(243, 236, 220, 0.13);
-  --color-border-strong: rgba(243, 236, 220, 0.24);
-
-  --accent-rgb: 222, 183, 84;
-  --accent-rgb-2: 160, 110, 220;
-  --accent-text: #e9c86d; /* 10:1 by torchlight */
-
-  --ui-primary: #deb754;
-  --ui-secondary: #a06edc;
-
-  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-elev-2: 0 8px 18px -10px rgba(0, 0, 0, 0.7);
-  --shadow-elev-3: 0 20px 44px -18px rgba(0, 0, 0, 0.8);
-  --accent-glow: 0 0 0 2px rgba(222, 183, 84, 0.25), 0 6px 18px -8px rgba(222, 183, 84, 0.55);
-  --accent-glow-soft: 0 4px 14px -6px rgba(222, 183, 84, 0.5);
-
-  --glass-bg: rgba(29, 24, 44, 0.8);
-  --glass-bg-strong: rgba(29, 24, 44, 0.94);
-  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(10, 16, 36, 0.82);
+  --glass-bg-strong: rgba(10, 16, 36, 0.95);
+  --glass-highlight: rgba(212, 175, 55, 0.08);
   --glass-solid-sheen: rgba(255, 255, 255, 0.02);
-  --texture-line: rgba(255, 255, 255, 0.035);
+  --texture-line: rgba(79, 195, 247, 0.05);
 
-  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02 .6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .95 0 0 0 0 .9 0 0 0 0 .8 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
-}
-html[data-universe='yugioh'] .u-display,
-html[data-universe='yugioh'] :where(h1, h2) {
-  font-weight: 700;
+  /* The field's faint diamond grid. */
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M20 0L40 20 20 40 0 20z' fill='none' stroke='%234fc3f7' stroke-opacity='.045'/%3E%3C/svg%3E");
 }
 html[data-universe='yugioh'] body {
   background:
-    var(--u-texture), radial-gradient(900px 480px at 80% -10%, rgba(var(--accent-rgb-2), 0.16), transparent 62%),
-    radial-gradient(800px 420px at 0% 0%, rgba(var(--accent-rgb), 0.07), transparent 60%), var(--color-bg-base);
+    var(--u-texture), radial-gradient(1100px 520px at 50% -12%, rgba(79, 195, 247, 0.14), transparent 62%),
+    radial-gradient(900px 500px at 50% 115%, rgba(212, 175, 55, 0.1), transparent 60%), var(--color-bg-base);
+}
+html[data-universe='yugioh'] .u-display,
+html[data-universe='yugioh'] :where(h1, h2) {
+  font-weight: 600;
+}
+/* Titles in gold leaf. */
+html[data-universe='yugioh'] h1 {
+  /* Over the pages' own heading colour. */
+  background: linear-gradient(180deg, #fff3c4 0%, #ecc95a 45%, #a8801f 100%);
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+/* The primary action: a gold plate lit by the zones. */
+html[data-universe='yugioh'] .bg-primary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 0 1px rgba(79, 195, 247, 0.25);
+}
+html[data-universe='yugioh'] .bg-primary:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 18px -2px rgba(79, 195, 247, 0.7);
 }
 
 /* ----------------------------------------------------------------- Riftbound */
-/* Piltover by day: pale stone and brass, the blue of hextech, carved
-   capitals. At night, the undercity's teal glow. */
-html[data-universe='riftbound'] {
-  color-scheme: light;
-
-  --font-display: 'Marcellus', Georgia, 'Times New Roman', serif;
-  --font-sfx: 'Marcellus', Georgia, serif;
-  --u-case: none;
-  --u-track: 0.02em;
-
-  --color-bg-base: #e9eef0;
-  --color-bg-base-2: #e1e8eb;
-  --color-surface-1: #f6f9fa;
-  --color-surface-2: #edf2f4;
-  --color-surface-3: #dde5e8;
-
-  --color-ink-50: #f7fafb;
-  --color-ink-100: #eaf0f2;
-  --color-ink-200: #d4dde1;
-  --color-ink-300: #b3c0c6;
-  --color-ink-400: #8c9aa1;
-  --color-ink-500: #69777e;
-  --color-ink-600: #4f5c62;
-  --color-ink-700: #3a454a;
-  --color-ink-800: #273034;
-  --color-ink-900: #172024;
-  --color-ink-950: #0c1316;
-
-  --color-text-high: #13232a;
-  --color-text-mid: #36484f;
-  --color-text-muted: #56676e; /* 5.7:1 on the stone */
-  --color-text-disabled: #85949a;
-
-  --color-border-hairline: rgba(19, 35, 42, 0.1);
-  --color-border-subtle: rgba(19, 35, 42, 0.17);
-  --color-border-strong: rgba(19, 35, 42, 0.3);
-
-  /* Hextech teal, brass. */
-  --accent-rgb: 22, 122, 138;
-  --accent-rgb-2: 201, 160, 74;
-  --u-sea: #3d7fd6;
-  --accent-text: #0f6573; /* 6.4:1 on the stone */
-
-  --ui-primary: #167a8a;
-  --ui-secondary: #b08a3a;
-
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --u-tilt: 0deg;
-
-  --ease-out: cubic-bezier(0.2, 0.9, 0.25, 1);
-  --ease-spring: cubic-bezier(0.25, 1.3, 0.4, 1);
-  --dur-fast: 0.15s;
-  --dur: 0.26s;
-  --dur-slow: 0.42s;
-
-  --shadow-elev-1: 0 1px 2px rgba(19, 35, 42, 0.08);
-  --shadow-elev-2: 0 8px 18px -10px rgba(19, 35, 42, 0.3);
-  --shadow-elev-3: 0 20px 44px -18px rgba(19, 35, 42, 0.4);
-  --accent-glow: 0 0 0 2px rgba(22, 122, 138, 0.22), 0 6px 18px -8px rgba(76, 200, 240, 0.55);
-  --accent-glow-soft: 0 4px 12px -6px rgba(22, 122, 138, 0.45);
-
-  --glass-bg: rgba(246, 249, 250, 0.82);
-  --glass-bg-strong: rgba(246, 249, 250, 0.94);
-  --glass-highlight: rgba(255, 255, 255, 0.6);
-  --glass-solid-sheen: rgba(19, 35, 42, 0.02);
-  --texture-line: rgba(19, 35, 42, 0.05);
-
-  /* A faint hexagon grid, hextech's own. */
-  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='98'%3E%3Cpath d='M28 0l28 16v33L28 65 0 49V16zM28 65v33' fill='none' stroke='%2313232a' stroke-opacity='.05'/%3E%3C/svg%3E");
-}
-
+/* The League of Legends client: always at night, hextech black and blue,
+   gold filigree, square corners and cut ones (--u-cut), Beaufort-like
+   capitals (Cinzel). Riot's own palette: Gold 1–6, Blue 1–7, Grey 1–3. */
+html[data-universe='riftbound'],
 html.dark[data-universe='riftbound'] {
   color-scheme: dark;
 
-  --color-bg-base: #0b1519;
-  --color-bg-base-2: #0f1b20;
-  --color-surface-1: #13222a;
-  --color-surface-2: #182a33;
-  --color-surface-3: #1f3540;
+  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --font-sfx: 'Cinzel', Georgia, serif;
+  --u-case: uppercase;
+  --u-track: 0.08em;
 
-  --color-text-high: #e8f3f5;
-  --color-text-mid: #c2d4d8;
-  --color-text-muted: #8fa6ac; /* 6.8:1 at night */
-  --color-text-disabled: #688088;
+  --color-bg-base: #010a13;
+  --color-bg-base-2: #050f1a;
+  --color-surface-1: #091428;
+  --color-surface-2: #0a1a2e;
+  --color-surface-3: #1e2328;
 
-  --color-border-hairline: rgba(232, 243, 245, 0.07);
-  --color-border-subtle: rgba(232, 243, 245, 0.13);
-  --color-border-strong: rgba(232, 243, 245, 0.24);
+  --color-text-high: #f0e6d2;
+  --color-text-mid: #cdbe91;
+  --color-text-muted: #a09b8c; /* 7.6:1 on hextech black */
+  --color-text-disabled: #5b5a56;
 
-  --accent-rgb: 76, 200, 240;
-  --accent-rgb-2: 214, 176, 90;
-  --accent-text: #7fdcf5; /* 11:1 at night */
+  --color-border-hairline: rgba(120, 90, 40, 0.35);
+  --color-border-subtle: rgba(120, 90, 40, 0.6);
+  --color-border-strong: rgba(200, 170, 110, 0.75);
 
-  --ui-primary: #4cc8f0;
-  --ui-secondary: #d6b05a;
+  /* Gold 2, Blue 2. */
+  --accent-rgb: 200, 170, 110;
+  --accent-rgb-2: 10, 200, 185;
+  --u-sea: #0ac8b9;
+  --accent-text: #c8aa6e; /* 8.9:1 */
 
-  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --shadow-elev-2: 0 8px 18px -10px rgba(0, 0, 0, 0.7);
-  --shadow-elev-3: 0 20px 44px -18px rgba(0, 0, 0, 0.8);
-  --accent-glow: 0 0 0 2px rgba(76, 200, 240, 0.25), 0 6px 18px -8px rgba(76, 200, 240, 0.55);
-  --accent-glow-soft: 0 4px 14px -6px rgba(76, 200, 240, 0.5);
+  --ui-primary: #c8aa6e;
+  --ui-secondary: #0ac8b9;
+  /* The primary buttons' plate (main.css): the client's dark one, Gold 1 ink. */
+  --gradient-accent: linear-gradient(180deg, #1e2328, #010a13);
+  --color-text-on-neon: #f0e6d2;
 
-  --glass-bg: rgba(19, 34, 42, 0.8);
-  --glass-bg-strong: rgba(19, 34, 42, 0.94);
-  --glass-highlight: rgba(255, 255, 255, 0.05);
-  --glass-solid-sheen: rgba(255, 255, 255, 0.02);
-  --texture-line: rgba(255, 255, 255, 0.035);
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 4px;
+  --u-tilt: 0deg;
+  /* The client's clipped corners, for panels that want them. */
+  --u-cut: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 
-  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='98'%3E%3Cpath d='M28 0l28 16v33L28 65 0 49V16zM28 65v33' fill='none' stroke='%237fdcf5' stroke-opacity='.05'/%3E%3C/svg%3E");
+  --ease-out: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --ease-spring: cubic-bezier(0.25, 1.2, 0.4, 1);
+  --dur-fast: 0.15s;
+  --dur: 0.25s;
+  --dur-slow: 0.4s;
+
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-elev-2: 0 10px 22px -10px rgba(0, 0, 0, 0.85);
+  --shadow-elev-3: 0 24px 50px -18px rgba(0, 0, 0, 0.95);
+  --accent-glow: 0 0 0 1px rgba(200, 170, 110, 0.8), 0 0 20px -4px rgba(10, 200, 185, 0.55);
+  --accent-glow-soft: 0 0 16px -6px rgba(10, 200, 185, 0.55);
+
+  --glass-bg: rgba(1, 10, 19, 0.84);
+  --glass-bg-strong: rgba(1, 10, 19, 0.95);
+  --glass-highlight: rgba(200, 170, 110, 0.08);
+  --glass-solid-sheen: rgba(240, 230, 210, 0.02);
+  --texture-line: rgba(200, 170, 110, 0.05);
+
+  /* Hextech: a faint hexagon lattice. */
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='98'%3E%3Cpath d='M28 0l28 16v33L28 65 0 49V16zM28 65v33' fill='none' stroke='%23c8aa6e' stroke-opacity='.04'/%3E%3C/svg%3E");
 }
 html[data-universe='riftbound'] body {
   background:
-    var(--u-texture), radial-gradient(900px 480px at 82% -10%, rgba(var(--accent-rgb), 0.14), transparent 62%),
-    radial-gradient(800px 420px at 0% 0%, rgba(var(--accent-rgb-2), 0.08), transparent 60%), var(--color-bg-base);
+    var(--u-texture), radial-gradient(1000px 520px at 50% -10%, rgba(10, 200, 185, 0.1), transparent 60%),
+    radial-gradient(900px 520px at 50% 110%, rgba(200, 170, 110, 0.08), transparent 60%), var(--color-bg-base);
+}
+html[data-universe='riftbound'] .u-display,
+html[data-universe='riftbound'] :where(h1, h2) {
+  font-weight: 700;
+}
+/* Titles in Gold 1 → Gold 3, as the client prints them. */
+html[data-universe='riftbound'] h1 {
+  /* Over the pages' own heading colour. */
+  background: linear-gradient(180deg, #f0e6d2 0%, #c8aa6e 60%, #c89b3c 100%);
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+/* The client's gold button: a dark plate, gold frame, hextech glow on hover. */
+html[data-universe='riftbound'] .bg-primary {
+  border: 1px solid #c8aa6e;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  box-shadow:
+    inset 0 0 0 1px rgba(1, 10, 19, 0.9),
+    inset 0 0 12px rgba(200, 170, 110, 0.25);
+}
+html[data-universe='riftbound'] .bg-primary:hover {
+  border-color: #f0e6d2;
+  box-shadow:
+    inset 0 0 0 1px rgba(1, 10, 19, 0.9),
+    0 0 18px -2px rgba(10, 200, 185, 0.7);
+}
+
+/* ---- Panels in the two night worlds: Master Duel's gold trim and zone
+   light; the League client's gold frame and cut corners. The generic
+   engine's panels (filters, deck, card sheet) and the collection's. ---- */
+html[data-universe='yugioh'] :is(.rail, .panel, .sheet, .stats, .bar):not(.rail .rail) {
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(212, 175, 55, 0.25),
+    0 0 36px -16px rgba(79, 195, 247, 0.45);
+}
+html[data-universe='riftbound'] :is(.rail, .panel, .sheet, .stats, .bar):not(.rail .rail) {
+  border: 1px solid #785a28;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(9, 20, 40, 0.92), rgba(1, 10, 19, 0.94));
+  clip-path: var(--u-cut);
+  box-shadow:
+    inset 0 0 0 1px rgba(1, 10, 19, 0.9),
+    inset 0 1px 0 rgba(200, 170, 110, 0.35);
 }
 
 /* ------------------------------------------------------------ Night sides */
@@ -771,7 +745,8 @@ html[data-universe] :focus-visible {
   animation: ufx-don 0.8s cubic-bezier(0.25, 1.4, 0.45, 1) forwards;
 }
 .ufx--yugioh {
-  font-family: 'Cinzel', Georgia, serif;
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  text-transform: uppercase;
   font-weight: 700;
   font-size: 30px;
   letter-spacing: 0.08em;
@@ -782,7 +757,9 @@ html[data-universe] :focus-visible {
   animation: ufx-don 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .ufx--riftbound {
-  font-family: 'Marcellus', Georgia, serif;
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  text-transform: uppercase;
   font-size: 30px;
   letter-spacing: 0.06em;
   color: #e8fbff;

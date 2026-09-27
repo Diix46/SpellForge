@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { DEFAULT_GAME, GAME_IDS, GAME_LIST, GAMES, libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { parseLocale } from '~/composables/useLocale'
+import { applyUniverseMode, forcedModeOf } from '~/utils/universeMode'
 
 // The Prism favicon as an inline SVG data URI (matches AppLogo): the red and
 // gold facets on a dark tile, readable on light and dark tab bars alike.
@@ -65,6 +66,10 @@ const isDark = computed(() => colorMode.value === 'dark')
 function toggleTheme() {
   colorMode.preference = isDark.value ? 'light' : 'dark'
 }
+// Yu-Gi-Oh and Riftbound are always at night (utils/universeMode): the page
+// wears that mode, the switch keeps the visitor's choice for the other worlds.
+const forcedMode = computed(() => forcedModeOf(universe.value))
+onMounted(() => watch([universe, isDark], ([u, dark]) => applyUniverseMode(u, dark), { immediate: true }))
 // Browser chrome (mobile address bar) follows the active theme. The document
 // language follows the site locale (reactive — switches with the FR/EN toggle).
 // The universe re-themes the whole document (assets/css/universes.css).
@@ -79,7 +84,7 @@ useHead({
   },
   meta: [{
     name: 'theme-color',
-    content: () => (universe.value ? THEME_COLOR[isDark.value ? 'dark' : 'light'][universe.value] : isDark.value ? '#0a0a0b' : '#fafafa'),
+    content: () => (universe.value ? THEME_COLOR[(forcedMode.value ?? (isDark.value ? 'dark' : 'light'))][universe.value] : isDark.value ? '#0a0a0b' : '#fafafa'),
   }],
 })
 
@@ -139,6 +144,8 @@ function isActive(to: string) {
   <UApp>
     <FxOnePieceSea v-if="universe === 'optcg'" />
     <FxMagicTable v-else-if="universe === 'mtg'" />
+    <FxYugiohField v-else-if="universe === 'yugioh'" />
+    <FxRiftboundSplash v-else-if="universe === 'riftbound'" />
     <!-- The home page paints its own ground over it: no hidden animation there. -->
     <FxAppBackground v-else-if="!isHome" />
 
@@ -194,6 +201,8 @@ function isActive(to: string) {
                 type="button"
                 class="icon-btn theme-bar"
                 :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
+                :disabled="!!forcedMode"
+                :title="forcedMode ? t('theme.forced') : undefined"
                 @click="toggleTheme"
               >
                 <UIcon :name="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" class="h-[18px] w-[18px]" />
@@ -259,6 +268,8 @@ function isActive(to: string) {
               type="button"
               class="icon-btn"
               :aria-label="isDark ? t('theme.toLight') : t('theme.toDark')"
+              :disabled="!!forcedMode"
+              :title="forcedMode ? t('theme.forced') : undefined"
               @click="toggleTheme"
             >
               <UIcon :name="isDark ? 'i-lucide-moon' : 'i-lucide-sun'" class="h-[18px] w-[18px]" />

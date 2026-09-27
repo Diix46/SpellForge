@@ -30,13 +30,13 @@ export function hasFile(path: string): boolean {
  * Makes the light copy of `source` at `target` and returns its bytes, or null
  * when it cannot be made (no sharp, unreadable source).
  */
-export async function makeThumbnail(source: string, target: string): Promise<Buffer | null> {
+export async function makeThumbnail(source: string, target: string, width = THUMB_WIDTH): Promise<Buffer | null> {
   const sharp = await loadSharp()
   if (!sharp)
     return null
   try {
     const bytes = await sharp(source)
-      .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+      .resize({ width, withoutEnlargement: true })
       .webp({ quality: 72 })
       .toBuffer()
     // Written beside the target then renamed, so a reader never sees half a file.

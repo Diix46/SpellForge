@@ -29,6 +29,25 @@ export interface TcgUi {
   stat: string | null
   /** The search shows one printing per card: the game reprints a card dozens of times. */
   uniqueSearch: boolean
+  /**
+   * How a card is framed in grids and sheets: the colour of its frame in the
+   * game (Yu-Gi-Oh's card types), or one trim for all (Riftbound's hextech
+   * gold); null: the scan alone.
+   */
+  frame: ((card: TcgCard) => string | null) | null
+}
+
+/** Yu-Gi-Oh's frame colours, as the cards print them. */
+export const YGO_FRAME: Record<string, string> = {
+  Normal: '#d8b35a',
+  Effect: '#c9702d',
+  Ritual: '#4f7fcf',
+  Fusion: '#8b52b8',
+  Synchro: '#e4e6ee',
+  Xyz: '#3a3a3f',
+  Link: '#1f63ad',
+  Spell: '#1d9a86',
+  Trap: '#b0418a',
 }
 
 export const TCG_UI: Record<TcgGameId, TcgUi> = {
@@ -90,6 +109,7 @@ export const TCG_UI: Record<TcgGameId, TcgUi> = {
     sampleLine: '4 sv03.5-006',
     stat: 'hp',
     uniqueSearch: false,
+    frame: null,
   },
   yugioh: {
     categories: ['Monster', 'Spell', 'Trap'],
@@ -138,6 +158,7 @@ export const TCG_UI: Record<TcgGameId, TcgUi> = {
     sampleLine: '3 LOB-EN005',
     stat: 'atk',
     uniqueSearch: true,
+    frame: card => YGO_FRAME[card.category === 'Monster' ? card.subtype ?? 'Effect' : card.category] ?? null,
   },
   riftbound: {
     categories: ['Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield'],
@@ -172,6 +193,7 @@ export const TCG_UI: Record<TcgGameId, TcgUi> = {
     sampleLine: '3 ogn-001-298',
     stat: 'might',
     uniqueSearch: false,
+    frame: () => '#c8aa6e',
   },
 }
 

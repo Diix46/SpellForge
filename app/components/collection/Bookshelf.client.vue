@@ -6,6 +6,7 @@ import type { Bookcase, ShelfBinder } from '~/utils/bookshelf/layout'
 import type { Library } from '~/utils/bookshelf/library'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { SET_KINDS, setKind } from '#shared/collection'
+import { isTcgGame } from '#shared/tcg/types'
 import { layoutLibrary } from '~/utils/bookshelf/layout'
 import { collectionClient } from '~/utils/games/collection'
 
@@ -77,6 +78,26 @@ const back = useState<string | null>('binder-return', () => null)
 const box = (r: DOMRect) => ({ x: r.x, y: r.y, w: r.width, h: r.height })
 
 interface BinderData { set: SetProgress, cards: ChecklistCard[] }
+/** The universe's illustrations and emblems, as textures for its 3D room (none for Magic and One Piece). */
+async function roomArts(THREE: typeof import('three'), loader: import('three').TextureLoader, low: boolean) {
+  if (!isTcgGame(props.game))
+    return {}
+  const sc = await $fetch<{ arts: { image: string, card: boolean }[], emblems: { image: string, card: boolean }[] }>(`/api/tcg/${props.game}/showcase`, { query: { lang: locale.value } })
+    .catch(() => ({ arts: [], emblems: [] }))
+  // Full scans are heavy (Riftbound's, 1.4 MB): the medium copy is enough on a wall.
+  const url = (a: { image: string, card: boolean }, size: string) => (a.image.startsWith('/api/images/tcg/') && !a.image.includes('?') ? `${a.image}?size=${size}` : a.image)
+  const load = (a: { image: string, card: boolean }, size: string) => loader.loadAsync(url(a, size)).then((tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.anisotropy = low ? 2 : 4
+    return { tex, card: a.card }
+  }).catch(() => null)
+  const [arts, emblems] = await Promise.all([
+    Promise.all(sc.arts.slice(0, 6).map(a => load(a, 'medium'))),
+    Promise.all(sc.emblems.slice(0, 9).map(a => load(a, 'thumb'))),
+  ])
+  return { arts: arts.filter(x => x != null), emblems: emblems.filter(x => x != null) }
+}
+
 /**
  * A binder's data, fetched as soon as it slides out (hover, search, first
  * tap), its first cards' pictures set loading: by the click, they are here.
@@ -269,7 +290,10 @@ onMounted(async () => {
       maps(dress.wall),
       fontReady,
     ])
-    const textures = { leather, wood, wall, grain: leather.map.image as HTMLImageElement, font: face, weight: dress.weight }
+    // The universe's own images for the room's walls: its signature
+    // illustrations and emblems (/api/tcg/<game>/showcase), when it has some.
+    const room3d = await roomArts(THREE, loader, low)
+    const textures = { leather, wood, wall, grain: leather.map.image as HTMLImageElement, font: face, weight: dress.weight, ...room3d }
     layout.value = layoutLibrary(props.sets, props.fresh, {
       perShelf,
       // Three shelves: the binders stay large enough to read.

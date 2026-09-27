@@ -138,8 +138,8 @@ export const COLLECTION_CLIENT: Record<GameId, CollectionClient> = {
     library: { face: 'Anton, Impact, sans-serif', weight: 400, wood: 'wood_planks', wall: 'planks_wall', room: 'cabin' },
   },
   pokemon: tcgClient('pokemon', { face: 'Fredoka, Verdana, sans-serif', weight: 700, wood: 'wood_planks', wall: 'planks_wall', room: 'lab' }),
-  yugioh: tcgClient('yugioh', { face: 'Cinzel, Georgia, serif', weight: 600, wood: 'wood_dark', wall: 'wood_dark', room: 'shrine' }),
-  riftbound: tcgClient('riftbound', { face: 'Marcellus, Georgia, serif', weight: 400, wood: 'wood_dark', wall: 'wood_dark', room: 'hextech' }),
+  yugioh: tcgClient('yugioh', { face: 'Oswald, \'Arial Narrow\', sans-serif', weight: 600, wood: 'wood_dark', wall: 'wood_dark', room: 'shrine' }),
+  riftbound: tcgClient('riftbound', { face: 'Cinzel, Georgia, serif', weight: 700, wood: 'wood_dark', wall: 'wood_dark', room: 'hextech' }),
 }
 
 /** The finishes of a generic-engine printing, as the collection names them (server/utils/collection/tcg.ts). */

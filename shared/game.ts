@@ -52,6 +52,8 @@ export interface GameDef {
   /** Where its data and images come from (credited in the footer). */
   sources: readonly { label: string, url: string }[]
   capabilities: GameCapabilities
+  /** A world with one side only (app/utils/universeMode.ts): always at night. */
+  forcedMode?: 'dark' | 'light'
 }
 
 export const GAMES: Readonly<Record<GameId, Readonly<GameDef>>> = {
@@ -87,11 +89,12 @@ export const GAMES: Readonly<Record<GameId, Readonly<GameDef>>> = {
     label: 'Yu-Gi-Oh!',
     swatch: '#6b3fa0',
     icon: 'i-lucide-pyramid',
-    themeColor: { light: '#efe6d2', dark: '#120f1c' },
+    themeColor: { light: '#0b1024', dark: '#0b1024' },
     order: 3,
     cardKey: 'name',
     exportFormats: ['prism', 'text'],
     sources: [{ label: 'YGOPRODeck', url: 'https://ygoprodeck.com' }],
+    forcedMode: 'dark',
     capabilities: { proxyPdf: false, marketplace: false, coach: false, urlImport: false, suggestions: false, tokens: false, prices: true, finishes: false, setSymbols: false },
   },
   riftbound: {
@@ -100,11 +103,12 @@ export const GAMES: Readonly<Record<GameId, Readonly<GameDef>>> = {
     label: 'Riftbound',
     swatch: '#1f8a9a',
     icon: 'i-lucide-hexagon',
-    themeColor: { light: '#e9eef0', dark: '#0b1519' },
+    themeColor: { light: '#010a13', dark: '#010a13' },
     order: 4,
     cardKey: 'name',
     exportFormats: ['prism', 'text'],
     sources: [{ label: 'Riftcodex', url: 'https://riftcodex.com' }, { label: 'Cardmarket', url: 'https://www.cardmarket.com' }],
+    forcedMode: 'dark',
     capabilities: { proxyPdf: false, marketplace: false, coach: false, urlImport: false, suggestions: false, tokens: false, prices: true, finishes: true, setSymbols: false },
   },
   mtg: {
