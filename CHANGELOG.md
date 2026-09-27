@@ -1,3 +1,10 @@
+## [0.50.0](https://github.com/Diix46/SpellForge/compare/v0.49.0...v0.50.0) (2026-09-27)
+
+### Features
+
+* **collection:** une pochette touchée montre la carte, le + l'ajoute ([71063ce](https://github.com/Diix46/SpellForge/commit/71063cea5935a9e8400ebd7d456fe365d11f6c95))
+* **univers:** tous les classeurs Yu-Gi-Oh en 3D, mascottes Pokémon, chaque jeu dans sa police au menu ([dec7249](https://github.com/Diix46/SpellForge/commit/dec7249287a6d5d9dd256246f55a247616b59164))
+
 ## [0.49.0](https://github.com/Diix46/SpellForge/compare/v0.48.1...v0.49.0) (2026-09-27)
 
 ### Features
