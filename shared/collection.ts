@@ -59,6 +59,10 @@ export interface CollectionCopy {
   purchasePrice: number | null
   location: string | null
   note: string | null
+  /** Its place in the member's showcase, 0 when not shown. */
+  featured: number
+  /** Copies of the line the member will trade. */
+  forTrade: number
   createdAt: number
   updatedAt: number
   /** Null when the card database no longer knows the printing. */

@@ -127,7 +127,13 @@ async function main() {
     const wanted = expansions.get(c.set?.set_id) ?? new Set()
     const products = (byName.get(priceKey(c.name)) ?? []).filter(p => !wanted.size || wanted.has(p.expansion))
     const priced = products.filter(p => p.price != null && p.price > 0).sort((a, b) => a.price - b.price)
-    const pick = variant ? priced.at(-1) : priced[0]
+    // Cardmarket names a card's printings alike ("Kai'Sa, Daughter of the
+    // Void" three times): the plain one takes the cheapest product, a variant
+    // the one its kind ranks to, as the market prices them — alternate art,
+    // then overnumbered, then signature (the dearest).
+    const kinds = priced.length - 1
+    const rank = !variant ? 0 : /signature/i.test(c.name) || meta.signature ? 3 : meta.overnumbered || /overnumbered/i.test(c.name) ? 2 : 1
+    const pick = rank === 0 || kinds < 1 ? priced[0] : priced[Math.min(kinds, Math.round((rank / 3) * kinds))]
     const image = c.media?.image_url ? String(c.media.image_url).split('?')[0] : null
     const stats = {}
     for (const k of ['energy', 'might', 'power']) {

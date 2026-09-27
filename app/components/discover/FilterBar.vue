@@ -19,6 +19,7 @@ const GAMES = [
 const MTG_COLORS = ['W', 'U', 'B', 'R', 'G', 'C']
 const sortItems = computed(() => [
   { label: t('discover.sortRecent'), value: 'recent' },
+  { label: t('discover.sortPopular'), value: 'popular' },
   { label: t('discover.sortName'), value: 'name' },
   { label: t('discover.sortSize'), value: 'size' },
 ])

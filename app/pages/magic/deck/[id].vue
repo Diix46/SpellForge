@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MissingItem } from '~/components/collection/MissingDialog.vue'
 import type { ResolvedRow } from '~/composables/scryfall/toResolved'
 import type { CategoryKey, ManaColor } from '~/composables/useMtg'
 import type { ResolvedCard, ScryfallCard } from '~/composables/useScryfall'
@@ -707,6 +708,10 @@ watch(buyOpen, (open) => {
 const buyCards = computed(() => (buyMissingOnly.value
   ? ownership.keepMissing(buyableCards.value, rc => rc.card?.name ?? rc.entry.name, rc => rc.entry.quantity, (rc, quantity) => ({ ...rc, entry: { ...rc.entry, quantity } }))
   : buyableCards.value))
+// What the collection lacks of the deck, for "Il me manque".
+const showMissing = ref(false)
+const missingItems = computed<MissingItem[]>(() => ownership.keepMissing(buyableCards.value, rc => rc.card?.name ?? rc.entry.name, rc => rc.entry.quantity, (rc, quantity) => ({ ...rc, entry: { ...rc.entry, quantity } }))
+  .map(rc => ({ key: rc.card?.id ?? rc.entry.name, name: rc.entry.name, image: rc.imageUrl, quantity: rc.entry.quantity, price: rc.priceEur ? Number(rc.priceEur) : null, printingId: rc.card?.id ?? null })))
 const buyEntries = computed(() => (buyMissingOnly.value
   ? ownership.keepMissing(buyableEntries.value, e => enNameOf(e.name), e => e.quantity, (e, quantity) => ({ ...e, quantity }))
   : buyableEntries.value))
@@ -750,6 +755,7 @@ const {
       @open-buy="buyOpen = true"
       @undo="autosave.undo"
       @redo="autosave.redo"
+      @open-missing="showMissing = true"
     />
 
     <!-- DECK WORKSPACE (the one primary surface; Preview/Buy are overlays) -->
@@ -893,6 +899,8 @@ const {
       @copy-wants="copyWantsList"
       @open-all="openAllCardmarket"
     />
+
+    <CollectionMissingDialog v-model:open="showMissing" game="mtg" :items="missingItems" />
 
     <!-- Share settings: private link + public Discover listing -->
     <DeckShareModal v-model:open="showShareModal" :deck="deck" />

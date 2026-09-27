@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TcgLine } from '#shared/tcg/deck'
 import type { TcgCard, TcgGameId } from '#shared/tcg/types'
+import type { MissingItem } from '~/components/collection/MissingDialog.vue'
 import type { TcgFilters } from '~/composables/useTcgSearch'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { isDefaultDeckName } from '#shared/decks'
@@ -62,6 +63,14 @@ const nameOf = (card: TcgCard) => card.nameEn ?? card.name
 const needs = computed(() => tcgDeck.lines.value.flatMap(l => (l.card ? [{ name: nameOf(l.card), quantity: l.entry.quantity }] : [])))
 const ownership = useDeckOwnership(game, needs)
 const ownedOf = (line: TcgLine) => (line.card ? ownership.ownedOf(nameOf(line.card)) : null)
+// What the collection lacks of the deck, for "Il me manque".
+const showMissing = ref(false)
+const missingItems = computed<MissingItem[]>(() => ownership.keepMissing(
+  tcgDeck.lines.value.filter((l): l is TcgLine & { card: TcgCard } => !!l.card),
+  l => nameOf(l.card),
+  l => l.entry.quantity,
+  (l, quantity) => ({ ...l, entry: { ...l.entry, quantity } }),
+).map(l => ({ key: l.card.id, name: l.card.name, image: l.card.thumb || l.card.image, quantity: l.entry.quantity, price: l.card.price, printingId: `${l.card.lang}:${l.card.id}` })))
 
 const autosave = useDeckAutosave({ deckId, raw, name })
 watch([raw, name], autosave.schedule)
@@ -192,6 +201,7 @@ const format = computed({ get: () => tcgDeck.format.value, set: tcgDeck.setForma
       @save="showWall = true"
       @undo="autosave.undo"
       @redo="autosave.redo"
+      @open-missing="showMissing = true"
     />
 
     <div class="workspace">
@@ -267,6 +277,7 @@ const format = computed({ get: () => tcgDeck.format.value, set: tcgDeck.setForma
       @set-printing="setPrinting"
     />
 
+    <CollectionMissingDialog v-model:open="showMissing" :game="game" :items="missingItems" />
     <DeckShareModal v-model:open="showShare" :deck="deck" />
     <DeckSaveWall v-model:open="showWall" :deck-name="name" :summary="summary" :universe="game" />
   </div>

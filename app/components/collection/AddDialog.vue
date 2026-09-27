@@ -34,6 +34,9 @@ const showLocation = ref(false)
 // printing Scryfall only lists in English).
 const copyLang = ref<'fr' | 'en'>(locale.value === 'fr' ? 'fr' : 'en')
 const { loadPrints, relang } = usePrintChoices(props.game)
+// In a row: each card added leaves the dialog open for the next photo.
+const burst = ref(false)
+const burstCount = ref(0)
 
 const current = computed(() => prints.value.find(p => p.printingId === selected.value) ?? null)
 const finishes = computed<Finish[]>(() => current.value?.finishes ?? ['nonfoil'])
@@ -57,6 +60,7 @@ watch(current, (c) => {
 watch(open, (v) => {
   if (v)
     return
+  burstCount.value = 0
   query.value = ''
   picked.value = null
   prints.value = []
@@ -216,7 +220,17 @@ async function add() {
   adding.value = false
   if (copy) {
     toast.add({ title: t('collection.added'), description: `${picked.value?.label} · ${current.value.set.toUpperCase()} #${current.value.number} · ${copyLang.value.toUpperCase()} ×${quantity}`, color: 'success', icon: 'i-lucide-check' })
-    open.value = false
+    if (!burst.value) {
+      open.value = false
+      return
+    }
+    // The next card: the search cleared, the settings (finish, condition) kept.
+    burstCount.value++
+    query.value = ''
+    picked.value = null
+    prints.value = []
+    selected.value = null
+    form.quantity = 1
   }
 }
 </script>
@@ -246,6 +260,10 @@ async function add() {
               {{ t('collection.scan.button') }}
             </UButton>
             <input ref="scanInput" type="file" accept="image/*" capture="environment" class="sr-only" tabindex="-1" aria-hidden="true" @change="onScan">
+          </div>
+          <div class="burst">
+            <USwitch v-model="burst" :label="t('collection.scan.burst')" size="sm" />
+            <span v-if="burstCount" class="burst-count">{{ t('collection.scan.burstCount').replace('{n}', String(burstCount)) }}</span>
           </div>
           <ul v-if="suggestions.length" class="suggestions" role="listbox">
             <li v-for="s in suggestions" :key="`${s.key}-${s.label}`">
@@ -334,6 +352,19 @@ async function add() {
 }
 .search {
   position: relative;
+}
+.burst {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.burst-count {
+  color: var(--ui-success);
+  font-weight: 600;
 }
 .search-row {
   display: flex;

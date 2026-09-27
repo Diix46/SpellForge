@@ -12,7 +12,7 @@ const props = defineProps<{ game: GameId }>()
 const route = useRoute()
 const compact = computed(() => /\/sets\/[^/]+$/.test(route.path))
 
-const { t } = useLocale()
+const { t, locale } = useLocale()
 const { loggedIn } = useAuth()
 const members = useMembersOnly()
 const collection = useCollection(props.game)
@@ -59,11 +59,16 @@ const exportItems = computed(() => [
 const base = collectionPath(props.game)
 const tabs = computed(() => [
   { to: base, label: 'collection.tabBinder', icon: 'i-lucide-book-open', active: route.path === base || route.path.startsWith(`${base}/sets`) },
+  { to: `${base}/showcase`, label: 'collection.tabShowcase', icon: 'i-lucide-sparkles', active: route.path.startsWith(`${base}/showcase`) },
   { to: `${base}/inventory`, label: 'collection.tabInventory', icon: 'i-lucide-layers', active: route.path.startsWith(`${base}/inventory`) },
   // Only games with prices have a value to follow.
   ...(can(props.game, 'prices') ? [{ to: `${base}/value`, label: 'collection.tabValue', icon: 'i-lucide-chart-line', active: route.path.startsWith(`${base}/value`) }] : []),
   { to: `${base}/wishlist`, label: 'collection.tabWishlist', icon: 'i-lucide-heart', active: route.path.startsWith(`${base}/wishlist`) },
 ])
+// What the collection is worth today, in the header (games with prices).
+const worth = computed(() => (can(props.game, 'prices') && collection.loaded.value && collection.summary.value.value > 0
+  ? collection.summary.value.value.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })
+  : null))
 </script>
 
 <template>
@@ -72,6 +77,10 @@ const tabs = computed(() => [
       <div class="min-w-0">
         <h1 class="title">
           {{ t('collection.title') }}
+          <NuxtLink v-if="worth && !compact" :to="`${base}/value`" class="worth" :title="t('collection.worthHint')">
+            <UIcon name="i-lucide-gem" class="h-4 w-4" />
+            {{ worth }}
+          </NuxtLink>
         </h1>
         <p class="sub">
           {{ t(`collection.subtitle.${game}`) }}
@@ -124,6 +133,28 @@ const tabs = computed(() => [
 </template>
 
 <style scoped>
+.worth {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, rgb(var(--accent-rgb)) 16%, transparent);
+  color: var(--color-text-high);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  -webkit-text-fill-color: currentColor;
+}
+.worth:hover {
+  background: color-mix(in srgb, rgb(var(--accent-rgb)) 26%, transparent);
+}
 .collection {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

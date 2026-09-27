@@ -10,6 +10,10 @@ interface DiscoverRow {
   game: GameId
   raw: string
   ownerDisplayName: string
+  ownerProfile: string | null
+  likes: number
+  liked: boolean
+  mine: boolean
   createdAt: string | number
   updatedAt: string | number
   shareId: string
@@ -33,11 +37,44 @@ const decks = computed<DiscoverDeck[]>(() => (data.value?.decks ?? []).map(d => 
   game: d.game,
   raw: d.raw,
   owner: d.ownerDisplayName,
+  ownerProfile: d.ownerProfile,
+  likes: d.likes,
+  liked: d.liked,
+  mine: d.mine,
   createdAt: time(d.createdAt),
   updatedAt: time(d.updatedAt),
 })))
 const { fingerprints } = useDeckFingerprints(decks)
 const { filters, results, active, reset } = useDiscoverFilters(decks, fingerprints)
+
+// The deck of each game liked the most, on top while nothing is filtered.
+const featured = computed(() => (active.value
+  ? []
+  : [...new Map([...decks.value].filter(d => (d.likes ?? 0) > 0).sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0)).map(d => [d.game, d] as const).reverse()).values()]))
+
+// Liking: shown at once, the server's count after.
+const { loggedIn } = useAuth()
+const members = useMembersOnly()
+const toast = useToast()
+async function like(d: DiscoverDeck) {
+  if (!loggedIn.value)
+    return members.require('decks')
+  const row = data.value?.decks.find(x => x.shareId === d.id)
+  if (!row)
+    return
+  const liked = !row.liked
+  row.liked = liked
+  row.likes += liked ? 1 : -1
+  try {
+    const res = await $fetch<{ liked: boolean, likes: number }>('/api/decks/like', { method: 'POST', body: { shareId: d.id, liked } })
+    row.likes = res.likes
+  }
+  catch (e) {
+    row.liked = !liked
+    row.likes += liked ? -1 : 1
+    toast.add({ title: (e as { data?: { message?: string } }).data?.message ?? t('discover.likeFailed'), color: 'error' })
+  }
+}
 
 const loading = computed(() => status.value === 'pending')
 const errored = computed(() => !!error.value)
@@ -88,15 +125,65 @@ const errored = computed(() => !!error.value)
     </div>
 
     <template v-else>
+      <!-- The most liked deck of each game, while nothing is filtered. -->
+      <section v-if="featured.length" class="discover-featured">
+        <h2>{{ t('discover.featured') }}</h2>
+        <div class="discover-grid">
+          <div v-for="d in featured" :key="d.id" class="discover-item">
+            <DeckTile
+              :deck="d"
+              :fingerprint="fingerprints.get(d.id)!"
+              :to="sharedPath(d.game, d.id)"
+              :owner="d.owner"
+            />
+            <div class="discover-meta">
+              <NuxtLink v-if="d.ownerProfile" :to="`/joueur/${d.ownerProfile}`" class="discover-owner">
+                <UIcon name="i-lucide-user" class="h-3.5 w-3.5" /> {{ d.owner }}
+              </NuxtLink>
+              <span v-else />
+              <button
+                type="button"
+                class="discover-like"
+                :aria-pressed="!!d.liked"
+                :disabled="d.mine"
+                :title="d.mine ? t('discover.likeMine') : d.liked ? t('discover.unlike') : t('discover.like')"
+                :aria-label="d.liked ? t('discover.unlike') : t('discover.like')"
+                @click="like(d)"
+              >
+                <UIcon name="i-lucide-heart" class="h-4 w-4" />
+                {{ d.likes ?? 0 }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
       <div class="discover-grid">
-        <DeckTile
-          v-for="d in results"
-          :key="d.id"
-          :deck="d"
-          :fingerprint="fingerprints.get(d.id)!"
-          :to="sharedPath(d.game, d.id)"
-          :owner="d.owner"
-        />
+        <div v-for="d in results" :key="d.id" class="discover-item">
+          <DeckTile
+            :deck="d"
+            :fingerprint="fingerprints.get(d.id)!"
+            :to="sharedPath(d.game, d.id)"
+            :owner="d.owner"
+          />
+          <div class="discover-meta">
+            <NuxtLink v-if="d.ownerProfile" :to="`/joueur/${d.ownerProfile}`" class="discover-owner">
+              <UIcon name="i-lucide-user" class="h-3.5 w-3.5" /> {{ d.owner }}
+            </NuxtLink>
+            <span v-else />
+            <button
+              type="button"
+              class="discover-like"
+              :aria-pressed="!!d.liked"
+              :disabled="d.mine"
+              :title="d.mine ? t('discover.likeMine') : d.liked ? t('discover.unlike') : t('discover.like')"
+              :aria-label="d.liked ? t('discover.unlike') : t('discover.like')"
+              @click="like(d)"
+            >
+              <UIcon name="i-lucide-heart" class="h-4 w-4" />
+              {{ d.likes ?? 0 }}
+            </button>
+          </div>
+        </div>
       </div>
       <!-- Few decks yet: the way to add one's own. -->
       <aside v-if="decks.length < 12" class="discover-invite">
@@ -129,6 +216,62 @@ const errored = computed(() => !!error.value)
   margin: 6px 0 0;
   color: var(--color-text-muted);
   font-size: 14px;
+}
+.discover-featured {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+.discover-featured h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-high);
+}
+.discover-item {
+  display: grid;
+  gap: 6px;
+}
+.discover-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 12.5px;
+}
+.discover-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-text-mid);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.discover-like {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  color: var(--color-text-mid);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.discover-like:hover:not(:disabled) {
+  border-color: #e0443a;
+  color: #e0443a;
+}
+.discover-like[aria-pressed='true'] {
+  border-color: #e0443a;
+  background: color-mix(in srgb, #e0443a 14%, transparent);
+  color: #e0443a;
+}
+.discover-like:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 .discover-invite {
   display: flex;

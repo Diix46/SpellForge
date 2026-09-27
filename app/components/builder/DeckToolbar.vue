@@ -33,6 +33,7 @@ const emit = defineEmits<{
   'save': []
   'openPreview': []
   'openBuy': []
+  'openMissing': []
   'undo': []
   'redo': []
 }>()
@@ -101,8 +102,21 @@ const { t } = useLocale()
         ~{{ priceTotal.toFixed(0) }} €
       </span>
       <!-- Owned: how much of the deck the collection already covers. -->
+      <!-- Something missing: what, and at what price (CollectionMissingDialog). -->
+      <button
+        v-if="owned && owned.owned < owned.total"
+        type="button"
+        class="owned-pill shrink-0"
+        :title="t('collection.deckOwnedHint').replace('{owned}', String(owned.owned)).replace('{total}', String(owned.total))"
+        @click="emit('openMissing')"
+      >
+        <UIcon name="i-lucide-gem" class="h-3.5 w-3.5" />
+        {{ Math.floor((owned.owned / owned.total) * 100) }} %
+        <span class="owned-bar" aria-hidden="true"><span :style="{ transform: `scaleX(${owned.owned / owned.total})` }" /></span>
+        <span class="owned-missing">{{ t('missing.pill') }}</span>
+      </button>
       <NuxtLink
-        v-if="owned"
+        v-else-if="owned"
         :to="collectionTo"
         class="owned-pill shrink-0"
         :class="{ 'is-full': owned.owned >= owned.total }"
@@ -191,6 +205,11 @@ const { t } = useLocale()
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-high);
+}
+.owned-missing {
+  font-size: 11.5px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .owned-pill.is-full {
   color: #23945a;

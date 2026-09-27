@@ -15,8 +15,8 @@ export interface NewCopy {
   note?: string | null
 }
 
-/** A line edited: any field, another printing of the card included. */
-export type CopyEdit = Partial<NewCopy>
+/** A line edited: any field, another printing of the card included, its place in the showcase, the copies offered to trade. */
+export type CopyEdit = Partial<NewCopy> & { featured?: number, forTrade?: number }
 
 /** A printing to pick when adding copies. */
 export interface PrintChoice {

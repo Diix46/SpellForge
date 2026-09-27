@@ -2,8 +2,10 @@
 import type { OptcgDeckLine } from '#shared/optcg/deck'
 import type { OptcgCategory } from '#shared/optcg/rules'
 import type { OptcgCard } from '#shared/optcg/types'
+import type { MissingItem } from '~/components/collection/MissingDialog.vue'
 import type { OptcgFilters } from '~/composables/useOptcgSearch'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { optcgPrintingId } from '#shared/collection'
 import { isDefaultDeckName } from '#shared/decks'
 import { deckPath } from '#shared/game'
 import { OPTCG_COLOR_HEX } from '~/utils/optcgColors'
@@ -61,6 +63,14 @@ watch(raw, (v) => {
 
 // The deck against the member's collection, card number by card number.
 const ownership = useDeckOwnership('optcg', computed(() => optDeck.lines.value.map(l => ({ name: l.entry.name, quantity: l.entry.quantity }))))
+// What the collection lacks of the deck, for "Il me manque" (no prices for One Piece).
+const showMissing = ref(false)
+const missingItems = computed<MissingItem[]>(() => ownership.keepMissing(
+  optDeck.lines.value.filter((l): l is OptcgDeckLine & { card: OptcgCard } => !!l.card),
+  l => l.entry.name,
+  l => l.entry.quantity,
+  (l, quantity) => ({ ...l, entry: { ...l.entry, quantity } }),
+).map(l => ({ key: l.card.id, name: l.card.name, image: l.card.thumb || l.card.image, quantity: l.entry.quantity, price: null, printingId: optcgPrintingId(locale.value === 'fr' ? 'fr' : 'en', l.card.id) })))
 
 const autosave = useDeckAutosave({ deckId, raw, name })
 watch([raw, name], autosave.schedule)
@@ -197,6 +207,7 @@ const summary = computed(() => {
       @save="showWall = true"
       @undo="autosave.undo"
       @redo="autosave.redo"
+      @open-missing="showMissing = true"
     />
 
     <div class="workspace">
@@ -273,6 +284,7 @@ const summary = computed(() => {
       @set-art="setArt"
     />
 
+    <CollectionMissingDialog v-model:open="showMissing" game="optcg" :items="missingItems" />
     <DeckShareModal v-model:open="showShare" :deck="deck" />
     <DeckSaveWall v-model:open="showWall" :deck-name="name" :summary="summary" universe="optcg" />
   </div>

@@ -21,7 +21,7 @@ export function copyFields(body: Record<string, unknown>, partial: boolean) {
   const bad = (message: string): never => {
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message })
   }
-  const out: Partial<Pick<CollectionItemRow, 'finish' | 'condition' | 'quantity' | 'purchasePrice' | 'location' | 'note'> & { lang: 'fr' | 'en', printingId: string }> = {}
+  const out: Partial<Pick<CollectionItemRow, 'finish' | 'condition' | 'quantity' | 'purchasePrice' | 'location' | 'note' | 'featured' | 'forTrade'> & { lang: 'fr' | 'en', printingId: string }> = {}
   if (body.lang !== undefined && body.lang !== null && body.lang !== '')
     out.lang = body.lang === 'fr' || body.lang === 'en' ? body.lang : bad('Langue : fr, en')
   if (partial && typeof body.printingId === 'string' && body.printingId.trim())
@@ -37,6 +37,14 @@ export function copyFields(body: Record<string, unknown>, partial: boolean) {
   if (body.purchasePrice !== undefined) {
     const p = body.purchasePrice === null || body.purchasePrice === '' ? null : Number(body.purchasePrice)
     out.purchasePrice = p === null || (Number.isFinite(p) && p >= 0 && p < 1e6) ? p : bad('Prix d\'achat invalide')
+  }
+  if (body.featured !== undefined) {
+    const f = Number(body.featured)
+    out.featured = Number.isInteger(f) && f >= 0 && f <= 999 ? f : bad('Place en vitrine invalide')
+  }
+  if (body.forTrade !== undefined) {
+    const n = Number(body.forTrade)
+    out.forTrade = Number.isInteger(n) && n >= 0 && n <= MAX_COPIES ? n : bad('Nombre à échanger invalide')
   }
   for (const key of ['location', 'note'] as const) {
     if (body[key] !== undefined) {
@@ -75,6 +83,8 @@ export async function withCards(rows: readonly CollectionItemRow[]): Promise<Col
     purchasePrice: r.purchasePrice,
     location: r.location,
     note: r.note,
+    featured: r.featured,
+    forTrade: Math.min(r.forTrade, r.quantity),
     createdAt: r.createdAt.getTime(),
     updatedAt: r.updatedAt.getTime(),
     card: cards.get(r.game)?.get(r.printingId) ?? null,
