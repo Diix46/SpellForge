@@ -110,6 +110,8 @@ export default defineNuxtConfig({
       { name: 'Cinzel', provider: 'google', weights: [600, 700] },
       // Pokémon: round and bold, a Pokédex screen's voice.
       { name: 'Fredoka', provider: 'google', weights: [500, 700] },
+      // Riftbound: Runeterra's carved capitals.
+      { name: 'Marcellus', provider: 'google', weights: [400] },
     ],
   },
 })

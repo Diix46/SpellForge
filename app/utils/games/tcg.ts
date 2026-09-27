@@ -139,6 +139,40 @@ export const TCG_UI: Record<TcgGameId, TcgUi> = {
     stat: 'atk',
     uniqueSearch: true,
   },
+  riftbound: {
+    categories: ['Legend', 'Unit', 'Spell', 'Gear', 'Rune', 'Battlefield'],
+    subtypes: {
+      Unit: ['Champion', 'Signature'],
+      Spell: ['Signature'],
+      Gear: ['Signature'],
+      Legend: ['Champion'],
+    },
+    types: ['Fury', 'Calm', 'Mind', 'Body', 'Chaos', 'Order', 'Colorless'],
+    typeColor: {
+      Fury: '#d8403a',
+      Calm: '#3f9d64',
+      Mind: '#3d7fd6',
+      Body: '#e08a2c',
+      Chaos: '#8e4fc1',
+      Order: '#d9b62f',
+      Colorless: '#a3a7ab',
+    },
+    typeIcon: {
+      Fury: 'i-lucide-flame',
+      Calm: 'i-lucide-leaf',
+      Mind: 'i-lucide-brain',
+      Body: 'i-lucide-dumbbell',
+      Chaos: 'i-lucide-tornado',
+      Order: 'i-lucide-shield',
+      Colorless: 'i-lucide-circle',
+    },
+    rarityOrder: ['Showcase', 'Epic', 'Rare', 'Uncommon', 'Common', 'Promo'],
+    colourless: 'Colorless',
+    aspect: 744 / 1039,
+    sampleLine: '3 ogn-001-298',
+    stat: 'might',
+    uniqueSearch: false,
+  },
 }
 
 /** A game's value as shown: its i18n label when it has one, itself otherwise. */
@@ -152,10 +186,14 @@ export function tcgLabel(t: (key: string) => string, game: TcgGameId, kind: stri
 
 /**
  * A deck's cover card: its star. Pokémon: the rule-box Pokémon (ex, V…) it
- * plays most, else its first Pokémon; any game: else the first card.
+ * plays most, else its first Pokémon; Riftbound: the Legend; any game: else
+ * the first card.
  */
 export function tcgCover<L extends { card: TcgCard | null, entry: { quantity: number } }>(game: TcgGameId, lines: readonly L[]): L | null {
   const known = lines.filter(l => l.card)
+  // Riftbound: the Legend leads the deck.
+  if (game === 'riftbound')
+    return known.find(l => l.card!.category === 'Legend') ?? known[0] ?? null
   if (game === 'pokemon') {
     const star = (l: L) => l.card!.category === 'Pokemon' && !!l.card!.suffix
     const ranked = [...known].sort((a, b) => Number(star(b)) - Number(star(a)) || Number(b.card!.category === 'Pokemon') - Number(a.card!.category === 'Pokemon') || b.entry.quantity - a.entry.quantity)

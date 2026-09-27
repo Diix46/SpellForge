@@ -198,7 +198,7 @@ const OPTCG_KIND: Record<string, SetKind> = { OP: 'main', EB: 'special', PRB: 's
 // Each game's set types (Magic: Scryfall's; One Piece: the code's kind) to families.
 // The generic engine's games: a kind from the set's code (server/utils/collection/tcg.ts).
 const TCG_KIND: Record<string, SetKind> = { expansion: 'main', starter: 'starter', promo: 'promo' }
-const SET_KINDS_BY_GAME: Record<GameId, Record<string, SetKind>> = { mtg: MTG_KIND, optcg: OPTCG_KIND, pokemon: TCG_KIND, yugioh: TCG_KIND }
+const SET_KINDS_BY_GAME: Record<GameId, Record<string, SetKind>> = { mtg: MTG_KIND, optcg: OPTCG_KIND, pokemon: TCG_KIND, yugioh: TCG_KIND, riftbound: TCG_KIND }
 
 /** A set's family, from its type. */
 export function setKind(game: GameId, type: string | null): SetKind {
@@ -220,6 +220,7 @@ export const CARD_LINE: Record<GameId, (c: CardLine) => string> = {
   pokemon: c => `${c.quantity} ${c.set ? `${c.set}-${c.number}` : c.name}`,
   // The set code ("LOB-EN005"), else the name.
   yugioh: c => `${c.quantity} ${c.set ? `${c.set}-${c.number}` : c.name}`,
+  riftbound: c => `${c.quantity} ${c.name}`,
 }
 
 /**

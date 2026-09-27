@@ -86,6 +86,7 @@ const PRECON_ROW: Record<GameId, (c: PreconCard, line: number, lang: 'fr' | 'en'
   optcg: (c, line, lang, location) => row(line, { name: c.number, lang, quantity: c.count, location }),
   pokemon: (c, line, lang, location) => row(line, { name: c.name, set: c.set, number: c.number, lang, quantity: c.count, location }),
   yugioh: (c, line, lang, location) => row(line, { name: c.name, set: c.set, number: c.number, lang, quantity: c.count, location }),
+  riftbound: (c, line, lang, location) => row(line, { name: c.name, set: c.set, number: c.number, lang, quantity: c.count, location }),
 }
 
 /**
@@ -115,6 +116,10 @@ const DECK: Record<GameId, { parse: (raw: string) => ParseResult, row: (e: DeckE
   },
   yugioh: {
     parse: raw => parseTcgDecklist(raw, TCG_RULES.yugioh.zones),
+    row: (e, line, quantity, lang, location) => row(line, { name: null, printingId: `${lang}:${e.name}`, lang, quantity, location }),
+  },
+  riftbound: {
+    parse: raw => parseTcgDecklist(raw, TCG_RULES.riftbound.zones),
     row: (e, line, quantity, lang, location) => row(line, { name: null, printingId: `${lang}:${e.name}`, lang, quantity, location }),
   },
 }

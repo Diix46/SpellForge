@@ -1,6 +1,7 @@
 import type { DeckEntry } from '#shared/decklist'
 import type { GameId } from '#shared/game'
-import type { TcgGameId } from '#shared/tcg/types'
+import type { TcgLine } from '#shared/tcg/deck'
+import type { TcgCard, TcgGameId } from '#shared/tcg/types'
 import { totalCards } from '#shared/decklist'
 import { parseMtgDecklist } from '#shared/mtg/decklist'
 import { optcgLine, orderOptcgEntries, parseOptcgDecklist } from '#shared/optcg/decklist'
@@ -69,6 +70,10 @@ export function useDeckImport() {
       const foreign = parseForeignLines(own.errors)
       const rest = [...foreign.rest]
       const entries = [...own.mainboard]
+      // Lines read as another app writes them: their zone comes from the
+      // rules once their cards are known (a heading such as "Champion:" says
+      // nothing Prism can trust).
+      const placed = new Set<DeckEntry>()
       if (foreign.lines.length) {
         const { ids } = await $fetch<{ ids: (string | null)[] }>(`/api/tcg/${game}/match`, {
           method: 'POST',
@@ -82,15 +87,20 @@ export function useDeckImport() {
             rest.push(`${l.quantity} ${l.name}${l.set ? ` ${l.set} ${l.number ?? ''}` : ''}`.trim())
             return
           }
-          const same = entries.find(e => e.name === id && !e.zone)
-          if (same)
+          const same = entries.find(e => e.name === id && placed.has(e))
+          if (same) {
             same.quantity += l.quantity
-          else
-            entries.push({ quantity: l.quantity, name: id })
+            return
+          }
+          const entry: DeckEntry = { quantity: l.quantity, name: id }
+          entries.push(entry)
+          placed.add(entry)
         })
       }
       if (!entries.length)
         throw new Error(t('modal.importListEmpty'))
+      if (placed.size)
+        await placeByRules(game, entries, placed)
       return { name: t('nav.newDeck'), raw: writeTcgDecklist(entries, rules.zones, rest), count: totalCards(entries) }
     }
 
@@ -111,6 +121,25 @@ export function useDeckImport() {
       name: leaderName || t('nav.newDeck'),
       raw: [...ordered, ...errors].join('\n'),
       count: totalCards(mainboard),
+    }
+  }
+
+  /** Each entry of `todo` in the zone the rules give its card, in list order. */
+  async function placeByRules(game: TcgGameId, entries: DeckEntry[], todo: Set<DeckEntry>) {
+    const rules = TCG_RULES[game]
+    const ids = [...new Set(entries.map(e => e.name))]
+    const { cards } = await $fetch<{ cards: (TcgCard | null)[] }>(`/api/tcg/${game}/resolve`, { method: 'POST', body: { lang: locale.value, ids } })
+      .catch(() => ({ cards: [] as (TcgCard | null)[] }))
+    const byId = new Map(ids.map((id, i) => [id, cards[i] ?? null]))
+    const lines: TcgLine[] = []
+    for (const entry of entries) {
+      const card = byId.get(entry.name) ?? null
+      if (card && todo.has(entry)) {
+        const zone = rules.zoneFor(card, lines)
+        if (zone !== rules.zones[0]!.id)
+          entry.zone = zone
+      }
+      lines.push({ entry, card })
     }
   }
 

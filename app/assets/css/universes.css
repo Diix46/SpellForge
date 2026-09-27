@@ -434,6 +434,128 @@ html[data-universe='yugioh'] body {
     radial-gradient(800px 420px at 0% 0%, rgba(var(--accent-rgb), 0.07), transparent 60%), var(--color-bg-base);
 }
 
+/* ----------------------------------------------------------------- Riftbound */
+/* Piltover by day: pale stone and brass, the blue of hextech, carved
+   capitals. At night, the undercity's teal glow. */
+html[data-universe='riftbound'] {
+  color-scheme: light;
+
+  --font-display: 'Marcellus', Georgia, 'Times New Roman', serif;
+  --font-sfx: 'Marcellus', Georgia, serif;
+  --u-case: none;
+  --u-track: 0.02em;
+
+  --color-bg-base: #e9eef0;
+  --color-bg-base-2: #e1e8eb;
+  --color-surface-1: #f6f9fa;
+  --color-surface-2: #edf2f4;
+  --color-surface-3: #dde5e8;
+
+  --color-ink-50: #f7fafb;
+  --color-ink-100: #eaf0f2;
+  --color-ink-200: #d4dde1;
+  --color-ink-300: #b3c0c6;
+  --color-ink-400: #8c9aa1;
+  --color-ink-500: #69777e;
+  --color-ink-600: #4f5c62;
+  --color-ink-700: #3a454a;
+  --color-ink-800: #273034;
+  --color-ink-900: #172024;
+  --color-ink-950: #0c1316;
+
+  --color-text-high: #13232a;
+  --color-text-mid: #36484f;
+  --color-text-muted: #56676e; /* 5.7:1 on the stone */
+  --color-text-disabled: #85949a;
+
+  --color-border-hairline: rgba(19, 35, 42, 0.1);
+  --color-border-subtle: rgba(19, 35, 42, 0.17);
+  --color-border-strong: rgba(19, 35, 42, 0.3);
+
+  /* Hextech teal, brass. */
+  --accent-rgb: 22, 122, 138;
+  --accent-rgb-2: 201, 160, 74;
+  --u-sea: #3d7fd6;
+  --accent-text: #0f6573; /* 6.4:1 on the stone */
+
+  --ui-primary: #167a8a;
+  --ui-secondary: #b08a3a;
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --u-tilt: 0deg;
+
+  --ease-out: cubic-bezier(0.2, 0.9, 0.25, 1);
+  --ease-spring: cubic-bezier(0.25, 1.3, 0.4, 1);
+  --dur-fast: 0.15s;
+  --dur: 0.26s;
+  --dur-slow: 0.42s;
+
+  --shadow-elev-1: 0 1px 2px rgba(19, 35, 42, 0.08);
+  --shadow-elev-2: 0 8px 18px -10px rgba(19, 35, 42, 0.3);
+  --shadow-elev-3: 0 20px 44px -18px rgba(19, 35, 42, 0.4);
+  --accent-glow: 0 0 0 2px rgba(22, 122, 138, 0.22), 0 6px 18px -8px rgba(76, 200, 240, 0.55);
+  --accent-glow-soft: 0 4px 12px -6px rgba(22, 122, 138, 0.45);
+
+  --glass-bg: rgba(246, 249, 250, 0.82);
+  --glass-bg-strong: rgba(246, 249, 250, 0.94);
+  --glass-highlight: rgba(255, 255, 255, 0.6);
+  --glass-solid-sheen: rgba(19, 35, 42, 0.02);
+  --texture-line: rgba(19, 35, 42, 0.05);
+
+  /* A faint hexagon grid, hextech's own. */
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='98'%3E%3Cpath d='M28 0l28 16v33L28 65 0 49V16zM28 65v33' fill='none' stroke='%2313232a' stroke-opacity='.05'/%3E%3C/svg%3E");
+}
+
+html.dark[data-universe='riftbound'] {
+  color-scheme: dark;
+
+  --color-bg-base: #0b1519;
+  --color-bg-base-2: #0f1b20;
+  --color-surface-1: #13222a;
+  --color-surface-2: #182a33;
+  --color-surface-3: #1f3540;
+
+  --color-text-high: #e8f3f5;
+  --color-text-mid: #c2d4d8;
+  --color-text-muted: #8fa6ac; /* 6.8:1 at night */
+  --color-text-disabled: #688088;
+
+  --color-border-hairline: rgba(232, 243, 245, 0.07);
+  --color-border-subtle: rgba(232, 243, 245, 0.13);
+  --color-border-strong: rgba(232, 243, 245, 0.24);
+
+  --accent-rgb: 76, 200, 240;
+  --accent-rgb-2: 214, 176, 90;
+  --accent-text: #7fdcf5; /* 11:1 at night */
+
+  --ui-primary: #4cc8f0;
+  --ui-secondary: #d6b05a;
+
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-elev-2: 0 8px 18px -10px rgba(0, 0, 0, 0.7);
+  --shadow-elev-3: 0 20px 44px -18px rgba(0, 0, 0, 0.8);
+  --accent-glow: 0 0 0 2px rgba(76, 200, 240, 0.25), 0 6px 18px -8px rgba(76, 200, 240, 0.55);
+  --accent-glow-soft: 0 4px 14px -6px rgba(76, 200, 240, 0.5);
+
+  --glass-bg: rgba(19, 34, 42, 0.8);
+  --glass-bg-strong: rgba(19, 34, 42, 0.94);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-solid-sheen: rgba(255, 255, 255, 0.02);
+  --texture-line: rgba(255, 255, 255, 0.035);
+
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='98'%3E%3Cpath d='M28 0l28 16v33L28 65 0 49V16zM28 65v33' fill='none' stroke='%237fdcf5' stroke-opacity='.05'/%3E%3C/svg%3E");
+}
+html[data-universe='riftbound'] body {
+  background:
+    var(--u-texture), radial-gradient(900px 480px at 82% -10%, rgba(var(--accent-rgb), 0.14), transparent 62%),
+    radial-gradient(800px 420px at 0% 0%, rgba(var(--accent-rgb-2), 0.08), transparent 60%), var(--color-bg-base);
+}
+
 /* ------------------------------------------------------------ Night sides */
 /* One Piece at night: the deck of the ship under lanterns — dark tarred wood,
    parchment-coloured ink, the poster red and the sea brighter to carry. */
@@ -658,6 +780,16 @@ html[data-universe] :focus-visible {
     0 0 14px rgba(160, 110, 220, 0.9),
     0 2px 0 #221a2e;
   animation: ufx-don 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ufx--riftbound {
+  font-family: 'Marcellus', Georgia, serif;
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  color: #e8fbff;
+  text-shadow:
+    0 0 12px rgba(76, 200, 240, 0.95),
+    0 2px 0 #13232a;
+  animation: ufx-don 0.8s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
 }
 html.dark .ufx--mtg {
   color: #a8c3e8;

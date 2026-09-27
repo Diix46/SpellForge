@@ -30,7 +30,7 @@ watch(() => props.card.thumb, () => (broken.value = false))
 <template>
   <article class="tile" :style="{ '--i': Math.min(index, 24) }">
     <button type="button" class="face" :style="{ aspectRatio: aspect }" :aria-label="card.name" @click="emit('open', card)">
-      <img v-if="card.thumb && !broken" :src="card.thumb" :alt="card.name" loading="lazy" decoding="async" @error="broken = true">
+      <img v-if="card.thumb && !broken" :src="card.thumb" :alt="card.name" :class="{ landscape: card.landscape }" loading="lazy" decoding="async" @error="broken = true">
       <span v-else class="blank">
         <span class="blank-name">{{ card.name }}</span>
         <span class="font-mono">{{ card.set }} · {{ card.number }}</span>
@@ -90,6 +90,16 @@ watch(() => props.card.thumb, () => (broken.value = false))
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+/* A Battlefield, turned to stand in the grid. */
+.face img.landscape {
+  width: calc(100% * var(--turn, 1.396));
+  height: auto;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  rotate: 90deg;
 }
 /* No scan published yet: the card's name on a plain card back. */
 .blank {
