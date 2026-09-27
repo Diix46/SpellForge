@@ -75,7 +75,7 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
 <style scoped>
 .gallery {
   padding: 96px clamp(16px, 4vw, 56px) 110px;
-  background: #f2f2ef;
+  background: var(--l-bg);
 }
 .head {
   display: flex;
@@ -90,8 +90,8 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
   margin: 0;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #1b1f22;
-  color: #f7f7f5;
+  background: var(--l-chip);
+  color: var(--l-chip-ink);
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -103,11 +103,11 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;
-  color: #1b1f22;
+  color: var(--l-ink);
 }
 .sub {
   margin: 0;
-  color: #454d52;
+  color: var(--l-mid);
   font-size: 16px;
   line-height: 1.55;
   text-wrap: balance;

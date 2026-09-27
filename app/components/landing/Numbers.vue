@@ -70,8 +70,8 @@ onBeforeUnmount(() => {
   justify-content: center;
   gap: 24px 48px;
   padding: 44px clamp(16px, 5vw, 80px);
-  background: #eff0ed;
-  border-block: 1px solid rgba(27, 31, 34, 0.14);
+  background: var(--l-bg-2);
+  border-block: 1px solid var(--l-line);
 }
 .figures {
   display: flex;
@@ -92,12 +92,12 @@ onBeforeUnmount(() => {
   letter-spacing: -0.02em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--swatch) 78%, #1b1f22);
+  color: color-mix(in srgb, var(--swatch) 78%, var(--l-ink));
 }
 .figure span {
   font-size: 13px;
   line-height: 1.35;
-  color: #555d61;
+  color: var(--l-muted);
 }
 .zero {
   display: flex;
@@ -109,9 +109,9 @@ onBeforeUnmount(() => {
   border: 1px solid transparent;
   border-radius: 10px;
   background:
-    linear-gradient(#f7f7f5, #f7f7f5) padding-box,
+    linear-gradient(var(--l-panel), var(--l-panel)) padding-box,
     linear-gradient(90deg, #c9312a, #e3b22b, #6b3fa0, #1f8a9a, #2d4f7c) border-box;
-  color: #1b1f22;
+  color: var(--l-ink);
   text-align: center;
   box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.6);
 }
@@ -128,7 +128,7 @@ onBeforeUnmount(() => {
 .zero span {
   font-size: 12px;
   letter-spacing: 0.06em;
-  color: #454d52;
+  color: var(--l-mid);
 }
 @media (max-width: 700px) {
   .figure {

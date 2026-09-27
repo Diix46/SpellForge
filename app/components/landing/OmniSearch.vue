@@ -97,7 +97,7 @@ function pick(s: string) {
 <style scoped>
 .search {
   position: relative;
-  background: #eceeea;
+  background: var(--l-bg-2);
 }
 .head {
   display: flex;
@@ -111,8 +111,8 @@ function pick(s: string) {
   margin: 0;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #1b1f22;
-  color: #f7f7f5;
+  background: var(--l-chip);
+  color: var(--l-chip-ink);
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -136,8 +136,8 @@ function pick(s: string) {
   margin: 0;
   padding: 10px 18px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-  color: #1b1f22;
+  background: var(--l-panel);
+  color: var(--l-ink);
   font-size: 15px;
   line-height: 1.5;
   text-wrap: balance;
@@ -151,7 +151,7 @@ function pick(s: string) {
   border: 2px solid transparent;
   border-radius: 14px;
   background:
-    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(var(--l-panel), var(--l-panel)) padding-box,
     linear-gradient(90deg, #c9312a, #e3b22b, #6b3fa0, #1f8a9a, #2d4f7c) border-box;
   box-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
@@ -161,12 +161,12 @@ function pick(s: string) {
   padding: 18px 48px 18px 52px;
   border: 0;
   background: transparent;
-  color: #231708;
+  color: var(--l-ink);
   font-size: 19px;
   outline: none;
 }
 .field input::placeholder {
-  color: #9b8567;
+  color: var(--l-muted);
 }
 .field:focus-within {
   box-shadow:
@@ -185,7 +185,7 @@ function pick(s: string) {
   right: 18px;
   width: 18px;
   height: 18px;
-  color: #8a6a3a;
+  color: var(--l-muted);
 }
 .try {
   display: flex;
@@ -198,25 +198,25 @@ function pick(s: string) {
 .try span {
   padding: 4px 8px;
   border-radius: 6px;
-  background: rgba(27, 31, 34, 0.06);
-  color: #616a6f;
+  background: var(--l-line);
+  color: var(--l-muted);
 }
 .try button {
   padding: 4px 11px;
-  border: 1px solid rgba(27, 31, 34, 0.16);
+  border: 1px solid var(--l-line);
   border-radius: 999px;
-  background: #ffffff;
-  color: #1b1f22;
+  background: var(--l-panel);
+  color: var(--l-ink);
   transition:
     border-color 0.2s ease,
     transform 0.2s ease;
 }
 .try button:hover {
-  border-color: #1b1f22;
+  border-color: var(--l-ink);
   transform: translateY(-1px);
 }
 .try button:focus-visible {
-  outline: 2px solid #1b1f22;
+  outline: 2px solid var(--l-ink);
   outline-offset: 2px;
 }
 
@@ -240,7 +240,7 @@ function pick(s: string) {
   border-bottom: 2px solid color-mix(in srgb, var(--swatch) 55%, transparent);
   font-size: 14px;
   font-weight: 700;
-  color: #1b1f22;
+  color: var(--l-ink);
 }
 .row-head .iconify {
   color: var(--swatch);
@@ -249,7 +249,7 @@ function pick(s: string) {
   margin-left: auto;
   font-size: 12.5px;
   font-weight: 400;
-  color: #454d52;
+  color: var(--l-mid);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -276,7 +276,7 @@ function pick(s: string) {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  color: #1b1f22;
+  color: var(--l-ink);
   text-decoration: none;
 }
 .hit img {
@@ -285,9 +285,9 @@ function pick(s: string) {
   aspect-ratio: 63 / 88;
   object-fit: cover;
   border-radius: 4.5% / 3.2%;
-  background: #e2e4e0;
+  background: var(--l-empty);
   box-shadow:
-    0 0 0 1px rgba(27, 31, 34, 0.12),
+    0 0 0 1px var(--l-line),
     0 16px 30px -18px rgba(0, 0, 0, 0.8);
   transition:
     transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1),
@@ -311,7 +311,7 @@ function pick(s: string) {
   font-size: 11.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: #616a6f;
+  color: var(--l-muted);
 }
 .hit:focus-visible {
   outline: 2px solid var(--swatch);
@@ -320,7 +320,7 @@ function pick(s: string) {
 .none {
   margin: 0;
   font-size: 13.5px;
-  color: #616a6f;
+  color: var(--l-muted);
 }
 @media (max-width: 900px) {
   .hits {

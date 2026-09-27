@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Deck } from '~/composables/useDeckStore'
 import { computed } from 'vue'
-import { deckPath } from '#shared/game'
+import { deckPath, GAME_LIST, libraryPath } from '#shared/game'
 
 // "My decks" for a guest: the list lives in an account. The deck started in
 // this browser stays reachable (it joins the account on sign-in), and the
@@ -47,9 +47,10 @@ function open(mode: 'login' | 'register') {
       <span class="gate-link-row">
         <UIcon name="i-lucide-library" class="h-4 w-4" />
         {{ t('members.gateLibraries') }} :
-        <NuxtLink to="/magic" class="gate-link">Magic</NuxtLink>
-        ·
-        <NuxtLink to="/one-piece" class="gate-link">One Piece</NuxtLink>
+        <template v-for="(g, i) in GAME_LIST" :key="g.id">
+          <span v-if="i" aria-hidden="true">·</span>
+          <NuxtLink :to="libraryPath(g.id)" class="gate-link">{{ g.label }}</NuxtLink>
+        </template>
       </span>
     </div>
   </section>
