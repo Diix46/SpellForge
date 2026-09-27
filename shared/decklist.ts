@@ -27,6 +27,8 @@ export interface DeckEntry {
   hd?: true
   /** One Piece: a pinned art, "OP01-016_p1". */
   art?: string
+  /** Generic engine (shared/tcg/deck.ts): its zone when not the main deck. */
+  zone?: string
 }
 
 export interface ParseResult {

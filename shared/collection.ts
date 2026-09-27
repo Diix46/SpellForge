@@ -196,7 +196,9 @@ const MTG_KIND: Record<string, SetKind> = {
 }
 const OPTCG_KIND: Record<string, SetKind> = { OP: 'main', EB: 'special', PRB: 'special', ST: 'starter', P: 'promo' }
 // Each game's set types (Magic: Scryfall's; One Piece: the code's kind) to families.
-const SET_KINDS_BY_GAME: Record<GameId, Record<string, SetKind>> = { mtg: MTG_KIND, optcg: OPTCG_KIND }
+// The generic engine's games: a kind from the set's code (server/utils/collection/tcg.ts).
+const TCG_KIND: Record<string, SetKind> = { expansion: 'main', starter: 'starter', promo: 'promo' }
+const SET_KINDS_BY_GAME: Record<GameId, Record<string, SetKind>> = { mtg: MTG_KIND, optcg: OPTCG_KIND, pokemon: TCG_KIND }
 
 /** A set's family, from its type. */
 export function setKind(game: GameId, type: string | null): SetKind {
@@ -214,6 +216,8 @@ export interface CardLine { quantity: number, name: string, number: string, set?
 export const CARD_LINE: Record<GameId, (c: CardLine) => string> = {
   mtg: c => `${c.quantity} ${c.name}${c.set ? ` (${c.set.toUpperCase()}) ${c.number}` : ''}${c.finish === 'foil' ? ' *F*' : c.finish === 'etched' ? ' *E*' : ''}`,
   optcg: c => `${c.quantity}x ${c.number}`,
+  // The printing's id (set and number), as Prism reads it back; else the name.
+  pokemon: c => `${c.quantity} ${c.set ? `${c.set}-${c.number}` : c.name}`,
 }
 
 /**
@@ -254,7 +258,7 @@ export function deckOwnership(needs: readonly { key: string, quantity: number }[
 /** A card on a member's wishlist, with what it costs now and what is owned of it. */
 export interface WishItem {
   id: string
-  game: 'mtg' | 'optcg'
+  game: GameId
   printingId: string
   /** Any printing of the card will do (its price: the cheapest one). */
   anyPrinting: boolean

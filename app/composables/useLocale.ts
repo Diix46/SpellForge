@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { useCookie, useState } from '#app'
+import { TCG_MESSAGES } from '~/locales/tcg'
 
 export type Locale = 'fr' | 'en'
 
@@ -1931,17 +1932,30 @@ export function useLocale() {
   }
 
   /** Translate a key. Falls back to the key itself if missing. */
+  // The generic engine's games list only the English values that need a
+  // word (utils/games/tcg tcgLabel): no French fallback for those.
   function t(key: string): string {
-    return messages[locale.value][key] ?? messages.fr[key] ?? key
+    return messages[locale.value][key] ?? TCG_MESSAGES[locale.value][key] ?? messages.fr[key] ?? key
   }
 
   // Built from the rarity, so an unknown one shows as itself, not as a key.
-  function rarityLabel(rarity?: string): string {
+  function rarityLabel(rarity?: string | null, game?: string): string {
     if (!rarity)
       return ''
+    // A generic-engine game's own rarities first (locales/tcg.ts).
+    const own = game ? t(`${game}.rarity.${rarity}`) : null
+    if (own && own !== `${game}.rarity.${rarity}`)
+      return own
     const key = `rarity.${rarity.toLowerCase()}`
     const label = t(key)
     return label === key ? rarity : label
+  }
+
+  /** A finish as the game names it (Pokémon: holo, reverse), else the common word. */
+  function finishLabel(game: string | null | undefined, finish: string): string {
+    const key = `collection.finish.${game}.${finish}`
+    const label = t(key)
+    return label === key ? t(`collection.finish.${finish}`) : label
   }
 
   const isFr = computed(() => locale.value === 'fr')
@@ -1954,5 +1968,5 @@ export function useLocale() {
     return new Date(ts).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short', timeZone: 'Europe/Paris' })
   }
 
-  return { locale, setLocale, toggle, t, rarityLabel, isFr, formatShortDate }
+  return { locale, setLocale, toggle, t, rarityLabel, finishLabel, isFr, formatShortDate }
 }

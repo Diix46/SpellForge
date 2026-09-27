@@ -12,6 +12,7 @@ import type { ImportIssue } from './import'
 import { mtgCollectionCards, optcgCollectionCards } from './cards'
 import { mtgResolveImport, optcgResolveImport } from './import'
 import { mtgChecklist, mtgKeys, mtgSetArts, mtgSetHeader, mtgSets, optcgChecklist, optcgKeys, optcgSetArts, optcgSetHeader, optcgSets } from './sets'
+import { tcgCollection } from './tcg'
 import { mtgCheapest } from './wishlist'
 
 export type Lang = 'fr' | 'en'
@@ -65,6 +66,7 @@ const ADAPTERS: Record<GameId, GameCollection> = {
     resolveImport: rows => optcgResolveImport(rows),
     ownLanguage: false,
   },
+  pokemon: tcgCollection('pokemon'),
 }
 
 /** A game's collection adapter. */

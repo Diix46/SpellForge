@@ -8,7 +8,7 @@ import { MAX_COPIES, unitValue } from '#shared/collection'
 const props = defineProps<{ copy: CollectionCopy, name: string, selected?: boolean | null }>()
 const emit = defineEmits<{ open: [copy: CollectionCopy], quantity: [copy: CollectionCopy, quantity: number] }>()
 
-const { t, locale } = useLocale()
+const { t, locale, finishLabel } = useLocale()
 const money = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR' })
 const unit = computed(() => unitValue(props.copy.card, props.copy.finish))
 </script>
@@ -24,7 +24,7 @@ const unit = computed(() => unitValue(props.copy.card, props.copy.finish))
       <span class="code">{{ copy.card?.set.toUpperCase() }} #{{ copy.card?.number }}</span>
     </span>
     <span class="tag">{{ copy.lang.toUpperCase() }}</span>
-    <span class="tag" :class="{ shiny: copy.finish !== 'nonfoil' }">{{ t(`collection.finish.${copy.finish}`) }}</span>
+    <span class="tag" :class="{ shiny: copy.finish !== 'nonfoil' }">{{ finishLabel(copy.game, copy.finish) }}</span>
     <span class="tag" :title="t(`collection.condition.${copy.condition}`)">{{ copy.condition }}</span>
     <span class="loc">{{ copy.location }}</span>
     <span class="stepper" @click.stop @keydown.stop>

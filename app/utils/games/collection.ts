@@ -8,9 +8,11 @@
 import type { Finish } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import type { OptcgCard, OptcgPrint } from '#shared/optcg/types'
+import type { TcgCard, TcgGameId } from '#shared/tcg/types'
 import type { PrintChoice } from '~/composables/useCollection'
 import type { PrintOption } from '~/composables/usePrintings'
 import { optcgPrintingId, parseOptcgPrintingId } from '#shared/collection'
+import { TCG_UI } from '~/utils/games/tcg'
 import { OPTCG_COLOR_HEX } from '~/utils/optcgColors'
 
 export type Lang = 'fr' | 'en'
@@ -56,7 +58,7 @@ export interface CollectionClient {
     wood: string
     wall: string
     /** The room: see utils/bookshelf/ambiance.ts. */
-    room: 'arcanist' | 'cabin'
+    room: 'arcanist' | 'cabin' | 'lab'
   }
 }
 
@@ -132,6 +134,60 @@ export const COLLECTION_CLIENT: Record<GameId, CollectionClient> = {
     colour: id => ({ hex: OPTCG_COLOR_HEX[id as keyof typeof OPTCG_COLOR_HEX] ?? '#999', label: `optcg.color.${id}` }),
     library: { face: 'Anton, Impact, sans-serif', weight: 400, wood: 'wood_planks', wall: 'planks_wall', room: 'cabin' },
   },
+  pokemon: tcgClient('pokemon', { face: 'Fredoka, Verdana, sans-serif', weight: 700, wood: 'wood_planks', wall: 'planks_wall', room: 'lab' }),
+}
+
+/** The finishes of a generic-engine printing, as the collection names them (server/utils/collection/tcg.ts). */
+function tcgFinishes(card: TcgCard): Finish[] {
+  const out: Finish[] = []
+  if (card.finishes.includes('normal') || card.finishes.includes('firstEdition'))
+    out.push('nonfoil')
+  if (card.finishes.includes('holo'))
+    out.push('foil')
+  if (card.finishes.includes('reverse'))
+    out.push('etched')
+  return out.length ? out : ['nonfoil']
+}
+
+/** The generic engine's games: one client, read against the game's API and UI table (utils/games/tcg). */
+function tcgClient(game: TcgGameId, library: CollectionClient['library']): CollectionClient {
+  const ui = TCG_UI[game]
+  return {
+    async suggest(q, lang) {
+      const { cards } = await $fetch<{ cards: TcgCard[] }>(`/api/tcg/${game}/autocomplete`, { query: { q, lang } })
+      // Found again by its English name: what the collection matches on.
+      return cards.slice(0, 8).map(c => ({ key: c.nameEn ?? c.name, label: c.name, hint: c.setName ?? c.set, thumb: c.thumb }))
+    },
+    async prints(key, copyLang, siteLang) {
+      const { prints } = await $fetch<{ prints: TcgCard[] }>(`/api/tcg/${game}/prints`, { query: { name: key, lang: siteLang } })
+      return prints.map(p => ({
+        printingId: optcgPrintingId(copyLang, p.id),
+        image: p.thumb,
+        set: p.set,
+        setName: p.setName ?? p.set,
+        setIcon: null,
+        rarity: p.rarity,
+        number: p.number,
+        lang: copyLang,
+        // Prices travel as text here, as Scryfall writes them.
+        price: p.price == null ? null : p.price.toFixed(2),
+        finishes: tcgFinishes(p),
+        priceFoil: p.priceFoil == null ? null : p.priceFoil.toFixed(2),
+      }))
+    },
+    language: 'printing',
+    relang: (id, lang) => optcgPrintingId(lang, id.split(':')[1] ?? id),
+    langOf: id => parseOptcgPrintingId(id)?.lang ?? null,
+    cardPerSet: true,
+    importApps: ['Prism', 'Pokémon TCG Live'],
+    sampleLine: ui.sampleLine,
+    preconKinds: false,
+    setPictureIsCard: true,
+    rarityOrder: ui.rarityOrder,
+    colourless: ui.colourless,
+    colour: id => ({ hex: ui.typeColor[id] ?? '#999', label: `${game}.type.${id}` }),
+    library,
+  }
 }
 
 /** A game's collection screens' helper. */

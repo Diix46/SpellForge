@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { LandingDeck } from '#shared/landing'
+import { GAMES } from '#shared/game'
 
 // The latest decks listed in Discover, each dressed as its world. The page
 // hides the section while nobody has published anything.
@@ -30,7 +31,7 @@ const { t, formatShortDate } = useLocale()
     <ul class="grid">
       <li v-for="d in decks" :key="d.path">
         <NuxtLink :to="d.path" class="deck" :class="`deck--${d.game}`">
-          <span class="world">{{ d.game === 'optcg' ? 'One Piece' : 'Magic' }}</span>
+          <span class="world">{{ GAMES[d.game].label }}</span>
           <strong class="name">{{ d.name }}</strong>
           <span class="meta">{{ t('home.showcase.by') }} {{ d.owner }} · {{ formatShortDate(d.updatedAt) }}</span>
         </NuxtLink>

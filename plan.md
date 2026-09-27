@@ -723,3 +723,27 @@ Légende, signatures ≤ 3, 12 Runes et 3 Champs de bataille à part ; liste des
 **Risques.** G1–G3 touchent tout le site : tests de bout en bout Magic et One Piece avant/après
 chaque lot. Yu-Gi-Oh interdit le lien direct aux images : miroir obligatoire (~14,6 k images).
 Riftbound sans texte français ; banlists Pokémon et Riftbound tenues à la main.
+
+### Décision d'architecture : un moteur générique « tcg » (27/09)
+
+Pokémon, Yu-Gi-Oh et Riftbound partagent un seul moteur, au lieu d'une pile par jeu
+comme Magic et One Piece :
+
+- **Données** : un script d'ingestion par jeu (`scripts/ingest-<jeu>.mjs`) remplit un
+  même schéma (`scripts/tcg/schema.mjs`) dans `.data/cards-<jeu>.db`. Il travaille sur
+  une copie et la bascule par `rename` atomique (le serveur ne voit jamais de base
+  verrouillée). Le refresh nocturne enchaîne ces scripts (`TCG_REFRESH_STEPS`).
+- **Serveur** : `server/utils/tcg/*` et `/api/tcg/[game]/{browse,autocomplete,prints,resolve,sets,match}`.
+  Les images passent par `/api/images/tcg/[game]/…`, un cache disque rempli à la première vue,
+  limité à l'origine fixée pour chaque jeu.
+- **Règles** : `shared/tcg/deck.ts` (zones, copies, format, liste en texte) et
+  `shared/tcg/games/<jeu>.ts` (règles propres au jeu), regroupés dans `TCG_RULES`.
+- **UI** : `components/tcg/*` et les pages dynamiques `pages/[universe]/{index,card/[id],deck/[id],shared/[shareId]}`.
+  `utils/games/tcg.ts` (`TCG_UI`) porte les catégories, types, raretés et couleurs de chaque jeu ;
+  `locales/tcg.ts` porte les libellés.
+- **Collection** : un seul adaptateur `tcgCollection(game)`, serveur et client. Le code
+  d'impression porte la langue (`fr:sv03.5-006`). Les trois finitions de la collection
+  correspondent à normale, holo et reverse.
+
+Ajouter un jeu revient à : un script d'ingestion, une entrée dans `GAMES` et `TCG_GAME_IDS`,
+ses règles et son `TCG_UI`, ses libellés et un thème CSS. Le typage signale tout ce qui manque.

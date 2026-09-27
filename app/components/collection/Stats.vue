@@ -29,7 +29,7 @@ const rarities = computed(() => {
   }
   return [...m.entries()]
     .sort((a, b) => (order(a[0]) - order(b[0])) || b[1] - a[1])
-    .map(([r, n], i) => ({ id: r, label: rarityLabel(r), n, color: RARITY_COLOR[r] ?? PALETTE[i % PALETTE.length]! }))
+    .map(([r, n], i) => ({ id: r, label: rarityLabel(r, props.game), n, color: RARITY_COLOR[r] ?? PALETTE[i % PALETTE.length]! }))
 })
 
 const colors = computed(() => {

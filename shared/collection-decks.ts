@@ -9,6 +9,8 @@ import type { GameId } from './game'
 import { ownershipKey } from './collection'
 import { parseMtgDecklist } from './mtg/decklist'
 import { parseOptcgDecklist } from './optcg/decklist'
+import { parseTcgDecklist } from './tcg/deck'
+import { TCG_RULES } from './tcg/rules'
 
 /** Families of preconstructed decks, to narrow the list. */
 export const PRECON_KINDS = ['commander', 'secretlair', 'jumpstart', 'other'] as const
@@ -82,6 +84,7 @@ const PRECON_ROW: Record<GameId, (c: PreconCard, line: number, lang: 'fr' | 'en'
   }),
   // A card number, in its usual printing for the language.
   optcg: (c, line, lang, location) => row(line, { name: c.number, lang, quantity: c.count, location }),
+  pokemon: (c, line, lang, location) => row(line, { name: c.name, set: c.set, number: c.number, lang, quantity: c.count, location }),
 }
 
 /**
@@ -103,6 +106,11 @@ const DECK: Record<GameId, { parse: (raw: string) => ParseResult, row: (e: DeckE
   optcg: {
     parse: parseOptcgDecklist,
     row: (e, line, quantity, lang, location) => row(line, { name: e.name, printingId: e.art ? `${lang}:${e.art}` : null, lang, quantity, location }),
+  },
+  // The generic engine: a line is a printing.
+  pokemon: {
+    parse: raw => parseTcgDecklist(raw, TCG_RULES.pokemon.zones),
+    row: (e, line, quantity, lang, location) => row(line, { name: null, printingId: `${lang}:${e.name}`, lang, quantity, location }),
   },
 }
 

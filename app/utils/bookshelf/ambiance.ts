@@ -5,6 +5,8 @@
  * the wall, candles on the bookcases, gold dust in the air, a violet haze.
  * One Piece, a ship's cabin: planks and nails, portholes on the sea, ropes
  * along the bookcases, a swinging lantern, light off the water on the walls.
+ * Pokémon, a professor's lab: pale walls, bay windows on green hills, a
+ * red-and-white lamp on each bookcase, daylight and floating sparkles.
  *
  * Kept cheap: the moving lights follow the camera (two of them, whatever the
  * number of bookcases), flames and dust are one point cloud each, ropes one
@@ -75,7 +77,7 @@ function dust(THREE: typeof Three, span: Span, count: number, color: number, siz
   return { points, update, dispose: () => [geo, mat, tex].forEach(d => d.dispose()) }
 }
 
-const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a) }
+const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a), lab: (...a) => lab(...a) }
 
 export function buildAmbiance(THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: Span, room: Room, quality: Quality): Ambiance {
   return ROOMS[room](THREE, scene, span, quality, kit)
@@ -386,6 +388,129 @@ function cabin(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Qua
       light.intensity = (high ? 10 : 7) * (1 + Math.sin(t * 7) * 0.03)
       caustic.offset.set(t * 0.02, Math.sin(t * 0.3) * 0.05)
       spray.update(t, dt)
+      return true
+    },
+    dispose: () => disposables.forEach(d => d.dispose()),
+  }
+}
+
+// ---- Pokémon: a professor's lab --------------------------------------------
+
+function lab(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
+  const disposables: { dispose: () => void }[] = []
+  const high = quality === 'high'
+  const cx = span.width / 2
+  const back = -span.depth / 2 - 0.25
+
+  // Pale panels with a coloured band at hand height.
+  const wallTex = canvasTexture(THREE, 512, 512, (g) => {
+    g.fillStyle = '#eef0ea'
+    g.fillRect(0, 0, 512, 512)
+    for (let x = 0; x < 512; x += 128) {
+      g.fillStyle = 'rgba(40,60,80,0.08)'
+      g.fillRect(x, 0, 2, 512)
+    }
+    g.fillStyle = '#d8453a'
+    g.fillRect(0, 330, 512, 10)
+    g.fillStyle = '#2f5aa8'
+    g.fillRect(0, 344, 512, 4)
+    g.fillStyle = 'rgba(0,0,0,0.05)'
+    g.fillRect(0, 352, 512, 160)
+  })
+  wallTex.wrapS = THREE.RepeatWrapping
+  wallTex.repeat.set((span.width + 30) / 6, 1)
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.9 }))
+  wall.position.set(cx, span.height / 2 + 1.5, back)
+  wall.receiveShadow = true
+  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 4, { color: 0xF0DCC0 }) : new THREE.MeshStandardMaterial({ color: 0xD8C4A4, roughness: 0.7 })
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
+  floor.rotation.x = -Math.PI / 2
+  floor.position.set(cx, -0.3, 4)
+  floor.receiveShadow = true
+  scene.add(wall, floor)
+  disposables.push(wallTex, wall.geometry, wall.material as Three.Material, floor.geometry, floor.material as Three.Material)
+
+  // Bay windows on a sunny landscape, between the bookcases and on each side.
+  const view = canvasTexture(THREE, 256, 320, (g) => {
+    const sky = g.createLinearGradient(0, 0, 0, 320)
+    sky.addColorStop(0, '#6fb8f0')
+    sky.addColorStop(0.6, '#d4ecfa')
+    g.fillStyle = sky
+    g.fillRect(0, 0, 256, 320)
+    g.fillStyle = 'rgba(255,255,255,0.9)'
+    for (const [x, y, r] of [[60, 70, 22], [84, 62, 28], [110, 72, 20], [190, 110, 16], [206, 104, 20]] as const) {
+      g.beginPath()
+      g.arc(x, y, r, 0, Math.PI * 2)
+      g.fill()
+    }
+    for (const [y, c] of [[230, '#7cc36a'], [260, '#5aa84f'], [292, '#3f8c3e']] as const) {
+      g.fillStyle = c
+      g.beginPath()
+      g.moveTo(0, 320)
+      for (let x = 0; x <= 256; x += 8)
+        g.lineTo(x, y + Math.sin(x / 40 + y) * 14)
+      g.lineTo(256, 320)
+      g.fill()
+    }
+  })
+  const glassMat = new THREE.MeshBasicMaterial({ map: view })
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0xFAFAF6, roughness: 0.5 })
+  const paneGeo = new THREE.PlaneGeometry(1.5, 1.9)
+  const barV = new THREE.BoxGeometry(0.06, 1.95, 0.06)
+  const barH = new THREE.BoxGeometry(1.56, 0.06, 0.06)
+  const spots = [-span.gap - 1.3, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + 1.3]
+  for (const x of spots) {
+    const y = span.height * 0.6
+    const pane = new THREE.Mesh(paneGeo, glassMat)
+    pane.position.set(x, y, back + 0.02)
+    scene.add(pane)
+    for (const dx of [-0.75, 0, 0.75]) {
+      const bar = new THREE.Mesh(barV, frameMat)
+      bar.position.set(x + dx, y, back + 0.05)
+      scene.add(bar)
+    }
+    for (const dy of [-0.95, 0.95, 0.15]) {
+      const bar = new THREE.Mesh(barH, frameMat)
+      bar.position.set(x, y + dy, back + 0.05)
+      scene.add(bar)
+    }
+  }
+  disposables.push(view, glassMat, frameMat, paneGeo, barV, barH)
+
+  // A red-and-white lamp on each bookcase's cornice.
+  const ball = canvasTexture(THREE, 128, 64, (g) => {
+    g.fillStyle = '#e03a30'
+    g.fillRect(0, 0, 128, 30)
+    g.fillStyle = '#1c1c1c'
+    g.fillRect(0, 29, 128, 6)
+    g.fillStyle = '#f7f5ef'
+    g.fillRect(0, 35, 128, 29)
+  })
+  const ballMat = new THREE.MeshStandardMaterial({ map: ball, roughness: 0.35, emissive: 0xFFF2DA, emissiveIntensity: 0.12 })
+  const ballGeo = new THREE.SphereGeometry(0.16, 24, 16)
+  for (let c = 0; c < span.cases; c++) {
+    const m = new THREE.Mesh(ballGeo, ballMat)
+    m.position.set(c * (span.caseWidth + span.gap) + span.caseWidth * 0.85, span.height + 0.26, 0.1)
+    m.castShadow = true
+    scene.add(m)
+  }
+  disposables.push(ball, ballMat, ballGeo)
+
+  // Daylight from the windows, a soft fill that follows the view.
+  const sun = new THREE.PointLight(0xFFF4DC, high ? 8 : 6, 12, 1.4)
+  const sky = new THREE.PointLight(0xBFE0FF, 3, 10, 1.6)
+  scene.add(sun, sky)
+  scene.fog = new THREE.FogExp2(0xE6ECEF, 0.014)
+
+  const sparkles = dust(THREE, span, high ? 260 : 90, 0xFFE27A, 0.04)
+  scene.add(sparkles.points)
+  disposables.push(sparkles)
+
+  return {
+    update(t, dt, camX) {
+      sun.position.set(camX - 1.5, span.height + 1.2, 1.6)
+      sky.position.set(camX + 3, span.height * 0.6, back + 1)
+      sparkles.update(t, dt)
       return true
     },
     dispose: () => disposables.forEach(d => d.dispose()),

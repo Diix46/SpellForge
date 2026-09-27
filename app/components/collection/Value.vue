@@ -9,7 +9,7 @@ import { unitValue } from '#shared/collection'
 // value sits, set by set.
 const props = defineProps<{ game: GameId }>()
 
-const { t, locale } = useLocale()
+const { t, locale, finishLabel } = useLocale()
 const collection = useCollection(props.game)
 const history = useCollectionHistory(props.game)
 
@@ -140,7 +140,7 @@ const moverName = (m: Mover) => m.printedName ?? m.name
               </p>
               <p class="m-meta">
                 {{ m.set.toUpperCase() }} #{{ m.number }}<template v-if="m.finish !== 'nonfoil'">
-                  · {{ t(`collection.finish.${m.finish}`) }}
+                  · {{ finishLabel(game, m.finish) }}
                 </template> · ×{{ m.quantity }}
               </p>
             </div>

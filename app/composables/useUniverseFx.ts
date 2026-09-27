@@ -1,11 +1,14 @@
+import type { GameId } from '#shared/game'
+
 /**
  * A universe's word on screen: One Piece's manga "DON!!" that pops and
  * bounces when a card is added; Magic's quiet caption, dropped like a card on
- * the mat (a finished deck, see useMtgFx). Pure DOM, one short-lived element
+ * the mat (a finished deck, see useMtgFx); Pokémon's bright pop, a flash of
+ * electric yellow. Pure DOM, one short-lived element
  * per burst; nothing under reduced motion.
  */
 export function useUniverseFx() {
-  function burst(at: { x: number, y: number } | HTMLElement | null, text: string, universe: 'optcg' | 'mtg') {
+  function burst(at: { x: number, y: number } | HTMLElement | null, text: string, universe: GameId) {
     if (!import.meta.client || matchMedia('(prefers-reduced-motion: reduce)').matches)
       return
     let x = window.innerWidth / 2

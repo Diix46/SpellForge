@@ -30,7 +30,8 @@ describe('universe paths', () => {
 
   it('reads game ids and slugs strictly', () => {
     expect(parseGameId('optcg')).toBe('optcg')
-    expect(parseGameId('pokemon')).toBeNull()
+    expect(parseGameId('pokemon')).toBe('pokemon')
+    expect(parseGameId('hearthstone')).toBeNull()
     expect(parseGameId(['mtg'])).toBeNull()
     expect(gameFromSlug('one-piece')).toBe('optcg')
     expect(gameFromSlug('toString')).toBeNull()

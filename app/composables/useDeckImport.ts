@@ -2,6 +2,9 @@ import type { GameId } from '#shared/game'
 import { totalCards } from '#shared/decklist'
 import { parseMtgDecklist } from '#shared/mtg/decklist'
 import { optcgLine, orderOptcgEntries, parseOptcgDecklist } from '#shared/optcg/decklist'
+import { parseForeignLines, parseTcgDecklist, writeTcgDecklist } from '#shared/tcg/deck'
+import { TCG_RULES } from '#shared/tcg/rules'
+import { isTcgGame } from '#shared/tcg/types'
 import { errMessage } from '~/composables/useErrors'
 
 /** A list ready to become a deck, or to replace the one open. */
@@ -52,6 +55,39 @@ export function useDeckImport() {
       if (!parsed.mainboard.length && !parsed.sideboard.length)
         throw new Error(t('modal.importListEmpty'))
       return { name: t('nav.newDeck'), raw: text, count: totalCards(parsed.mainboard) }
+    }
+
+    if (isTcgGame(game)) {
+      // Prism's own lines first; the others as another app writes them,
+      // matched to printings by the server.
+      const rules = TCG_RULES[game]
+      const own = parseTcgDecklist(text, rules.zones)
+      const foreign = parseForeignLines(own.errors)
+      const rest = [...foreign.rest]
+      const entries = [...own.mainboard]
+      if (foreign.lines.length) {
+        const { ids } = await $fetch<{ ids: (string | null)[] }>(`/api/tcg/${game}/match`, {
+          method: 'POST',
+          body: { lang: locale.value, lines: foreign.lines.map(l => ({ name: l.name, set: l.set, number: l.number })) },
+        }).catch((err: unknown) => {
+          throw new Error(errMessage(err) || t('modal.unknownError'))
+        })
+        foreign.lines.forEach((l, i) => {
+          const id = ids[i]
+          if (!id) {
+            rest.push(`${l.quantity} ${l.name}${l.set ? ` ${l.set} ${l.number ?? ''}` : ''}`.trim())
+            return
+          }
+          const same = entries.find(e => e.name === id && !e.zone)
+          if (same)
+            same.quantity += l.quantity
+          else
+            entries.push({ quantity: l.quantity, name: id })
+        })
+      }
+      if (!entries.length)
+        throw new Error(t('modal.importListEmpty'))
+      return { name: t('nav.newDeck'), raw: writeTcgDecklist(entries, rules.zones, rest), count: totalCards(entries) }
     }
 
     const { mainboard, errors } = parseOptcgDecklist(text)

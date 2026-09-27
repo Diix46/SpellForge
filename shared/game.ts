@@ -8,7 +8,7 @@
  * the tests.
  */
 
-export type GameId = 'mtg' | 'optcg'
+export type GameId = 'mtg' | 'optcg' | 'pokemon'
 
 export interface GameCapabilities {
   /** Printable proxies (PDF). Never for One Piece: Bandai's IP rules target exactly that. */
@@ -67,6 +67,19 @@ export const GAMES: Readonly<Record<GameId, Readonly<GameDef>>> = {
     exportFormats: ['prism', 'text'],
     sources: [{ label: 'Bandai', url: 'https://en.onepiece-cardgame.com' }],
     capabilities: { proxyPdf: false, marketplace: false, coach: false, urlImport: false, suggestions: false, tokens: false, prices: false, finishes: false, setSymbols: false },
+  },
+  pokemon: {
+    id: 'pokemon',
+    slug: 'pokemon',
+    label: 'Pokémon',
+    swatch: '#e3b22b',
+    icon: 'i-lucide-zap',
+    themeColor: { light: '#f4f1e6', dark: '#121829' },
+    order: 2,
+    cardKey: 'name',
+    exportFormats: ['prism', 'text'],
+    sources: [{ label: 'TCGdex', url: 'https://tcgdex.dev' }],
+    capabilities: { proxyPdf: false, marketplace: false, coach: false, urlImport: false, suggestions: false, tokens: false, prices: true, finishes: true, setSymbols: true },
   },
   mtg: {
     id: 'mtg',
