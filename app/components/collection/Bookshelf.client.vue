@@ -175,8 +175,13 @@ async function openBinder(library: Library, blank: () => HTMLCanvasElement, pock
   })
 }
 
-/** The icons and arts, loaded once, handed to the spines as they arrive. */
+/**
+ * The icons and arts, loaded once, handed to the spines as they arrive —
+ * bookcase by bookcase, the one in view and its neighbours: a whole game's
+ * sets (Yu-Gi-Oh: 650) would otherwise ask for every picture at once.
+ */
 const images = new Map<string, { icon: HTMLImageElement | null, art: HTMLImageElement | null }>()
+const pending = new Map<string, ShelfBinder>()
 function load(url: string, done: (img: HTMLImageElement) => void) {
   const img = new Image()
   img.crossOrigin = 'anonymous'
@@ -190,7 +195,25 @@ function imagesOf(b: ShelfBinder) {
   if (!entry) {
     entry = { icon: null, art: null }
     images.set(code, entry)
-    const e = entry
+    pending.set(code, b)
+  }
+  return entry
+}
+/** Load the pictures of the binders of bookcase `i` and of its neighbours. */
+function loadAround(i: number) {
+  for (const c of [i, i + 1, i - 1]) {
+    for (const r of layout.value[c]?.rows ?? []) {
+      for (const b of r.binders) {
+        if (pending.delete(b.set.code))
+          fetchImages(b)
+      }
+    }
+  }
+}
+function fetchImages(b: ShelfBinder) {
+  const code = b.set.code
+  const e = images.get(code)
+  if (e) {
     if (b.set.icon) {
       load(b.set.icon, (img) => {
         e.icon = img
@@ -204,7 +227,6 @@ function imagesOf(b: ShelfBinder) {
       })
     }
   }
-  return entry
 }
 
 const labels = computed(() => layout.value.map(c => [...new Set(c.rows.map(r => r.label))].join(' · ')))
@@ -316,7 +338,10 @@ onMounted(async () => {
         tip.value = binder && at ? { binder, ...at } : null
         soon(binder)
       },
-      caseChange: i => (caseIndex.value = i),
+      caseChange: (i) => {
+        caseIndex.value = i
+        loadAround(i)
+      },
       pick: binder => void openBinder(library, lib3d.pocketPage, lib3d.pocketRect, binder),
       opened: (binder, open) => {
         entry.value = { code: binder.set.code, rect: box(open.rect), stage: box(open.stage), still: open.still, data: opening?.code === binder.set.code ? opening.data : null }
@@ -325,6 +350,7 @@ onMounted(async () => {
       },
     })
     library.build(layout.value, imagesOf)
+    loadAround(0)
     lib.value = library
     if (back.value) {
       library.focus(back.value)

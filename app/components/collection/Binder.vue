@@ -205,6 +205,14 @@ function details(c: ChecklistCard) {
   openAdd({ query: GAMES[props.game].cardKey === 'name' ? c.name : c.number, printing: p?.id ?? c.printingId })
 }
 
+// ---- A card up close: a tap on its pocket ----
+const looked = ref<ChecklistCard | null>(null)
+const looking = ref(false)
+function look(c: ChecklistCard) {
+  looked.value = c
+  looking.value = true
+}
+
 // ---- Arriving from the library: the binder grows out of the 3D one ----
 const still = ref(arrival?.still && arrival.stage ? { src: arrival.still, ...arrival.stage } : null)
 const binderEl = ref<HTMLElement | null>(null)
@@ -340,7 +348,7 @@ async function copyMissing() {
         <UButton v-if="counts.missing" color="neutral" variant="ghost" size="sm" icon="i-lucide-clipboard-list" :title="t('collection.copyMissing')" :aria-label="t('collection.copyMissing')" @click="copyMissing" />
         <span class="spacer" />
         <span class="prefs" :aria-label="t('collection.binder.settings')" :title="t('collection.binder.tapHint')">
-          <UIcon name="i-lucide-hand" class="h-4 w-4 text-(--color-text-muted)" />
+          <UIcon name="i-lucide-circle-plus" class="h-4 w-4 text-(--color-text-muted)" />
           <div class="seg" role="group" :aria-label="t('collection.copyLang')">
             <button v-for="l in (['fr', 'en'] as const)" :key="l" type="button" :aria-pressed="prefs.lang === l" @click="prefs.lang = l">
               {{ l.toUpperCase() }}
@@ -377,7 +385,8 @@ async function copyMissing() {
                     :game="game"
                     @add="add(c, $event)"
                     @remove="takeOne(c)"
-                    @details="details(c)"
+                    @details="look(c)"
+                    @options="details(c)"
                     @wish="wishlist.add(c.printingId)"
                   />
                   <span v-for="n in PER_PAGE - page.length" :key="`empty-${n}`" class="blank" aria-hidden="true" />
@@ -396,6 +405,7 @@ async function copyMissing() {
         </div>
       </template>
     </template>
+    <CollectionCardDetails v-model:open="looking" :game="game" :code="code" :card="looked" />
     <!-- The library's last image, fading while the binder takes its place. -->
     <Teleport to="body">
       <img v-if="still" :src="still.src" alt="" class="arrival" :style="{ left: `${still.x}px`, top: `${still.y}px`, width: `${still.w}px`, height: `${still.h}px` }">

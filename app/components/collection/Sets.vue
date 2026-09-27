@@ -38,9 +38,9 @@ watch(mode, (m) => {
   }
   catch {}
 })
-/** On the bookcase: the binders started; the others wait in the list below. */
-const shelfSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(s => s.owned > 0) : []))
-const gridSets = computed(() => (mode.value === '3d' ? view.shown.value.filter(s => !s.owned) : view.shown.value))
+/** On the bookcases: every set shown (the started ones, or all with "every set"); the list is the other view. */
+const shelfSets = computed(() => (mode.value === '3d' ? view.shown.value : []))
+const gridSets = computed(() => (mode.value === '3d' ? [] : view.shown.value))
 // The library is built again when its binders change, not their progress
 // (it repaints those spines itself).
 
@@ -56,9 +56,12 @@ watch(mode, (m) => {
     void loadEvery()
 }, { immediate: true })
 const today = new Date().toISOString().slice(0, 10)
-const fresh = computed(() => (every.value?.sets ?? [])
-  .filter(s => !s.owned && setKind(props.game, s.type) === 'main' && (!s.releasedAt || s.releasedAt <= today))
-  .slice(0, 12))
+// Every set already on the shelves: no new releases shelf then.
+const fresh = computed(() => (filters.all
+  ? []
+  : (every.value?.sets ?? [])
+      .filter(s => !s.owned && setKind(props.game, s.type) === 'main' && (!s.releasedAt || s.releasedAt <= today))
+      .slice(0, 12)))
 // Built once the new releases are known (not twice, before and after).
 const shelfKey = computed(() => [...shelfSets.value, ...fresh.value].map(s => s.code).join('|'))
 const shelfReady = computed(() => mode.value === '3d' && everyStatus.value !== 'pending' && everyStatus.value !== 'idle' && (shelfSets.value.length > 0 || fresh.value.length > 0))

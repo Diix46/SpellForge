@@ -78,6 +78,7 @@ function newDeck(card?: TcgCard) {
           {{ t(`${game}.library.sub`) }}
         </p>
       </div>
+      <TcgMascots :game="game" class="ml-auto" />
       <UButton color="primary" size="lg" :icon="GAMES[game].icon" @click="newDeck()">
         {{ t('tcg.library.newDeck') }}
       </UButton>

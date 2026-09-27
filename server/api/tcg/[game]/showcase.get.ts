@@ -1,7 +1,8 @@
 /**
  * A game's signature illustrations, for its page backdrop and its 3D room:
  * Yu-Gi-Oh's legendary monsters (their art alone), Riftbound's Legends and
- * Pokémon's illustration rares (their whole card; the client crops the art).
+ * Pokémon's mascots — Pikachu, Mew, Eevee… (their whole card; the client
+ * crops the art).
  * And its emblems, for medallions: Riftbound's rune cards, Pokémon's basic
  * Energy (their symbol fills the card's middle).
  * One hour of cache: they move with the nightly refresh, rarely.
@@ -19,10 +20,13 @@ export interface ShowcaseArt {
   image: string
   /** True when `image` is the whole card, the art to be cropped from it. */
   card: boolean
+  /** A light copy of `image`, for small frames. */
+  thumb: string
   path: string
 }
 
 const COUNT = 8
+const POKEMON_MASCOTS = ['pikachu', 'mew', 'eevee', 'charizard', 'bulbasaur', 'squirtle', 'gengar', 'snorlax', 'jigglypuff', 'psyduck', 'lucario', 'mimikyu'] as const
 // Yu-Gi-Oh's legends, by passcode: Dark Magician, Blue-Eyes, Exodia, Red-Eyes,
 // Dark Magician Girl, Black Luster Soldier, Slifer, Obelisk, Ra, Stardust.
 const YGO_LEGENDS = ['46986414', '89631139', '33396948', '74677422', '38033121', '5405694', '10000020', '10000000', '10000010', '44508094']
@@ -40,9 +44,26 @@ async function ids(game: TcgGameId): Promise<string[]> {
     })
     return rows.map(r => String(r.id))
   }
-  // The dearest cards of the kind that carries the game's art: Legends,
-  // Pokémon illustrations.
-  const kind = game === 'riftbound' ? 'Legend' : 'Pokemon'
+  // Pokémon's mascots, the first ones the games made famous: each in its
+  // illustration rare when it has one (the art fills the card), else its
+  // newest printing.
+  if (game === 'pokemon') {
+    const marks = POKEMON_MASCOTS.map(() => '?').join(',')
+    const { rows } = await db.execute({
+      sql: `SELECT id, card_key FROM (
+              SELECT c.id, c.card_key, ROW_NUMBER() OVER (PARTITION BY c.card_key
+                       ORDER BY c.rarity LIKE '%llustration%' DESC, s.released DESC) AS rn
+                FROM cards c LEFT JOIN sets s ON s.code = c.set_code AND s.lang = c.lang
+               WHERE c.card_key IN (${marks}) AND c.image IS NOT NULL AND c.lang = 'en')
+             WHERE rn = 1`,
+      args: POKEMON_MASCOTS as unknown as InValue[],
+    })
+    // In the list's order: Pikachu first.
+    const rank = (key: unknown) => (POKEMON_MASCOTS as readonly string[]).indexOf(String(key))
+    return [...rows].sort((a, b) => rank(a.card_key) - rank(b.card_key)).map(r => String(r.id))
+  }
+  // The dearest Legends: the champions whose art the game shows most.
+  const kind = 'Legend'
   const { rows } = await db.execute({
     sql: `SELECT id FROM (
             SELECT c.id, c.price_eur, ROW_NUMBER() OVER (PARTITION BY c.card_key ORDER BY c.price_eur DESC) AS rn FROM cards c
@@ -80,14 +101,15 @@ async function cardsOf(game: TcgGameId, list: string[], lang: 'fr' | 'en'): Prom
     const c = cards.get(id)
     if (!c || !c.image)
       return []
-    return [{ name: c.name, image: c.art ?? c.image, card: !c.art, path: cardPath(game, c.id) }]
+    const image = c.art ?? c.image
+    return [{ name: c.name, image, thumb: c.art ? image : c.thumb || image, card: !c.art, path: cardPath(game, c.id) }]
   })
 }
 
 const showcase = defineCachedFunction(async (game: TcgGameId, lang: 'fr' | 'en'): Promise<{ arts: ShowcaseArt[], emblems: ShowcaseArt[] }> => {
   const [arts, emblems] = await Promise.all([ids(game), emblemIds(game)])
   return { arts: await cardsOf(game, arts, lang), emblems: await cardsOf(game, emblems, lang) }
-}, { maxAge: 60 * 60, name: 'tcg-showcase-2', getKey: (game: string, lang: string) => `${game}:${lang}` })
+}, { maxAge: 60 * 60, name: 'tcg-showcase-5', getKey: (game: string, lang: string) => `${game}:${lang}` })
 
 export default defineEventHandler(async (event) => {
   const game = tcgGame(event)

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ChecklistCard, ChecklistVariant } from '#shared/collection'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { rarityShort } from '~/utils/games/tcg'
 
 // One pocket of the binder: the card when owned (with how many), its ghost
-// when missing. A tap puts one more in; a long press (or right click) opens
-// the details; on hover, take one out or wish for it.
+// when missing. A tap shows the card up close; on hover (always on a touch
+// screen), put one more in, take one out, wish for it, or add with options.
 const props = defineProps<{ card: ChecklistCard, name: string, wished: boolean, game?: string }>()
-const emit = defineEmits<{ add: [variant?: ChecklistVariant], remove: [], details: [], wish: [] }>()
+const emit = defineEmits<{ add: [variant?: ChecklistVariant], remove: [], details: [], options: [], wish: [] }>()
 const { t, rarityLabel } = useLocale()
 
 // The pocket pops when a copy goes in.
@@ -18,26 +18,6 @@ watch(() => props.card.owned, (now, before) => {
     requestAnimationFrame(() => (popping.value = true))
   }
 })
-
-let timer: ReturnType<typeof setTimeout> | undefined
-let long = false
-function press(e: PointerEvent) {
-  if (e.pointerType === 'mouse' && e.button !== 0)
-    return
-  long = false
-  timer = setTimeout(() => {
-    long = true
-    emit('details')
-  }, 500)
-}
-function release() {
-  clearTimeout(timer)
-}
-function tap() {
-  if (!long)
-    emit('add')
-}
-onBeforeUnmount(() => clearTimeout(timer))
 </script>
 
 <template>
@@ -45,17 +25,16 @@ onBeforeUnmount(() => clearTimeout(timer))
     <button
       type="button"
       class="slot"
-      :aria-label="`${name} #${card.number} — ${card.owned ? `×${card.owned}` : t('collection.missing')}. ${t('collection.binder.tapToAdd')}`"
-      @pointerdown="press"
-      @pointerup="release"
-      @pointerleave="release"
-      @click="tap"
-      @contextmenu.prevent="emit('details')"
+      :aria-label="`${name} #${card.number} — ${card.owned ? `×${card.owned}` : t('collection.missing')}. ${t('collection.binder.tapToSee')}`"
+      @click="emit('details')"
     >
       <img :src="card.thumb" :alt="name" loading="lazy" decoding="async" draggable="false">
       <span v-if="!card.owned" class="num">{{ card.number }}</span>
       <span v-if="card.owned" class="qty">×{{ card.owned }}</span>
       <span class="plus" aria-hidden="true">+1</span>
+    </button>
+    <button type="button" class="add" :aria-label="`${t('collection.binder.addOne')} : ${name}`" :title="t('collection.binder.addOne')" @click="emit('add')">
+      <UIcon name="i-lucide-plus" class="h-4 w-4" />
     </button>
     <!-- Several rarities of the card: each one's badge, its copies, a tap adds it. -->
     <div v-if="card.variants" class="rarities">
@@ -66,7 +45,7 @@ onBeforeUnmount(() => clearTimeout(timer))
         class="rarity"
         :class="{ have: v.owned > 0 }"
         :title="`${rarityLabel(v.rarity ?? '', game)}${v.owned ? ` ×${v.owned}` : ''}`"
-        :aria-label="`${name} — ${rarityLabel(v.rarity ?? '', game)} : ${t('collection.binder.tapToAdd')}`"
+        :aria-label="`${name} — ${rarityLabel(v.rarity ?? '', game)} : ${t('collection.binder.addOne')}`"
         @click="emit('add', v)"
       >
         {{ rarityShort(v.rarity) }}<b v-if="v.owned">{{ v.owned }}</b>
@@ -79,7 +58,7 @@ onBeforeUnmount(() => clearTimeout(timer))
       <button v-else type="button" :class="{ on: wished }" :disabled="wished" :aria-label="`${t('collection.wish.add')} : ${name}`" :title="t('collection.wish.add')" @click="emit('wish')">
         <UIcon name="i-lucide-heart" class="h-3.5 w-3.5" />
       </button>
-      <button type="button" :aria-label="`${t('collection.binder.details')} : ${name}`" :title="t('collection.binder.details')" @click="emit('details')">
+      <button type="button" :aria-label="`${t('collection.binder.details')} : ${name}`" :title="t('collection.binder.details')" @click="emit('options')">
         <UIcon name="i-lucide-sliders-horizontal" class="h-3.5 w-3.5" />
       </button>
     </div>
@@ -243,6 +222,37 @@ onBeforeUnmount(() => clearTimeout(timer))
 }
 .rarity b {
   font-weight: 700;
+}
+/* One more copy in: a round + on the pocket's corner. */
+.add {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgb(var(--accent-rgb));
+  color: #fff;
+  box-shadow: var(--shadow-elev-2);
+  opacity: 0;
+  transition:
+    opacity var(--dur-fast),
+    transform var(--dur-fast) var(--ease-spring);
+}
+.pocket:hover .add,
+.add:focus-visible {
+  opacity: 1;
+}
+.add:hover {
+  transform: scale(1.12);
+}
+@media (hover: none) {
+  .add {
+    opacity: 0.9;
+  }
 }
 .tools {
   position: absolute;
