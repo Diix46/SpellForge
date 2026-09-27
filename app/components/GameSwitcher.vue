@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { libraryPath } from '#shared/game'
+import { GAME_LIST, libraryPath } from '#shared/game'
 
 // "Libraries ▾" in the top bar: every game's library one click away, each in
 // its own colours with the decks it holds. A list, not a row of buttons, so a
@@ -11,11 +11,7 @@ const { t } = useLocale()
 const { universe } = useUniverse()
 const { decks } = useDeckStore()
 
-interface GameEntry { id: GameId, label: string, swatch: string }
-const GAMES: GameEntry[] = [
-  { id: 'optcg', label: 'One Piece', swatch: '#c9312a' },
-  { id: 'mtg', label: 'Magic', swatch: '#2d4f7c' },
-]
+const GAMES = GAME_LIST
 const current = computed(() => GAMES.find(g => g.id === universe.value) ?? null)
 const counts = computed(() => {
   const n: Partial<Record<GameId, number>> = {}

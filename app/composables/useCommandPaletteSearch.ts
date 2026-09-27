@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { OptcgCard } from '#shared/optcg/types'
 import { computed, ref, watch } from 'vue'
-import { deckPath, libraryPath, UNIVERSE_SLUG } from '#shared/game'
+import { deckPath, GAME_LIST, GAMES, libraryPath, UNIVERSE_SLUG } from '#shared/game'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useLocale } from '~/composables/useLocale'
 
@@ -46,8 +46,7 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
     { id: 'import', label: t('cmd.import'), icon: 'i-lucide-download', group: t('cmd.grpActions'), run: () => go(loggedIn.value ? `/decks?import=${universe.value ?? '1'}` : libraryPath(cardGame.value)) },
     { id: 'home', label: t('cmd.allDecks'), icon: 'i-lucide-layout-grid', group: t('cmd.grpActions'), run: () => go('/decks') },
     { id: 'landing', label: t('cmd.home'), icon: 'i-lucide-house', group: t('cmd.grpActions'), run: () => go('/') },
-    { id: 'lib-optcg', label: t('cmd.libraryOp'), icon: 'i-lucide-anchor', group: t('cmd.grpActions'), run: () => go(libraryPath('optcg')) },
-    { id: 'lib-mtg', label: t('cmd.libraryMtg'), icon: 'i-lucide-book-open', group: t('cmd.grpActions'), run: () => go(libraryPath('mtg')) },
+    ...GAME_LIST.map(g => ({ id: `lib-${g.id}`, label: t('cmd.library').replace('{game}', g.label), icon: g.icon, group: t('cmd.grpActions'), run: () => go(libraryPath(g.id)) })),
     { id: 'discover', label: t('nav.discover'), icon: 'i-lucide-compass', group: t('cmd.grpActions'), run: () => go('/discover') },
   ])
 
@@ -59,8 +58,8 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
       .map(d => ({
         id: `deck-${d.id}`,
         label: d.name,
-        hint: d.game === 'optcg' ? 'One Piece' : 'Magic',
-        icon: d.game === 'optcg' ? 'i-lucide-anchor' : 'i-lucide-book-open',
+        hint: GAMES[d.game].label,
+        icon: GAMES[d.game].icon,
         group: t('cmd.grpDecks'),
         run: () => go(deckPath(d)),
       })),

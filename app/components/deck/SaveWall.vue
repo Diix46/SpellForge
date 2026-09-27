@@ -17,7 +17,7 @@ const open = defineModel<boolean>('open', { required: true })
 const { t } = useLocale()
 const { show: openAuth } = useAuthOverlay()
 
-const title = computed(() => (props.universe === 'optcg' ? t('wall.titleOp') : t('wall.titleMtg')))
+const title = computed(() => t(`wall.title.${props.universe}`))
 
 function register() {
   open.value = false

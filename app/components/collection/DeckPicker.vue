@@ -4,6 +4,7 @@ import type { GameId } from '#shared/game'
 import { computed, ref } from 'vue'
 import { ownershipKey } from '#shared/collection'
 import { deckImportRows } from '#shared/collection-decks'
+import { GAMES } from '#shared/game'
 
 // One of the member's decks, held in real life, into the collection. By
 // default only the cards the collection lacks: a deck built in Prism was
@@ -32,7 +33,7 @@ function pick(id: string) {
 const owned = computed(() => {
   const m = new Map<string, number>()
   for (const c of collection.copies.value) {
-    const name = props.game === 'mtg' ? c.card?.name : c.card?.number
+    const name = GAMES[props.game].cardKey === 'name' ? c.card?.name : c.card?.number
     if (name)
       m.set(ownershipKey(props.game, name), (m.get(ownershipKey(props.game, name)) ?? 0) + c.quantity)
   }

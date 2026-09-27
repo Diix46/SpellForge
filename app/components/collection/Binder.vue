@@ -4,6 +4,7 @@ import type { GameId } from '#shared/game'
 import type { BinderEntry } from '~/utils/bookshelf/entry'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
 import { CONDITIONS } from '#shared/collection'
+import { can, GAMES } from '#shared/game'
 
 // One set as a binder: pages of nine pockets in collector-number order, two
 // facing pages on a wide screen. Owned cards sit in their pockets, missing
@@ -190,7 +191,7 @@ async function takeOne(c: ChecklistCard, from?: CollectionCopy) {
 
 function details(c: ChecklistCard) {
   const p = printingFor(c)
-  openAdd({ query: props.game === 'mtg' ? c.name : c.number, printing: p?.id ?? c.printingId })
+  openAdd({ query: GAMES[props.game].cardKey === 'name' ? c.name : c.number, printing: p?.id ?? c.printingId })
 }
 
 // ---- Arriving from the library: the binder grows out of the 3D one ----
@@ -334,7 +335,7 @@ async function copyMissing() {
               {{ l.toUpperCase() }}
             </button>
           </div>
-          <div v-if="game === 'mtg'" class="seg" role="group" :aria-label="t('collection.finish')">
+          <div v-if="can(game, 'finishes')" class="seg" role="group" :aria-label="t('collection.finish')">
             <button v-for="f in (['nonfoil', 'foil'] as const)" :key="f" type="button" :aria-pressed="prefs.finish === f" :class="{ shiny: f === 'foil' }" @click="prefs.finish = f">
               {{ t(`collection.finish.${f}`) }}
             </button>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { libraryPath } from '#shared/game'
+import { GAME_IDS, libraryPath } from '#shared/game'
 
 const { t } = useLocale()
 </script>
@@ -27,8 +27,9 @@ const { t } = useLocale()
     </nav>
     <div class="col col--legal">
       <h3>{{ t('home.foot.legal') }}</h3>
-      <p>{{ t('footer.wotc') }}</p>
-      <p>{{ t('footer.bandai') }}</p>
+      <p v-for="g in GAME_IDS" :key="g">
+        {{ t(`footer.rights.${g}`) }}
+      </p>
       <p>
         {{ t('footer.dataVia') }} <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>,
         <a href="https://github.com/buhbbl/punk-records" target="_blank" rel="noopener">punk-records</a>.

@@ -4,6 +4,7 @@ import type { GameId } from '#shared/game'
 import type { CollectionFilters } from '~/composables/useCollectionView'
 import { computed } from 'vue'
 import { CONDITIONS, FINISHES } from '#shared/collection'
+import { can } from '#shared/game'
 
 // The collection at a glance (value, copies, cards) and its filters.
 const props = defineProps<{
@@ -30,7 +31,7 @@ const rarityItems = computed(() => [{ label: t('collection.allRarities'), value:
 <template>
   <aside class="side">
     <section class="summary">
-      <template v-if="game === 'mtg'">
+      <template v-if="can(game, 'prices')">
         <p class="label" :title="t('collection.valueHint')">
           {{ t('collection.value') }}
         </p>
@@ -47,7 +48,7 @@ const rarityItems = computed(() => [{ label: t('collection.allRarities'), value:
         <span><b>{{ count(summary.cards) }}</b> {{ t('collection.cards') }}</span>
         <span><b>{{ count(summary.printings) }}</b> {{ t('collection.printings') }}</span>
       </div>
-      <p v-if="game === 'mtg' && summary.unpriced" class="unpriced">
+      <p v-if="can(game, 'prices') && summary.unpriced" class="unpriced">
         {{ t('collection.unpriced').replace('{n}', count(summary.unpriced)) }}
       </p>
     </section>
@@ -57,7 +58,7 @@ const rarityItems = computed(() => [{ label: t('collection.allRarities'), value:
     <section class="filters">
       <UInput v-model="filters.q" icon="i-lucide-search" :placeholder="t('collection.filterPlaceholder')" class="w-full" />
       <USelect v-if="sets.length > 1" v-model="filters.set" :items="setItems" class="w-full" />
-      <USelect v-if="game === 'mtg'" v-model="filters.finish" :items="finishItems" class="w-full" />
+      <USelect v-if="can(game, 'finishes')" v-model="filters.finish" :items="finishItems" class="w-full" />
       <USelect v-model="filters.condition" :items="conditionItems" class="w-full" />
       <USelect v-if="rarities.length > 1" v-model="filters.rarity" :items="rarityItems" class="w-full" />
       <UButton v-if="active" color="neutral" variant="ghost" size="sm" icon="i-lucide-rotate-ccw" @click="$emit('reset')">

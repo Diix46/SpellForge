@@ -1,6 +1,11 @@
+import type { GameId } from '../../shared/game'
 import { sql } from 'drizzle-orm'
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { CONDITIONS, FINISHES } from '../../shared/collection'
+import { GAME_IDS } from '../../shared/game'
+
+// The games, as a column's allowed values (shared/game.ts).
+const GAME_ENUM = GAME_IDS as unknown as [GameId, ...GameId[]]
 
 // ─── Users ────────────────────────────────────────────────────────────────
 // Email/password auth (scrypt hash via nuxt-auth-utils). `id` is a random
@@ -24,7 +29,7 @@ export const decks = sqliteTable('decks', {
   // Which game the decklist belongs to. Set at creation and never changed:
   // the two games' decklist formats are incompatible. Existing rows predate
   // One Piece, hence the default.
-  game: text('game', { enum: ['mtg', 'optcg'] }).notNull().default('mtg'),
+  game: text('game', { enum: GAME_ENUM }).notNull().default('mtg'),
   raw: text('raw').notNull().default(''),
   source: text('source'),
   // Public read-only share token (null = private). Indexed for lookup.
@@ -48,7 +53,7 @@ export const decks = sqliteTable('decks', {
 export const collectionItems = sqliteTable('collection_items', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  game: text('game', { enum: ['mtg', 'optcg'] }).notNull(),
+  game: text('game', { enum: GAME_ENUM }).notNull(),
   printingId: text('printing_id').notNull(),
   finish: text('finish', { enum: FINISHES }).notNull().default('nonfoil'),
   condition: text('condition', { enum: CONDITIONS }).notNull().default('NM'),
@@ -74,7 +79,7 @@ export const collectionItems = sqliteTable('collection_items', {
 export const collectionImports = sqliteTable('collection_imports', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  game: text('game', { enum: ['mtg', 'optcg'] }).notNull(),
+  game: text('game', { enum: GAME_ENUM }).notNull(),
   format: text('format').notNull(),
   filename: text('filename'),
   lines: integer('lines').notNull(),
@@ -89,7 +94,7 @@ export const collectionImports = sqliteTable('collection_imports', {
 // visit of the day): the value chart.
 export const collectionSnapshots = sqliteTable('collection_snapshots', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  game: text('game', { enum: ['mtg', 'optcg'] }).notNull(),
+  game: text('game', { enum: GAME_ENUM }).notNull(),
   // YYYY-MM-DD, UTC.
   day: text('day').notNull(),
   value: real('value').notNull(),
@@ -116,7 +121,7 @@ export const collectionPrices = sqliteTable('collection_prices', {
 export const wishlistItems = sqliteTable('wishlist_items', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  game: text('game', { enum: ['mtg', 'optcg'] }).notNull(),
+  game: text('game', { enum: GAME_ENUM }).notNull(),
   // The printing picked; with anyPrinting, just the card's face.
   printingId: text('printing_id').notNull(),
   anyPrinting: integer('any_printing', { mode: 'boolean' }).notNull().default(true),
