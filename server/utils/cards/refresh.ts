@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
+import { TCG_REFRESH_STEPS } from '../tcg/db'
 
 export interface RefreshStep {
   name: string
@@ -15,12 +16,16 @@ export interface RefreshStep {
   args?: string[]
 }
 
-/** One Piece first (its images are served from disk only), then Magic, then its preconstructed decks. */
+/**
+ * One Piece first (its images are served from disk only), then Magic, then
+ * its preconstructed decks, then the generic engine's games (Pokémon…).
+ */
 export const REFRESH_STEPS: readonly RefreshStep[] = [
   { name: 'optcg', script: 'scripts/ingest-optcg.mjs' },
   { name: 'optcg-images', script: 'scripts/mirror-images-optcg.mjs' },
   { name: 'mtg', script: 'scripts/ingest-mtg.mjs' },
   { name: 'precons', script: 'scripts/ingest-precons.mjs' },
+  ...TCG_REFRESH_STEPS,
 ]
 
 /** Waits between attempts: a network hiccup, then a longer outage. */

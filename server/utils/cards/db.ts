@@ -8,6 +8,7 @@
 import type { Client } from '@libsql/client'
 import process from 'node:process'
 import { createClient } from '@libsql/client'
+import { reopenTcgDbs } from '../tcg/db'
 
 export const MTG_CARDS_DB = process.env.MTG_CARDS_DB || '.data/cards-mtg.db'
 
@@ -45,6 +46,7 @@ export function reopenCardDbs(): void {
   optcg = null
   precons = null
   setTimeout(() => old.forEach(c => c?.close()), CLOSE_DELAY_MS).unref()
+  reopenTcgDbs()
 }
 
 /** The One Piece card database — same lifecycle as the Magic one. */

@@ -10,7 +10,7 @@ import { refreshCards } from '../../utils/cards/refresh'
 export default defineTask({
   meta: {
     name: 'cards:refresh',
-    description: 'Refresh the One Piece and Magic card databases and the One Piece images',
+    description: 'Refresh every card database (One Piece and its images, Magic, precons, Pokémon…)',
   },
   async run() {
     const outcomes = await refreshCards({
