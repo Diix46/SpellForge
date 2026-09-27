@@ -36,14 +36,13 @@ function pick(s: string) {
 </script>
 
 <template>
-  <section class="search">
+  <section id="search" class="search">
     <header class="head">
       <p class="kicker">
         {{ t('home.search.kicker') }}
       </p>
       <h2 class="title">
-        <span class="ink ink--op" aria-hidden="true">{{ t('home.search.title') }}</span>
-        <span class="ink ink--mtg">{{ t('home.search.title') }}</span>
+        {{ t('home.search.title') }}
       </h2>
       <p class="sub">
         {{ t('home.search.sub') }}
@@ -112,37 +111,26 @@ function pick(s: string) {
   margin: 0;
   padding: 3px 10px;
   border-radius: 999px;
-  background: #f7f7f5;
-  color: #2d4f7c;
+  background: #1b1f22;
+  color: #f7f7f5;
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 .title {
-  display: grid;
-  width: 100%;
   margin: 0;
   font-family: 'Anton', Impact, sans-serif;
   font-size: clamp(40px, 6vw, 88px);
   font-weight: 400;
   line-height: 0.95;
   text-transform: uppercase;
-}
-.ink {
-  grid-area: 1 / 1;
-}
-.ink--op {
-  clip-path: inset(-20% 50% -20% 0);
-  color: #231708;
-  text-shadow: 0.04em 0.04em 0 #c9312a;
-}
-.ink--mtg {
-  clip-path: inset(-20% 0 -20% 50%);
-  background: linear-gradient(180deg, #dce6f2, #2d4f7c);
+  /* The five worlds' colours, as the prism in the hero spreads them. */
+  background: linear-gradient(90deg, #c9312a, #d09a16, #6b3fa0, #1f8a9a, #2d4f7c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
+
 .sub {
   max-width: 520px;
   margin: 0;
@@ -163,8 +151,8 @@ function pick(s: string) {
   border: 2px solid transparent;
   border-radius: 14px;
   background:
-    linear-gradient(#fffaf0, #fffaf0) padding-box,
-    linear-gradient(90deg, #c9312a, #2d4f7c) border-box;
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(90deg, #c9312a, #e3b22b, #6b3fa0, #1f8a9a, #2d4f7c) border-box;
   box-shadow: 0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
 .field input {
@@ -224,11 +212,11 @@ function pick(s: string) {
     transform 0.2s ease;
 }
 .try button:hover {
-  border-color: #2d4f7c;
+  border-color: #1b1f22;
   transform: translateY(-1px);
 }
 .try button:focus-visible {
-  outline: 2px solid #2d4f7c;
+  outline: 2px solid #1b1f22;
   outline-offset: 2px;
 }
 

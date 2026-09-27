@@ -1,34 +1,42 @@
 /**
- * Pokémon's animated sprites (the Black & White games', from the PokéAPI
- * sprites collection), for the Pokémon backdrop: fetched once from their one
- * fixed origin, kept on disk, served forever.
+ * Pokémon's 3D renders (the Pokémon HOME models, from the PokéAPI sprites
+ * collection), for the Pokémon backdrop: fetched once from their one fixed
+ * origin, shrunk to a light WebP kept on disk, served forever.
  *
  * SECURITY: a national dex number and nothing else reaches the path or the
  * upstream URL.
  */
 import { Buffer } from 'node:buffer'
-import { createReadStream, existsSync, mkdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, mkdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
+import { hasFile, makeThumbnail } from '~~/server/utils/images/thumbnail'
 
-const ORIGIN = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/'
+const ORIGIN = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/home/'
 const ROOT = resolve('.data/images/sprites')
+/** Twice the size the meadow draws them at. */
+const WIDTH = 240
 
 export default defineEventHandler(async (event) => {
-  const m = /^(\d{1,3})\.gif$/.exec(getRouterParam(event, 'file') ?? '')
-  if (!m || Number(m[1]) < 1 || Number(m[1]) > 649)
+  const m = /^(\d{1,4})\.webp$/.exec(getRouterParam(event, 'file') ?? '')
+  const dex = Number(m?.[1])
+  if (!m || dex < 1 || dex > 1025)
     throw createError({ statusCode: 400, statusMessage: 'Bad sprite' })
-  const file = resolve(ROOT, `${Number(m[1])}.gif`)
-  if (!existsSync(file) || statSync(file).size === 0) {
-    const res = await fetch(`${ORIGIN}${Number(m[1])}.gif`).catch(() => null)
+  const file = resolve(ROOT, `home-${dex}.webp`)
+  if (!hasFile(file)) {
+    const res = await fetch(`${ORIGIN}${dex}.png`).catch(() => null)
     if (!res?.ok)
       throw createError({ statusCode: 404, statusMessage: 'Sprite not found' })
     mkdirSync(ROOT, { recursive: true })
-    const tmp = `${file}.${process.pid}.tmp`
-    writeFileSync(tmp, Buffer.from(await res.arrayBuffer()))
-    renameSync(tmp, file)
+    const png = resolve(ROOT, `home-${dex}.${process.pid}.png`)
+    writeFileSync(png, Buffer.from(await res.arrayBuffer()))
+    // Without sharp, the full render is kept as it is.
+    if (await makeThumbnail(png, file, WIDTH))
+      unlinkSync(png)
+    else
+      renameSync(png, file)
   }
   setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
-  setHeader(event, 'Content-Type', 'image/gif')
+  setHeader(event, 'Content-Type', 'image/webp')
   return sendStream(event, createReadStream(file))
 })

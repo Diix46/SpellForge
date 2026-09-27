@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { LandingDeck } from '#shared/landing'
 import { GAMES } from '#shared/game'
+import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
 
 // The latest decks listed in Discover, each dressed as its world. The page
 // hides the section while nobody has published anything.
@@ -30,9 +31,9 @@ const { t, formatShortDate } = useLocale()
     </header>
     <ul class="grid">
       <li v-for="d in decks" :key="d.path">
-        <NuxtLink :to="d.path" class="deck" :class="`deck--${d.game}`">
+        <NuxtLink :to="d.path" class="deck" :style="{ ...lookVars(d.game), '--swatch': GAMES[d.game].swatch }">
           <span class="world">{{ GAMES[d.game].label }}</span>
-          <strong class="name">{{ d.name }}</strong>
+          <strong class="name" :class="{ upper: WORLD_LOOK[d.game].upper }">{{ d.name }}</strong>
           <span class="meta">{{ t('home.showcase.by') }} {{ d.owner }} · {{ formatShortDate(d.updatedAt) }}</span>
         </NuxtLink>
       </li>
@@ -44,7 +45,7 @@ const { t, formatShortDate } = useLocale()
 .showcase {
   padding: 90px clamp(20px, 5vw, 88px);
   /* The light paper of the sections around it: its text is dark. */
-  background: linear-gradient(90deg, #efe6d4, #eff0ed);
+  background: #f2f2ef;
   color: #1b1f22;
 }
 .head {
@@ -58,7 +59,7 @@ const { t, formatShortDate } = useLocale()
 }
 .kicker {
   margin: 0 0 6px;
-  color: #2d4f7c;
+  color: #616a6f;
   font-size: 11px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -108,7 +109,7 @@ const { t, formatShortDate } = useLocale()
   transform: translateY(-4px);
 }
 .deck:focus-visible {
-  outline: 2px solid #2d4f7c;
+  outline: 2px solid var(--swatch);
   outline-offset: 3px;
 }
 .world {
@@ -126,40 +127,26 @@ const { t, formatShortDate } = useLocale()
 .meta {
   font-size: 12.5px;
 }
-.deck--optcg {
-  border: 1px solid rgba(58, 38, 22, 0.35);
-  border-radius: 2px;
-  background: linear-gradient(180deg, #fbf3e3, #efdfc0);
-  color: #231708;
-  rotate: -0.6deg;
+.deck {
+  border-top: 3px solid var(--swatch);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 20px 40px -26px rgba(0, 0, 0, 0.6);
 }
-.deck--optcg .world {
-  font-family: 'Anton', Impact, sans-serif;
-  color: #a4231d;
+.world {
+  font-family: var(--face);
+  font-weight: var(--weight);
+  color: var(--accent);
 }
-.deck--optcg .name {
-  font-family: 'Anton', Impact, sans-serif;
-  font-weight: 400;
+.name {
+  font-family: var(--face);
+  font-weight: var(--weight);
+}
+.name.upper {
   text-transform: uppercase;
 }
-.deck--optcg .meta {
-  color: #6b5236;
-}
-.deck--mtg {
-  border: 1px solid rgba(27, 31, 34, 0.14);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, #ffffff, #f2f3f0);
-  color: #1b1f22;
-}
-.deck--mtg .world {
-  font-family: var(--mtg-face);
-  font-weight: 700;
-  color: #2d4f7c;
-}
-.deck--mtg .name {
-  font-family: var(--mtg-face);
-}
-.deck--mtg .meta {
-  color: #616a6f;
+.meta {
+  color: var(--muted);
 }
 </style>

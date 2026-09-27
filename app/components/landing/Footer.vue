@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { GAME_IDS, libraryPath } from '#shared/game'
+import { GAME_IDS, GAME_LIST, libraryPath } from '#shared/game'
+
+// Every source the card databases are built from, once each.
+const SOURCES = [...new Map(GAME_LIST.flatMap(g => g.sources).map(s => [s.url, s])).values()]
 
 const { t } = useLocale()
 </script>
@@ -12,11 +15,8 @@ const { t } = useLocale()
     </div>
     <nav class="col" :aria-label="t('home.foot.explore')">
       <h3>{{ t('home.foot.explore') }}</h3>
-      <NuxtLink :to="libraryPath('optcg')">
-        One Piece
-      </NuxtLink>
-      <NuxtLink :to="libraryPath('mtg')">
-        Magic
+      <NuxtLink v-for="g in GAME_LIST" :key="g.id" :to="libraryPath(g.id)">
+        {{ g.label }}
       </NuxtLink>
       <NuxtLink to="/discover">
         {{ t('nav.discover') }}
@@ -31,8 +31,10 @@ const { t } = useLocale()
         {{ t(`footer.rights.${g}`) }}
       </p>
       <p>
-        {{ t('footer.dataVia') }} <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>,
-        <a href="https://github.com/buhbbl/punk-records" target="_blank" rel="noopener">punk-records</a>.
+        {{ t('footer.dataVia') }}
+        <template v-for="(src, i) in SOURCES" :key="src.url">
+          <a :href="src.url" target="_blank" rel="noopener">{{ src.label }}</a>{{ i < SOURCES.length - 1 ? ', ' : '.' }}
+        </template>
       </p>
     </div>
   </footer>
@@ -62,7 +64,7 @@ const { t } = useLocale()
 }
 .col h3 {
   margin: 0 0 6px;
-  color: #2d4f7c;
+  color: #1b1f22;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.2em;
