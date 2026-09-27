@@ -4,6 +4,7 @@ import type { TcgFilters } from '~/composables/useTcgSearch'
 import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { deckPath, gameFromSlug, GAMES } from '#shared/game'
 import { isTcgGame } from '#shared/tcg/types'
+import { TCG_UI } from '~/utils/games/tcg'
 
 // A generic-engine game's library (/pokemon…): every printing of the game,
 // newest first. Reading only: a card opens its sheet, and can start a deck.
@@ -38,7 +39,7 @@ const queryText = () => (typeof route.query.q === 'string' ? route.query.q : '')
 filters.text = queryText()
 const { data: firstPage } = await useAsyncData(
   `${game}-library-${locale.value}-${filters.text}`,
-  () => $fetch<TcgBrowseResponse>(`/api/tcg/${game}/browse`, { params: tcgBrowseParams(filters, locale.value, 1) }).catch(() => null),
+  () => $fetch<TcgBrowseResponse>(`/api/tcg/${game}/browse`, { params: tcgBrowseParams(filters, locale.value, 1, TCG_UI[game].uniqueSearch) }).catch(() => null),
 )
 prime(firstPage.value ?? null, filters, locale.value)
 if (import.meta.server && !firstPage.value)

@@ -43,6 +43,7 @@ export function parseTcgBrowse(q: Record<string, unknown>) {
     rarity: word(q.rarity),
     types: str(q.types, 200).split(',').map(s => s.trim()).filter(s => WORD.test(s)).slice(0, 12),
     format: word(q.format),
+    unique: ['1', 'true'].includes(str(q.unique)),
   }
   return {
     filters,

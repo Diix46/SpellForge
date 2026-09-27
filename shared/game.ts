@@ -8,7 +8,7 @@
  * the tests.
  */
 
-export type GameId = 'mtg' | 'optcg' | 'pokemon'
+export type GameId = 'mtg' | 'optcg' | 'pokemon' | 'yugioh'
 
 export interface GameCapabilities {
   /** Printable proxies (PDF). Never for One Piece: Bandai's IP rules target exactly that. */
@@ -80,6 +80,19 @@ export const GAMES: Readonly<Record<GameId, Readonly<GameDef>>> = {
     exportFormats: ['prism', 'text'],
     sources: [{ label: 'TCGdex', url: 'https://tcgdex.dev' }],
     capabilities: { proxyPdf: false, marketplace: false, coach: false, urlImport: false, suggestions: false, tokens: false, prices: true, finishes: true, setSymbols: true },
+  },
+  yugioh: {
+    id: 'yugioh',
+    slug: 'yu-gi-oh',
+    label: 'Yu-Gi-Oh!',
+    swatch: '#6b3fa0',
+    icon: 'i-lucide-pyramid',
+    themeColor: { light: '#efe6d2', dark: '#120f1c' },
+    order: 3,
+    cardKey: 'name',
+    exportFormats: ['prism', 'text'],
+    sources: [{ label: 'YGOPRODeck', url: 'https://ygoprodeck.com' }],
+    capabilities: { proxyPdf: false, marketplace: false, coach: false, urlImport: false, suggestions: false, tokens: false, prices: true, finishes: false, setSymbols: false },
   },
   mtg: {
     id: 'mtg',

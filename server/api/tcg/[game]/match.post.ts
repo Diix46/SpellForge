@@ -1,6 +1,6 @@
 /**
  * Cards named as other apps write them, matched to printings:
- * `{ lang, lines: [{ name, set?, number? }] }` → `{ ids }` in input order,
+ * `{ lang, lines: [{ name, set?, number?, code? }] }` → `{ ids }` in input order,
  * `null` where nothing matches. A set is its code or the abbreviation players
  * use (Pokémon TCG Live: "4 Charizard ex OBF 125"); without a set, or when
  * set and number miss, the newest printing of the name.
@@ -12,7 +12,7 @@ import { tcgGame, tcgLang } from '../../../utils/tcg/params'
 
 const MAX_LINES = 150
 
-interface Line { name: string, set: string | null, number: string | null }
+interface Line { name: string, set: string | null, number: string | null, code: string | null }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 /** "006", "6", "TG06": numbers compare without their leading zeros. */
@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
   const raw = Array.isArray(body?.lines) ? body.lines : null
   if (!raw || raw.length > MAX_LINES)
     throw createError({ statusCode: 400, statusMessage: `lines must be an array of at most ${MAX_LINES}` })
-  const lines: Line[] = raw.map(l => ({ name: str(l?.name, 120), set: str(l?.set, 12) || null, number: str(l?.number, 12) || null }))
+  const lines: Line[] = raw.map(l => ({ name: str(l?.name, 120), set: str(l?.set, 12) || null, number: str(l?.number, 12) || null, code: str(l?.code, 12) || null }))
   const lang = tcgLang(body?.lang)
   const db = useTcgDb(game)
 
@@ -63,8 +63,35 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // By the game's own code (a Yu-Gi-Oh passcode): the newest printing with a scan.
+  const codes2 = [...new Set(lines.map(l => l.code).filter((x): x is string => !!x))]
+  const byCode = new Map<string, string>()
+  if (codes2.length) {
+    const { rows } = await db.execute({
+      sql: `SELECT c.id, c.code FROM cards c LEFT JOIN sets s ON s.code = c.set_code AND s.lang = c.lang
+             WHERE c.code IN (${codes2.map(() => '?').join(',')})
+                OR c.code IN (SELECT a.code FROM aliases a WHERE a.alias IN (${codes2.map(() => '?').join(',')}))
+             ORDER BY c.image IS NULL, s.released DESC`,
+      args: [...codes2, ...codes2] as InValue[],
+    })
+    // An alternate artwork's passcode names its card.
+    const { rows: alias } = await db.execute({ sql: `SELECT alias, code FROM aliases WHERE alias IN (${codes2.map(() => '?').join(',')})`, args: codes2 as InValue[] })
+    const canonical = new Map(alias.map(a => [String(a.alias), String(a.code)]))
+    for (const r of rows) {
+      if (!byCode.has(String(r.code)))
+        byCode.set(String(r.code), String(r.id))
+    }
+    for (const [a, code] of canonical) {
+      const id = byCode.get(code)
+      if (id && !byCode.has(a))
+        byCode.set(a, id)
+    }
+  }
+
   return {
     ids: lines.map((l) => {
+      if (l.code)
+        return byCode.get(l.code) ?? null
       const code = l.set ? setOf.get(l.set.toLowerCase()) : undefined
       return (code && l.number ? bySetNumber.get(`${code}|${num(l.number)}`) : undefined) ?? byName.get(fold(l.name)) ?? null
     }),

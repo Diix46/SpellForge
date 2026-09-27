@@ -13,6 +13,12 @@ export function tcgDbPath(game: TcgGameId): string {
   return process.env[`${game.toUpperCase()}_CARDS_DB`] || `.data/cards-${game}.db`
 }
 
+/**
+ * The schema these queries read — SCHEMA_VERSION in scripts/tcg/schema.mjs (a
+ * test holds the two together). A database behind it is rebuilt at boot.
+ */
+export const TCG_SCHEMA_VERSION = '3'
+
 const clients = new Map<TcgGameId, Client>()
 
 export function useTcgDb(game: TcgGameId): Client {

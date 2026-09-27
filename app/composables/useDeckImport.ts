@@ -1,8 +1,10 @@
+import type { DeckEntry } from '#shared/decklist'
 import type { GameId } from '#shared/game'
+import type { TcgGameId } from '#shared/tcg/types'
 import { totalCards } from '#shared/decklist'
 import { parseMtgDecklist } from '#shared/mtg/decklist'
 import { optcgLine, orderOptcgEntries, parseOptcgDecklist } from '#shared/optcg/decklist'
-import { parseForeignLines, parseTcgDecklist, writeTcgDecklist } from '#shared/tcg/deck'
+import { isYdk, parseForeignLines, parseTcgDecklist, parseYdk, writeTcgDecklist } from '#shared/tcg/deck'
 import { TCG_RULES } from '#shared/tcg/rules'
 import { isTcgGame } from '#shared/tcg/types'
 import { errMessage } from '~/composables/useErrors'
@@ -61,6 +63,8 @@ export function useDeckImport() {
       // Prism's own lines first; the others as another app writes them,
       // matched to printings by the server.
       const rules = TCG_RULES[game]
+      if (isYdk(text))
+        return fromYdk(game, text)
       const own = parseTcgDecklist(text, rules.zones)
       const foreign = parseForeignLines(own.errors)
       const rest = [...foreign.rest]
@@ -108,6 +112,35 @@ export function useDeckImport() {
       raw: [...ordered, ...errors].join('\n'),
       count: totalCards(mainboard),
     }
+  }
+
+  /** A YDK file: its passcodes matched to printings, each in its zone. */
+  async function fromYdk(game: TcgGameId, text: string): Promise<ImportedList> {
+    const rules = TCG_RULES[game]
+    const lines = parseYdk(text)
+    if (!lines.length)
+      throw new Error(t('modal.importListEmpty'))
+    const { ids } = await $fetch<{ ids: (string | null)[] }>(`/api/tcg/${game}/match`, {
+      method: 'POST',
+      body: { lang: locale.value, lines: lines.map(l => ({ name: '', code: l.code })) },
+    }).catch((err: unknown) => {
+      throw new Error(errMessage(err) || t('modal.unknownError'))
+    })
+    const main = rules.zones[0]!.id
+    const entries: DeckEntry[] = []
+    const rest: string[] = []
+    lines.forEach((l, i) => {
+      const id = ids[i]
+      if (!id)
+        return rest.push(`${l.quantity} ${l.code}`)
+      const zone = l.zone === main ? undefined : l.zone
+      const same = entries.find(e => e.name === id && e.zone === zone)
+      if (same)
+        same.quantity += l.quantity
+      else
+        entries.push({ quantity: l.quantity, name: id, ...(zone ? { zone } : {}) })
+    })
+    return { name: t('nav.newDeck'), raw: writeTcgDecklist(entries, rules.zones, rest), count: totalCards(entries) }
   }
 
   return { fromUrl, fromText }

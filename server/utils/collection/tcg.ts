@@ -210,7 +210,7 @@ export function tcgCollection(game: TcgGameId): GameCollection {
     const wanted = rows.map((r) => {
       const parsed = r.printingId ? parseOptcgPrintingId(r.printingId) : null
       // An id in the id column, or typed as the name ("4 sv03.5-006"), or a set and number.
-      const ids = [parsed?.artId ?? r.printingId, r.name?.trim().toLowerCase(), r.set && r.number ? `${r.set.toLowerCase()}-${r.number}` : null]
+      const ids = [parsed?.artId ?? r.printingId, r.name?.trim(), r.name?.trim().toLowerCase(), r.name?.trim().toUpperCase(), r.set && r.number ? `${r.set.toLowerCase()}-${r.number}` : null, r.set && r.number ? `${r.set.toUpperCase()}-${r.number}` : null]
       return { r, ids: ids.filter((x): x is string => !!x && /^[\w.\-]{1,40}$/.test(x)), id: null as string | null, lang: (parsed?.lang ?? r.lang ?? 'fr') as Lang }
     })
     const ids = [...new Set(wanted.flatMap(w => w.ids))]

@@ -3,6 +3,7 @@ import type { TcgCard, TcgGameId } from '#shared/tcg/types'
 import { computed, ref, shallowRef, watch } from 'vue'
 import { optcgPrintingId } from '#shared/collection'
 import { cardPath } from '#shared/game'
+import { TCG_RULES } from '#shared/tcg/rules'
 import { tcgLabel } from '~/utils/games/tcg'
 
 // The card view in a dialog. From the library: to the collection, the
@@ -21,7 +22,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'add': [card: TcgCard, from: HTMLElement]
+  'add': [card: TcgCard, from: HTMLElement, zone?: string]
   'remove': [card: TcgCard]
   'setPrinting': [card: TcgCard]
   'start': [card: TcgCard]
@@ -45,6 +46,7 @@ watch(() => [props.open, props.card?.id, props.lang] as const, async ([open, id,
 }, { immediate: true })
 
 const inDeck = computed(() => props.quantity !== null)
+const hasSide = computed(() => TCG_RULES[props.game].zones.some(z => z.id === 'side'))
 const printingChanged = computed(() => inDeck.value && !!props.linePrinting && shown.value !== props.linePrinting)
 const description = computed(() => props.card ? [tcgLabel(t, props.game, 'category', props.card.category), props.card.setName ?? props.card.set].filter(Boolean).join(' · ') : '')
 
@@ -89,6 +91,9 @@ function addToWishlist(card: TcgCard) {
             <UButton color="primary" icon="i-lucide-plus" @click="emit('add', shownCard, $event.currentTarget as HTMLElement)">
               {{ t('tcg.add') }}
               <span v-if="quantity" class="opacity-70">({{ quantity }})</span>
+            </UButton>
+            <UButton v-if="hasSide" color="neutral" variant="subtle" icon="i-lucide-arrow-down-to-line" @click="emit('add', shownCard, $event.currentTarget as HTMLElement, 'side')">
+              {{ t('tcg.addSide') }}
             </UButton>
             <UButton v-if="quantity" color="neutral" variant="subtle" icon="i-lucide-minus" @click="emit('remove', card)">
               {{ t('tcg.remove') }}

@@ -20,11 +20,14 @@ export interface TcgFilters {
   rarity?: string
   /** Legal in this format. */
   format?: string
+  /** One printing per card (the newest), for games that reprint a card dozens of times. */
+  unique?: boolean
 }
 
 /** Where each game's images come from; served through /api/images/tcg (utils/tcg/images). */
 export const IMAGE_ORIGIN: Record<TcgGameId, string> = {
   pokemon: 'https://assets.tcgdex.net/',
+  yugioh: 'https://images.ygoprodeck.com/',
 }
 
 /** An upstream image URL as the app serves it: from its own cache. */
@@ -36,7 +39,7 @@ export function tcgImageUrl(game: TcgGameId, url: unknown): string | null {
 }
 
 export const CARD_COLUMNS = `
-  c.id, c.lang, c.card_key, c.name, c.name_en, c.number, c.set_code, c.rarity, c.category,
+  c.id, c.lang, c.card_key, c.code, c.name, c.name_en, c.number, c.set_code, c.rarity, c.category,
   c.subtype, c.types, c.stats, c.text, c.image, c.thumb, c.finishes, c.price_eur,
   c.price_eur_foil, c.regulation, c.legal, c.banned, c.extra, s.name AS set_name`
 
@@ -96,12 +99,23 @@ function where(filters: TcgFilters): { clauses: string[], args: InValue[] } {
 
 export function buildBrowseQuery(filters: TcgFilters, lang: string, order: TcgSortOrder = 'recent', page = 1) {
   const w = where(filters)
-  const clause = `WHERE ${[SHOWN, ...w.clauses].join(' AND ')}`
+  // One printing per card: the newest one with a scan.
+  const unique = filters.unique
+    ? `c.rowid = (SELECT u.rowid FROM cards u LEFT JOIN sets us ON us.code = u.set_code AND us.lang = u.lang
+                   WHERE u.card_key = c.card_key AND u.lang = c.lang
+                   ORDER BY u.image IS NULL, us.released DESC LIMIT 1)`
+    : null
+  const clause = `WHERE ${[SHOWN, ...w.clauses, ...(unique ? [unique] : [])].join(' AND ')}`
+  // A searched name first: the card itself, then names starting with it,
+  // before the cards merely mentioning it.
+  const text = fold(filters.text ?? '')
+  const relevance = text ? `(c.name_folded = ?) DESC, (c.name_folded LIKE ? ESCAPE '\\') DESC, ` : ''
+  const relevanceArgs = text ? [text, `${text.replace(/[\\%_]/g, ch => `\\${ch}`)}%`] : []
   return {
     sql: `SELECT ${CARD_COLUMNS} FROM cards c ${SET_JOIN} ${clause}
-           ORDER BY ${ORDER_BY[order] ?? ORDER_BY.recent}
+           ORDER BY ${relevance}${ORDER_BY[order] ?? ORDER_BY.recent}
            LIMIT ? OFFSET ?`,
-    args: [lang, lang, ...w.args, TCG_PAGE_SIZE, Math.max(0, (page - 1) * TCG_PAGE_SIZE)] as InValue[],
+    args: [lang, lang, ...w.args, ...relevanceArgs, TCG_PAGE_SIZE, Math.max(0, (page - 1) * TCG_PAGE_SIZE)] as InValue[],
     countSql: `SELECT COUNT(*) AS total FROM cards c ${clause}`,
     countArgs: [lang, lang, ...w.args] as InValue[],
   }
@@ -203,6 +217,12 @@ export function toTcgCard(game: TcgGameId, r: Row): TcgCard {
     resistances: extra.resistances ?? [],
     evolveFrom: extra.evolveFrom ?? null,
     suffix: extra.suffix ?? null,
+    code: r.code == null ? null : String(r.code),
+    limit: extra.limit ?? null,
+    race: extra.race ?? null,
+    archetype: extra.archetype ?? null,
+    linkMarkers: extra.linkmarkers ?? [],
+    extraDeck: !!extra.extraDeck,
   }
 }
 

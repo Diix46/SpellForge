@@ -4,7 +4,7 @@ import type { DeckEntry } from '#shared/decklist'
 import type { TcgIssue, TcgLine, TcgValidation } from '#shared/tcg/deck'
 import type { TcgGameId } from '#shared/tcg/types'
 import { computed } from 'vue'
-import { copiesOf, zoneOf } from '#shared/tcg/deck'
+import { copiesOf, limitOf, zoneOf } from '#shared/tcg/deck'
 import { TCG_RULES } from '#shared/tcg/rules'
 import { TCG_UI, tcgCover, tcgLabel } from '~/utils/games/tcg'
 
@@ -84,7 +84,7 @@ function describe(i: TcgIssue): { text: string, level: TcgIssue['level'] } {
 }
 
 function canMore(line: TcgLine): boolean {
-  return !line.card || copiesOf(props.lines, line.card.key) < rules.value.copyLimit(line.card)
+  return !line.card || copiesOf(props.lines, line.card.key) < limitOf(rules.value, line.card)
 }
 
 /** Copies per type, for the pips under the list. */

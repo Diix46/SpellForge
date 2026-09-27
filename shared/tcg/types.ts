@@ -4,7 +4,7 @@
  * components/tcg. Magic and One Piece keep their own engines.
  */
 
-export const TCG_GAME_IDS = ['pokemon'] as const
+export const TCG_GAME_IDS = ['pokemon', 'yugioh'] as const
 export type TcgGameId = typeof TCG_GAME_IDS[number]
 
 export function isTcgGame(game: unknown): game is TcgGameId {
@@ -60,6 +60,15 @@ export interface TcgCard {
   evolveFrom: string | null
   /** "ex", "V"…: what the rules read on some cards. */
   suffix: string | null
+  /** The game's own code for the card (Yu-Gi-Oh: its passcode). */
+  code: string | null
+  /** Copies allowed by the banlist when fewer than the rules' (Yu-Gi-Oh: 0, 1 or 2). */
+  limit: number | null
+  /** Yu-Gi-Oh: monster type ("Spellcaster"), archetype, Link arrows, Extra Deck monster. */
+  race: string | null
+  archetype: string | null
+  linkMarkers: string[]
+  extraDeck: boolean
 }
 
 export interface TcgSet {

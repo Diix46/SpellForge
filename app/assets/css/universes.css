@@ -307,6 +307,133 @@ html[data-universe='pokemon'] body {
     radial-gradient(900px 480px at 0% 0%, rgba(var(--accent-rgb), 0.07), transparent 60%), var(--color-bg-base);
 }
 
+/* ------------------------------------------------------------------ Yu-Gi-Oh! */
+/* A pharaoh's tomb in the sun: sand and papyrus, gold leaf, the violet of the
+   Dark Magician; engraved capitals. At night, the shrine by torchlight. */
+html[data-universe='yugioh'] {
+  color-scheme: light;
+
+  --font-display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --font-sfx: 'Cinzel', Georgia, serif;
+  --u-case: none;
+  --u-track: 0.01em;
+
+  --color-bg-base: #efe6d2;
+  --color-bg-base-2: #e8dcc2;
+  --color-surface-1: #f8f1e1;
+  --color-surface-2: #f1e7d1;
+  --color-surface-3: #e5d7b8;
+
+  --color-ink-50: #faf6ec;
+  --color-ink-100: #f0e8d6;
+  --color-ink-200: #dfd2b4;
+  --color-ink-300: #c5b28b;
+  --color-ink-400: #a08b62;
+  --color-ink-500: #7a6744;
+  --color-ink-600: #5d4d33;
+  --color-ink-700: #463a26;
+  --color-ink-800: #30281b;
+  --color-ink-900: #211b12;
+  --color-ink-950: #140f09;
+
+  --color-text-high: #221a2e;
+  --color-text-mid: #45394f;
+  --color-text-muted: #66596a; /* 5.6:1 on the papyrus */
+  --color-text-disabled: #8b7e86;
+
+  --color-border-hairline: rgba(58, 40, 22, 0.13);
+  --color-border-subtle: rgba(58, 40, 22, 0.2);
+  --color-border-strong: rgba(58, 40, 22, 0.32);
+
+  /* Dark Magician violet, gold leaf. */
+  --accent-rgb: 107, 63, 160;
+  --accent-rgb-2: 201, 161, 61;
+  --u-sea: #2f7fd0;
+  --accent-text: #5a2f8c; /* 7.4:1 on the papyrus */
+
+  --ui-primary: #6b3fa0;
+  --ui-secondary: #b08a3a;
+
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 14px;
+  --u-tilt: 0deg;
+
+  /* A card slapped on the duel disk: quick, then still. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.2, 1.2, 0.4, 1);
+  --dur-fast: 0.15s;
+  --dur: 0.26s;
+  --dur-slow: 0.45s;
+
+  --shadow-elev-1: 0 1px 2px rgba(58, 40, 22, 0.1);
+  --shadow-elev-2: 0 8px 18px -10px rgba(58, 40, 22, 0.35);
+  --shadow-elev-3: 0 20px 44px -18px rgba(58, 40, 22, 0.45);
+  --accent-glow: 0 0 0 2px rgba(107, 63, 160, 0.25), 0 6px 18px -8px rgba(201, 161, 61, 0.6);
+  --accent-glow-soft: 0 4px 12px -6px rgba(107, 63, 160, 0.45);
+
+  --glass-bg: rgba(248, 241, 225, 0.82);
+  --glass-bg-strong: rgba(248, 241, 225, 0.94);
+  --glass-highlight: rgba(255, 255, 255, 0.5);
+  --glass-solid-sheen: rgba(58, 40, 22, 0.02);
+  --texture-line: rgba(58, 40, 22, 0.05);
+
+  /* Papyrus fibres, crossing. */
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02 .6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .08 0 0 0 .35 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+}
+
+html.dark[data-universe='yugioh'] {
+  color-scheme: dark;
+
+  --color-bg-base: #120f1c;
+  --color-bg-base-2: #171324;
+  --color-surface-1: #1d182c;
+  --color-surface-2: #251f37;
+  --color-surface-3: #2f2845;
+
+  --color-text-high: #f3ecdc;
+  --color-text-mid: #d6ccb8;
+  --color-text-muted: #a89e8c; /* 7:1 by torchlight */
+  --color-text-disabled: #7c7466;
+
+  --color-border-hairline: rgba(243, 236, 220, 0.07);
+  --color-border-subtle: rgba(243, 236, 220, 0.13);
+  --color-border-strong: rgba(243, 236, 220, 0.24);
+
+  --accent-rgb: 222, 183, 84;
+  --accent-rgb-2: 160, 110, 220;
+  --accent-text: #e9c86d; /* 10:1 by torchlight */
+
+  --ui-primary: #deb754;
+  --ui-secondary: #a06edc;
+
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-elev-2: 0 8px 18px -10px rgba(0, 0, 0, 0.7);
+  --shadow-elev-3: 0 20px 44px -18px rgba(0, 0, 0, 0.8);
+  --accent-glow: 0 0 0 2px rgba(222, 183, 84, 0.25), 0 6px 18px -8px rgba(222, 183, 84, 0.55);
+  --accent-glow-soft: 0 4px 14px -6px rgba(222, 183, 84, 0.5);
+
+  --glass-bg: rgba(29, 24, 44, 0.8);
+  --glass-bg-strong: rgba(29, 24, 44, 0.94);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-solid-sheen: rgba(255, 255, 255, 0.02);
+  --texture-line: rgba(255, 255, 255, 0.035);
+
+  --u-texture: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.02 .6' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .95 0 0 0 0 .9 0 0 0 0 .8 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+}
+html[data-universe='yugioh'] .u-display,
+html[data-universe='yugioh'] :where(h1, h2) {
+  font-weight: 700;
+}
+html[data-universe='yugioh'] body {
+  background:
+    var(--u-texture), radial-gradient(900px 480px at 80% -10%, rgba(var(--accent-rgb-2), 0.16), transparent 62%),
+    radial-gradient(800px 420px at 0% 0%, rgba(var(--accent-rgb), 0.07), transparent 60%), var(--color-bg-base);
+}
+
 /* ------------------------------------------------------------ Night sides */
 /* One Piece at night: the deck of the ship under lanterns — dark tarred wood,
    parchment-coloured ink, the poster red and the sea brighter to carry. */
@@ -520,6 +647,17 @@ html[data-universe] :focus-visible {
   -webkit-text-stroke: 2px #2f5aa8;
   text-shadow: 0 4px 0 #1b1d2a;
   animation: ufx-don 0.8s cubic-bezier(0.25, 1.4, 0.45, 1) forwards;
+}
+.ufx--yugioh {
+  font-family: 'Cinzel', Georgia, serif;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: 0.08em;
+  color: #f3d77a;
+  text-shadow:
+    0 0 14px rgba(160, 110, 220, 0.9),
+    0 2px 0 #221a2e;
+  animation: ufx-don 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 html.dark .ufx--mtg {
   color: #a8c3e8;

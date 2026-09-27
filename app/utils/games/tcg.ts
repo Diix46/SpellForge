@@ -27,6 +27,8 @@ export interface TcgUi {
   sampleLine: string
   /** The builder's stats: the stat giving a card's weight, if any (Pokémon HP). */
   stat: string | null
+  /** The search shows one printing per card: the game reprints a card dozens of times. */
+  uniqueSearch: boolean
 }
 
 export const TCG_UI: Record<TcgGameId, TcgUi> = {
@@ -87,6 +89,55 @@ export const TCG_UI: Record<TcgGameId, TcgUi> = {
     aspect: 63 / 88,
     sampleLine: '4 sv03.5-006',
     stat: 'hp',
+    uniqueSearch: false,
+  },
+  yugioh: {
+    categories: ['Monster', 'Spell', 'Trap'],
+    subtypes: {
+      Monster: ['Normal', 'Effect', 'Ritual', 'Fusion', 'Synchro', 'Xyz', 'Link'],
+      Spell: ['Normal', 'Quick-Play', 'Continuous', 'Equip', 'Field', 'Ritual'],
+      Trap: ['Normal', 'Continuous', 'Counter'],
+    },
+    types: ['DARK', 'LIGHT', 'EARTH', 'WATER', 'FIRE', 'WIND', 'DIVINE'],
+    typeColor: {
+      DARK: '#5b2d86',
+      LIGHT: '#e2b93b',
+      EARTH: '#8a5a2b',
+      WATER: '#2f7fd0',
+      FIRE: '#d9442b',
+      WIND: '#3a9a58',
+      DIVINE: '#c9a13d',
+    },
+    typeIcon: {
+      DARK: 'i-lucide-moon',
+      LIGHT: 'i-lucide-sun',
+      EARTH: 'i-lucide-mountain',
+      WATER: 'i-lucide-droplet',
+      FIRE: 'i-lucide-flame',
+      WIND: 'i-lucide-wind',
+      DIVINE: 'i-lucide-sparkles',
+    },
+    rarityOrder: [
+      'Quarter Century Secret Rare',
+      'Starlight Rare',
+      'Ghost Rare',
+      'Collector\'s Rare',
+      'Platinum Secret Rare',
+      'Prismatic Secret Rare',
+      'Ultimate Rare',
+      'Secret Rare',
+      'Gold Rare',
+      'Ultra Rare',
+      'Super Rare',
+      'Rare',
+      'Short Print',
+      'Common',
+    ],
+    colourless: null,
+    aspect: 59 / 86,
+    sampleLine: '3 LOB-EN005',
+    stat: 'atk',
+    uniqueSearch: true,
   },
 }
 

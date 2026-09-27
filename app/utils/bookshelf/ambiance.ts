@@ -7,6 +7,8 @@
  * along the bookcases, a swinging lantern, light off the water on the walls.
  * Pokémon, a professor's lab: pale walls, bay windows on green hills, a
  * red-and-white lamp on each bookcase, daylight and floating sparkles.
+ * Yu-Gi-Oh, a pharaoh's shrine: sandstone carved with glyphs, a golden eye
+ * glowing between the bookcases, torches, and sand in the air.
  *
  * Kept cheap: the moving lights follow the camera (two of them, whatever the
  * number of bookcases), flames and dust are one point cloud each, ropes one
@@ -77,7 +79,7 @@ function dust(THREE: typeof Three, span: Span, count: number, color: number, siz
   return { points, update, dispose: () => [geo, mat, tex].forEach(d => d.dispose()) }
 }
 
-const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a), lab: (...a) => lab(...a) }
+const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a), lab: (...a) => lab(...a), shrine: (...a) => shrine(...a) }
 
 export function buildAmbiance(THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: Span, room: Room, quality: Quality): Ambiance {
   return ROOMS[room](THREE, scene, span, quality, kit)
@@ -511,6 +513,139 @@ function lab(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quali
       sun.position.set(camX - 1.5, span.height + 1.2, 1.6)
       sky.position.set(camX + 3, span.height * 0.6, back + 1)
       sparkles.update(t, dt)
+      return true
+    },
+    dispose: () => disposables.forEach(d => d.dispose()),
+  }
+}
+
+// ---- Yu-Gi-Oh: a pharaoh's shrine ------------------------------------------
+
+function shrine(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
+  const disposables: { dispose: () => void }[] = []
+  const high = quality === 'high'
+  const cx = span.width / 2
+  const back = -span.depth / 2 - 0.25
+
+  // Sandstone blocks, a band of carved glyphs at eye height.
+  const wallTex = canvasTexture(THREE, 512, 512, (g) => {
+    g.fillStyle = '#6e5634'
+    g.fillRect(0, 0, 512, 512)
+    for (let y = 0; y < 512; y += 64) {
+      const offset = (y / 64) % 2 ? 64 : 0
+      for (let x = -offset; x < 512; x += 128) {
+        const tone = 96 + Math.random() * 18
+        g.fillStyle = `rgb(${tone + 14},${tone * 0.8},${tone * 0.5})`
+        g.fillRect(x + 2, y + 2, 124, 60)
+        for (let i = 0; i < 18; i++) {
+          g.fillStyle = `rgba(40,25,10,${0.05 + Math.random() * 0.08})`
+          g.fillRect(x + Math.random() * 120, y + Math.random() * 58, 2 + Math.random() * 6, 1 + Math.random() * 3)
+        }
+      }
+    }
+    g.fillStyle = 'rgba(30,18,6,0.55)'
+    g.font = '30px serif'
+    g.textAlign = 'center'
+    const glyphs = '𓂀𓋹𓆣𓇳𓊽𓅓𓃭𓁹𓆓𓂋'
+    for (let i = 0; i < 10; i++)
+      g.fillText([...glyphs][i % 10]!, 26 + i * 51, 300)
+  })
+  wallTex.wrapS = THREE.RepeatWrapping
+  wallTex.repeat.set((span.width + 30) / 6, 1)
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.95 }))
+  wall.position.set(cx, span.height / 2 + 1.5, back)
+  wall.receiveShadow = true
+  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 5, { color: 0x8A6A48 }) : new THREE.MeshStandardMaterial({ color: 0x5A4428, roughness: 0.85 })
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
+  floor.rotation.x = -Math.PI / 2
+  floor.position.set(cx, -0.3, 4)
+  floor.receiveShadow = true
+  scene.add(wall, floor)
+  disposables.push(wallTex, wall.geometry, wall.material as Three.Material, floor.geometry, floor.material as Three.Material)
+
+  // The golden eye between the bookcases, breathing light.
+  const eye = canvasTexture(THREE, 512, 512, (g) => {
+    g.translate(256, 256)
+    g.strokeStyle = 'rgba(255,210,110,0.95)'
+    g.shadowColor = 'rgba(255,190,60,1)'
+    g.shadowBlur = 20
+    g.lineWidth = 9
+    g.beginPath()
+    g.moveTo(-190, 0)
+    g.quadraticCurveTo(0, -150, 190, 0)
+    g.quadraticCurveTo(0, 150, -190, 0)
+    g.stroke()
+    g.beginPath()
+    g.arc(0, 0, 58, 0, Math.PI * 2)
+    g.stroke()
+    g.fillStyle = 'rgba(255,215,120,0.9)'
+    g.beginPath()
+    g.arc(0, 0, 26, 0, Math.PI * 2)
+    g.fill()
+    g.beginPath()
+    g.moveTo(-40, 70)
+    g.quadraticCurveTo(-30, 160, -110, 190)
+    g.moveTo(30, 80)
+    g.lineTo(60, 200)
+    g.stroke()
+    // The triangle around it.
+    g.lineWidth = 5
+    g.beginPath()
+    g.moveTo(0, -240)
+    g.lineTo(230, 200)
+    g.lineTo(-230, 200)
+    g.closePath()
+    g.stroke()
+  })
+  const eyeMat = new THREE.MeshBasicMaterial({ map: eye, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })
+  const eyeGeo = new THREE.PlaneGeometry(2.4, 2.4)
+  const spots = [-span.gap - 1.2, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + 1.2]
+  for (const x of spots) {
+    const m = new THREE.Mesh(eyeGeo, eyeMat)
+    m.position.set(x, span.height * 0.62, back + 0.02)
+    scene.add(m)
+  }
+  disposables.push(eye, eyeMat, eyeGeo)
+
+  // A torch on each side of each bookcase: a bronze cup and its flame.
+  const cups: Three.BufferGeometry[] = []
+  const flamePos: number[] = []
+  for (let c = 0; c < span.cases; c++) {
+    const x0 = c * (span.caseWidth + span.gap)
+    for (const x of [x0 - 0.35, x0 + span.caseWidth + 0.35]) {
+      const g = new THREE.CylinderGeometry(0.12, 0.05, 0.22, 14)
+      g.translate(x, span.height * 0.8, back + 0.35)
+      cups.push(g)
+      flamePos.push(x, span.height * 0.8 + 0.22, back + 0.35)
+    }
+  }
+  const bronze = new THREE.Mesh(mergeAll(THREE, cups), new THREE.MeshStandardMaterial({ color: 0xB08A3A, metalness: 0.9, roughness: 0.35 }))
+  const flameGeo = new THREE.BufferGeometry()
+  flameGeo.setAttribute('position', new THREE.Float32BufferAttribute(flamePos, 3))
+  const flameTex = glowTexture(THREE, 'rgba(255,240,200,1)', 'rgba(255,130,30,0.6)')
+  const flameMat = new THREE.PointsMaterial({ map: flameTex, size: 0.7, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+  const flames = new THREE.Points(flameGeo, flameMat)
+  scene.add(bronze, flames)
+  disposables.push(bronze.geometry, bronze.material as Three.Material, flameGeo, flameTex, flameMat)
+
+  const torch = new THREE.PointLight(0xFFA850, high ? 9 : 6, 10, 1.5)
+  const gold = new THREE.PointLight(0xFFD27A, 3, 9, 1.8)
+  scene.add(torch, gold)
+  scene.fog = new THREE.FogExp2(0x2A1E10, 0.02)
+
+  const sand = dust(THREE, span, high ? 320 : 110, 0xFFD89A, 0.04)
+  scene.add(sand.points)
+  disposables.push(sand)
+
+  return {
+    update(t, dt, camX) {
+      const flicker = 1 + Math.sin(t * 9) * 0.07 + Math.sin(t * 21.3) * 0.04
+      torch.intensity = (high ? 9 : 6) * flicker
+      torch.position.set(camX, span.height + 0.6, 1.5)
+      gold.position.set(camX + 3, span.height * 0.62, back + 0.8)
+      flameMat.size = 0.7 * flicker
+      eyeMat.opacity = 0.5 + Math.sin(t * 0.8) * 0.15
+      sand.update(t, dt)
       return true
     },
     dispose: () => disposables.forEach(d => d.dispose()),

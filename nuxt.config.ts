@@ -107,7 +107,7 @@ export default defineNuxtConfig({
       { name: 'Anton', provider: 'google', weights: [400] },
       { name: 'Bangers', provider: 'google', weights: [400] },
       // Magic's binder spines: engraved capitals.
-      { name: 'Cinzel', provider: 'google', weights: [600] },
+      { name: 'Cinzel', provider: 'google', weights: [600, 700] },
       // Pokémon: round and bold, a Pokédex screen's voice.
       { name: 'Fredoka', provider: 'google', weights: [500, 700] },
     ],

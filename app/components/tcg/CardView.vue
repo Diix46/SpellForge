@@ -28,6 +28,10 @@ const c = computed(() => shownCard.value)
 const money = (v: number | null) => (v == null ? null : `${v.toLocaleString(props.lang === 'fr' ? 'fr-FR' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`)
 const formats = computed(() => TCG_RULES[props.game].formats)
 const kind = computed(() => [label('category', c.value.category), label('subtype', c.value.subtype)].filter(Boolean).join(' · '))
+// Numbers the card prints besides Pokémon's (Yu-Gi-Oh: Level or Rank, ATK/DEF, Link, Scale).
+const STAT_ORDER = ['level', 'rank', 'link', 'atk', 'def', 'scale']
+const statFacts = computed(() => STAT_ORDER.filter(k => c.value.stats[k] != null).map(k => ({ id: k, label: t(`${props.game}.${k}`), value: String(c.value.stats[k]) })))
+const race = computed(() => [c.value.race, c.value.archetype && c.value.archetype !== c.value.race ? c.value.archetype : null].filter(Boolean).join(' · '))
 </script>
 
 <template>
@@ -80,7 +84,21 @@ const kind = computed(() => [label('category', c.value.category), label('subtype
         <p v-if="c.evolveFrom" class="evolve">
           {{ t('pokemon.evolvesFrom') }} <b>{{ c.evolveFrom }}</b>
         </p>
+        <p v-if="race" class="evolve">
+          {{ race }}
+        </p>
+        <p v-if="c.banned || c.limit" class="limit" :class="{ banned: c.banned }">
+          <UIcon name="i-lucide-octagon-alert" class="h-4 w-4" />
+          {{ c.banned ? t('tcg.banned') : t(`tcg.limit.${c.limit}`) }}
+        </p>
       </header>
+
+      <dl v-if="statFacts.length" class="facts">
+        <div v-for="f in statFacts" :key="f.id" class="fact">
+          <dt>{{ f.label }}</dt>
+          <dd>{{ f.value }}</dd>
+        </div>
+      </dl>
 
       <section v-if="c.abilities.length || c.attacks.length" class="moves">
         <div v-for="a in c.abilities" :key="`ab-${a.name}`" class="move">
@@ -144,6 +162,9 @@ const kind = computed(() => [label('category', c.value.category), label('subtype
         </div>
       </dl>
 
+      <p v-if="game === 'yugioh' && c.price != null" class="note">
+        {{ t('tcg.priceFloor') }}
+      </p>
       <p v-if="c.illustrator" class="note">
         {{ t('tcg.illustrator') }} {{ c.illustrator }}
       </p>
@@ -281,6 +302,22 @@ const kind = computed(() => [label('category', c.value.category), label('subtype
   margin: 6px 0 0;
   font-size: 13px;
   color: var(--color-text-muted);
+}
+.limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #d9a91c 18%, transparent);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-high);
+}
+.limit.banned {
+  background: color-mix(in srgb, #c9312a 18%, transparent);
+  color: #b0261f;
 }
 .moves {
   display: grid;

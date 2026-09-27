@@ -15,7 +15,7 @@ import { SpineAtlas } from './atlas'
 import { hueOf } from './layout'
 
 /** The room around the bookcases (ambiance.ts). */
-export type Room = 'arcanist' | 'cabin' | 'lab'
+export type Room = 'arcanist' | 'cabin' | 'lab' | 'shrine'
 export type Quality = 'high' | 'low'
 
 export interface LibraryEvents {
@@ -367,9 +367,10 @@ export class Library {
 
   private lights(span: { width: number, height: number }): void {
     const { THREE } = this
-    const warm = this.opts.room === 'arcanist' ? 0xFFD9A8 : 0xFFE7C4
-    // Magic: a dim room where the candles do the lighting; One Piece: daylight.
-    const mtg = this.opts.room === 'arcanist'
+    // Magic and Yu-Gi-Oh: dim rooms where candles and torches do the lighting;
+    // One Piece and Pokémon: daylight.
+    const mtg = this.opts.room === 'arcanist' || this.opts.room === 'shrine'
+    const warm = mtg ? 0xFFD9A8 : 0xFFE7C4
     this.scene.add(new THREE.HemisphereLight(0xFFF1DD, 0x2A1C12, mtg ? 0.32 : 0.7))
     const key = new THREE.DirectionalLight(warm, mtg ? 1.05 : 1.6)
     key.position.set(span.width / 2 + 2.5, span.height + 3, 6)
