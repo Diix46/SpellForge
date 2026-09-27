@@ -36,8 +36,35 @@ const worlds = computed(() => worldsData.value?.worlds ?? [])
 
 <style scoped>
 .home {
+  /* The landing's own palette for its paper sections, by day and by night
+     (the hero, the journey and the finale are night in both). */
+  --l-bg: #f2f2ef;
+  --l-bg-2: #eceeea;
+  --l-panel: #ffffff;
+  --l-ink: #1b1f22;
+  --l-mid: #454d52;
+  --l-muted: #616a6f;
+  --l-line: rgba(27, 31, 34, 0.14);
+  --l-line-strong: rgba(27, 31, 34, 0.3);
+  --l-chip: #1b1f22;
+  --l-chip-ink: #f7f7f5;
+  --l-empty: #e2e4e0;
   min-height: 100vh;
-  background: #f2f2ef;
+  background: var(--l-bg);
+  color: var(--l-ink);
   overflow-x: clip;
+}
+html.dark .home {
+  --l-bg: #0e0e12;
+  --l-bg-2: #131318;
+  --l-panel: #1b1b22;
+  --l-ink: #f1efe9;
+  --l-mid: #c2c0b9;
+  --l-muted: #97958f;
+  --l-line: rgba(255, 255, 255, 0.1);
+  --l-line-strong: rgba(255, 255, 255, 0.28);
+  --l-chip: #f1efe9;
+  --l-chip-ink: #0e0e12;
+  --l-empty: #23232b;
 }
 </style>

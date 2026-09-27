@@ -44,9 +44,8 @@ const { t, formatShortDate } = useLocale()
 <style scoped>
 .showcase {
   padding: 90px clamp(20px, 5vw, 88px);
-  /* The light paper of the sections around it: its text is dark. */
-  background: #f2f2ef;
-  color: #1b1f22;
+  background: var(--l-bg);
+  color: var(--l-ink);
 }
 .head {
   display: flex;
@@ -59,7 +58,7 @@ const { t, formatShortDate } = useLocale()
 }
 .kicker {
   margin: 0 0 6px;
-  color: #616a6f;
+  color: var(--l-muted);
   font-size: 11px;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -71,21 +70,21 @@ const { t, formatShortDate } = useLocale()
 }
 .sub {
   margin: 6px 0 0;
-  color: #616a6f;
+  color: var(--l-muted);
 }
 .all {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 9px 16px;
-  border: 1px solid rgba(27, 31, 34, 0.25);
+  border: 1px solid var(--l-line-strong);
   border-radius: 999px;
-  color: #1b1f22;
+  color: var(--l-ink);
   font-size: 14px;
   text-decoration: none;
 }
 .all:hover {
-  border-color: #1b1f22;
+  border-color: var(--l-ink);
 }
 .grid {
   display: grid;

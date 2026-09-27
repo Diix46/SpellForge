@@ -119,7 +119,7 @@ const rows = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: min(150px, 46%);
+  width: min(190px, 44%);
   flex-shrink: 0;
   animation: file 70s linear infinite;
 }

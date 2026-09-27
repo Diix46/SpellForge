@@ -79,13 +79,13 @@ const sprite = (id: number) => `/api/images/sprites/${id}.webp`
 .h3 {
   fill: #4a9c45;
 }
-:global(html.dark) .h1 {
+html.dark .h1 {
   fill: #20452f;
 }
-:global(html.dark) .h2 {
+html.dark .h2 {
   fill: #183a28;
 }
-:global(html.dark) .h3 {
+html.dark .h3 {
   fill: #0f2a1d;
 }
 /* A Pokémon crossing the page, bounding on the way. */
@@ -117,7 +117,7 @@ const sprite = (id: number) => `/api/images/sprites/${id}.webp`
   filter: drop-shadow(0 26px 10px rgba(20, 50, 20, 0.22));
   animation: drift 3.2s ease-in-out infinite alternate;
 }
-:global(html.dark) .mon img {
+html.dark .mon img {
   filter: brightness(0.78) saturate(0.9) drop-shadow(0 6px 5px rgba(0, 0, 0, 0.45));
 }
 @keyframes cross {

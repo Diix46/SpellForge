@@ -42,14 +42,14 @@ const { t } = useLocale()
 
 <style scoped>
 .foot {
-  --color-text-high: #1b1f22;
+  --color-text-high: var(--l-ink);
   display: grid;
   grid-template-columns: 1.2fr 0.8fr 2fr;
   gap: 32px;
   padding: 56px clamp(20px, 5vw, 88px) calc(40px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid rgba(27, 31, 34, 0.12);
-  background: #f2f2ef;
-  color: #616a6f;
+  border-top: 1px solid var(--l-line);
+  background: var(--l-bg);
+  color: var(--l-muted);
   font-size: 13px;
   line-height: 1.55;
 }
@@ -64,14 +64,14 @@ const { t } = useLocale()
 }
 .col h3 {
   margin: 0 0 6px;
-  color: #1b1f22;
+  color: var(--l-ink);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 .col a {
-  color: #1b1f22;
+  color: var(--l-ink);
   text-decoration: none;
 }
 .col a:hover {
