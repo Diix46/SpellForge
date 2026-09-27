@@ -164,7 +164,7 @@ export async function renderDeckCard(opts: {
     if (!card)
       return null
     const turned = await sharp(card).rotate(angle, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).png().toBuffer({ resolveWithObject: true })
-    const cx = 850 + spread * 95
+    const cx = 880 + spread * 88
     const cy = 330 + Math.abs(spread) * 18
     return { input: turned.data, left: Math.round(cx - turned.info.width / 2), top: Math.round(cy - turned.info.height / 2) }
   }))).filter(c => c != null)
@@ -173,10 +173,12 @@ export async function renderDeckCard(opts: {
   // smaller when long), its size; Prism at the foot.
   const f = loadFonts()
   let size = 84
-  let lines = wrap(f.display, opts.name, size, 540)
-  while (lines.length > 2 && size > 52) {
-    size -= 8
-    lines = wrap(f.display, opts.name, size, 540)
+  // Left of the fan: the words keep to their column.
+  const COL = 420
+  let lines = wrap(f.display, opts.name.toUpperCase(), size, COL)
+  while ((lines.length > 2 || lines.some(l => advance(f.display, l, size) > COL)) && size > 44) {
+    size -= 6
+    lines = wrap(f.display, opts.name.toUpperCase(), size, COL)
   }
   lines = lines.slice(0, 3)
   const lead = size * 1.05
