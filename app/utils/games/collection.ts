@@ -137,8 +137,8 @@ export const COLLECTION_CLIENT: Record<GameId, CollectionClient> = {
     colour: id => ({ hex: OPTCG_COLOR_HEX[id as keyof typeof OPTCG_COLOR_HEX] ?? '#999', label: `optcg.color.${id}` }),
     library: { face: 'Anton, Impact, sans-serif', weight: 400, wood: 'wood_planks', wall: 'planks_wall', room: 'cabin' },
   },
-  pokemon: tcgClient('pokemon', { face: 'Fredoka, Verdana, sans-serif', weight: 700, wood: 'wood_planks', wall: 'planks_wall', room: 'lab' }),
-  yugioh: tcgClient('yugioh', { face: 'Oswald, \'Arial Narrow\', sans-serif', weight: 600, wood: 'wood_dark', wall: 'wood_dark', room: 'shrine' }),
+  pokemon: tcgClient('pokemon', { face: 'Cabin, \'Gill Sans\', sans-serif', weight: 700, wood: 'wood_planks', wall: 'planks_wall', room: 'lab' }),
+  yugioh: tcgClient('yugioh', { face: '\'Spectral SC\', Georgia, serif', weight: 700, wood: 'wood_dark', wall: 'wood_dark', room: 'shrine' }),
   riftbound: tcgClient('riftbound', { face: 'Cinzel, Georgia, serif', weight: 700, wood: 'wood_dark', wall: 'wood_dark', room: 'hextech' }),
 }
 

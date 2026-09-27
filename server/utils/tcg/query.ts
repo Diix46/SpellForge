@@ -229,6 +229,9 @@ export function toTcgCard(game: TcgGameId, r: Row): TcgCard {
     landscape: !!extra.landscape,
     flavour: extra.flavour ?? null,
     art: tcgImageUrl(game, extra.art),
+    translated: !!extra.translated,
+    textEn: extra.textEn ?? null,
+    flavourEn: extra.flavourEn ?? null,
   }
 }
 

@@ -4,8 +4,8 @@
  * with Cardmarket's public price guide (EUR).
  *
  * Source: https://api.riftcodex.com (every card, 100 a page, and the sets),
- * English only — Riot publishes no French card data yet; the rows are ready
- * for it (a French pass would add `fr` rows). A printing is a card in a set,
+ * English only — Riot publishes no French card data; the unofficial French
+ * rows come from scripts/translate-riftbound.mjs (its cache is applied here). A printing is a card in a set,
  * variants included (alternate art, signature, overnumbered): "unl-116a-219".
  * The rules count copies by name, variants together.
  *
@@ -21,6 +21,7 @@ import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { fold, getJson, mapPool, rebuildSearch, SCHEMA, SCHEMA_VERSION, workingCopy } from './tcg/schema.mjs'
+import { applyTranslations, translationsDb } from './tcg/translations.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DB_PATH = process.env.RIFTBOUND_CARDS_DB ? resolve(process.env.RIFTBOUND_CARDS_DB) : resolve(ROOT, '.data/cards-riftbound.db')
@@ -159,6 +160,12 @@ async function main() {
     sql: 'INSERT OR REPLACE INTO sets (code, lang, name, abbr, series, released, total, symbol, logo, signature) VALUES (?, \'en\', ?, ?, NULL, ?, ?, NULL, NULL, NULL)',
     args: [String(s.set_id).toUpperCase(), s.name, String(s.set_id).toUpperCase(), s.published_on ? String(s.published_on).slice(0, 10) : null, Number(s.card_count ?? 0)],
   })), 'write')
+  // The unofficial French kept so far (scripts/translate-riftbound.mjs).
+  const tdb = translationsDb(resolve(dirname(DB_PATH), 'translations-riftbound.db'))
+  const french = await applyTranslations(db, tdb)
+  tdb.close()
+  if (french)
+    log(`  ${french} cartes en français (traduction non officielle)`)
   await rebuildSearch(db)
   await db.batch([
     { sql: 'INSERT OR REPLACE INTO meta (key, value) VALUES (\'schema_version\', ?)', args: [SCHEMA_VERSION] },
