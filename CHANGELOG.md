@@ -1,3 +1,11 @@
+## [0.45.0](https://github.com/Diix46/SpellForge/compare/v0.44.1...v0.45.0) (2026-09-27)
+
+### Features
+
+* **pokemon:** bibliothèque, fiche, deckbuilder, partage et thème Pokémon ([263ed09](https://github.com/Diix46/SpellForge/commit/263ed09d5b9b7fdb98615b4d4b3f5a5d22ae7202))
+* **pokemon:** collection Pokémon (adaptateurs, finitions holo/reverse, salle du labo) ([ff8b927](https://github.com/Diix46/SpellForge/commit/ff8b927eef31850512dec28b53726cd822e76855))
+* **pokemon:** moteur générique de cartes, ingestion TCGdex et règles de deck Pokémon ([33bc522](https://github.com/Diix46/SpellForge/commit/33bc5221308e3de5402cb05273a3007b70e22b1a))
+
 ## [0.44.1](https://github.com/Diix46/SpellForge/compare/v0.44.0...v0.44.1) (2026-09-26)
 
 ### Bug Fixes
