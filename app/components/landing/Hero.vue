@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { LandingCard, LandingPoster } from '#shared/landing'
 import { computed } from 'vue'
-import { libraryPath } from '#shared/game'
+import { GAME_LIST, libraryPath } from '#shared/game'
 import { tideFromMagic, tideFromPoster } from '~/utils/cardTide'
 
 // Two worlds in one pile of cards: One Piece washes in from the left, Magic
@@ -26,10 +26,9 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
     <template #default="{ op, mtg }">
       <div class="stage">
         <div class="panel" data-tide-pocket>
-          <div class="kickers">
-            <span class="kicker kicker--op">{{ t('home.hero.opKicker') }}</span>
-            <span class="kicker kicker--mtg">{{ t('home.hero.mtgKicker') }}</span>
-          </div>
+          <p class="games">
+            {{ GAME_LIST.map(g => g.label).join(' · ') }}
+          </p>
 
           <!-- One headline, two inks: the copy for the day side is decoration. -->
           <h1 class="headline">
@@ -40,22 +39,23 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
             {{ t('home.hero.sub') }}
           </p>
 
-          <div class="doors">
-            <div class="door door--op">
-              <NuxtLink :to="libraryPath('optcg')" class="cta cta--op">
-                {{ t('home.hero.opCta') }}
-                <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
-              </NuxtLink>
-              <span class="line">{{ t('home.hero.opLine') }}</span>
-            </div>
-            <div class="door door--mtg">
-              <NuxtLink :to="libraryPath('mtg')" class="cta cta--mtg">
-                {{ t('home.hero.mtgCta') }}
-                <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
-              </NuxtLink>
-              <span class="line">{{ t('home.hero.mtgLine') }}</span>
-            </div>
-          </div>
+          <!-- One door per world, in its colour. -->
+          <nav class="worlds" :aria-label="t('home.gallery.kicker')">
+            <NuxtLink
+              v-for="g in GAME_LIST"
+              :key="g.id"
+              :to="libraryPath(g.id)"
+              class="world-door"
+              :style="{ '--swatch': g.swatch }"
+            >
+              <UIcon :name="g.icon" class="h-4 w-4" />
+              {{ g.label }}
+            </NuxtLink>
+          </nav>
+          <a href="#gallery" class="more">
+            {{ t('home.hero.gallery') }}
+            <UIcon name="i-lucide-arrow-down" class="h-4 w-4" />
+          </a>
 
           <p class="hint">
             <UIcon name="i-lucide-hand" class="h-3.5 w-3.5 shrink-0" />
@@ -202,7 +202,59 @@ const mtgCards = computed(() => props.cards.map(tideFromMagic))
   text-wrap: balance;
 }
 
-/* ---- the two doors ---- */
+/* ---- a door per world ---- */
+.games {
+  margin: -8px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #5c6462;
+  text-align: center;
+}
+.worlds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+.world-door {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--swatch) 55%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--swatch) 12%, rgba(255, 255, 255, 0.7));
+  color: #1b1f22;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    transform 0.25s cubic-bezier(0.2, 0.9, 0.25, 1),
+    background 0.2s ease;
+}
+.world-door .iconify {
+  color: var(--swatch);
+}
+.world-door:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--swatch) 24%, rgba(255, 255, 255, 0.8));
+}
+.world-door:focus-visible {
+  outline: 2px solid var(--swatch);
+  outline-offset: 2px;
+}
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #454d52;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .doors {
   display: grid;
   grid-template-columns: 1fr 1fr;

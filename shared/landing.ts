@@ -38,9 +38,15 @@ export interface LandingHit {
   path: string
 }
 
-export interface LandingSearch {
-  optcg: LandingHit[]
-  mtg: LandingHit[]
+/** The first hits of each game, in display order. */
+export type LandingSearch = Partial<Record<GameId, LandingHit[]>>
+
+/** A game in the landing's gallery: its size and a fan of its cards. */
+export interface LandingWorld {
+  game: GameId
+  /** Distinct cards (Magic: those legal in Commander). */
+  cards: number
+  fan: { name: string, image: string, path: string }[]
 }
 
 export interface LandingDeck {

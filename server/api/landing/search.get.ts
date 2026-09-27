@@ -1,15 +1,18 @@
 /**
- * The landing's single search box: the first cards of both games whose name
+ * The landing's single search box: the first cards of every game whose name
  * starts with (or contains) the text, in the site language, each with its
  * image and its own page. Local databases only.
  */
 import type { LandingHit, LandingSearch } from '../../../shared/landing'
 import { cardPath } from '../../../shared/game'
+import { TCG_GAME_IDS } from '../../../shared/tcg/types'
 import { useMtgCardsDb, useOptcgCardsDb } from '../../utils/cards/db'
 import { buildAutocompleteQuery } from '../../utils/cards/mtg-query'
 import { resolveEntries } from '../../utils/cards/mtg-resolve'
 import { buildOptcgAutocompleteQuery } from '../../utils/cards/optcg-query'
 import { toOptcgCard } from '../../utils/cards/optcg-shape'
+import { useTcgDb } from '../../utils/tcg/db'
+import { buildAutocompleteQuery as buildTcgAutocompleteQuery, toTcgCard } from '../../utils/tcg/query'
 
 const PER_GAME = 6
 
@@ -27,11 +30,13 @@ export default defineEventHandler(async (event): Promise<LandingSearch> => {
   const text = typeof q.q === 'string' ? q.q.trim().slice(0, 60) : ''
   const lang = q.lang === 'en' ? 'en' : 'fr'
   if (text.length < 2)
-    return { optcg: [], mtg: [] }
+    return {}
 
-  const [op, names] = await Promise.all([
+  const [op, names, ...tcg] = await Promise.all([
     useOptcgCardsDb().execute(buildOptcgAutocompleteQuery(text, lang, PER_GAME)),
     useMtgCardsDb().execute(buildAutocompleteQuery(text, PER_GAME)),
+    // A database still being built finds nothing rather than failing the box.
+    ...TCG_GAME_IDS.map(g => useTcgDb(g).execute(buildTcgAutocompleteQuery(text, lang, PER_GAME)).then(r => r.rows).catch(() => [])),
   ])
   const resolved = await resolveEntries(useMtgCardsDb(), names.rows.map(r => ({ name: String(r.name) })), lang)
 
@@ -55,5 +60,9 @@ export default defineEventHandler(async (event): Promise<LandingSearch> => {
       path: cardPath('mtg', c.name),
     }]
   })
-  return { optcg, mtg }
+  const out: LandingSearch = { optcg, mtg }
+  TCG_GAME_IDS.forEach((g, i) => {
+    out[g] = tcg[i]!.map(r => toTcgCard(g, r)).map(c => ({ id: c.id, name: c.name, meta: c.setName ?? c.set, image: c.thumb || null, path: cardPath(g, c.id) }))
+  })
+  return out
 })
