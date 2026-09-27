@@ -103,6 +103,13 @@ async function refreshPrices(db) {
   })).filter(Boolean)
   for (let i = 0; i < updates.length; i += 500)
     await db.batch(updates.slice(i, i + 500), 'write')
+  // TCGdex ties some cards to another's Cardmarket product (four XY promos
+  // priced as one 5 550 € product): a product shared by distinct cards is a
+  // wrong link, and no price beats a wrong one.
+  const { rowsAffected } = await db.execute(`UPDATE cards SET price_eur = NULL, price_eur_foil = NULL
+                                              WHERE cardmarket_id IN (SELECT cardmarket_id FROM cards WHERE cardmarket_id IS NOT NULL
+                                                                       GROUP BY cardmarket_id HAVING COUNT(DISTINCT id) > 1)`)
+  log(`  prix écartés (produit Cardmarket partagé par plusieurs cartes) : ${rowsAffected} lignes`)
   log(`  prix du jour : ${priced} cartes cotées sur ${rows.length}${failed ? `, ${failed} illisibles` : ''} · ${Math.round((Date.now() - t0) / 1000)} s`)
 }
 

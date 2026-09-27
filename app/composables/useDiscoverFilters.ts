@@ -10,11 +10,17 @@ export interface DiscoverDeck {
   game: GameId
   raw: string
   owner: string
+  /** The author's public profile, when they opened one. */
+  ownerProfile?: string | null
+  likes?: number
+  liked?: boolean
+  /** The member's own deck (no liking it). */
+  mine?: boolean
   createdAt: number
   updatedAt: number
 }
 
-export type DiscoverSort = 'recent' | 'name' | 'size'
+export type DiscoverSort = 'recent' | 'popular' | 'name' | 'size'
 export type DiscoverPeriod = 'all' | '7' | '30' | '365'
 
 export interface DiscoverFilters {
@@ -68,7 +74,9 @@ export function useDiscoverFilters(decks: Ref<DiscoverDeck[]>, fingerprints: Ref
     })
     const size = (d: DiscoverDeck) => fingerprints.value.get(d.id)?.count ?? 0
     const name = (d: DiscoverDeck) => d.name.toLowerCase()
-    if (filters.sort === 'name')
+    if (filters.sort === 'popular')
+      list.sort((a, b) => (b.likes ?? 0) - (a.likes ?? 0) || b.updatedAt - a.updatedAt)
+    else if (filters.sort === 'name')
       list.sort((a, b) => name(a).localeCompare(name(b)))
     else if (filters.sort === 'size')
       list.sort((a, b) => size(b) - size(a))

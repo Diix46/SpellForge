@@ -13,7 +13,7 @@ const props = defineProps<{ copy: CollectionCopy | null, name: string }>()
 const emit = defineEmits<{ save: [id: string, edit: CopyEdit], remove: [id: string] }>()
 const open = defineModel<boolean>('open', { required: true })
 const { t, locale, finishLabel } = useLocale()
-const form = reactive({ printingId: '', lang: 'en' as 'fr' | 'en', finish: 'nonfoil' as Finish, condition: 'NM' as Condition, quantity: 1, location: '', note: '' })
+const form = reactive({ printingId: '', lang: 'en' as 'fr' | 'en', finish: 'nonfoil' as Finish, condition: 'NM' as Condition, quantity: 1, location: '', note: '', forTrade: 0, featured: false })
 
 // The card's other printings, loaded when asked for.
 const prints = ref<PrintChoice[]>([])
@@ -27,7 +27,7 @@ const client = computed(() => collectionClient(game.value))
 watch(() => props.copy, (c) => {
   if (!c)
     return
-  Object.assign(form, { printingId: c.printingId, lang: c.lang, finish: c.finish, condition: c.condition, quantity: c.quantity, location: c.location ?? '', note: c.note ?? '' })
+  Object.assign(form, { printingId: c.printingId, lang: c.lang, finish: c.finish, condition: c.condition, quantity: c.quantity, location: c.location ?? '', note: c.note ?? '', forTrade: c.forTrade ?? 0, featured: (c.featured ?? 0) > 0 })
   prints.value = []
   choosing.value = false
 }, { immediate: true })
@@ -103,7 +103,11 @@ function save() {
     quantity: Math.max(1, Math.min(MAX_COPIES, Math.round(Number(form.quantity) || 1))),
     location: form.location.trim() || null,
     note: form.note.trim() || null,
+    forTrade: Math.max(0, Math.min(Number(form.quantity) || 1, Math.round(Number(form.forTrade) || 0))),
   }
+  // Into the showcase at the end, out of it at once.
+  if (form.featured !== ((props.copy.featured ?? 0) > 0))
+    edit.featured = form.featured ? 999 : 0
   if (changed.value)
     edit.printingId = form.printingId
   if (client.value.language === 'copy' && form.lang !== props.copy.lang)
@@ -153,7 +157,11 @@ function save() {
             <UFormField :label="t('collection.quantity')">
               <UInputNumber v-model="form.quantity" :min="1" :max="MAX_COPIES" class="w-full" />
             </UFormField>
+            <UFormField :label="t('collection.forTrade')" :hint="t('collection.forTradeHint')">
+              <UInputNumber v-model="form.forTrade" :min="0" :max="Number(form.quantity) || 1" class="w-full" />
+            </UFormField>
           </div>
+          <USwitch v-model="form.featured" :label="t('collection.featured')" />
           <UFormField :label="t('collection.location')" :hint="t('collection.optional')">
             <UInput v-model="form.location" :placeholder="t('collection.locationPlaceholder')" icon="i-lucide-archive" maxlength="80" class="w-full" />
           </UFormField>

@@ -40,11 +40,13 @@ export function useWishlist(game: GameId) {
     items.value = [item, ...items.value.filter(i => i.id !== item.id)]
   }
 
-  async function add(printingId: string, opts: { finish?: Finish, anyPrinting?: boolean } = {}): Promise<boolean> {
+  /** `silent`: no toast of its own (a batch says it once). */
+  async function add(printingId: string, opts: { finish?: Finish, anyPrinting?: boolean, quantity?: number, silent?: boolean } = {}): Promise<boolean> {
     try {
-      const { item } = await $fetch<{ item: WishItem }>('/api/collection/wishlist', { method: 'POST', body: { game, printingId, anyPrinting: opts.anyPrinting ?? true, finish: opts.finish ?? 'nonfoil' } })
+      const { item } = await $fetch<{ item: WishItem }>('/api/collection/wishlist', { method: 'POST', body: { game, printingId, anyPrinting: opts.anyPrinting ?? true, finish: opts.finish ?? 'nonfoil', quantity: opts.quantity ?? 1 } })
       put(item)
-      toast.add({ title: t('collection.wish.added'), color: 'success', icon: 'i-lucide-heart' })
+      if (!opts.silent)
+        toast.add({ title: t('collection.wish.added'), color: 'success', icon: 'i-lucide-heart' })
       return true
     }
     catch (e) {

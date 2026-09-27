@@ -17,6 +17,11 @@ export const users = sqliteTable('users', {
   passwordHash: text('password_hash'),
   displayName: text('display_name').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
+  // The public profile (/joueur/<profileId>): a random id, never the user id;
+  // shown only once the member opens it, the collection only if they say so.
+  profileId: text('profile_id').unique(),
+  profilePublic: integer('profile_public', { mode: 'boolean' }).notNull().default(false),
+  collectionPublic: integer('collection_public', { mode: 'boolean' }).notNull().default(false),
 })
 
 // ─── Decks ───────────────────────────────────────────────────────────────
@@ -67,6 +72,10 @@ export const collectionItems = sqliteTable('collection_items', {
   // Binder, box, deck… free text.
   location: text('location'),
   note: text('note'),
+  // The showcase: its place among the member's finest cards (0: not shown).
+  featured: integer('featured').notNull().default(0),
+  // Copies of it the member will trade (on their public trade list).
+  forTrade: integer('for_trade').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
 }, t => [
@@ -133,6 +142,17 @@ export const wishlistItems = sqliteTable('wishlist_items', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
 }, t => [
   uniqueIndex('wishlist_card_idx').on(t.userId, t.game, t.printingId, t.finish),
+])
+
+// ─── Likes ───────────────────────────────────────────────────────────────
+// A member's "I like it" on a deck listed in Discover, once per deck.
+export const deckLikes = sqliteTable('deck_likes', {
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  deckId: text('deck_id').notNull().references(() => decks.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(sql`(unixepoch() * 1000)`),
+}, t => [
+  primaryKey({ columns: [t.userId, t.deckId] }),
+  index('deck_likes_deck_idx').on(t.deckId),
 ])
 
 export type UserRow = typeof users.$inferSelect

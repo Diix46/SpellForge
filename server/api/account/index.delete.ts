@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { checkCurrentPassword, requireAccount } from '../../utils/account'
 import { schema, useDb } from '../../utils/db'
 
@@ -15,6 +15,8 @@ export default defineEventHandler(async (event) => {
     db.delete(schema.collectionImports).where(eq(schema.collectionImports.userId, user.id)),
     db.delete(schema.collectionSnapshots).where(eq(schema.collectionSnapshots.userId, user.id)),
     db.delete(schema.wishlistItems).where(eq(schema.wishlistItems.userId, user.id)),
+    db.delete(schema.deckLikes).where(eq(schema.deckLikes.userId, user.id)),
+    db.delete(schema.deckLikes).where(inArray(schema.deckLikes.deckId, db.select({ id: schema.decks.id }).from(schema.decks).where(eq(schema.decks.userId, user.id)))),
     db.delete(schema.decks).where(eq(schema.decks.userId, user.id)),
     db.delete(schema.users).where(eq(schema.users.id, user.id)),
   ])

@@ -19,8 +19,11 @@ export default defineEventHandler(async (event) => {
     db.select({ game: w.game, n: sql<number>`count(*)` }).from(w).where(eq(w.userId, user.id)).groupBy(w.game).all(),
   ])
   const last = await Promise.all(GAME_IDS.map(game => db.select({ value: s.value, day: s.day }).from(s).where(and(eq(s.userId, user.id), eq(s.game, game))).orderBy(desc(s.day)).limit(1).get()))
+  const u = schema.users
+  const me = await db.select({ id: u.profileId, open: u.profilePublic, collection: u.collectionPublic }).from(u).where(eq(u.id, user.id)).get()
   const of = (rows: { game: string, n: number }[], game: string) => Number(rows.find(r => r.game === game)?.n ?? 0)
   return {
+    profile: { id: me?.id ?? null, public: !!me?.open, collectionPublic: !!me?.collection },
     games: GAME_IDS.map((game, i) => ({
       game,
       decks: of(decks, game),
