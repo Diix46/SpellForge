@@ -1,3 +1,9 @@
+## [0.53.1](https://github.com/Diix46/SpellForge/compare/v0.53.0...v0.53.1) (2026-09-27)
+
+### Bug Fixes
+
+* **accueil:** vrai mode sombre, héros sans prisme ([b046f41](https://github.com/Diix46/SpellForge/commit/b046f41ec627984d9977663792085b5d4bd212bb))
+
 ## [0.53.0](https://github.com/Diix46/SpellForge/compare/v0.52.0...v0.53.0) (2026-09-27)
 
 ### Features
