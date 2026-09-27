@@ -73,6 +73,8 @@ export interface TcgCard {
   tags: string[]
   landscape: boolean
   flavour: string | null
+  /** The illustration alone, when the source publishes it (Yu-Gi-Oh). */
+  art: string | null
 }
 
 export interface TcgSet {

@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import type { ChecklistCard } from '#shared/collection'
+import type { ChecklistCard, ChecklistVariant } from '#shared/collection'
 import { onBeforeUnmount, ref, watch } from 'vue'
+import { rarityShort } from '~/utils/games/tcg'
 
 // One pocket of the binder: the card when owned (with how many), its ghost
 // when missing. A tap puts one more in; a long press (or right click) opens
 // the details; on hover, take one out or wish for it.
-const props = defineProps<{ card: ChecklistCard, name: string, wished: boolean }>()
-const emit = defineEmits<{ add: [], remove: [], details: [], wish: [] }>()
-const { t } = useLocale()
+const props = defineProps<{ card: ChecklistCard, name: string, wished: boolean, game?: string }>()
+const emit = defineEmits<{ add: [variant?: ChecklistVariant], remove: [], details: [], wish: [] }>()
+const { t, rarityLabel } = useLocale()
 
 // The pocket pops when a copy goes in.
 const popping = ref(false)
@@ -56,6 +57,21 @@ onBeforeUnmount(() => clearTimeout(timer))
       <span v-if="card.owned" class="qty">×{{ card.owned }}</span>
       <span class="plus" aria-hidden="true">+1</span>
     </button>
+    <!-- Several rarities of the card: each one's badge, its copies, a tap adds it. -->
+    <div v-if="card.variants" class="rarities">
+      <button
+        v-for="(v, i) in card.variants"
+        :key="i"
+        type="button"
+        class="rarity"
+        :class="{ have: v.owned > 0 }"
+        :title="`${rarityLabel(v.rarity ?? '', game)}${v.owned ? ` ×${v.owned}` : ''}`"
+        :aria-label="`${name} — ${rarityLabel(v.rarity ?? '', game)} : ${t('collection.binder.tapToAdd')}`"
+        @click="emit('add', v)"
+      >
+        {{ rarityShort(v.rarity) }}<b v-if="v.owned">{{ v.owned }}</b>
+      </button>
+    </div>
     <div class="tools">
       <button v-if="card.owned" type="button" :aria-label="`${t('collection.binder.removeOne')} : ${name}`" :title="t('collection.binder.removeOne')" @click="emit('remove')">
         <UIcon name="i-lucide-minus" class="h-3.5 w-3.5" />
@@ -196,6 +212,37 @@ onBeforeUnmount(() => clearTimeout(timer))
     opacity: 0;
     transform: translate(-50%, -40px);
   }
+}
+.rarities {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 4px;
+}
+.rarity {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  background: var(--color-surface-1);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+.rarity:hover {
+  border-color: rgb(var(--accent-rgb));
+  color: var(--color-text-high);
+}
+.rarity.have {
+  border-color: rgb(var(--accent-rgb));
+  background: color-mix(in srgb, rgb(var(--accent-rgb)) 18%, var(--color-surface-1));
+  color: var(--color-text-high);
+}
+.rarity b {
+  font-weight: 700;
 }
 .tools {
   position: absolute;

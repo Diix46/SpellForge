@@ -136,11 +136,17 @@ async function main() {
       archetype: c.archetype ?? null,
       typeline: c.typeline ?? null,
       linkmarkers: c.linkmarkers ?? null,
+      // The illustration alone, for the backdrops and the 3D room.
+      art: img?.image_url_cropped ?? null,
       extraDeck: EXTRA_FRAMES.has(c.frameType),
       limit,
     })
-    const ids = printingIds(c.card_sets)
-    c.card_sets.forEach((s, i) => {
+    // "New" is YGOPRODeck's placeholder while a printing's rarity is unknown:
+    // dropped when the same set code is listed with a real one.
+    const known = new Set(c.card_sets.filter(s => s.set_rarity !== 'New').map(s => s.set_code))
+    const printed = c.card_sets.filter(s => s.set_rarity !== 'New' || !known.has(s.set_code))
+    const ids = printingIds(printed)
+    printed.forEach((s, i) => {
       const [setCode, number = s.set_code] = String(s.set_code).split(/-(.*)/s)
       usedSets.add(setCode)
       const price = c.card_prices?.[0]?.cardmarket_price

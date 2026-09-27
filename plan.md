@@ -747,3 +747,24 @@ comme Magic et One Piece :
 
 Ajouter un jeu revient à : un script d'ingestion, une entrée dans `GAMES` et `TCG_GAME_IDS`,
 ses règles et son `TCG_UI`, ses libellés et un thème CSS. Le typage signale tout ce qui manque.
+
+## 17. Yu-Gi-Oh et Riftbound, thèmes revus avec les assets des univers (27/09)
+
+Retour de Viktor : ces deux thèmes « pas ouf », et pas assez d'assets existants, en 2D comme en 3D.
+Choix validés : Yu-Gi-Oh façon **Master Duel** (bleu nuit et or, terrain de duel, couleurs de
+cadre officielles) ; Riftbound façon **client League of Legends**, toujours sombre (bleu abysse,
+or hextech à coins coupés, lueur bleue, splash art des champions).
+
+- **Données** : l'ingestion Yu-Gi-Oh garde l'art seul de chaque carte (`image_url_cropped`).
+  Une route `/api/tcg/[game]/showcase` fournit les illustrations phares de chaque jeu (cartes
+  légendaires de Yu-Gi-Oh, Légendes de Riftbound, cartes illustrées de Pokémon), reprises par
+  les décors et par la 3D.
+- **Yu-Gi-Oh** : thème sombre uniquement, décor `FxYugiohField` (terrain de duel en perspective
+  qui luit, art d'une carte légendaire derrière), tuiles et fiches bordées de la couleur de cadre
+  (Normal, Effet, Rituel, Fusion, Synchro, Xyz, Lien, Magie, Piège), police Oswald.
+- **Riftbound** : thème sombre uniquement, palette du client LoL, coins coupés, boutons dorés,
+  décor `FxRiftboundSplash` (splash art des Légendes en fondu, poussière hextech), police Cinzel
+  en capitales façon Beaufort.
+- **3D** : les salles accrochent les vraies illustrations de l'univers. Sanctuaire Yu-Gi-Oh :
+  tableaux d'art de cartes et terrain de duel au sol. Atelier Riftbound : bannières de champions
+  et emblèmes de runes. Labo Pokémon : affiches de cartes.

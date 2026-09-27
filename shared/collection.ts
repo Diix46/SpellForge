@@ -159,6 +159,18 @@ export interface ChecklistCard {
   finishes: Finish[]
   /** Copies owned of it, every printing of the card in the set together. */
   owned: number
+  /**
+   * The same card number in several rarities (Yu-Gi-Oh: Ultra, Starlight…):
+   * each one, with its printings and its copies. Absent with a single one.
+   */
+  variants?: ChecklistVariant[]
+}
+
+/** One rarity of a card in a set's checklist. */
+export interface ChecklistVariant {
+  rarity: string | null
+  printings: { fr: string | null, en: string | null }
+  owned: number
 }
 
 /** Owned and total cards over some sets, and the share done (0 to 1). */

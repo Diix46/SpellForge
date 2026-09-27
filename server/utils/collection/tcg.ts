@@ -153,9 +153,24 @@ export function tcgCollection(game: TcgGameId): GameCollection {
     const { rows } = await db().execute({ sql: `${CARD_SQL} WHERE c.set_code = ?`, args: [code] })
     const shown = pick(rows, lang)
     const has = new Set(rows.map(r => `${String(r.id)}|${String(r.lang)}`))
-    const out = [...shown.values()].map((r) => {
+    const printingsOf = (id: string) => ({ fr: has.has(`${id}|fr`) ? `fr:${id}` : null, en: has.has(`${id}|en`) ? `en:${id}` : null })
+    // A number printed in several rarities is one pocket: its base printing
+    // (the id without a rarity suffix) shows, the others are its variants.
+    const byNumber = new Map<string, Row[]>()
+    for (const r of shown.values()) {
+      const list = byNumber.get(String(r.number)) ?? []
+      list.push(r)
+      byNumber.set(String(r.number), list)
+    }
+    const out = [...byNumber.values()].map((group) => {
+      const base = group.find(r => String(r.id) === `${code}-${String(r.number)}`) ?? group[0]!
+      const r = base
       const id = String(r.id)
+      const variants = group.length > 1
+        ? [base, ...group.filter(g => g !== base)].map(g => ({ rarity: g.rarity == null ? null : String(g.rarity), printings: printingsOf(String(g.id)), owned: 0 }))
+        : undefined
       return {
+        ...(variants ? { variants } : {}),
         key: String(r.number),
         number: String(r.number),
         name: r.name_en == null ? String(r.name) : String(r.name_en),
