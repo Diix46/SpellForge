@@ -1,3 +1,9 @@
+## [0.52.0](https://github.com/Diix46/SpellForge/compare/v0.51.1...v0.52.0) (2026-09-27)
+
+### Features
+
+* **univers:** 3D plus rapide, polices des cartes, pyramide YGO, Arcane et Pokémon animés ([9f5d2aa](https://github.com/Diix46/SpellForge/commit/9f5d2aa2b7493f85ae18ba952e227d5d6fdc63be))
+
 ## [0.51.1](https://github.com/Diix46/SpellForge/compare/v0.51.0...v0.51.1) (2026-09-27)
 
 ### Bug Fixes
