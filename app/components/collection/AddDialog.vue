@@ -13,7 +13,7 @@ import { collectionClient } from '~/utils/games/collection'
 const props = defineProps<{ game: GameId, initialQuery?: string, initialPrinting?: string }>()
 const open = defineModel<boolean>('open', { required: true })
 
-const { t, locale } = useLocale()
+const { t, locale, finishLabel } = useLocale()
 const toast = useToast()
 const collection = useCollection(props.game)
 const client = collectionClient(props.game)
@@ -210,7 +210,7 @@ async function add() {
       <form class="options" @submit.prevent="add">
         <div v-if="finishes.length > 1" class="seg" role="group" :aria-label="t('collection.finish')">
           <button v-for="f in finishes" :key="f" type="button" :aria-pressed="form.finish === f" :class="{ shiny: f !== 'nonfoil' }" @click="form.finish = f">
-            {{ t(`collection.finish.${f}`) }}
+            {{ finishLabel(game, f) }}
           </button>
         </div>
         <USelect v-model="form.condition" :items="conditions" class="w-44" :aria-label="t('collection.condition')" />

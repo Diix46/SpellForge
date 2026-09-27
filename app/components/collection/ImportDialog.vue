@@ -17,7 +17,7 @@ const open = defineModel<boolean>('open', { required: true })
 // What to bring in: a file or a pasted list, a precon (Magic), one of my decks.
 const source = defineModel<ImportSource>('source', { default: 'file' })
 
-const { t, locale } = useLocale()
+const { t, locale, finishLabel } = useLocale()
 const imp = useCollectionImport(props.game)
 const tab = ref<'import' | 'history'>('import')
 const pasted = ref('')
@@ -212,7 +212,7 @@ function fromRows(rows: ImportRow[], name: string) {
                 {{ issueText(r) }}
               </p>
             </div>
-            <span v-if="r.finish !== 'nonfoil'" class="tag tag--foil">{{ t(`collection.finish.${r.finish}`) }}</span>
+            <span v-if="r.finish !== 'nonfoil'" class="tag tag--foil">{{ finishLabel(game, r.finish) }}</span>
             <span class="tag">{{ r.row.condition }}</span>
             <span class="qty">×{{ r.row.quantity }}</span>
           </div>

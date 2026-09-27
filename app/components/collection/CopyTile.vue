@@ -9,7 +9,7 @@ import { unitValue } from '#shared/collection'
 const props = defineProps<{ copy: CollectionCopy, name: string, selected?: boolean | null }>()
 defineEmits<{ open: [copy: CollectionCopy] }>()
 
-const { t, locale } = useLocale()
+const { t, locale, finishLabel } = useLocale()
 const value = computed(() => {
   const unit = unitValue(props.copy.card, props.copy.finish)
   return unit == null ? null : (unit * props.copy.quantity).toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR' })
@@ -44,7 +44,7 @@ function untilt() {
       <img v-if="copy.card" :src="copy.card.thumb" :alt="name" loading="lazy" decoding="async">
       <span v-else class="missing">{{ t('collection.unknownCard') }}</span>
       <span v-if="copy.quantity > 1" class="qty">×{{ copy.quantity }}</span>
-      <span v-if="shiny" class="finish">{{ t(`collection.finish.${copy.finish}`) }}</span>
+      <span v-if="shiny" class="finish">{{ finishLabel(copy.game, copy.finish) }}</span>
     </span>
     <span class="meta">
       <CollectionSetSymbol v-if="copy.card" :icon="copy.card.setIcon" :rarity="copy.card.rarity" :size="14" :title="copy.card.setName ?? ''" />

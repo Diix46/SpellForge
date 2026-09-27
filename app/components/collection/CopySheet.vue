@@ -12,7 +12,7 @@ import { collectionClient } from '~/utils/games/collection'
 const props = defineProps<{ copy: CollectionCopy | null, name: string }>()
 const emit = defineEmits<{ save: [id: string, edit: CopyEdit], remove: [id: string] }>()
 const open = defineModel<boolean>('open', { required: true })
-const { t, locale } = useLocale()
+const { t, locale, finishLabel } = useLocale()
 const form = reactive({ printingId: '', lang: 'en' as 'fr' | 'en', finish: 'nonfoil' as Finish, condition: 'NM' as Condition, quantity: 1, location: '', note: '' })
 
 // The card's other printings, loaded when asked for.
@@ -81,7 +81,7 @@ watch(finishList, (f) => {
   if (!f.includes(form.finish))
     form.finish = f[0] ?? 'nonfoil'
 })
-const finishes = computed(() => finishList.value.map(f => ({ label: t(`collection.finish.${f}`), value: f })))
+const finishes = computed(() => finishList.value.map(f => ({ label: finishLabel(game.value, f), value: f })))
 const conditions = computed(() => CONDITIONS.map(c => ({ label: `${c} · ${t(`collection.condition.${c}`)}`, value: c })))
 const money = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR' })
 const unit = computed(() => {

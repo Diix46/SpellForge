@@ -17,15 +17,15 @@ const props = defineProps<{
 }>()
 defineEmits<{ reset: [] }>()
 const filters = defineModel<CollectionFilters>({ required: true })
-const { t, locale, rarityLabel } = useLocale()
+const { t, locale, rarityLabel, finishLabel } = useLocale()
 const money = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR' })
 const count = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US')
 const gain = computed(() => (props.summary.paid > 0 ? props.summary.value - props.summary.paid : null))
 
 const setItems = computed(() => [{ label: t('collection.allSets'), value: 'all' }, ...props.sets.map(s => ({ label: s.name, value: s.code }))])
-const finishItems = computed(() => [{ label: t('collection.allFinishes'), value: 'all' }, ...FINISHES.map(f => ({ label: t(`collection.finish.${f}`), value: f }))])
+const finishItems = computed(() => [{ label: t('collection.allFinishes'), value: 'all' }, ...FINISHES.map(f => ({ label: finishLabel(props.game, f), value: f }))])
 const conditionItems = computed(() => [{ label: t('collection.allConditions'), value: 'all' }, ...CONDITIONS.map(c => ({ label: `${c} · ${t(`collection.condition.${c}`)}`, value: c }))])
-const rarityItems = computed(() => [{ label: t('collection.allRarities'), value: 'all' }, ...props.rarities.map(r => ({ label: rarityLabel(r), value: r }))])
+const rarityItems = computed(() => [{ label: t('collection.allRarities'), value: 'all' }, ...props.rarities.map(r => ({ label: rarityLabel(r, props.game), value: r }))])
 </script>
 
 <template>

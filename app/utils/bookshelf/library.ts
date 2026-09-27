@@ -15,7 +15,7 @@ import { SpineAtlas } from './atlas'
 import { hueOf } from './layout'
 
 /** The room around the bookcases (ambiance.ts). */
-export type Room = 'arcanist' | 'cabin'
+export type Room = 'arcanist' | 'cabin' | 'lab'
 export type Quality = 'high' | 'low'
 
 export interface LibraryEvents {

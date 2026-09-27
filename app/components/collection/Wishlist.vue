@@ -10,7 +10,7 @@ import { can, GAMES } from '#shared/game'
 // click to put a card found into the collection.
 const props = defineProps<{ game: GameId }>()
 
-const { t, locale } = useLocale()
+const { t, locale, finishLabel } = useLocale()
 const toast = useToast()
 const wishlist = useWishlist(props.game)
 const { openAdd } = useCollectionAdd()
@@ -131,7 +131,7 @@ async function copyList() {
                 {{ w.card.set.toUpperCase() }} #{{ w.card.number }} · {{ w.card.lang.toUpperCase() }}
               </template>
               <template v-if="w.finish !== 'nonfoil'">
-                · {{ t(`collection.finish.${w.finish}`) }}
+                · {{ finishLabel(game, w.finish) }}
               </template>
               <span v-if="w.owned" class="owned">· {{ t('collection.wish.owned').replace('{n}', String(w.owned)) }}</span>
             </p>

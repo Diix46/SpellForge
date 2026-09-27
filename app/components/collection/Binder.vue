@@ -14,7 +14,7 @@ import { collectionClient } from '~/utils/games/collection'
 // search and the shopping list of what is missing stay at hand.
 const props = defineProps<{ game: GameId, code: string }>()
 
-const { t, locale, rarityLabel } = useLocale()
+const { t, locale, rarityLabel, finishLabel } = useLocale()
 const toast = useToast()
 const collection = useCollection(props.game)
 const wishlist = useWishlist(props.game)
@@ -71,7 +71,7 @@ const nameOf = (c: ChecklistCard) => c.printedName ?? c.name
 const ownedCount = computed(() => cards.value.filter(c => c.owned > 0).length)
 const counts = computed<Record<Show, number>>(() => ({ all: cards.value.length, owned: ownedCount.value, missing: cards.value.length - ownedCount.value }))
 const rarities = computed(() => [...new Set(cards.value.map(c => c.rarity).filter(r => r != null))])
-const rarityItems = computed(() => [{ label: t('collection.allRarities'), value: 'all' }, ...rarities.value.map(r => ({ label: rarityLabel(r), value: r }))])
+const rarityItems = computed(() => [{ label: t('collection.allRarities'), value: 'all' }, ...rarities.value.map(r => ({ label: rarityLabel(r, props.game), value: r }))])
 const shown = computed(() => {
   const needle = q.value.trim().toLowerCase()
   return cards.value.filter((c) => {
@@ -165,7 +165,7 @@ async function add(c: ChecklistCard) {
   toast.add({
     id: 'binder-add',
     title: `${nameOf(c)} · ${t('collection.binder.added')}`,
-    description: finish !== prefs.finish ? t('collection.binder.finishFallback').replace('{finish}', t(`collection.finish.${finish}`)) : undefined,
+    description: finish !== prefs.finish ? t('collection.binder.finishFallback').replace('{finish}', finishLabel(props.game, finish)) : undefined,
     color: 'success',
     icon: 'i-lucide-check',
     duration: 2500,
@@ -338,7 +338,7 @@ async function copyMissing() {
           </div>
           <div v-if="can(game, 'finishes')" class="seg" role="group" :aria-label="t('collection.finish')">
             <button v-for="f in (['nonfoil', 'foil'] as const)" :key="f" type="button" :aria-pressed="prefs.finish === f" :class="{ shiny: f === 'foil' }" @click="prefs.finish = f">
-              {{ t(`collection.finish.${f}`) }}
+              {{ finishLabel(game, f) }}
             </button>
           </div>
           <USelect v-model="prefs.condition" :items="conditionItems" size="sm" class="w-36" :aria-label="t('collection.condition')" />
