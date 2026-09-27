@@ -1,22 +1,26 @@
 <script setup lang="ts">
-import { libraryPath } from '#shared/game'
+import { GAME_LIST, libraryPath } from '#shared/game'
+import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
 
-// The last word: both doors again, one on each side of the seam.
+// The last word: the prism once more, and a door to each of the five worlds,
+// in its own colours and its cards' face.
 const { t } = useLocale()
 </script>
 
 <template>
   <section class="finale">
-    <NuxtLink :to="libraryPath('optcg')" class="door door--op">
-      <span class="door-kicker">{{ t('home.hero.opKicker') }}</span>
-      <span class="door-title">{{ t('home.hero.opCta') }}</span>
-      <UIcon name="i-lucide-arrow-right" class="door-arrow" />
-    </NuxtLink>
-    <div class="middle">
-      <svg class="prism" viewBox="0 0 40 40" aria-hidden="true">
-        <path d="M20 3 L20 37 L6 20 Z" fill="#c9312a" />
-        <path d="M20 3 L34 20 L20 37 Z" fill="#2d4f7c" />
-        <path d="M20 3 L20 37" stroke="#fff8ec" stroke-width="1" opacity=".6" />
+    <div class="lit">
+      <!-- The prism's five rays, each landing on its door. -->
+      <svg class="rays" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+        <polygon
+          v-for="(g, i) in GAME_LIST"
+          :key="g.id"
+          :points="`${497 + i * 1.5},0 ${503 + i * 1.5},0 ${(i + 1) * 200 - 30},1000 ${i * 200 + 30},1000`"
+          :fill="g.swatch"
+        />
+      </svg>
+      <svg class="prism" viewBox="0 0 80 72" aria-hidden="true">
+        <path d="M40 3 L77 69 L3 69 Z" fill="rgba(255,255,255,.14)" stroke="#fff" stroke-opacity=".85" stroke-width="2" stroke-linejoin="round" />
       </svg>
       <h2 class="title">
         {{ t('home.finale.title') }}
@@ -25,153 +29,135 @@ const { t } = useLocale()
         {{ t('home.finale.sub') }}
       </p>
     </div>
-    <NuxtLink :to="libraryPath('mtg')" class="door door--mtg">
-      <span class="door-kicker">{{ t('home.hero.mtgKicker') }}</span>
-      <span class="door-title">{{ t('home.hero.mtgCta') }}</span>
-      <UIcon name="i-lucide-arrow-right" class="door-arrow" />
-    </NuxtLink>
+    <nav class="doors" :aria-label="t('home.gallery.kicker')">
+      <NuxtLink
+        v-for="g in GAME_LIST"
+        :key="g.id"
+        :to="libraryPath(g.id)"
+        class="door"
+        :style="{ ...lookVars(g.id), '--swatch': g.swatch }"
+      >
+        <span class="door-name" :class="{ upper: WORLD_LOOK[g.id].upper }">{{ g.label }}</span>
+        <UIcon name="i-lucide-arrow-right" class="door-arrow" />
+      </NuxtLink>
+    </nav>
   </section>
 </template>
 
 <style scoped>
 .finale {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 420px;
-}
-.door {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  padding: 60px clamp(20px, 6vw, 110px);
-  text-decoration: none;
-  transition: background 0.6s ease;
-}
-.door:focus-visible {
-  outline: 3px solid #2d4f7c;
-  outline-offset: -8px;
-}
-.door-kicker {
-  font-size: 12px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-.door-title {
-  font-size: clamp(36px, 3.8vw, 64px);
-  line-height: 0.95;
-  text-wrap: balance;
-}
-.door-arrow {
-  width: 34px;
-  height: 34px;
-  transition: translate 0.4s cubic-bezier(0.3, 1.5, 0.5, 1);
-}
-.door--op {
-  align-items: flex-start;
-  padding-right: 190px;
-  background: linear-gradient(180deg, #efdfc0, #e2cc9f);
-  color: #231708;
-}
-.door--op:hover {
-  background: linear-gradient(180deg, #f5e8cc, #e8d4ab);
-}
-.door--op .door-kicker {
-  font-family: 'Bangers', 'Anton', Impact, sans-serif;
-  font-size: 15px;
-  letter-spacing: 0.1em;
-  color: #a4231d;
-}
-.door--op .door-title {
-  font-family: 'Anton', Impact, sans-serif;
-  text-transform: uppercase;
-  text-shadow: 0.045em 0.045em 0 #c9312a;
-}
-.door--op:hover .door-arrow {
-  translate: 8px 0;
-}
-.door--mtg {
-  align-items: flex-end;
-  padding-left: 190px;
-  background: linear-gradient(180deg, #f7f7f5, #eceeea);
-  color: #1b1f22;
-  text-align: right;
-}
-.door--mtg:hover {
-  background: linear-gradient(180deg, #ffffff, #f2f3f0);
-}
-.door--mtg .door-kicker {
-  font-family: var(--mtg-face);
-  font-weight: 700;
-  color: #2d4f7c;
-}
-.door--mtg .door-title {
-  font-family: var(--mtg-face);
-  font-weight: 700;
-  background: linear-gradient(180deg, #37608f, #1d3555);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.door--mtg .door-arrow {
-  color: #2d4f7c;
-}
-.door--mtg:hover .door-arrow {
-  translate: 8px 0;
-}
-.middle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  width: 280px;
-  padding: 40px 18px 22px;
-  translate: -50% -50%;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background:
-    linear-gradient(#f7f7f5, #f7f7f5) padding-box,
-    linear-gradient(90deg, #c9312a, #2d4f7c) border-box;
-  color: #1b1f22;
+  gap: 0;
+  padding: 96px clamp(16px, 5vw, 88px) 104px;
+  background: radial-gradient(50% 60% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 70%), #09090d;
+  color: #f6f4ee;
   text-align: center;
-  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.85);
-  pointer-events: none;
+}
+.lit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(1180px, 100%);
+  padding-bottom: 36px;
+}
+.rays {
+  position: absolute;
+  z-index: 0;
+  top: 29px;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 29px);
+  opacity: 0.32;
+  filter: blur(4px);
+  mix-blend-mode: screen;
+}
+.prism,
+.title,
+.sub {
+  position: relative;
+  z-index: 1;
 }
 .prism {
-  position: absolute;
-  top: -28px;
-  width: 56px;
-  height: 56px;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+  width: 64px;
+  height: 58px;
+  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.4));
 }
 .title {
   margin: 0;
-  font-size: 24px;
-  font-weight: 700;
+  font-family: 'Anton', Impact, sans-serif;
+  font-size: clamp(40px, 5vw, 72px);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
 }
 .sub {
   margin: 0;
-  color: #616a6f;
-  font-size: 14px;
+  color: rgba(246, 244, 238, 0.72);
+  font-size: 16px;
 }
-@media (max-width: 900px) {
-  .finale {
-    grid-template-columns: 1fr;
-  }
-  .door {
-    padding: 50px 20px;
-  }
-  .door--op {
-    padding-right: 20px;
-    padding-bottom: 110px;
-  }
-  .door--mtg {
-    padding-left: 20px;
-    padding-top: 110px;
+.doors {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  width: min(1180px, 100%);
+}
+.door {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 22px 20px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow:
+    inset 0 3px 0 var(--swatch),
+    0 24px 44px -26px var(--swatch);
+  transition:
+    transform 0.35s cubic-bezier(0.2, 0.9, 0.25, 1),
+    box-shadow 0.35s ease;
+}
+.door:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    inset 0 3px 0 var(--swatch),
+    0 30px 50px -22px var(--swatch);
+}
+.door:focus-visible {
+  outline: 2px solid var(--swatch);
+  outline-offset: 3px;
+}
+.door-name {
+  font-family: var(--face);
+  font-size: 22px;
+  font-weight: var(--weight);
+  line-height: 1;
+  white-space: nowrap;
+}
+.door-name.upper {
+  text-transform: uppercase;
+}
+.door-arrow {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+  transition: translate 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.door:hover .door-arrow {
+  translate: 5px 0;
+}
+@media (max-width: 1000px) {
+  .doors {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 }
 @media (prefers-reduced-motion: reduce) {

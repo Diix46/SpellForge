@@ -1,522 +1,265 @@
 <script setup lang="ts">
-import type { LandingCard, LandingPoster } from '#shared/landing'
-import { computed } from 'vue'
-import { GAME_LIST, libraryPath } from '#shared/game'
-import { tideFromMagic, tideFromPoster } from '~/utils/cardTide'
+import type { LandingWorld } from '#shared/landing'
+import { GAME_LIST } from '#shared/game'
 
-// Two worlds in one pile of cards: One Piece washes in from the left, Magic
-// from the right, and a seam runs between them, leaning away from the
-// pointer. The reading panel floats in a calm pocket in the middle; its
-// headline changes ink where it crosses the seam. A card clicked (or dealt
-// while nobody touches the page) goes on show beside the panel, in its own
-// world's corner, with a way to its page.
-const props = defineProps<{
-  posters: LandingPoster[]
-  cards: LandingCard[]
-}>()
+// The prism the site is named after: a beam of white light comes in, the
+// prism splits it into five rays, and each ray lands on a world — five slanted
+// columns at the foot of the screen, each filing its own cards past. The
+// words sit in the light between prism and worlds; a column is the door to
+// its library.
+defineProps<{ worlds: LandingWorld[] }>()
 
 const { t } = useLocale()
-
-const opCards = computed(() => props.posters.map(tideFromPoster))
-const mtgCards = computed(() => props.cards.map(tideFromMagic))
 </script>
 
 <template>
-  <LandingCardTide :op="opCards" :mtg="mtgCards" class="hero">
-    <template #default="{ op, mtg }">
-      <div class="stage">
-        <div class="panel" data-tide-pocket>
-          <p class="games">
-            {{ GAME_LIST.map(g => g.label).join(' · ') }}
-          </p>
+  <section class="hero">
+    <!-- The light: in from the upper left, out in the worlds' five colours. -->
+    <div class="beam-in" aria-hidden="true" />
+    <svg class="rays" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient v-for="g in GAME_LIST" :id="`ray-${g.id}`" :key="g.id" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" :stop-color="g.swatch" stop-opacity="0.75" />
+          <stop offset="0.55" :stop-color="g.swatch" stop-opacity="0.28" />
+          <stop offset="1" :stop-color="g.swatch" stop-opacity="0.5" />
+        </linearGradient>
+      </defs>
+      <polygon
+        v-for="(g, i) in GAME_LIST"
+        :key="g.id"
+        class="ray"
+        :style="{ '--i': i }"
+        :points="`${497 + i * 1.5},0 ${503 + i * 1.5},0 ${(i + 1) * 200 - 14},1000 ${i * 200 + 14},1000`"
+        :fill="`url(#ray-${g.id})`"
+      />
+    </svg>
 
-          <!-- One headline, two inks: the copy for the day side is decoration. -->
-          <h1 class="headline">
-            <span class="hl hl--mtg">{{ t('home.hero.l1') }}<br>{{ t('home.hero.l2') }}</span>
-            <span class="hl hl--op" aria-hidden="true">{{ t('home.hero.l1') }}<br>{{ t('home.hero.l2') }}</span>
-          </h1>
-          <p class="sub">
-            {{ t('home.hero.sub') }}
-          </p>
-
-          <!-- One door per world, in its colour. -->
-          <nav class="worlds" :aria-label="t('home.gallery.kicker')">
-            <NuxtLink
-              v-for="g in GAME_LIST"
-              :key="g.id"
-              :to="libraryPath(g.id)"
-              class="world-door"
-              :style="{ '--swatch': g.swatch }"
-            >
-              <UIcon :name="g.icon" class="h-4 w-4" />
-              {{ g.label }}
-            </NuxtLink>
-          </nav>
-          <a href="#gallery" class="more">
-            {{ t('home.hero.gallery') }}
-            <UIcon name="i-lucide-arrow-down" class="h-4 w-4" />
-          </a>
-
-          <p class="hint">
-            <UIcon name="i-lucide-hand" class="h-3.5 w-3.5 shrink-0" />
-            <span class="hint-pointer">{{ t('home.hero.hint') }}</span>
-            <span class="hint-touch">{{ t('home.hero.hintTouch') }}</span>
-          </p>
-        </div>
-
-        <Transition name="caption">
-          <div v-if="op" :key="op.path" class="caption caption--op" :style="{ '--glow': op.accent }">
-            <span class="caption-pips">
-              <i v-for="(pip, k) in op.pips" :key="k" :style="{ background: pip }" />
-            </span>
-            <strong class="caption-name">{{ op.name }}</strong>
-            <span class="caption-detail">{{ op.detail }}</span>
-            <NuxtLink :to="op.path" class="caption-link">
-              {{ t('home.hero.seeCard') }}
-              <UIcon name="i-lucide-arrow-up-right" class="h-3.5 w-3.5" />
-            </NuxtLink>
-          </div>
-        </Transition>
-        <Transition name="caption">
-          <div v-if="mtg" :key="mtg.path" class="caption caption--mtg" :style="{ '--glow': mtg.accent }">
-            <span class="caption-pips">
-              <i v-for="(pip, k) in mtg.pips" :key="k" :style="{ background: pip }" />
-            </span>
-            <strong class="caption-name">{{ mtg.name }}</strong>
-            <span v-if="mtg.detail" class="caption-detail">{{ t('home.hero.artist') }} · {{ mtg.detail }}</span>
-            <NuxtLink :to="mtg.path" class="caption-link">
-              {{ t('home.hero.seeCard') }}
-              <UIcon name="i-lucide-arrow-up-right" class="h-3.5 w-3.5" />
-            </NuxtLink>
-          </div>
-        </Transition>
-
-        <a href="#numbers" class="scroll">
-          <span>{{ t('home.hero.scroll') }}</span>
-          <UIcon name="i-lucide-chevron-down" class="h-4 w-4" />
-        </a>
+    <div class="words">
+      <svg class="prism" viewBox="0 0 80 72" aria-hidden="true">
+        <defs>
+          <linearGradient id="prism-glass" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0.55" />
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0.08" />
+          </linearGradient>
+        </defs>
+        <path d="M40 3 L77 69 L3 69 Z" fill="url(#prism-glass)" stroke="#fff" stroke-opacity="0.85" stroke-width="2" stroke-linejoin="round" />
+        <path d="M40 3 L40 69" stroke="#fff" stroke-opacity="0.35" />
+      </svg>
+      <p class="games">
+        {{ GAME_LIST.map(g => g.label).join(' · ') }}
+      </p>
+      <h1 class="headline">
+        <span class="l1">{{ t('home.hero.l1') }}</span>
+        <span class="l2">{{ t('home.hero.l2') }}</span>
+      </h1>
+      <p class="sub">
+        {{ t('home.hero.sub') }}
+      </p>
+      <div class="ctas">
+        <NuxtLink to="/decks" class="cta cta--light">
+          <UIcon name="i-lucide-layers" class="h-5 w-5" />
+          {{ t('home.hero.start') }}
+        </NuxtLink>
+        <NuxtLink to="#search" class="cta cta--ghost">
+          <UIcon name="i-lucide-search" class="h-5 w-5" />
+          {{ t('home.hero.search') }}
+        </NuxtLink>
       </div>
-    </template>
-  </LandingCardTide>
+    </div>
+
+    <nav class="worlds" :aria-label="t('home.gallery.kicker')">
+      <LandingHeroWorld v-for="(w, i) in worlds" :key="w.game" :world="w" :index="i" />
+    </nav>
+  </section>
 </template>
 
 <style scoped>
 .hero {
-  /* One screen under the site's top bar. */
-  min-height: max(640px, min(calc(100svh - 64px), 940px));
-  color: #1b1f22;
-}
-.stage {
+  --slant: 56px;
+  --worlds-h: clamp(280px, 38svh, 400px);
+  /* Where the prism's centre sits, from the top of the section. */
+  --apex: 78px;
   position: relative;
   display: grid;
-  place-items: center;
-  padding: 48px clamp(16px, 4vw, 48px) 72px;
+  grid-template-rows: 1fr var(--worlds-h);
+  min-height: max(760px, calc(100svh - 64px));
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(60% 45% at 50% 0%, rgba(255, 255, 255, 0.07), transparent 70%), #09090d;
+  color: #f6f4ee;
 }
 
-/* ---- the reading panel: warm glass on the day side, cool on the night side ---- */
-.panel {
-  --pad: clamp(20px, 3.4vw, 46px);
-  /* Where the seam crosses the panel, in the panel's own width. */
-  --psplit: calc(50% - var(--tide-px) * var(--tide-ratio) * 6%);
+/* ---- the light ---- */
+.beam-in {
+  position: absolute;
+  z-index: 0;
+  top: calc(var(--apex) - 3px);
+  right: 50%;
+  width: 70vw;
+  height: 6px;
+  transform-origin: 100% 50%;
+  rotate: 14deg;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85));
+  filter: blur(1.5px);
+  box-shadow: 0 0 24px 4px rgba(255, 255, 255, 0.25);
+}
+.rays {
+  position: absolute;
+  z-index: 0;
+  top: var(--apex);
+  bottom: var(--worlds-h);
+  left: 0;
+  width: 100%;
+  height: calc(100% - var(--apex) - var(--worlds-h));
+  filter: blur(3px);
+  mix-blend-mode: screen;
+}
+.ray {
+  animation: shimmer 6s ease-in-out infinite alternate;
+  animation-delay: calc(var(--i) * -1.3s);
+}
+@keyframes shimmer {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- the words, in the light ---- */
+.words {
   position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  width: min(760px, 100%);
-  padding: clamp(24px, 3.2vw, 40px) var(--pad);
-  border: 1px solid transparent;
-  border-radius: 22px;
-  background:
-    linear-gradient(90deg, rgba(246, 234, 208, 0.95) var(--psplit), rgba(238, 240, 238, 0.95) var(--psplit)) padding-box,
-    linear-gradient(90deg, rgba(201, 49, 42, 0.55), rgba(120, 128, 132, 0.3) 50%, rgba(45, 79, 124, 0.55)) border-box;
-  box-shadow:
-    0 40px 90px -34px rgba(0, 0, 0, 0.8),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  -webkit-backdrop-filter: blur(14px) saturate(1.05);
-  backdrop-filter: blur(14px) saturate(1.05);
-  pointer-events: auto;
+  gap: 16px;
+  padding: calc(var(--apex) - 36px) clamp(16px, 4vw, 48px) 40px;
+  text-align: center;
 }
-
-.kickers {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 6px 16px;
-  width: 100%;
+.prism {
+  width: 80px;
+  height: 72px;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.45));
 }
-.kicker {
+.games {
+  margin: 0;
+  color: rgba(246, 244, 238, 0.62);
   font-size: 12px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
-.kicker--op {
-  font-family: 'Bangers', 'Anton', Impact, sans-serif;
-  font-size: 16px;
-  letter-spacing: 0.1em;
-  color: #a4231d;
-}
-.kicker--mtg {
-  font-family: var(--mtg-face);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  color: #2d4f7c;
-}
-
 .headline {
-  display: grid;
-  width: calc(100% + var(--pad) * 2);
-  margin: 0 calc(var(--pad) * -1);
-  font-size: clamp(46px, 6.6vw, 104px);
-  font-weight: 400;
-  line-height: 0.92;
-  text-align: center;
-}
-.hl {
-  grid-area: 1 / 1;
-  padding-inline: var(--pad);
+  display: flex;
+  flex-direction: column;
+  margin: 0;
   font-family: 'Anton', Impact, sans-serif;
+  font-size: clamp(48px, 6.2vw, 96px);
+  font-weight: 400;
+  line-height: 0.95;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+  text-shadow: 0 6px 40px rgba(0, 0, 0, 0.6);
 }
-.hl--op {
-  clip-path: inset(-20% calc(100% - var(--psplit)) -20% 0);
-  color: #231708;
-  text-shadow: 0.045em 0.045em 0 #c9312a;
-}
-.hl--mtg {
-  clip-path: inset(-20% 0 -20% var(--psplit));
-  background: linear-gradient(180deg, #4a75aa 0%, #2d4f7c 45%, #1d3555 100%);
+.l2 {
+  /* The five worlds' colours, the way the prism spreads them. */
+  background: linear-gradient(90deg, #ef5a4c, #f0c43a, #9a6ad8, #2fb3c4, #6f9fe0);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 6px 30px rgba(0, 0, 0, 0.5));
 }
 .sub {
-  max-width: 54ch;
+  max-width: 60ch;
   margin: 0;
-  color: #333a3d;
-  font-size: clamp(15px, 1.25vw, 17px);
+  color: rgba(246, 244, 238, 0.82);
+  font-size: clamp(15px, 1.2vw, 17px);
   line-height: 1.55;
-  text-align: center;
   text-wrap: balance;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.9);
 }
-
-/* ---- a door per world ---- */
-.games {
-  margin: -8px 0 0;
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #5c6462;
-  text-align: center;
-}
-.worlds {
+.ctas {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
-  width: 100%;
-  margin-top: 4px;
-}
-.world-door {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: 1px solid color-mix(in srgb, var(--swatch) 55%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--swatch) 12%, rgba(255, 255, 255, 0.7));
-  color: #1b1f22;
-  font-size: 14.5px;
-  font-weight: 600;
-  text-decoration: none;
-  transition:
-    transform 0.25s cubic-bezier(0.2, 0.9, 0.25, 1),
-    background 0.2s ease;
-}
-.world-door .iconify {
-  color: var(--swatch);
-}
-.world-door:hover {
-  transform: translateY(-2px);
-  background: color-mix(in srgb, var(--swatch) 24%, rgba(255, 255, 255, 0.8));
-}
-.world-door:focus-visible {
-  outline: 2px solid var(--swatch);
-  outline-offset: 2px;
-}
-.more {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #454d52;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.doors {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 28px;
-  width: 100%;
-  margin-top: 4px;
-}
-.door {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.door--op {
-  align-items: flex-start;
-}
-.door--mtg {
-  align-items: flex-end;
-  text-align: right;
-}
-.line {
-  font-size: 13px;
-  line-height: 1.4;
-}
-.door--op .line {
-  color: #5e472c;
-}
-.door--mtg .line {
-  font-family: var(--mtg-face);
-  font-size: 15px;
-  color: #454d52;
+  gap: 12px;
+  margin-top: 6px;
 }
 .cta {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 13px 22px;
+  padding: 12px 22px;
+  border-radius: 999px;
   font-size: 15px;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.cta--op {
-  border: 2px solid #1a0f06;
-  border-radius: 3px;
-  background: #c9312a;
-  color: #fff8ec;
-  font-family: 'Anton', Impact, sans-serif;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  box-shadow: 5px 5px 0 #231708;
-  transition:
-    transform 0.3s cubic-bezier(0.3, 1.7, 0.5, 1),
-    box-shadow 0.3s ease;
-}
-.cta--op:hover {
-  transform: translate(-2px, -2px) rotate(-2deg);
-  box-shadow: 8px 8px 0 #231708;
-}
-.cta--mtg {
-  border: 1px solid #24405f;
-  border-radius: 6px;
-  background: linear-gradient(180deg, #37608f, #2d4f7c);
-  color: #f4f7fb;
-  font-family: var(--mtg-face);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.25) inset,
-    0 10px 24px -14px rgba(0, 0, 0, 0.9);
+  text-decoration: none;
   transition:
-    transform 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.1),
-    box-shadow 0.2s ease;
+    transform 0.25s cubic-bezier(0.2, 0.9, 0.25, 1),
+    box-shadow 0.25s ease,
+    background 0.25s ease;
 }
-.cta--mtg:hover {
+.cta:hover {
   transform: translateY(-2px);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.4) inset,
-    0 16px 28px -16px rgba(0, 0, 0, 0.95);
 }
 .cta:focus-visible {
-  outline: 2px solid #1b1f22;
-  outline-offset: 4px;
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
 }
-/* These sit over the card pile, where a dark ring would disappear. */
-.caption-link:focus-visible,
-.scroll:focus-visible {
-  outline: 2px solid #f4f1e6;
-  outline-offset: 4px;
+/* White light: the prism's own colour. */
+.cta--light {
+  background: #f6f4ee;
+  color: #09090d;
+  box-shadow: 0 0 30px -6px rgba(255, 255, 255, 0.55);
 }
-
-.hint {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin: 2px 0 0;
-  color: rgba(27, 31, 34, 0.6);
-  font-size: 12.5px;
-  text-align: center;
+.cta--light:hover {
+  box-shadow: 0 0 40px -4px rgba(255, 255, 255, 0.75);
 }
-.hint-touch {
-  display: none;
+.cta--ghost {
+  border: 1px solid rgba(246, 244, 238, 0.4);
+  background: rgba(9, 9, 13, 0.55);
+  color: #f6f4ee;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
-@media (hover: none) {
-  .hint-pointer {
-    display: none;
-  }
-  .hint-touch {
-    display: inline;
-  }
+.cta--ghost:hover {
+  border-color: rgba(246, 244, 238, 0.8);
 }
 
-/* ---- the card on show, named in its world's corner ---- */
-.caption {
-  /* Over the pile, not on the panel: this plate keeps its own light ink. */
-  color: #eef2f7;
-  --glow: 45, 79, 124;
-  /* The card's colour, lifted toward the text so a black card stays readable. */
-  --ink: color-mix(in srgb, rgb(var(--glow)) 35%, #eef2f7);
-  position: absolute;
-  bottom: clamp(20px, 4.5vh, 44px);
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 2px 10px;
-  max-width: min(300px, 24vw);
-  padding: 10px 16px 12px;
-  border: 1px solid color-mix(in srgb, var(--ink) 40%, transparent);
-  border-radius: 12px;
-  background: rgba(12, 10, 16, 0.72);
-  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.85);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  pointer-events: auto;
-}
-.caption--op {
-  left: clamp(16px, 3vw, 48px);
-}
-.caption--mtg {
-  right: clamp(16px, 3vw, 48px);
-}
-.caption-pips {
-  display: inline-flex;
-  gap: 4px;
-}
-.caption-pips i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.5),
-    0 0 6px rgba(0, 0, 0, 0.6);
-}
-.caption-name {
-  overflow: hidden;
-  font-size: 15px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.caption-detail {
-  grid-column: 1 / -1;
-  overflow: hidden;
-  color: rgba(238, 242, 247, 0.68);
-  font-family: 'Geist Mono', ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.caption-link {
-  grid-column: 1 / -1;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  width: fit-content;
-  margin-top: 4px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-}
-.caption-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.caption-enter-active,
-.caption-leave-active {
-  transition:
-    opacity 0.35s ease,
-    translate 0.35s ease;
-}
-.caption-enter-from {
-  opacity: 0;
-  translate: 0 8px;
-}
-.caption-leave-to {
-  opacity: 0;
-  translate: 0 -8px;
-}
-
-.scroll {
-  position: absolute;
-  bottom: 18px;
-  left: 50%;
+/* ---- the five worlds ---- */
+.worlds {
+  position: relative;
+  z-index: 1;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  translate: -50% 0;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(16, 13, 20, 0.7);
-  color: #efe6d0;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  text-decoration: none;
-  pointer-events: auto;
-  animation: nudge 2.4s ease-in-out infinite;
-}
-@keyframes nudge {
-  50% {
-    translate: -50% 4px;
-  }
+  margin-inline: calc(var(--slant) * -1);
 }
 
-/* ---- narrow screens: the panel sits low, cards go on show above it ---- */
-@media (max-width: 1100px) {
-  .caption {
-    max-width: 30vw;
-  }
-}
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .hero {
-    min-height: max(660px, 100svh);
+    grid-template-rows: auto auto;
+    min-height: 0;
   }
-  .stage {
-    align-items: end;
-    padding: 96px 16px 40px;
-  }
-  .panel {
-    gap: 16px;
-  }
-  .doors {
-    grid-template-columns: 1fr;
-  }
-  .door--mtg {
-    align-items: flex-start;
-    text-align: left;
-  }
-  .caption,
-  .scroll {
+  .rays,
+  .beam-in {
     display: none;
   }
+  .words {
+    padding-top: 40px;
+    padding-bottom: 36px;
+  }
+  .worlds {
+    flex-direction: column;
+    margin-inline: 0;
+  }
 }
-
 @media (prefers-reduced-motion: reduce) {
-  .scroll {
+  .ray {
     animation: none;
   }
-  .cta,
-  .caption-enter-active,
-  .caption-leave-active {
+  .cta {
     transition: none;
   }
 }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // Pokémon backdrop: a meadow at the foot of the page, and Pokémon living in
 // it — Pikachu, Eevee, Charmander… running through the grass, their feet
-// hidden in it; Mew, Butterfree, Pidgey flying a little above. The games' own
-// animated sprites (Black & White, via /api/images/sprites). Night falls on
+// hidden in it; Mew, Charizard, Butterfree flying a little above. Their 3D
+// models (Pokémon HOME's renders, via /api/images/sprites), bounding along or
+// gliding, in a shadow of their own. Night falls on
 // the meadow in dark mode. Fixed, behind everything; still under reduced
 // motion (they stand in the grass).
 
@@ -11,17 +12,17 @@ const RUNNERS = [
   { id: 25, dur: 22, delay: 0, lift: 34, right: true },
   { id: 133, dur: 28, delay: -9, lift: 26, right: false },
   { id: 4, dur: 26, delay: -17, lift: 30, right: true },
-  { id: 1, dur: 34, delay: -4, lift: 22, right: false },
+  { id: 1, dur: 34, delay: -4, lift: 20, right: false },
   { id: 7, dur: 30, delay: -23, lift: 28, right: true },
   { id: 58, dur: 24, delay: -13, lift: 24, right: false },
 ]
 // Fliers: a slower crossing, higher up, drifting up and down.
 const FLIERS = [
   { id: 151, dur: 46, delay: -6, lift: 170, right: true },
-  { id: 12, dur: 52, delay: -30, lift: 120, right: false },
-  { id: 16, dur: 40, delay: -18, lift: 210, right: false },
+  { id: 6, dur: 38, delay: -30, lift: 230, right: false },
+  { id: 12, dur: 52, delay: -18, lift: 125, right: false },
 ]
-const sprite = (id: number) => `/api/images/sprites/${id}.gif`
+const sprite = (id: number) => `/api/images/sprites/${id}.webp`
 </script>
 
 <template>
@@ -87,7 +88,7 @@ const sprite = (id: number) => `/api/images/sprites/${id}.gif`
 :global(html.dark) .h3 {
   fill: #0f2a1d;
 }
-/* A Pokémon crossing the page, the sprite hopping on the way. */
+/* A Pokémon crossing the page, bounding on the way. */
 .mon {
   position: absolute;
   left: 0;
@@ -99,20 +100,25 @@ const sprite = (id: number) => `/api/images/sprites/${id}.gif`
 }
 .mon img {
   display: block;
-  height: 64px;
-  image-rendering: pixelated;
-  animation: hop 0.42s ease-in-out infinite alternate;
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  transform-origin: 50% 90%;
+  filter: drop-shadow(0 6px 5px rgba(20, 50, 20, 0.35));
+  animation: hop 0.38s cubic-bezier(0.3, 0, 0.5, 1) infinite alternate;
 }
-/* The sprites face left: those going right turn round. */
+/* The renders face left: those going right turn round. */
 .mon.right img {
   scale: -1 1;
 }
 .flier img {
-  height: 58px;
+  width: 92px;
+  height: 92px;
+  filter: drop-shadow(0 26px 10px rgba(20, 50, 20, 0.22));
   animation: drift 3.2s ease-in-out infinite alternate;
 }
 :global(html.dark) .mon img {
-  filter: brightness(0.8) saturate(0.9);
+  filter: brightness(0.78) saturate(0.9) drop-shadow(0 6px 5px rgba(0, 0, 0, 0.45));
 }
 @keyframes cross {
   from {
@@ -122,20 +128,21 @@ const sprite = (id: number) => `/api/images/sprites/${id}.gif`
     transform: translateX(calc(100vw + 120px));
   }
 }
+/* A stride: pushed off, leaning forward, then landing a little squashed. */
 @keyframes hop {
   from {
-    transform: translateY(0);
+    transform: translateY(0) rotate(0deg) scale(1.03, 0.97);
   }
   to {
-    transform: translateY(-7px);
+    transform: translateY(-12px) rotate(-4deg) scale(0.98, 1.02);
   }
 }
 @keyframes drift {
   from {
-    transform: translateY(0);
+    transform: translateY(0) rotate(-2deg);
   }
   to {
-    transform: translateY(-24px);
+    transform: translateY(-26px) rotate(3deg);
   }
 }
 @media (max-width: 700px) {

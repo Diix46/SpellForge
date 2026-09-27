@@ -84,7 +84,7 @@ export const TCG_MESSAGES: Record<'fr' | 'en', Record<string, string>> = {
     'modal.namePlaceholder.riftbound': 'ex. Jinx Fureur',
     'wall.title.riftbound': 'Ton deck est prêt pour la Faille',
     'footer.tagline.riftbound': 'Les decks de Runeterra, sans compte.',
-    'footer.rights.riftbound': 'Riftbound © Riot Games. Site non officiel, sans lien avec Riot Games. Textes des cartes en anglais : Riot ne les publie pas encore en français.',
+    'footer.rights.riftbound': 'Riftbound © Riot Games. Site non officiel, sans lien avec Riot Games. Riot ne publie le jeu qu\'en anglais : les textes des cartes en français sont une traduction automatique, non officielle.',
     'riftbound.library.sub': 'Toutes les cartes de Riftbound, le JCC de League of Legends, avec les prix Cardmarket. En français (traduction non officielle : Riot n’imprime le jeu qu’en anglais).',
     'riftbound.energy': 'Énergie',
     'riftbound.might': 'Puissance',

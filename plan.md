@@ -768,3 +768,27 @@ or hextech à coins coupés, lueur bleue, splash art des champions).
 - **3D** : les salles accrochent les vraies illustrations de l'univers. Sanctuaire Yu-Gi-Oh :
   tableaux d'art de cartes et terrain de duel au sol. Atelier Riftbound : bannières de champions
   et emblèmes de runes. Labo Pokémon : affiches de cartes.
+
+## 18. Accueil cinq mondes et Pokémon réalistes (27/09, soir)
+
+Retour : « on a encore la séparation One Piece / Magic, faut tout inclure » ;
+les Pokémon de la prairie sont « pas très réalistes et très pixelisés ».
+
+- **Pokémon** : rendus 3D officiels de Pokémon HOME (512 px, PokéAPI) réduits
+  en WebP 240 px par `/api/images/sprites/[dex].webp`, au lieu des sprites
+  animés B&W de 60 px ; foulée (saut, penché, écrasé) et ombre en CSS.
+- **Héros « prisme »** : un faisceau blanc entre dans le prisme et se sépare en
+  cinq rayons, un par monde ; en bas, cinq colonnes inclinées, chacune avec un
+  défilé de ses cartes, son nom dans sa police de carte et son nombre de
+  cartes ; survol = la colonne s'élargit, clic = sa bibliothèque. Plus de
+  pile One Piece / Magic (CardTide, useCardTide, useLandingCards,
+  `/api/landing/cards`, `/api/landing/optcg` supprimés). `LandingWorld.strip`
+  (12 cartes par monde) servi par `/api/landing/worlds`.
+- **Looks partagés** : `app/utils/landing/looks.ts` (fond, encre, accent,
+  police de chaque monde) pour le héros, la galerie, la vitrine et la fin.
+- **Recherche, parcours** : titres au dégradé des cinq couleurs, plus d'encre
+  rouge/bleue coupée en deux.
+- **Vitrine** : chaque deck habillé de son monde (les cinq, plus seulement deux).
+- **Fin** : le prisme et cinq portes, une par monde.
+- **Pied de page** : les cinq bibliothèques, toutes les sources de données,
+  mention Riftbound à jour (traduction non officielle).
