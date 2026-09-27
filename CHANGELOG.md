@@ -1,3 +1,9 @@
+## [0.53.0](https://github.com/Diix46/SpellForge/compare/v0.52.0...v0.53.0) (2026-09-27)
+
+### Features
+
+* **accueil:** le prisme et ses cinq mondes, Pokémon en 3D ([b51cddc](https://github.com/Diix46/SpellForge/commit/b51cddcc8f54ec0a4b8c96d5f62d9cb5f919dc48))
+
 ## [0.52.0](https://github.com/Diix46/SpellForge/compare/v0.51.1...v0.52.0) (2026-09-27)
 
 ### Features
