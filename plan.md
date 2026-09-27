@@ -814,3 +814,31 @@ marges) et les fonctionnalités 17 à 20.
   fichier) → `/api/collection/scan` → Claude (vision, clé du coach) lit nom,
   extension et numéro → candidats trouvés dans la base du jeu → ajout en un
   clic. Image réduite côté client (≤ 1024 px), rien n'est gardé.
+
+## 20. Collectionneurs, communauté, téléphone (28/09)
+
+Retenues par Viktor : les suggestions 4 à 11 (pas « Pour jouer »), plus
+l'exactitude des cartes proposées, la vitrine des belles cartes et la valeur
+de la bibliothèque. Ordre des lots :
+
+- **Lot 1 — Exactitude.** Audit scripté contre les sources (Scryfall,
+  TCGdex, YGOPRODeck, Riftcodex, Bandai) sur des échantillons de chaque
+  base : nom, extension, numéro, image existante, prix. Puis ce que l'app
+  propose : bandes et éventails de l'accueil, recherche, impressions,
+  suggestions EDHREC/coach, traductions. Chaque écart corrigé à la source
+  (ingestion) plutôt qu'à l'affichage ; le script reste (`scripts/audit-cards.mjs`).
+- **Lot 2 — Collectionneur.** Valeur de la bibliothèque en tête de chaque
+  collection (et le total des cinq jeux) ; « mes plus belles cartes » (les
+  plus chères, les plus rares) ; **vitrine** : des cartes choisies, mises en
+  scène avec reflet holographique, partageables par un lien (aperçu OG) ;
+  « il me manque » depuis un deck (prix total, vers la wishlist) ; liste
+  d'échange (doubles marqués échangeables, lien public) ; scan en rafale.
+- **Lot 3 — Communauté.** « J'aime » sur les decks publiés, tri populaire,
+  deck à la une par jeu dans Découvrir ; profil public (decks publiés,
+  vitrine, collection si l'utilisateur l'ouvre).
+- **Lot 4 — Téléphone et fiabilité.** Application installable (PWA :
+  manifeste, icônes, service worker, hors ligne pour sa collection) ; tests
+  de bout en bout Playwright sur les parcours clés en CI ; journal des
+  erreurs (serveur, navigateur, imports de nuit) consultable par Viktor.
+- **Après** : une vraie app mobile (Capacitor autour de la PWA, stores) — à
+  rediscuter une fois la PWA en main.
