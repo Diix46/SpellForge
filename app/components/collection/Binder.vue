@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChecklistCard, CollectionCopy, Condition, Finish, SetProgress } from '#shared/collection'
+import type { ChecklistCard, ChecklistVariant, CollectionCopy, Condition, Finish, SetProgress } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import type { BinderEntry } from '~/utils/bookshelf/entry'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
@@ -70,7 +70,8 @@ const set = computed(() => data.value?.set ?? null)
 const nameOf = (c: ChecklistCard) => c.printedName ?? c.name
 const ownedCount = computed(() => cards.value.filter(c => c.owned > 0).length)
 const counts = computed<Record<Show, number>>(() => ({ all: cards.value.length, owned: ownedCount.value, missing: cards.value.length - ownedCount.value }))
-const rarities = computed(() => [...new Set(cards.value.map(c => c.rarity).filter(r => r != null))])
+// Every rarity of the set, a card's variants included (Yu-Gi-Oh).
+const rarities = computed(() => [...new Set(cards.value.flatMap(c => [c.rarity, ...(c.variants ?? []).map(v => v.rarity)]).filter(r => r != null))])
 const rarityItems = computed(() => [{ label: t('collection.allRarities'), value: 'all' }, ...rarities.value.map(r => ({ label: rarityLabel(r, props.game), value: r }))])
 const shown = computed(() => {
   const needle = q.value.trim().toLowerCase()
@@ -79,7 +80,7 @@ const shown = computed(() => {
       return false
     if (show.value === 'missing' && c.owned)
       return false
-    if (rarity.value !== 'all' && c.rarity !== rarity.value)
+    if (rarity.value !== 'all' && c.rarity !== rarity.value && !c.variants?.some(v => v.rarity === rarity.value))
       return false
     return !needle || nameOf(c).toLowerCase().includes(needle) || c.name.toLowerCase().includes(needle) || c.number.toLowerCase().includes(needle)
   })
@@ -141,23 +142,28 @@ function onTouchEnd(e: TouchEvent) {
 
 // ---- Pockets ----
 /** The printing a tap puts in, in the binder's language when there is one. */
-function printingFor(c: ChecklistCard): { id: string, lang?: 'fr' | 'en' } | null {
-  const id = prefs.lang === 'fr' ? c.printings.fr ?? c.printings.en : c.printings.en ?? c.printings.fr
+function printingFor(c: ChecklistCard, variant?: ChecklistVariant): { id: string, lang?: 'fr' | 'en' } | null {
+  const printings = variant?.printings ?? c.printings
+  const id = prefs.lang === 'fr' ? printings.fr ?? printings.en : printings.en ?? printings.fr
   if (!id)
     return null
   // Magic: a French copy of a printing Scryfall only has in English.
   return { id, lang: collectionClient(props.game).language === 'copy' ? prefs.lang : undefined }
 }
 
-async function add(c: ChecklistCard) {
-  const p = printingFor(c)
+async function add(c: ChecklistCard, variant?: ChecklistVariant) {
+  const p = printingFor(c, variant)
   if (!p)
     return
   const finish = c.finishes.includes(prefs.finish) ? prefs.finish : c.finishes[0] ?? 'nonfoil'
   c.owned++
+  if (variant)
+    variant.owned++
   const copy = await collection.add({ printingId: p.id, finish, condition: prefs.condition, quantity: 1, lang: p.lang })
   if (!copy) {
     c.owned--
+    if (variant)
+      variant.owned--
     return
   }
   // One toast for the last card filed, not a pile of them.
@@ -187,6 +193,10 @@ async function takeOne(c: ChecklistCard, from?: CollectionCopy) {
   if (!line)
     return
   c.owned = Math.max(0, c.owned - 1)
+  // The rarity it was of, when the card has several.
+  const variant = c.variants?.find(v => v.printings.fr === line.printingId || v.printings.en === line.printingId)
+  if (variant)
+    variant.owned = Math.max(0, variant.owned - 1)
   await collection.update(line.id, { quantity: line.quantity - 1 })
 }
 
@@ -364,7 +374,8 @@ async function copyMissing() {
                     :card="c"
                     :name="nameOf(c)"
                     :wished="wishlist.wished.value.has(c.printingId)"
-                    @add="add(c)"
+                    :game="game"
+                    @add="add(c, $event)"
                     @remove="takeOne(c)"
                     @details="details(c)"
                     @wish="wishlist.add(c.printingId)"

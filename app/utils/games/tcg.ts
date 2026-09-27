@@ -201,3 +201,27 @@ export function tcgCover<L extends { card: TcgCard | null, entry: { quantity: nu
   }
   return known[0] ?? null
 }
+
+// Collectors' abbreviations of the rarities that share initials.
+const RARITY_SHORT: Record<string, string> = {
+  'Super Rare': 'SR',
+  'Secret Rare': 'ScR',
+  'Starlight Rare': 'StR',
+  'Ultra Rare': 'UR',
+  'Ultimate Rare': 'UtR',
+  'Prismatic Secret Rare': 'PScR',
+  'Platinum Secret Rare': 'PlScR',
+  'Quarter Century Secret Rare': 'QCScR',
+  'Collector\'s Rare': 'CR',
+  'Grand Master Rare': 'GMR',
+  'Ghost Rare': 'GR',
+  'Gold Rare': 'GoR',
+  'Short Print': 'SP',
+}
+
+/** A rarity in a few letters, for a badge: its collectors' short name, else its initials. */
+export function rarityShort(rarity: string | null | undefined): string {
+  if (!rarity)
+    return '?'
+  return RARITY_SHORT[rarity] ?? rarity.split(/\s+/).map(w => w[0]?.toUpperCase() ?? '').join('')
+}

@@ -303,8 +303,15 @@ export async function optcgChecklist(code: string, lang: 'fr' | 'en'): Promise<C
 export async function setChecklist(game: GameId, code: string, lines: readonly OwnedLine[], lang: 'fr' | 'en'): Promise<ChecklistCard[]> {
   const cards = await gameCollection(game).checklist(code, lang)
   const owned = (await ownedBySet(game, lines)).get(code)
-  for (const c of cards)
+  // A variant's copies: the lines of its printings, either language.
+  const byPrinting = new Map<string, number>()
+  for (const l of lines)
+    byPrinting.set(l.printingId, (byPrinting.get(l.printingId) ?? 0) + l.quantity)
+  for (const c of cards) {
     c.owned = owned?.get(c.key) ?? 0
+    for (const v of c.variants ?? [])
+      v.owned = [v.printings.fr, v.printings.en].reduce((n, id) => n + (id ? byPrinting.get(id) ?? 0 : 0), 0)
+  }
   return cards
 }
 

@@ -228,6 +228,7 @@ export function toTcgCard(game: TcgGameId, r: Row): TcgCard {
     tags: extra.tags ?? [],
     landscape: !!extra.landscape,
     flavour: extra.flavour ?? null,
+    art: tcgImageUrl(game, extra.art),
   }
 }
 
