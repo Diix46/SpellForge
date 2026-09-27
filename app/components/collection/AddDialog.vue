@@ -34,6 +34,9 @@ const showLocation = ref(false)
 // printing Scryfall only lists in English).
 const copyLang = ref<'fr' | 'en'>(locale.value === 'fr' ? 'fr' : 'en')
 const { loadPrints, relang } = usePrintChoices(props.game)
+// In a row: each card added leaves the dialog open for the next photo.
+const burst = ref(false)
+const burstCount = ref(0)
 
 const current = computed(() => prints.value.find(p => p.printingId === selected.value) ?? null)
 const finishes = computed<Finish[]>(() => current.value?.finishes ?? ['nonfoil'])
@@ -111,9 +114,6 @@ async function pickFirst() {
 const scanInput = ref<HTMLInputElement | null>(null)
 const scanning = ref(false)
 const scanPin = ref<{ set: string | null, number: string | null } | null>(null)
-// In a row: each card added leaves the dialog open for the next photo.
-const burst = ref(false)
-const burstCount = ref(0)
 
 /** The photo made small enough to send: its longest side 1024 px, as JPEG. */
 async function shrink(file: File): Promise<string> {
