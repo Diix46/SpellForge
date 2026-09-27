@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-// My account: profile, password, deletion. For members; a guest is asked to
-// sign in.
+// My account: its worlds at a glance (decks, collection, value, the favourite
+// game, the export), profile, password, deletion. For members; a guest is
+// asked to sign in.
 const { t } = useLocale()
 const { loggedIn, user } = useAuth()
 const { decks } = useDeckStore()
@@ -40,17 +41,21 @@ const initials = computed(() => (user.value?.displayName ?? '·').trim().split(/
       </section>
 
       <section class="card">
-        <h2>{{ t('account.profile') }}</h2>
-        <p class="help">
-          {{ t('account.profileHelp') }}
-        </p>
-        <AccountProfileForm />
+        <AccountDashboard />
       </section>
-
-      <section class="card">
-        <h2>{{ t('account.password') }}</h2>
-        <AccountPasswordForm />
-      </section>
+      <div class="pair">
+        <section class="card">
+          <h2>{{ t('account.profile') }}</h2>
+          <p class="help">
+            {{ t('account.profileHelp') }}
+          </p>
+          <AccountProfileForm />
+        </section>
+        <section class="card">
+          <h2>{{ t('account.password') }}</h2>
+          <AccountPasswordForm />
+        </section>
+      </div>
 
       <section class="card danger">
         <h2>{{ t('account.danger') }}</h2>
@@ -67,7 +72,7 @@ const initials = computed(() => (user.value?.displayName ?? '·').trim().split(/
 .account {
   display: grid;
   gap: 18px;
-  max-width: 620px;
+  max-width: 920px;
   margin: 0 auto;
   padding-bottom: 40px;
 }
@@ -78,6 +83,12 @@ const initials = computed(() => (user.value?.displayName ?? '·').trim().split(/
   font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--color-text-high);
+}
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 18px;
+  align-items: start;
 }
 .card {
   padding: 22px;

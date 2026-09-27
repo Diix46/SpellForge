@@ -45,6 +45,8 @@ ENV NUXT_HOST=0.0.0.0
 
 COPY --from=build /app/.output ./.output
 COPY --from=build /app/server/db/migrations ./server/db/migrations
+# The link previews' fonts (server/utils/og): the image has none of its own.
+COPY --from=build /app/server/assets/og-fonts ./server/assets/og-fonts
 
 # The nightly card refresh (server/tasks/cards/refresh.ts) runs these scripts in
 # child processes; they find @libsql/client in the server bundle.

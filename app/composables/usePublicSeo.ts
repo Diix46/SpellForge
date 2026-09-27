@@ -39,6 +39,9 @@ export function usePublicSeo(seo: PublicSeo) {
     ogType: seo.type ?? 'website',
     ogUrl: () => canonical.value,
     ogImage: () => image.value,
+    // Our previews are drawn at the size link previews expect.
+    ogImageWidth: () => (image.value?.includes('/api/og/') ? 1200 : undefined),
+    ogImageHeight: () => (image.value?.includes('/api/og/') ? 630 : undefined),
     ogLocale: () => (locale.value === 'fr' ? 'fr_FR' : 'en_US'),
     twitterCard: () => (image.value ? 'summary_large_image' : 'summary'),
     robots: () => (toValue(seo.noindex) ? 'noindex' : 'index, follow'),

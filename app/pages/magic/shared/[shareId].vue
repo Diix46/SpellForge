@@ -65,6 +65,8 @@ const gridCards = computed(() => resolved.value.filter(c => c.imageUrl))
 usePublicSeo({
   title: () => (deck.value ? `${deck.value.name} · ${t('share.sharedDeck')}` : t('share.notFound')),
   description: () => t('share.metaMtg'),
+  // The deck's key cards on its world's ground (server/api/og/deck).
+  image: () => (deck.value ? `/api/og/deck/${encodeURIComponent(shareId.value)}.png?lang=${locale.value}` : null),
   noindex: () => !deck.value?.public,
 })
 

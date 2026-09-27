@@ -9,7 +9,8 @@ import { collectionClient } from '~/utils/games/collection'
 
 // Adding copies: find the card, pick its exact printing, say which finish,
 // condition, language and how many (where they are, if you like). Closes once
-// they are in.
+// they are in. Or photograph the card: it is read (api/collection/scan), found
+// and its printing picked.
 const props = defineProps<{ game: GameId, initialQuery?: string, initialPrinting?: string }>()
 const open = defineModel<boolean>('open', { required: true })
 
@@ -105,6 +106,72 @@ async function pickFirst() {
     void choose(first)
 }
 
+// ---- Scanning a card ----
+const scanInput = ref<HTMLInputElement | null>(null)
+const scanning = ref(false)
+const scanPin = ref<{ set: string | null, number: string | null } | null>(null)
+
+/** The photo made small enough to send: its longest side 1024 px, as JPEG. */
+async function shrink(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file)
+  const k = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * k)
+  canvas.height = Math.round(bitmap.height * k)
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return canvas.toDataURL('image/jpeg', 0.85)
+}
+
+async function onScan(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  ;(e.target as HTMLInputElement).value = ''
+  if (!file)
+    return
+  scanning.value = true
+  try {
+    const read = await $fetch<{ found: false } | { found: true, name: string, nameEn: string | null, set: string | null, number: string | null, lang: 'fr' | 'en' | null }>('/api/collection/scan', {
+      method: 'POST',
+      body: { game: props.game, image: await shrink(file) },
+    })
+    if (!read.found) {
+      toast.add({ title: t('collection.scan.none'), color: 'warning', icon: 'i-lucide-scan-line' })
+      return
+    }
+    if (read.lang)
+      copyLang.value = read.lang
+    scanPin.value = { set: read.set, number: read.number }
+    // One Piece is found by its number; the others by name (Magic's in English).
+    const q = props.game === 'optcg' ? (read.number ?? read.name) : props.game === 'mtg' ? (read.nameEn ?? read.name) : read.name
+    query.value = q
+    clearTimeout(timer)
+    await suggest(q)
+    const first = suggestions.value[0]
+    if (first)
+      await choose(first)
+    else
+      toast.add({ title: t('collection.scan.notFound').replace('{name}', read.name), color: 'warning', icon: 'i-lucide-scan-line' })
+  }
+  catch (err) {
+    toast.add({ title: t('collection.scan.failed'), description: (err as { data?: { message?: string } }).data?.message, color: 'error', icon: 'i-lucide-circle-alert' })
+  }
+  finally {
+    scanning.value = false
+  }
+}
+
+/** The printing the scan read, among a card's printings. */
+function scannedPrint(list: PrintChoice[]): string | null {
+  const pin = scanPin.value
+  scanPin.value = null
+  if (!pin)
+    return null
+  const n = (v: string | null) => (v ?? '').toLowerCase().replace(/^0+/, '')
+  return list.find(p => pin.number && (n(p.number) === n(pin.number) || n(pin.number).endsWith(n(p.number))) && (!pin.set || p.set.toLowerCase() === pin.set.toLowerCase()))?.printingId
+    ?? list.find(p => pin.number && n(p.number) === n(pin.number))?.printingId
+    ?? null
+}
+
 async function choose(s: { key: string, label: string }) {
   picked.value = s
   query.value = s.label
@@ -114,7 +181,7 @@ async function choose(s: { key: string, label: string }) {
   try {
     prints.value = await loadPrints(s.key, copyLang.value)
     // The printing the dialog was opened on, else the newest.
-    selected.value = prints.value.find(p => p.printingId === props.initialPrinting)?.printingId ?? prints.value[0]?.printingId ?? null
+    selected.value = prints.value.find(p => p.printingId === props.initialPrinting)?.printingId ?? scannedPrint(prints.value) ?? prints.value[0]?.printingId ?? null
   }
   catch {
     prints.value = []
@@ -172,7 +239,14 @@ async function add() {
           </button>
         </div>
         <div class="search">
-          <UInput v-model="query" icon="i-lucide-search" :placeholder="t('collection.searchCard')" size="lg" class="w-full" autofocus @keydown.enter.prevent="pickFirst" />
+          <div class="search-row">
+            <UInput v-model="query" icon="i-lucide-search" :placeholder="t('collection.searchCard')" size="lg" class="w-full" autofocus @keydown.enter.prevent="pickFirst" />
+            <!-- A photo of the card: the phone's camera, or a picture on a computer. -->
+            <UButton color="neutral" variant="subtle" size="lg" icon="i-lucide-scan-line" :loading="scanning" :title="t('collection.scan.help')" @click="scanInput?.click()">
+              {{ t('collection.scan.button') }}
+            </UButton>
+            <input ref="scanInput" type="file" accept="image/*" capture="environment" class="sr-only" tabindex="-1" aria-hidden="true" @change="onScan">
+          </div>
           <ul v-if="suggestions.length" class="suggestions" role="listbox">
             <li v-for="s in suggestions" :key="`${s.key}-${s.label}`">
               <button type="button" @click="choose(s)">
@@ -260,6 +334,10 @@ async function add() {
 }
 .search {
   position: relative;
+}
+.search-row {
+  display: flex;
+  gap: 8px;
 }
 /* In the flow, not floating: the dialog is short until a card is chosen,
    and would clip a floating list. */

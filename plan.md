@@ -792,3 +792,25 @@ les Pokémon de la prairie sont « pas très réalistes et très pixelisés ».
 - **Fin** : le prisme et cinq portes, une par monde.
 - **Pied de page** : les cinq bibliothèques, toutes les sources de données,
   mention Riftbound à jour (traduction non officielle).
+
+## 19. Audit du 27/09 : finitions (PR #75) et quatre fonctionnalités
+
+Retenues par Viktor : les 14 finitions (livrées en v0.53.2 avec une passe
+marges) et les fonctionnalités 17 à 20.
+
+- **Aperçus de partage** : `/api/og/deck/[shareId].png`, 1200×630 composé
+  avec sharp (fond du monde, éventail des cartes clés, nom du deck, jeu,
+  nombre de cartes, Prism). Polices embarquées (`server/assets/og-fonts`,
+  copiées dans l'image Docker : le conteneur n'a aucune police système).
+  Cache disque `.data/og/`, clé = deck + date de mise à jour.
+- **Alertes de prix** : les prix cibles de la wishlist existent déjà ; une
+  cloche dans la barre du haut liste, pour les cinq jeux, les cartes passées
+  sous leur prix cible (`/api/collection/wishlist/deals`), pastille pour les
+  nouvelles (vues gardées dans le navigateur). Pas de courriel (pas d'infra).
+- **Compte** : tableau de bord par jeu (decks, exemplaires, valeur du dernier
+  relevé), jeu préféré (cookie `prism_game` : lien Collection, nouveau deck),
+  export de toutes ses données en JSON, suppression (existante).
+- **Scan caméra** : dans « Ajouter des cartes », photo (caméra du téléphone ou
+  fichier) → `/api/collection/scan` → Claude (vision, clé du coach) lit nom,
+  extension et numéro → candidats trouvés dans la base du jeu → ajout en un
+  clic. Image réduite côté client (≤ 1024 px), rien n'est gardé.
