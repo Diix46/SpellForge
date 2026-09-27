@@ -1,3 +1,9 @@
+## [0.49.0](https://github.com/Diix46/SpellForge/compare/v0.48.1...v0.49.0) (2026-09-27)
+
+### Features
+
+* **themes:** Yu-Gi-Oh façon Master Duel, Riftbound façon client LoL, salles 3D habillées des illustrations des univers ([dc10c13](https://github.com/Diix46/SpellForge/commit/dc10c131b9a7d4210e59a7ec240cb09d1441719f))
+
 ## [0.48.1](https://github.com/Diix46/SpellForge/compare/v0.48.0...v0.48.1) (2026-09-27)
 
 ### Bug Fixes
