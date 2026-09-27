@@ -1,3 +1,9 @@
+## [0.54.0](https://github.com/Diix46/SpellForge/compare/v0.53.2...v0.54.0) (2026-09-27)
+
+### Features
+
+* aperçus de partage, alertes de prix, tableau de bord du compte, scan de cartes ([c05a133](https://github.com/Diix46/SpellForge/commit/c05a13322c54086b2a03f09c3e25c2beb18f490e))
+
 ## [0.53.2](https://github.com/Diix46/SpellForge/compare/v0.53.1...v0.53.2) (2026-09-27)
 
 ### Bug Fixes
