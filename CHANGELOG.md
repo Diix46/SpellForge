@@ -1,3 +1,10 @@
+## [0.46.0](https://github.com/Diix46/SpellForge/compare/v0.45.0...v0.46.0) (2026-09-27)
+
+### Features
+
+* **yugioh:** ingestion YGOPRODeck, règles (zones, banlist TCG) et import YDK ([ee67475](https://github.com/Diix46/SpellForge/commit/ee67475e7576431bb7ad4f6ead528eb54edfba2d))
+* **yugioh:** Yu-Gi-Oh complet (bibliothèque, fiche, deck, collection, sanctuaire 3D, thème) ([54706df](https://github.com/Diix46/SpellForge/commit/54706df05f579a99f417a024d2023b79dab66e3c))
+
 ## [0.45.0](https://github.com/Diix46/SpellForge/compare/v0.44.1...v0.45.0) (2026-09-27)
 
 ### Features
