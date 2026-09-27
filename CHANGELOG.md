@@ -1,3 +1,9 @@
+## [0.56.0](https://github.com/Diix46/SpellForge/compare/v0.55.0...v0.56.0) (2026-09-27)
+
+### Features
+
+* **app:** application installable, journal des erreurs, tests de bout en bout, vrais 404 ([31a03bd](https://github.com/Diix46/SpellForge/commit/31a03bd5e575eb26ffced33225a35acdc8d59c41))
+
 ## [0.55.0](https://github.com/Diix46/SpellForge/compare/v0.54.2...v0.55.0) (2026-09-27)
 
 ### Features
