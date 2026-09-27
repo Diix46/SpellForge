@@ -1,3 +1,9 @@
+## [0.54.2](https://github.com/Diix46/SpellForge/compare/v0.54.1...v0.54.2) (2026-09-27)
+
+### Bug Fixes
+
+* **cartes:** audit d'exactitude, prix Pokémon du jour, impressions Riftbound retrouvées ([060e14f](https://github.com/Diix46/SpellForge/commit/060e14fd59698b902f2ba40db6d23518e0f32977))
+
 ## [0.54.1](https://github.com/Diix46/SpellForge/compare/v0.54.0...v0.54.1) (2026-09-27)
 
 ### Bug Fixes
