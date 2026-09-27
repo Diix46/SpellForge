@@ -1,3 +1,9 @@
+## [0.48.1](https://github.com/Diix46/SpellForge/compare/v0.48.0...v0.48.1) (2026-09-27)
+
+### Bug Fixes
+
+* **yugioh:** une poche par carte dans les classeurs, ses raretés en badges ([1791777](https://github.com/Diix46/SpellForge/commit/1791777af8a413517dcbc374ef78e82608e0be9a))
+
 ## [0.48.0](https://github.com/Diix46/SpellForge/compare/v0.47.0...v0.48.0) (2026-09-27)
 
 ### Features
