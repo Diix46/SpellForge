@@ -676,3 +676,50 @@ ouverture qui finit en flash blanc puis rupture vers la page 2D ; rien au touche
 **Critères de réussite.** Ordinateur : 60 images/s, moins de 20 appels de dessin par meuble.
 Téléphone récent : fluide au glisser ; rien ne tourne quand on ne touche à rien ; scène prête
 en moins d'une seconde après le chargement de Three.js.
+
+---
+
+## 16. Cinq jeux : Riftbound, Yu-Gi-Oh, Pokémon (27/09)
+
+> Viktor : « ouvrir toutes les fonctionnalités à Riftbound, Yu Gi Oh et Pokemon ». Choix : ordre
+> **Pokémon → Yu-Gi-Oh → Riftbound**, **généraliser d'abord**, **tout, jeu par jeu** (bibliothèque,
+> fiche, deck builder et règles, partage, collection, thème), accueil en **galerie de mondes**.
+
+**Constat.** ~240 littéraux `'mtg'`/`'optcg'` dans 84 fichiers, 113 tests `=== 'mtg'` (47 fichiers)
+en « Magic, sinon One Piece » : un troisième jeu hériterait silencieusement du comportement One
+Piece. Seuls les decks (stockage, API, partage) et la collection (tables, API) sont déjà génériques.
+`shared/game.ts` a un registre ébauché, peu lu.
+
+**Sources (vérifiées le 27/09).**
+
+| Jeu | Cartes | Français | Images | Cotes EUR | Decks préconstruits |
+|---|---|---|---|---|---|
+| Pokémon | TCGdex (API + dépôt MIT), ~22 k FR / 24 k EN | complet | scans FR (miroir) | TCGdex `pricing.cardmarket` | à voir (anciens decks EN) |
+| Yu-Gi-Oh | YGOPRODeck (dump complet, `language=fr` fusionné par id), ~14,6 k | ~80 % | EN seulement, **miroir obligatoire** | Cardmarket (fichier public) | structure decks = extensions |
+| Riftbound | Riftcodex (API paginée), ~1 450 impressions | **aucune source** : EN, champ FR prévu | CDN Riot (miroir) | Cardmarket (fichier public, id 22) | Champion Decks (OGS) |
+
+Cotes : fichiers publics Cardmarket `price_guide_{id}.json` / `products_singles_{id}.json`, quotidiens
+(Magic 1, Yu-Gi-Oh 3, Pokémon 6, Riftbound 22).
+
+**Règles de deck à coder.** Pokémon : 60 cartes, 4 exemplaires par nom (Énergies de base
+illimitées), au moins 1 Pokémon de base, 1 ACE SPEC, 1 Radieux, légalité Standard/Étendu par
+marque de régulation. Yu-Gi-Oh : main 40–60, extra 0–15 (Fusion, Synchro, Xyz, Lien), side 0–15,
+3 exemplaires tous decks confondus, liste des interdites/limitées/semi-limitées. Riftbound :
+1 Légende, 1 Champion à son tag, deck principal de 40 (3 exemplaires) dans les deux domaines de la
+Légende, signatures ≤ 3, 12 Runes et 3 Champs de bataille à part ; liste des bannies tenue à la main.
+
+**Lots** (une PR et un déploiement chacun ; aucun changement visible en G1–G3) :
+
+| Lot | Contenu |
+|---|---|
+| G1. Registre | `shared/game.ts` : identité, slug, libellés, couleurs, polices, capacités (cotes, coach, proxy PDF, import URL, précons…) ; toutes les listes de jeux (menu, sélecteur, footer, thème, sitemaps, `routeRules`, enums de schéma) lues depuis lui ; tests `=== 'mtg'` remplacés par des capacités ; test qui échoue si un jeu du registre n'a pas son adaptateur |
+| G2. Adaptateurs serveur | Interface `GameCards` (base, recherche, fiche, impressions, résolution d'une decklist, extensions et checklist, images, cotes, import) ; Magic et One Piece en implémentations ; routes `/api/[game]/…` (anciennes routes conservées en alias) ; collection sans branches |
+| G3. Adaptateurs client et routes | Interface client (recherche, modèle de deck, règles, lecture/écriture de decklist, rendu de carte) ; pages `app/pages/[universe]/…` qui choisissent les composants du jeu ; même URL qu'aujourd'hui pour Magic et One Piece |
+| P1–P4. Pokémon | Ingestion TCGdex + miroir d'images + cotes ; bibliothèque et fiche ; deck builder et règles ; collection (classeurs, variantes reverse/holo) ; thème et ambiance 3D |
+| Y1–Y4. Yu-Gi-Oh | Même découpe ; images miroir ; deck main/extra/side ; banlist |
+| R1–R4. Riftbound | Même découpe ; textes EN (champ FR prêt) ; Légende/Champion/Runes/Champs de bataille |
+| A. Accueil | Galerie de mondes (une tuile illustrée par jeu, s'ajoute d'elle-même), recherche sur tous les jeux, « Fraîchement publiés » tous jeux |
+
+**Risques.** G1–G3 touchent tout le site : tests de bout en bout Magic et One Piece avant/après
+chaque lot. Yu-Gi-Oh interdit le lien direct aux images : miroir obligatoire (~14,6 k images).
+Riftbound sans texte français ; banlists Pokémon et Riftbound tenues à la main.
