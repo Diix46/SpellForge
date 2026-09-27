@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 import type { OptcgCard } from '#shared/optcg/types'
+import type { TcgCard, TcgGameId } from '#shared/tcg/types'
 import type { Deck } from './useDeckStore'
 import type { ManaColor } from './useMtg'
 import { computed, shallowRef, watch } from 'vue'
@@ -7,6 +8,10 @@ import { totalCards } from '#shared/decklist'
 import { mtgLine, parseMtgDecklist } from '#shared/mtg/decklist'
 import { parseOptcgDecklist } from '#shared/optcg/decklist'
 import { DECK_SIZE } from '#shared/optcg/rules'
+import { parseTcgDecklist, zoneCount } from '#shared/tcg/deck'
+import { TCG_RULES } from '#shared/tcg/rules'
+import { isTcgGame, TCG_GAME_IDS } from '#shared/tcg/types'
+import { TCG_UI, tcgCover } from '~/utils/games/tcg'
 import { OPTCG_COLOR_HEX, optcgAccentStyle } from '~/utils/optcgColors'
 import { isCommanderType } from './useMtg'
 
@@ -201,6 +206,67 @@ export function useDeckFingerprints(decks: Ref<Deck[]>) {
     }
   }
 
-  const fingerprints = computed(() => new Map(decks.value.map(d => [d.id, d.game === 'optcg' ? optcg(d) : mtg(d)])))
+  // The generic engine's decks: every printing of every deck, one request per game.
+  const tcgCards = shallowRef(new Map<string, TcgCard | null>())
+  const tcgIds = computed(() => {
+    const out: Partial<Record<TcgGameId, Set<string>>> = {}
+    for (const d of decks.value) {
+      if (!isTcgGame(d.game))
+        continue
+      const set = out[d.game] ??= new Set<string>()
+      for (const e of parseTcgDecklist(d.raw, TCG_RULES[d.game].zones).mainboard)
+        set.add(e.name)
+    }
+    return TCG_GAME_IDS.flatMap(g => [...(out[g] ?? [])].sort().map(id => `${g}|${id}`))
+  })
+  watch([tcgIds, locale], async ([keys, lang], old) => {
+    const langChanged = old && old[1] !== lang
+    const missing = langChanged ? keys : keys.filter(k => !tcgCards.value.has(k))
+    if (!missing.length)
+      return
+    try {
+      const next = new Map(langChanged ? [] : tcgCards.value)
+      for (const game of TCG_GAME_IDS) {
+        const ids = missing.filter(k => k.startsWith(`${game}|`)).map(k => k.slice(game.length + 1))
+        for (let i = 0; i < ids.length; i += BATCH) {
+          const batch = ids.slice(i, i + BATCH)
+          const { cards } = await $fetch<{ cards: (TcgCard | null)[] }>(`/api/tcg/${game}/resolve`, { method: 'POST', body: { lang, ids: batch } })
+          batch.forEach((id, k) => next.set(`${game}|${id}`, cards[k] ?? null))
+        }
+      }
+      tcgCards.value = next
+    }
+    catch (err) {
+      console.error('[dashboard] cards', err)
+    }
+  }, { immediate: true })
+
+  function tcg(deck: Deck, game: TcgGameId): DeckFingerprint {
+    const rules = TCG_RULES[game]
+    const lines = parseTcgDecklist(deck.raw, rules.zones).mainboard.map(entry => ({ entry, card: tcgCards.value.get(`${game}|${entry.name}`) ?? null }))
+    const main = rules.zones[0]!
+    const count = zoneCount(lines, main.id, rules)
+    const types = new Map<string, number>()
+    for (const l of lines) {
+      for (const ty of l.card?.types ?? [])
+        types.set(ty, (types.get(ty) ?? 0) + l.entry.quantity)
+    }
+    const top = [...types.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([ty]) => TCG_UI[game].typeColor[ty] ?? '#999')
+    const cover = tcgCover(game, lines)?.card ?? null
+    return {
+      count,
+      target: main.max,
+      complete: count >= main.min && count <= main.max,
+      dots: top,
+      label: cover?.name ?? '',
+      accent: top[0] ? { '--deck-accent': top[0] } : {},
+      leader: null,
+      art: cover?.image || null,
+      mana: [],
+      lead: cover?.name ?? '',
+    }
+  }
+
+  const fingerprints = computed(() => new Map(decks.value.map(d => [d.id, isTcgGame(d.game) ? tcg(d, d.game) : d.game === 'optcg' ? optcg(d) : mtg(d)])))
   return { fingerprints }
 }

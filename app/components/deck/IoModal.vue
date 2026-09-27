@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import type { GameId } from '#shared/game'
 import { computed, ref, watch } from 'vue'
-import { deckPath } from '#shared/game'
+import { deckPath, GAME_LIST } from '#shared/game'
 import { parseMtgDecklist, withoutLangMarkers } from '#shared/mtg/decklist'
 import { useDeckImport } from '~/composables/useDeckImport'
 import { useDeckStore } from '~/composables/useDeckStore'
@@ -17,6 +18,15 @@ const toast = useToast()
 const { open, game, target, fromTarget, hide } = useImportOverlay()
 const { createDeck } = useDeckStore()
 const { fromUrl, fromText } = useDeckImport()
+
+// Per game: its rule under its name, the help and the example of a list.
+const IMPORT_RULE: Record<GameId, string> = { optcg: 'modal.importOpRule', mtg: 'modal.importMtgRule', pokemon: 'modal.world.pokemon' }
+const LIST_HELP: Record<GameId, string> = { optcg: 'modal.importListHelp', mtg: 'modal.importMtgListHelp', pokemon: 'modal.importTcgListHelp' }
+const PLACEHOLDER: Record<GameId, string> = {
+  optcg: '1xOP05-060\n4xOP05-067',
+  mtg: '1 Atraxa, Praetors\' Voice\n1 Sol Ring',
+  pokemon: '4 Charizard ex OBF 125\n4 sv03.5-006',
+}
 
 const url = ref('')
 const text = ref('')
@@ -127,22 +137,16 @@ async function onFile(e: Event) {
             {{ t('modal.chooseWorld') }}
           </legend>
           <button
+            v-for="g in GAME_LIST"
+            :key="g.id"
             type="button"
-            class="world world--op"
-            :aria-pressed="game === 'optcg'"
-            @click="game = 'optcg'"
+            class="world"
+            :class="`world--${g.id === 'optcg' ? 'op' : g.id}`"
+            :aria-pressed="game === g.id"
+            @click="game = g.id"
           >
-            <span class="world-name">One Piece</span>
-            <span class="world-rule">{{ t('modal.importOpRule') }}</span>
-          </button>
-          <button
-            type="button"
-            class="world world--mtg"
-            :aria-pressed="game === 'mtg'"
-            @click="game = 'mtg'"
-          >
-            <span class="world-name">Magic</span>
-            <span class="world-rule">{{ t('modal.importMtgRule') }}</span>
+            <span class="world-name">{{ g.label }}</span>
+            <span class="world-rule">{{ t(IMPORT_RULE[g.id]) }}</span>
           </button>
         </fieldset>
 
@@ -164,14 +168,14 @@ async function onFile(e: Event) {
         <!-- …or the list itself -->
         <UFormField
           :label="t('modal.importList')"
-          :help="game === 'mtg' ? t('modal.importMtgListHelp') : t('modal.importListHelp')"
+          :help="t(LIST_HELP[game])"
         >
           <UTextarea
             v-model="text"
             name="import-list"
             :rows="game === 'mtg' ? 10 : 9"
             autoresize
-            :placeholder="game === 'mtg' ? '1 Atraxa, Praetors\' Voice\n1 Sol Ring' : '1xOP05-060\n4xOP05-067'"
+            :placeholder="PLACEHOLDER[game]"
             class="w-full font-mono text-sm"
           />
         </UFormField>
@@ -249,7 +253,7 @@ async function onFile(e: Event) {
 /* Two choices side by side, each one a plate: the game, then the destination. */
 .worlds {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 .worlds-legend {
@@ -298,6 +302,10 @@ async function onFile(e: Event) {
 .world--mtg[aria-pressed='true'] {
   border-color: #2d4f7c;
   background: rgba(45, 79, 124, 0.12);
+}
+.world--pokemon[aria-pressed='true'] {
+  border-color: #e3b22b;
+  background: rgba(227, 178, 43, 0.14);
 }
 
 /* "or paste a list" between the two ways in */

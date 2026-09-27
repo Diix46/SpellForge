@@ -3,11 +3,13 @@ import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
 import { computed } from 'vue'
 import { isDefaultDeckName } from '#shared/decks'
+import { GAMES } from '#shared/game'
 
 // A deck on the dashboard, dressed as its world whatever the page's mode: a
 // One Piece deck is the Leader's WANTED poster, as the Marines print them
 // (portrait, DEAD OR ALIVE, name, bounty); a Magic deck is a sleeved deck on
-// the mat, under its commander's art. Same grid, same actions.
+// the mat, under its commander's art; the other games too, under their cover
+// card (tile--<game> tunes the crop). Same grid, same actions.
 const props = defineProps<{
   deck: Pick<Deck, 'id' | 'name' | 'game' | 'updatedAt'> & { public?: boolean }
   fingerprint: DeckFingerprint
@@ -76,7 +78,7 @@ const menuItems = computed(() => [
     v-bind="rootAttrs"
     :aria-labelledby="titleId"
     class="tile"
-    :class="isOp ? 'tile--op' : 'tile--mtg'"
+    :class="isOp ? 'tile--op' : ['tile--mtg', `tile--${deck.game}`]"
     :style="fp.accent"
   >
     <span v-if="isOp" class="pin" aria-hidden="true" />
@@ -87,7 +89,7 @@ const menuItems = computed(() => [
 
     <div class="head">
       <span v-if="isOp" class="wanted-title">{{ t('optcg.wanted') }}</span>
-      <span v-else class="world">Magic</span>
+      <span v-else class="world">{{ GAMES[deck.game].label }}</span>
       <UDropdownMenu v-if="!to" :items="menuItems" @click.stop>
         <UButton
           icon="i-lucide-ellipsis"
@@ -450,6 +452,12 @@ a.tile {
   object-position: 50% 28%;
   transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+/* A whole card, not an art crop: its illustration sits under the name bar. */
+.tile--pokemon .art img {
+  object-position: 50% 24%;
+  transform: scale(1.35);
+  transform-origin: 50% 24%;
+}
 .tile--mtg .art::after {
   content: '';
   position: absolute;
@@ -535,7 +543,13 @@ html.dark .tile--mtg:hover {
   border-color: rgba(122, 160, 212, 0.45);
   box-shadow: 0 18px 34px -18px rgba(0, 0, 0, 0.85);
 }
-html.dark .tile--mtg .art::after {
+html.dark /* A whole card, not an art crop: its illustration sits under the name bar. */
+.tile--pokemon .art img {
+  object-position: 50% 24%;
+  transform: scale(1.35);
+  transform-origin: 50% 24%;
+}
+.tile--mtg .art::after {
   background:
     linear-gradient(180deg, transparent 40%, #1b1f23 100%),
     linear-gradient(90deg, rgba(var(--accent-rgb, 122, 160, 212), 0.2), transparent 60%);

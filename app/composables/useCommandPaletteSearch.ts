@@ -1,7 +1,9 @@
 import type { Ref } from 'vue'
 import type { OptcgCard } from '#shared/optcg/types'
+import type { TcgCard } from '#shared/tcg/types'
 import { computed, ref, watch } from 'vue'
 import { deckPath, GAME_LIST, GAMES, libraryPath, UNIVERSE_SLUG } from '#shared/game'
+import { isTcgGame } from '#shared/tcg/types'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { useLocale } from '~/composables/useLocale'
 
@@ -69,7 +71,12 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
   const cardHits = ref<CardHit[]>([])
   let seq = 0
   async function fetchHits(term: string): Promise<CardHit[]> {
-    if (cardGame.value === 'optcg') {
+    const game = cardGame.value
+    if (isTcgGame(game)) {
+      const { cards } = await $fetch<{ cards: TcgCard[] }>(`/api/tcg/${game}/autocomplete`, { params: { q: term, lang: locale.value } })
+      return cards.map(c => ({ key: c.id, label: c.name, hint: c.setName ?? c.set, query: c.name }))
+    }
+    if (game === 'optcg') {
       const { cards } = await $fetch<{ cards: OptcgCard[] }>('/api/optcg/autocomplete', { params: { q: term, lang: locale.value } })
       return cards.map(c => ({ key: c.id, label: c.name, hint: c.number, query: c.number }))
     }
@@ -98,7 +105,7 @@ export function useCommandPaletteSearch(q: Ref<string>, handlers: Handlers) {
       id: `card-${hit.key}`,
       label: hit.label,
       hint: hit.hint,
-      icon: cardGame.value === 'optcg' ? 'i-lucide-scroll' : 'i-lucide-sparkles',
+      icon: cardGame.value === 'mtg' ? 'i-lucide-sparkles' : GAMES[cardGame.value].icon,
       group: t('cmd.grpCards'),
       run: () => go(`/${UNIVERSE_SLUG[cardGame.value]}?q=${encodeURIComponent(hit.query)}`),
     })),
