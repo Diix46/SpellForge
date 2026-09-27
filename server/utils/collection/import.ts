@@ -14,6 +14,7 @@ import { optcgPrintingId, parseOptcgPrintingId } from '../../../shared/collectio
 import { useMtgCardsDb, useOptcgCardsDb } from '../cards/db'
 import { fold } from '../cards/text'
 import { collectionCards } from './cards'
+import { gameCollection } from './games'
 
 const CHUNK = 400
 
@@ -200,8 +201,12 @@ async function optcgResolve(db: Client, rows: readonly ImportRow[]): Promise<Map
 }
 
 /** Each row, matched (or not), with its card for the preview. */
+export const mtgResolveImport = (rows: readonly ImportRow[]) => mtgResolve(useMtgCardsDb(), rows)
+export const optcgResolveImport = (rows: readonly ImportRow[]) => optcgResolve(useOptcgCardsDb(), rows)
+
 export async function resolveImport(game: GameId, rows: readonly ImportRow[]): Promise<ResolvedImportRow[]> {
-  const matched = game === 'mtg' ? await mtgResolve(useMtgCardsDb(), rows) : await optcgResolve(useOptcgCardsDb(), rows)
+  const adapter = gameCollection(game)
+  const matched = await adapter.resolveImport(rows)
   const cards = await collectionCards(game, [...new Set([...matched.values()].map(m => m.id))])
   return rows.map((r) => {
     const m = matched.get(r.line)
@@ -210,7 +215,7 @@ export async function resolveImport(game: GameId, rows: readonly ImportRow[]): P
       return { line: r.line, printingId: null, lang: r.lang, finish: r.finish, quantity: r.quantity, card: null, error: 'notFound', warnings: [] }
     // Magic: no printing in the copy's language means Scryfall lacks it, not
     // that the copy is not French; the copy keeps its language (a note, not a fix).
-    const warnings = m.warnings.map(w => (w === 'noLangPrinting' && game === 'mtg' && r.lang ? 'langKept' as const : w))
+    const warnings = m.warnings.map(w => (w === 'noLangPrinting' && adapter.ownLanguage && r.lang ? 'langKept' as const : w))
     if (r.otherLang)
       warnings.push('otherLang')
     let finish = r.finish
@@ -220,6 +225,6 @@ export async function resolveImport(game: GameId, rows: readonly ImportRow[]): P
     }
     // Magic: a French copy of a printing only listed in English stays French.
     // One Piece carries the language in the printing itself.
-    return { line: r.line, printingId: m.id, lang: game === 'mtg' ? r.lang : null, finish, quantity: r.quantity, card, error: null, warnings }
+    return { line: r.line, printingId: m.id, lang: adapter.ownLanguage ? r.lang : null, finish, quantity: r.quantity, card, error: null, warnings }
   })
 }

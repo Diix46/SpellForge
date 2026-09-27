@@ -8,13 +8,15 @@ import type { GameId } from '../../../shared/game'
 import type { WishlistItemRow } from '../../db/schema'
 import { and, eq } from 'drizzle-orm'
 import { ownershipKey, unitValue } from '../../../shared/collection'
+import { can, GAMES } from '../../../shared/game'
 import { useMtgCardsDb } from '../cards/db'
 import { schema, useDb } from '../db'
 import { collectionCards } from './cards'
 import { withCards } from './copies'
+import { gameCollection } from './games'
 
-/** Cheapest price of each printing's card, over its English and French printings. */
-async function cheapest(ids: string[], finish: Finish): Promise<Map<string, number>> {
+/** Magic: the cheapest price of each printing's card, over its English and French printings. */
+export async function mtgCheapest(ids: string[], finish: Finish): Promise<Map<string, number>> {
   if (!ids.length)
     return new Map()
   const col = finish === 'nonfoil' ? 'q.price_eur' : 'COALESCE(q.price_eur_foil, q.price_eur)'
@@ -29,10 +31,11 @@ async function cheapest(ids: string[], finish: Finish): Promise<Map<string, numb
 export async function withWishData(userId: string, game: GameId, rows: readonly WishlistItemRow[]): Promise<WishItem[]> {
   const cards = await collectionCards(game, [...new Set(rows.map(r => r.printingId))])
   const lowest = new Map<string, number>()
-  if (game === 'mtg') {
+  const adapter = gameCollection(game)
+  if (adapter.cheapest) {
     for (const finish of ['nonfoil', 'foil', 'etched'] as const) {
       const ids = rows.filter(r => r.anyPrinting && r.finish === finish).map(r => r.printingId)
-      for (const [id, price] of await cheapest(ids, finish))
+      for (const [id, price] of await adapter.cheapest(ids, finish))
         lowest.set(`${id}|${finish}`, price)
     }
   }
@@ -40,13 +43,13 @@ export async function withWishData(userId: string, game: GameId, rows: readonly 
   const copies = await withCards(await useDb().select().from(t).where(and(eq(t.userId, userId), eq(t.game, game))).all())
   const owned = new Map<string, number>()
   for (const c of copies) {
-    const name = game === 'mtg' ? c.card?.name : c.card?.number
+    const name = GAMES[game].cardKey === 'name' ? c.card?.name : c.card?.number
     if (name)
       owned.set(ownershipKey(game, name), (owned.get(ownershipKey(game, name)) ?? 0) + c.quantity)
   }
   return rows.map((r) => {
     const card = cards.get(r.printingId) ?? null
-    const name = game === 'mtg' ? card?.name : card?.number
+    const name = GAMES[game].cardKey === 'name' ? card?.name : card?.number
     return {
       id: r.id,
       game: r.game,
@@ -58,7 +61,7 @@ export async function withWishData(userId: string, game: GameId, rows: readonly 
       note: r.note,
       createdAt: r.createdAt.getTime(),
       card,
-      price: game === 'mtg' ? (r.anyPrinting ? lowest.get(`${r.printingId}|${r.finish}`) ?? null : unitValue(card, r.finish)) : null,
+      price: can(game, 'prices') ? (r.anyPrinting ? lowest.get(`${r.printingId}|${r.finish}`) ?? null : unitValue(card, r.finish)) : null,
       owned: name ? owned.get(ownershipKey(game, name)) ?? 0 : 0,
     }
   })

@@ -23,3 +23,10 @@ describe('the game registry', () => {
     expect(collectionPath('optcg', '/sets/OP-01')).toBe('/one-piece/collection/sets/OP-01')
   })
 })
+
+describe('every game has its pieces', () => {
+  it('has a collection adapter', async () => {
+    const { COLLECTION_GAMES } = await import('../server/utils/collection/games')
+    expect([...COLLECTION_GAMES].sort()).toEqual([...GAME_IDS].sort())
+  })
+})

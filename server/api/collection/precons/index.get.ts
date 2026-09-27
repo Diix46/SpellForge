@@ -1,6 +1,8 @@
 import type { InValue } from '@libsql/client'
 import type { PreconSummary } from '../../../../shared/collection-decks'
+import type { GameId } from '../../../../shared/game'
 import { PRECON_KINDS } from '../../../../shared/collection-decks'
+import { DEFAULT_GAME, parseGameId } from '../../../../shared/game'
 import { useMtgCardsDb, useOptcgCardsDb, usePreconsDb } from '../../../utils/cards/db'
 import { imageUrl } from '../../../utils/cards/mtg-shape'
 import { optcgImageUrl } from '../../../utils/cards/optcg-shape'
@@ -18,13 +20,22 @@ const KIND_TYPES: Record<string, string[]> = {
 // the site's language when printed so), its commander's name in that
 // language and its set's name. Deck names stay English: no source gives the
 // French product names.
+// Each game's precons (a game without any lists none).
+const LISTERS: Partial<Record<GameId, (text: string, lang: 'fr' | 'en', kind: string | null) => Promise<PreconSummary[]>>> = {
+  mtg: (text, lang, kind) => mtgPrecons(text, lang, kind),
+  optcg: (text, lang) => optcgPrecons(text, lang),
+}
+
 export default defineEventHandler(async (event): Promise<{ precons: PreconSummary[] }> => {
   const q = getQuery(event)
   const text = typeof q.q === 'string' ? q.q.trim().slice(0, 80).toLowerCase() : ''
   const kind = PRECON_KINDS.includes(q.kind as never) ? String(q.kind) : null
   const lang = q.lang === 'en' ? 'en' : 'fr'
-  if (q.game === 'optcg')
-    return { precons: await optcgPrecons(text, lang) }
+  const list = LISTERS[parseGameId(q.game) ?? DEFAULT_GAME]
+  return { precons: list ? await list(text, lang, kind) : [] }
+})
+
+async function mtgPrecons(text: string, lang: 'fr' | 'en', kind: string | null): Promise<PreconSummary[]> {
   const mtg = useMtgCardsDb()
   const where: string[] = ['game = \'mtg\'']
   const args: InValue[] = []
@@ -60,7 +71,7 @@ export default defineEventHandler(async (event): Promise<{ precons: PreconSummar
   }
   catch {
     // Not built yet (the nightly refresh builds it).
-    return { precons: [] }
+    return []
   }
 
   const faces = [...new Set(rows.map(r => r.face_id).filter(x => x != null).map(String))]
@@ -95,25 +106,23 @@ export default defineEventHandler(async (event): Promise<{ precons: PreconSummar
     ? new Map((await mtg.execute({ sql: `SELECT code, name FROM sets WHERE code IN (${codes.map(() => '?').join(',')})`, args: codes })).rows.map(r => [String(r.code), String(r.name)]))
     : new Map()
 
-  return {
-    precons: rows.map((r) => {
-      const face = r.face_id == null ? null : images.get(String(r.face_id))
-      const commander = r.commander == null ? null : String(r.commander)
-      return {
-        file: String(r.file),
-        code: String(r.code),
-        name: String(r.name),
-        type: String(r.type),
-        released: r.released == null ? null : String(r.released),
-        cards: Number(r.cards),
-        commander,
-        commanderLocal: commander ? localNames.get(commander) ?? commander : null,
-        setName: setNames.get(String(r.code)) ?? null,
-        thumb: face ? imageUrl('normal', 'front', face.id, face.v, 'thumb') : null,
-      }
-    }),
-  }
-})
+  return rows.map((r) => {
+    const face = r.face_id == null ? null : images.get(String(r.face_id))
+    const commander = r.commander == null ? null : String(r.commander)
+    return {
+      file: String(r.file),
+      code: String(r.code),
+      name: String(r.name),
+      type: String(r.type),
+      released: r.released == null ? null : String(r.released),
+      cards: Number(r.cards),
+      commander,
+      commanderLocal: commander ? localNames.get(commander) ?? commander : null,
+      setName: setNames.get(String(r.code)) ?? null,
+      thumb: face ? imageUrl('normal', 'front', face.id, face.v, 'thumb') : null,
+    }
+  })
+}
 
 /**
  * One Piece starter decks (scripts/ingest-precons.mjs): names in the site's
