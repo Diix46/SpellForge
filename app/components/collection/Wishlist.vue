@@ -3,6 +3,7 @@ import type { WishItem } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import { computed, onMounted, ref } from 'vue'
 import { wishReached } from '#shared/collection'
+import { can, GAMES } from '#shared/game'
 
 // The cards the member is after: what each costs today against the price
 // they set, the ones that came down to it first, a list to shop with, and a
@@ -17,7 +18,7 @@ onMounted(() => void wishlist.load())
 
 const loc = computed(() => (locale.value === 'fr' ? 'fr-FR' : 'en-US'))
 const money = (n: number) => n.toLocaleString(loc.value, { style: 'currency', currency: 'EUR' })
-const priced = computed(() => props.game === 'mtg')
+const priced = computed(() => can(props.game, 'prices'))
 
 type Sort = 'reached' | 'recent' | 'price' | 'name'
 const sort = ref<Sort>('reached')
@@ -49,7 +50,7 @@ function setTarget(w: WishItem, e: Event) {
     void wishlist.update(w.id, { targetPrice: next })
 }
 function found(w: WishItem) {
-  openAdd({ query: props.game === 'mtg' ? w.card?.name ?? '' : w.card?.number ?? '', printing: w.printingId })
+  openAdd({ query: (GAMES[props.game].cardKey === 'name' ? w.card?.name : w.card?.number) ?? '', printing: w.printingId })
 }
 
 /** The wishlist as a shopping list (Cardmarket's wants list reads it). */

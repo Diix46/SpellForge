@@ -1,3 +1,6 @@
+import type { GameId } from '#shared/game'
+import { collectionPath as gameCollectionPath } from '#shared/game'
+
 /**
  * The collection's add dialog, opened from anywhere on the collection pages:
  * empty, or on a card and printing (a checklist's missing card).
@@ -21,7 +24,7 @@ export function useCollectionImportDialog() {
   return { state, openImport }
 }
 
-/** Where a game's collection lives. */
-export function collectionPath(game: 'mtg' | 'optcg', sub = ''): string {
-  return `${game === 'mtg' ? '/magic' : '/one-piece'}/collection${sub}`
+/** Where a game's collection lives (shared/game.ts), auto-imported in the app. */
+export function collectionPath(game: GameId, sub = ''): string {
+  return gameCollectionPath(game, sub)
 }

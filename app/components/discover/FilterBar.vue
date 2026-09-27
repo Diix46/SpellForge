@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DiscoverFilters } from '~/composables/useDiscoverFilters'
 import { computed, watch } from 'vue'
+import { GAME_LIST } from '#shared/game'
 import { OPTCG_COLORS } from '#shared/optcg/rules'
 import { OPTCG_COLOR_HEX } from '~/utils/optcgColors'
 
@@ -13,8 +14,7 @@ const { t } = useLocale()
 
 const GAMES = [
   { value: 'all' as const, label: () => t('discover.all') },
-  { value: 'optcg' as const, label: () => 'One Piece' },
-  { value: 'mtg' as const, label: () => 'Magic' },
+  ...GAME_LIST.map(g => ({ value: g.id, label: () => g.label })),
 ]
 const MTG_COLORS = ['W', 'U', 'B', 'R', 'G', 'C']
 const sortItems = computed(() => [

@@ -9,6 +9,7 @@
  * Pure: shared by the app, the server and the tests.
  */
 import type { GameId } from './game'
+import { GAMES } from './game'
 
 export const FINISHES = ['nonfoil', 'foil', 'etched'] as const
 export type Finish = typeof FINISHES[number]
@@ -204,8 +205,8 @@ export function setKind(game: 'mtg' | 'optcg', type: string | null): SetKind {
  * What a deck and a collection match on: Magic's card name (its front face,
  * any case), One Piece's card number. Any printing, language or art counts.
  */
-export function ownershipKey(game: 'mtg' | 'optcg', name: string): string {
-  return game === 'mtg' ? (name.split(' // ')[0] ?? '').trim().toLowerCase() : name.trim().toUpperCase()
+export function ownershipKey(game: GameId, name: string): string {
+  return GAMES[game].cardKey === 'name' ? (name.split(' // ')[0] ?? '').trim().toLowerCase() : name.trim().toUpperCase()
 }
 
 /** Copies a deck needs of a card, and how many of them the collection covers. */

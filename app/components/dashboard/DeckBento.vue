@@ -2,6 +2,7 @@
 import type { DeckFingerprint } from '~/composables/useDeckFingerprints'
 import type { Deck } from '~/composables/useDeckStore'
 import { isDefaultDeckName } from '#shared/decks'
+import { GAMES } from '#shared/game'
 import { useLocale } from '~/composables/useLocale'
 
 // Bento hero: the featured (most-recent) deck + two quick-start tiles. Pure
@@ -33,7 +34,7 @@ const { t } = useLocale()
       <!-- The commander's art or the Leader's portrait, fading in from the right. -->
       <img v-if="fingerprint.art" :src="fingerprint.art" alt="" class="feature-art" :class="{ 'feature-art--op': featured.game === 'optcg' }">
       <span class="feature-tag">
-        <span class="dot" />{{ t('dash.recent') }} · {{ featured.game === 'optcg' ? 'One Piece' : 'Magic' }}
+        <span class="dot" />{{ t('dash.recent') }} · {{ GAMES[featured.game].label }}
       </span>
       <div class="feature-body">
         <img v-if="fingerprint.leader && !fingerprint.art" :src="fingerprint.leader.thumb" alt="" class="feature-leader">

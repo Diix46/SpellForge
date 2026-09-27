@@ -3,6 +3,7 @@ import type { OwnedCount } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import { computed, onMounted, watch } from 'vue'
 import { deckOwnership, ownershipKey } from '#shared/collection'
+import { GAMES } from '#shared/game'
 
 /**
  * A deck against the member's collection: how many of each card are owned,
@@ -27,7 +28,7 @@ export function useDeckOwnership(game: GameId, needs: Ref<{ name: string, quanti
   const have = computed(() => {
     const m = new Map<string, number>()
     for (const c of collection.copies.value) {
-      const name = game === 'mtg' ? c.card?.name : c.card?.number
+      const name = GAMES[game].cardKey === 'name' ? c.card?.name : c.card?.number
       if (!name)
         continue
       const key = ownershipKey(game, name)

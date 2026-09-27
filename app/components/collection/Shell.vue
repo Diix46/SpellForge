@@ -3,6 +3,7 @@ import type { ExportFormat } from '#shared/collection-csv'
 import type { GameId } from '#shared/game'
 import { computed, onMounted, watch } from 'vue'
 import { exportCollection } from '#shared/collection-csv'
+import { can, GAMES } from '#shared/game'
 
 // Around every collection page: the title, the tabs (copies, sets), the add
 // button and its dialog; guests are asked to sign in instead.
@@ -41,12 +42,12 @@ function download(format: ExportFormat) {
   const blob = new Blob([format === 'text' ? text : `\uFEFF${text}`], { type: format === 'text' ? 'text/plain' : 'text/csv' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `prism-${props.game === 'mtg' ? 'magic' : 'one-piece'}-${format}-${new Date().toISOString().slice(0, 10)}.${ext}`
+  a.download = `prism-${GAMES[props.game].slug}-${format}-${new Date().toISOString().slice(0, 10)}.${ext}`
   a.click()
   setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 }
 const exportItems = computed(() => [
-  (props.game === 'mtg' ? ['prism', 'manabox', 'moxfield', 'text'] as const : ['prism', 'text'] as const).map(f => ({
+  GAMES[props.game].exportFormats.map(f => ({
     label: t(`collection.export.${f}`),
     icon: f === 'text' ? 'i-lucide-file-text' : 'i-lucide-file-spreadsheet',
     onSelect: () => download(f),
@@ -59,7 +60,8 @@ const base = collectionPath(props.game)
 const tabs = computed(() => [
   { to: base, label: 'collection.tabBinder', icon: 'i-lucide-book-open', active: route.path === base || route.path.startsWith(`${base}/sets`) },
   { to: `${base}/inventory`, label: 'collection.tabInventory', icon: 'i-lucide-layers', active: route.path.startsWith(`${base}/inventory`) },
-  ...(props.game === 'mtg' ? [{ to: `${base}/value`, label: 'collection.tabValue', icon: 'i-lucide-chart-line', active: route.path.startsWith(`${base}/value`) }] : []),
+  // Only games with prices have a value to follow.
+  ...(can(props.game, 'prices') ? [{ to: `${base}/value`, label: 'collection.tabValue', icon: 'i-lucide-chart-line', active: route.path.startsWith(`${base}/value`) }] : []),
   { to: `${base}/wishlist`, label: 'collection.tabWishlist', icon: 'i-lucide-heart', active: route.path.startsWith(`${base}/wishlist`) },
 ])
 </script>

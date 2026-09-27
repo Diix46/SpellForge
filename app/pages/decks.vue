@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
 import { computed, ref } from 'vue'
-import { deckPath } from '#shared/game'
+import { deckPath, GAME_LIST } from '#shared/game'
 import { useDashboardModals } from '~/composables/useDashboardModals'
 import { useDeckFingerprints } from '~/composables/useDeckFingerprints'
 import { useDeckStore } from '~/composables/useDeckStore'
@@ -55,10 +55,9 @@ const featuredPrint = computed(() => (featured.value ? fingerprints.value.get(fe
 
 // Both worlds share the grid; a filter narrows it to one.
 const worldFilter = ref<GameId | 'all'>('all')
-const worldCounts = computed(() => ({
-  optcg: decks.value.filter(d => d.game === 'optcg').length,
-  mtg: decks.value.filter(d => d.game === 'mtg').length,
-}))
+const worldCounts = computed(() => GAME_LIST
+  .map(g => ({ game: g, count: decks.value.filter(d => d.game === g.id).length }))
+  .filter(w => w.count > 0))
 
 // Every deck, most recent first. The featured one is listed too: the grid is
 // where a deck is renamed, duplicated or deleted.
@@ -168,15 +167,12 @@ const restDecks = computed(() =>
           <h2 class="sec-title">
             {{ t('dash.allDecks') }}
           </h2>
-          <div v-if="worldCounts.optcg && worldCounts.mtg" class="world-filter" role="group">
+          <div v-if="worldCounts.length > 1" class="world-filter" role="group">
             <button type="button" :aria-pressed="worldFilter === 'all'" @click="worldFilter = 'all'">
               {{ t('dash.filterAll') }}
             </button>
-            <button type="button" :aria-pressed="worldFilter === 'optcg'" @click="worldFilter = 'optcg'">
-              One Piece · {{ worldCounts.optcg }}
-            </button>
-            <button type="button" :aria-pressed="worldFilter === 'mtg'" @click="worldFilter = 'mtg'">
-              Magic · {{ worldCounts.mtg }}
+            <button v-for="w in worldCounts" :key="w.game.id" type="button" :aria-pressed="worldFilter === w.game.id" @click="worldFilter = w.game.id">
+              {{ w.game.label }} · {{ w.count }}
             </button>
           </div>
         </div>

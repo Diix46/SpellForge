@@ -3,6 +3,7 @@ import type { CollectionCopy, Condition } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import type { CopyEdit } from '~/composables/useCollection'
 import { computed, ref } from 'vue'
+import { can } from '#shared/game'
 
 // A member's copies for one game: the totals and filters on the side, the
 // copies as a grid or a list, a sheet to edit one.
@@ -70,7 +71,7 @@ function quantity(copy: CollectionCopy, q: number) {
 const sortItems = computed(() => [
   { label: t('collection.sortRecent'), value: 'recent' },
   { label: t('collection.sortName'), value: 'name' },
-  ...(props.game === 'mtg' ? [{ label: t('collection.sortValue'), value: 'value' }] : []),
+  ...(can(props.game, 'prices') ? [{ label: t('collection.sortValue'), value: 'value' }] : []),
   { label: t('collection.sortSet'), value: 'set' },
 ])
 </script>

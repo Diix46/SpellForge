@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
+import { GAME_LIST } from '#shared/game'
 import { useLocale } from '~/composables/useLocale'
 
 // The dashboard's modals (new deck / rename / delete). Pure
@@ -54,29 +55,24 @@ const modalUi = {
           {{ t('modal.chooseWorld') }}
         </legend>
         <button
+          v-for="g in GAME_LIST"
+          :key="g.id"
           type="button"
-          class="world world--op"
-          :aria-pressed="newDeckGame === 'optcg'"
-          @click="emit('update:newDeckGame', 'optcg')"
+          class="world"
+          :class="`world--${g.id}`"
+          :style="{ '--world': g.swatch }"
+          :aria-pressed="newDeckGame === g.id"
+          @click="emit('update:newDeckGame', g.id)"
         >
-          <span class="world-name">One Piece</span>
-          <span class="world-rule">{{ t('modal.worldOp') }}</span>
-        </button>
-        <button
-          type="button"
-          class="world world--mtg"
-          :aria-pressed="newDeckGame === 'mtg'"
-          @click="emit('update:newDeckGame', 'mtg')"
-        >
-          <span class="world-name">Magic</span>
-          <span class="world-rule">{{ t('modal.worldMtg') }}</span>
+          <span class="world-name">{{ g.label }}</span>
+          <span class="world-rule">{{ t(`modal.world.${g.id}`) }}</span>
         </button>
       </fieldset>
       <UFormField :label="t('modal.deckName')">
         <UInput
           :model-value="newDeckName"
           name="new-deck-name"
-          :placeholder="newDeckGame === 'optcg' ? t('modal.namePlaceholderOp') : t('modal.namePlaceholderMtg')"
+          :placeholder="t(`modal.namePlaceholder.${newDeckGame}`)"
           autofocus
           class="w-full font-mono"
           @update:model-value="emit('update:newDeckName', String($event))"
@@ -181,7 +177,16 @@ const modalUi = {
 .world:hover {
   transform: translateY(-2px);
 }
-.world--op {
+/* A game without its own look: its colour. */
+.world {
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+  color: var(--color-text-high);
+}
+.world[aria-pressed='true'] {
+  border-color: var(--world);
+}
+.world--optcg {
   rotate: -1deg;
   border-radius: 2px;
   background: linear-gradient(180deg, #fbf3e3, #efdfc0);
@@ -192,7 +197,7 @@ const modalUi = {
   background: linear-gradient(180deg, #ffffff, #f2f3f0);
   color: #1b1f22;
 }
-.world--op[aria-pressed='true'] {
+.world--optcg[aria-pressed='true'] {
   border-color: #c9312a;
 }
 .world--mtg[aria-pressed='true'] {
@@ -202,7 +207,7 @@ const modalUi = {
   font-size: 20px;
   line-height: 1;
 }
-.world--op .world-name {
+.world--optcg .world-name {
   font-family: 'Anton', Impact, sans-serif;
   text-transform: uppercase;
 }

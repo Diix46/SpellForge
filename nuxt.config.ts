@@ -1,3 +1,5 @@
+import { GAME_LIST } from './shared/game'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: ['@nuxt/ui', '@nuxt/fonts', 'nuxt-auth-utils'],
@@ -13,12 +15,8 @@ export default defineNuxtConfig({
     '/': { ssr: true },
     '/landing': { redirect: { to: '/', statusCode: 301 } },
     '/discover': { ssr: true },
-    '/magic': { ssr: true },
-    '/magic/card/**': { ssr: true },
-    '/magic/shared/**': { ssr: true },
-    '/one-piece': { ssr: true },
-    '/one-piece/card/**': { ssr: true },
-    '/one-piece/shared/**': { ssr: true },
+    // Each game's library, card and shared-deck pages are rendered on the server.
+    ...Object.fromEntries(GAME_LIST.flatMap(g => [`/${g.slug}`, `/${g.slug}/card/**`, `/${g.slug}/shared/**`].map(path => [path, { ssr: true }]))),
   },
 
   // The public address, for canonical links and the sitemap

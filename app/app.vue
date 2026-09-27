@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import type { GameId } from '#shared/game'
 import { computed, ref, watch } from 'vue'
-import { libraryPath } from '#shared/game'
+import { DEFAULT_GAME, GAME_IDS, GAME_LIST, GAMES, libraryPath } from '#shared/game'
 import { useCommandPalette } from '~/composables/useCommandPalette'
 import { parseLocale } from '~/composables/useLocale'
 
@@ -68,9 +69,9 @@ function toggleTheme() {
 // language follows the site locale (reactive — switches with the FR/EN toggle).
 // The universe re-themes the whole document (assets/css/universes.css).
 const THEME_COLOR = {
-  light: { optcg: '#efdfc0', mtg: '#f7f7f5' },
-  dark: { optcg: '#17120c', mtg: '#0f1113' },
-} as const
+  light: Object.fromEntries(GAME_LIST.map(g => [g.id, g.themeColor.light])) as Record<GameId, string>,
+  dark: Object.fromEntries(GAME_LIST.map(g => [g.id, g.themeColor.dark])) as Record<GameId, string>,
+}
 useHead({
   htmlAttrs: {
     'lang': () => locale.value,
@@ -117,15 +118,15 @@ const initials = computed(() => {
 const nav = computed(() => [
   { to: '/decks', label: t('nav.myDecks'), icon: 'i-lucide-layout-grid' },
   // The collection of the game on screen (Magic elsewhere).
-  { to: universe.value === 'optcg' ? '/one-piece/collection' : '/magic/collection', label: t('nav.collection'), icon: 'i-lucide-gem' },
+  { to: collectionPath(universe.value ?? DEFAULT_GAME), label: t('nav.collection'), icon: 'i-lucide-gem' },
   { to: '/discover', label: t('nav.discover'), icon: 'i-lucide-compass' },
 ])
 
 // The libraries, in the phone's menu (the bar has "Libraries ▾").
-const libraries = [
-  { game: 'optcg' as const, to: libraryPath('optcg'), label: 'One Piece' },
-  { game: 'mtg' as const, to: libraryPath('mtg'), label: 'Magic' },
-]
+const libraries = GAME_LIST.map(g => ({ game: g.id, to: libraryPath(g.id), label: g.label }))
+
+// The footer: the credits of the game on screen, or of every game.
+const footerGames = computed(() => (universe.value ? [universe.value] : GAME_IDS))
 
 // A nav link is active only when it's the current route (exact); the query of
 // a transient ?import/?new modal does not count.
@@ -275,17 +276,18 @@ function isActive(to: string) {
         <div class="foot-inner">
           <div class="foot-brand">
             <AppLogo :wordmark="false" :size="20" />
-            <span>{{ universe === 'optcg' ? t('footer.taglineOp') : t('footer.tagline') }}</span>
+            <span>{{ t(`footer.tagline.${universe ?? 'all'}`) }}</span>
           </div>
-          <p v-if="universe !== 'optcg'">
+          <!-- Each game's sources and rights; on a page of no game, all of them. -->
+          <p v-for="g in footerGames" :key="g">
             {{ t('footer.dataVia') }}
-            <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>
-            • {{ t('footer.importsVia') }}
-            <a href="https://edhrec.com" target="_blank" rel="noopener">EDHREC</a>
-            • {{ t('footer.wotc') }}
-          </p>
-          <p v-if="universe !== 'mtg'">
-            {{ t('footer.bandai') }}
+            <template v-for="(src, i) in GAMES[g].sources" :key="src.url">
+              <template v-if="i">
+                ·
+              </template>
+              <a :href="src.url" target="_blank" rel="noopener">{{ src.label }}</a>
+            </template>
+            • {{ t(`footer.rights.${g}`) }}
           </p>
         </div>
       </footer>
