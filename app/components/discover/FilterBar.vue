@@ -113,6 +113,8 @@ function toggleColor(c: string) {
 <style scoped>
 .bar {
   display: grid;
+  /* A column that never grows past the screen with its widest row. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
   border: 1px solid var(--color-border-subtle);
@@ -132,10 +134,14 @@ function toggleColor(c: string) {
 }
 .search {
   flex: 1 1 260px;
-  min-width: 220px;
+  min-width: min(220px, 100%);
 }
 .seg {
   display: flex;
+  /* On a phone the five games scroll sideways rather than widen the page. */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--color-border-hairline);
@@ -202,5 +208,12 @@ function toggleColor(c: string) {
   font-size: 13px;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+@media (max-width: 640px) {
+  .row > :deep(.w-44) {
+    flex: 1 1 140px;
+    width: auto;
+    min-width: 0;
+  }
 }
 </style>

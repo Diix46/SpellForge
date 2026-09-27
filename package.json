@@ -20,7 +20,8 @@
     "cards:verify:op": "node scripts/verify-optcg.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "node test/e2e/run.mjs"
+    "test:e2e": "node test/e2e/run.mjs",
+    "test:smoke": "SMOKE=1 node test/e2e/run.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

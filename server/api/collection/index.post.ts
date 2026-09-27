@@ -20,6 +20,9 @@ export default defineEventHandler(async (event) => {
   const card = (await collectionCards(game, [printingId])).get(printingId)
   if (!card)
     throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Impression inconnue' })
+  // No finish said: the printing's own (a card printed holo only is a holo).
+  if (body.finish === undefined && !card.finishes.includes(fields.finish!))
+    fields.finish = card.finishes[0] ?? fields.finish
   if (!card.finishes.includes(fields.finish!))
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Cette impression n\'existe pas dans cette finition' })
 

@@ -1,5 +1,6 @@
 import { reopenCardDbs } from '../../utils/cards/db'
 import { refreshCards } from '../../utils/cards/refresh'
+import { logError } from '../../utils/errorLog'
 
 /**
  * Rebuilds the local card databases when their sources moved (each script
@@ -19,6 +20,8 @@ export default defineTask({
         // A rebuilt database serves at once, not after the whole refresh.
         if (o.ok)
           reopenCardDbs()
+        else
+          logError({ source: 'refresh', message: `Étape ${o.name} en échec (code ${o.code}) après ${o.attempts} essai(s)`, where: o.name })
       },
     })
     return { result: outcomes.every(o => o.ok) ? 'ok' : 'partial', outcomes }

@@ -20,9 +20,10 @@ interface Profile {
 const route = useRoute()
 const { t, locale, formatShortDate } = useLocale()
 const id = computed(() => String(route.params.id))
-const { data: profile } = await useFetch<Profile>(() => `/api/profile/${encodeURIComponent(id.value)}`)
-if (import.meta.server && !profile.value)
-  setResponseStatus(useRequestEvent()!, 404)
+const { data: profile, error } = await useFetch<Profile>(() => `/api/profile/${encodeURIComponent(id.value)}`)
+// A private or unknown profile is the site's 404 page, with its status.
+if (error.value?.statusCode === 404 || (!profile.value && !error.value))
+  throw createError({ statusCode: 404, statusMessage: 'Not Found', fatal: true })
 
 const money = (n: number, digits = 2) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: digits })
 const total = computed(() => profile.value?.collection?.reduce((n, g) => n + g.value, 0) ?? 0)

@@ -15,17 +15,24 @@ export default defineNuxtConfig({
     '/': { ssr: true },
     '/landing': { redirect: { to: '/', statusCode: 301 } },
     '/discover': { ssr: true },
+    // A member's public profile: shared, so rendered with its preview.
+    '/joueur/**': { ssr: true },
     // Each game's library, card and shared-deck pages are rendered on the server.
     ...Object.fromEntries(GAME_LIST.flatMap(g => [`/${g.slug}`, `/${g.slug}/card/**`, `/${g.slug}/shared/**`].map(path => [path, { ssr: true }]))),
     // The 3D library's scanned materials and the self-hosted fonts: kept a
     // month by the browser (their names change with their content).
     '/textures/**': { headers: { 'cache-control': 'public, max-age=2592000, stale-while-revalidate=86400' } },
     '/fonts/**': { headers: { 'cache-control': 'public, max-age=2592000' } },
+    // The service worker is checked for updates on every visit.
+    '/sw.js': { headers: { 'cache-control': 'no-cache' } },
   },
 
   // The public address, for canonical links and the sitemap
   // (NUXT_PUBLIC_SITE_URL). Empty: the address of the request.
   runtimeConfig: {
+    // Who may read the error journal (/admin/erreurs): comma-separated emails,
+    // from NUXT_ADMIN_EMAILS.
+    adminEmails: '',
     public: { siteUrl: '' },
   },
 
@@ -39,9 +46,19 @@ export default defineNuxtConfig({
     // What the browser-rendered pages carry before the app starts; pages then
     // set their own.
     head: {
-      title: 'Prism, l\'atelier de decks One Piece et Magic',
+      title: 'Prism, l\'atelier de decks et de collection de cartes',
       meta: [
-        { name: 'description', content: 'Construisez vos decks One Piece et Magic sans créer de compte : toutes les cartes en local, règles vérifiées, partage en un lien, proxies Magic en PDF.' },
+        { name: 'description', content: 'Construis tes decks et range ta collection One Piece, Magic, Pokémon, Yu-Gi-Oh! et Riftbound : toutes les cartes en français, règles vérifiées, classeurs et bibliothèque en 3D.' },
+        // Installed on a phone: its own window, the bar in the app's colour.
+        { name: 'theme-color', content: '#09090d' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-title', content: 'Prism' },
+      ],
+      link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
+        { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' },
       ],
     },
   },
