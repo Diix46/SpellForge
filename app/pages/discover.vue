@@ -203,6 +203,7 @@ const errored = computed(() => !!error.value)
   display: flex;
   flex-direction: column;
   gap: 22px;
+  min-width: 0;
 }
 .discover-title {
   margin: 0;

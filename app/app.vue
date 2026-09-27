@@ -271,6 +271,9 @@ function isActive(to: string) {
             <UIcon name="i-lucide-library" class="ic" />
             <span>{{ g.label }}</span>
           </NuxtLink>
+          <ClientOnly>
+            <InstallApp />
+          </ClientOnly>
           <!-- on a phone the bar has no room left for these -->
           <div class="nav-mobile-tools">
             <div class="lang">
