@@ -11,6 +11,7 @@ import type { InValue } from '@libsql/client'
 import type { TcgGameId } from '../../../../shared/tcg/types'
 import { cardPath } from '../../../../shared/game'
 import { useTcgDb } from '../../../utils/tcg/db'
+import { ARCANE_MURALS, lolSplash } from '../../../utils/tcg/lol'
 import { tcgGame, tcgLang } from '../../../utils/tcg/params'
 import { buildByIdQuery, toTcgCard } from '../../../utils/tcg/query'
 
@@ -22,6 +23,8 @@ export interface ShowcaseArt {
   card: boolean
   /** A light copy of `image`, for small frames. */
   thumb: string
+  /** Riftbound: the Legend's champion in League of Legends' own splash art (sharp, landscape). */
+  splash?: string | null
   path: string
 }
 
@@ -102,16 +105,23 @@ async function cardsOf(game: TcgGameId, list: string[], lang: 'fr' | 'en'): Prom
     if (!c || !c.image)
       return []
     const image = c.art ?? c.image
-    return [{ name: c.name, image, thumb: c.art ? image : c.thumb || image, card: !c.art, path: cardPath(game, c.id) }]
+    return [{ name: c.name, image, thumb: c.art ? image : c.thumb || image, card: !c.art, path: cardPath(game, c.id), champion: c.tags[0] ?? null }]
   })
 }
 
-const showcase = defineCachedFunction(async (game: TcgGameId, lang: 'fr' | 'en'): Promise<{ arts: ShowcaseArt[], emblems: ShowcaseArt[] }> => {
+const showcase = defineCachedFunction(async (game: TcgGameId, lang: 'fr' | 'en'): Promise<{ arts: ShowcaseArt[], emblems: ShowcaseArt[], murals: string[] }> => {
   const [arts, emblems] = await Promise.all([ids(game), emblemIds(game)])
-  return { arts: await cardsOf(game, arts, lang), emblems: await cardsOf(game, emblems, lang) }
-}, { maxAge: 60 * 60, name: 'tcg-showcase-5', getKey: (game: string, lang: string) => `${game}:${lang}` })
+  const cards = await cardsOf(game, arts, lang)
+  // Riftbound's Legends are League's champions: their own splash art.
+  if (game === 'riftbound') {
+    await Promise.all(cards.map(async (c) => {
+      c.splash = await lolSplash((c as ShowcaseArt & { champion?: string | null }).champion)
+    }))
+  }
+  return { arts: cards.map(({ champion: _, ...c }: ShowcaseArt & { champion?: string | null }) => c), emblems: await cardsOf(game, emblems, lang), murals: game === 'riftbound' ? ARCANE_MURALS : [] }
+}, { maxAge: 60 * 60, name: 'tcg-showcase-6', getKey: (game: string, lang: string) => `${game}:${lang}` })
 
 export default defineEventHandler(async (event) => {
   const game = tcgGame(event)
-  return showcase(game, tcgLang(getQuery(event).lang)).catch(() => ({ arts: [], emblems: [] }))
+  return showcase(game, tcgLang(getQuery(event).lang)).catch(() => ({ arts: [], emblems: [], murals: [] }))
 })

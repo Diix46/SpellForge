@@ -147,7 +147,8 @@ onBeforeUnmount(() => clearTimeout(closing))
   text-transform: uppercase;
 }
 .name--mtg {
-  font-family: var(--mtg-face);
+  /* The card names' face, Beleren: Philosopher is its free look-alike. */
+  font-family: 'Philosopher', 'Beleren', Georgia, serif;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -156,8 +157,9 @@ onBeforeUnmount(() => clearTimeout(closing))
   font-weight: 700;
 }
 .name--yugioh {
-  font-family: 'Spectral SC', 'Matrix Small Caps', Georgia, serif;
+  font-family: 'Enriqueta', 'Matrix Small Caps', Georgia, serif;
   font-weight: 700;
+  font-variant-caps: small-caps;
 }
 .name--riftbound {
   font-family: var(--rift-face);

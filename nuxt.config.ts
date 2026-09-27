@@ -17,6 +17,10 @@ export default defineNuxtConfig({
     '/discover': { ssr: true },
     // Each game's library, card and shared-deck pages are rendered on the server.
     ...Object.fromEntries(GAME_LIST.flatMap(g => [`/${g.slug}`, `/${g.slug}/card/**`, `/${g.slug}/shared/**`].map(path => [path, { ssr: true }]))),
+    // The 3D library's scanned materials and the self-hosted fonts: kept a
+    // month by the browser (their names change with their content).
+    '/textures/**': { headers: { 'cache-control': 'public, max-age=2592000, stale-while-revalidate=86400' } },
+    '/fonts/**': { headers: { 'cache-control': 'public, max-age=2592000' } },
   },
 
   // The public address, for canonical links and the sitemap
@@ -110,9 +114,11 @@ export default defineNuxtConfig({
       { name: 'Cinzel', provider: 'google', weights: [600, 700] },
       // The generic engine's games speak with their cards' type (free
       // look-alikes of the printed ones): Pokémon's Gill Sans, Yu-Gi-Oh's
-      // Matrix small caps, Riftbound's Spiegel under League's Beaufort.
+      // Matrix small caps (Enriqueta), Riftbound's Spiegel under League's Beaufort.
       { name: 'Cabin', provider: 'google', weights: [500, 600, 700] },
-      { name: 'Spectral SC', provider: 'google', weights: [600, 700] },
+      { name: 'Enriqueta', provider: 'google', weights: [700] },
+      // Magic's card names (Beleren): its look-alike for the 3D spines and the menu.
+      { name: 'Philosopher', provider: 'google', weights: [700] },
       { name: 'Source Sans 3', provider: 'google', weights: [400, 600] },
     ],
   },

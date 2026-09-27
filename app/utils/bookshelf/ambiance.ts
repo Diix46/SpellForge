@@ -8,10 +8,12 @@
  * Pokémon, a professor's lab: pale walls, bay windows on green hills and the
  * game's illustrations as posters, Energy symbols above them, a
  * red-and-white lamp on each bookcase, daylight and floating sparkles.
- * Yu-Gi-Oh, a Master Duel arena: night-blue walls trimmed in gold, the
- * legendary monsters' art framed between the bookcases, the duel field
- * glowing on the floor. Riftbound, a League of Legends hall: hextech black
- * and gold filigree, champions' splash art as banners, runes as medallions.
+ * Yu-Gi-Oh, a pyramid's chamber: sandstone carved with glyphs, sloping sides
+ * meeting overhead, the Millennium Eye glowing over each bookcase, torches,
+ * the legendary monsters' art as gold-framed tablets, sand in the air.
+ * Riftbound, a League of Legends hall: hextech black and gold filigree,
+ * Arcane's first season along the back wall (Riot's splash art of its Arcane
+ * skins), runes as medallions.
  * The worlds on the generic engine hang their own images (kit.arts,
  * kit.emblems: /api/tcg/<game>/showcase), never drawn ones.
  *
@@ -24,7 +26,7 @@ import type { MaterialMaps, Quality, Room, RoomArt } from './library'
 import { scanned } from './library'
 
 /** What the room is made of (scanned maps from the page). */
-export interface AmbianceKit { wall?: MaterialMaps, wood?: MaterialMaps, arts?: RoomArt[], emblems?: RoomArt[] }
+export interface AmbianceKit { wall?: MaterialMaps, wood?: MaterialMaps, arts?: RoomArt[], emblems?: RoomArt[], murals?: RoomArt[] }
 
 export interface Ambiance {
   /** Advance the room's life; `camX` is where the camera looks. */
@@ -242,7 +244,7 @@ function arcanist(THREE: typeof Three, scene: Three.Scene, span: Span, quality: 
   const circles: Three.Mesh[] = []
   // One between each pair of bookcases, one on each outer side.
   const spots = [-span.gap - 1.2, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + 1.2]
-  const runeGeo = new THREE.PlaneGeometry(2.4, 2.4)
+  const runeGeo = new THREE.PlaneGeometry(2, 2)
   for (const x of spots) {
     const m = new THREE.Mesh(runeGeo, runeMat)
     m.position.set(x, span.height * 0.62, back + 0.02)
@@ -617,96 +619,164 @@ function lab(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quali
   }
 }
 
-// ---- Yu-Gi-Oh: a duel arena ------------------------------------------------
+// ---- Yu-Gi-Oh: a pyramid's chamber -----------------------------------------
 
 function shrine(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
   const disposables: { dispose: () => void }[] = []
   const high = quality === 'high'
   const cx = span.width / 2
   const back = -span.depth / 2 - 0.25
+  const W = span.width + 30
 
-  // Night-blue panels trimmed in gold, Master Duel's arena walls.
+  // Sandstone blocks, a frieze of glyphs carved at eye height.
+  const glyphs = [...'𓂀𓋹𓆣𓇳𓊽𓅓𓃭𓁹𓆓𓂋𓏏𓎛𓇋𓅱𓊪']
   const wallTex = canvasTexture(THREE, 512, 512, (g) => {
-    const grad = g.createLinearGradient(0, 0, 0, 512)
-    grad.addColorStop(0, '#0b1230')
-    grad.addColorStop(1, '#070b1a')
-    g.fillStyle = grad
+    g.fillStyle = '#8a6a3e'
     g.fillRect(0, 0, 512, 512)
-    for (let x = 0; x < 512; x += 128) {
-      g.strokeStyle = 'rgba(212,175,55,0.35)'
-      g.lineWidth = 2
-      g.strokeRect(x + 10, 14, 108, 484)
-      g.strokeStyle = 'rgba(79,195,247,0.12)'
-      g.strokeRect(x + 18, 22, 92, 468)
+    for (let y = 0; y < 512; y += 64) {
+      const offset = (y / 64) % 2 ? 64 : 0
+      for (let x = -offset; x < 512; x += 128) {
+        const tone = 132 + Math.random() * 22
+        g.fillStyle = `rgb(${tone + 18},${tone * 0.8},${tone * 0.5})`
+        g.fillRect(x + 2, y + 2, 124, 60)
+        for (let k = 0; k < 20; k++) {
+          g.fillStyle = `rgba(60,38,14,${0.05 + Math.random() * 0.08})`
+          g.fillRect(x + Math.random() * 120, y + Math.random() * 58, 2 + Math.random() * 6, 1 + Math.random() * 3)
+        }
+      }
     }
+    // The frieze: a darker band, glyphs cut in it, gold lines above and below.
+    g.fillStyle = 'rgba(70,45,18,0.55)'
+    g.fillRect(0, 272, 512, 60)
+    g.fillStyle = 'rgba(214,176,90,0.85)'
+    g.fillRect(0, 268, 512, 4)
+    g.fillRect(0, 332, 512, 4)
+    g.fillStyle = 'rgba(40,24,8,0.8)'
+    g.font = '34px serif'
+    g.textAlign = 'center'
+    glyphs.slice(0, 10).forEach((ch, k) => g.fillText(ch, 26 + k * 51, 316))
   })
   wallTex.wrapS = THREE.RepeatWrapping
-  wallTex.repeat.set((span.width + 30) / 6, 1)
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.1 }))
+  wallTex.repeat.set(W / 6, 1)
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(W, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.95 }))
   wall.position.set(cx, span.height / 2 + 1.5, back)
   wall.receiveShadow = true
 
-  // The duel field on the floor: its zones in gold, lit from within.
-  const fieldTex = canvasTexture(THREE, 1024, 512, (g) => {
-    g.fillStyle = '#060a18'
-    g.fillRect(0, 0, 1024, 512)
-    const zone = (x: number, y: number, w: number, h: number, glow: string) => {
-      g.shadowColor = glow
-      g.shadowBlur = 14
-      g.strokeStyle = 'rgba(212,175,55,0.8)'
-      g.lineWidth = 3
-      g.strokeRect(x, y, w, h)
-      g.fillStyle = 'rgba(79,195,247,0.06)'
-      g.fillRect(x, y, w, h)
+  // The chamber's sloping sides meeting over the bookcases.
+  const slopeTex = wallTex.clone()
+  slopeTex.repeat.set(W / 8, 1)
+  const slopeMat = new THREE.MeshStandardMaterial({ map: slopeTex, roughness: 1, color: 0xB89A70 })
+  const slopeGeo = new THREE.PlaneGeometry(W, 7)
+  const slope = new THREE.Mesh(slopeGeo, slopeMat)
+  slope.position.set(cx, span.height + 3.2, back + 2.2)
+  slope.rotation.x = Math.PI / 3.2
+  scene.add(slope)
+  disposables.push(slopeTex, slopeMat, slopeGeo)
+
+  // Flagstones on the floor.
+  const floorTex = canvasTexture(THREE, 512, 512, (g) => {
+    g.fillStyle = '#6e5230'
+    g.fillRect(0, 0, 512, 512)
+    for (let y = 0; y < 512; y += 128) {
+      for (let x = 0; x < 512; x += 128) {
+        const tone = 110 + Math.random() * 20
+        g.fillStyle = `rgb(${tone + 10},${tone * 0.78},${tone * 0.5})`
+        g.fillRect(x + 3, y + 3, 122, 122)
+      }
     }
-    for (let k = 0; k < 5; k++) {
-      zone(212 + k * 124, 150, 96, 130, 'rgba(79,195,247,0.8)')
-      zone(212 + k * 124, 320, 96, 130, 'rgba(79,195,247,0.5)')
-    }
-    zone(336, 20, 96, 110, 'rgba(212,175,55,0.8)')
-    zone(584, 20, 96, 110, 'rgba(212,175,55,0.8)')
-    zone(70, 150, 96, 130, 'rgba(79,195,247,0.8)')
-    zone(858, 320, 96, 130, 'rgba(79,195,247,0.8)')
   })
-  const floorMat = new THREE.MeshStandardMaterial({ map: fieldTex, emissive: 0xFFFFFF, emissiveMap: fieldTex, emissiveIntensity: 0.55, roughness: 0.6 })
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
-  fieldTex.wrapS = THREE.RepeatWrapping
-  fieldTex.repeat.set((span.width + 30) / 9, 1)
+  floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping
+  floorTex.repeat.set(W / 3, 5)
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, 14), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9 }))
   floor.rotation.x = -Math.PI / 2
   floor.position.set(cx, -0.3, 4)
   floor.receiveShadow = true
   scene.add(wall, floor)
-  disposables.push(wallTex, fieldTex, wall.geometry, wall.material as Three.Material, floor.geometry, floorMat)
+  disposables.push(wallTex, floorTex, wall.geometry, wall.material as Three.Material, floor.geometry, floor.material as Three.Material)
 
-  // The legendary monsters' own art, in gold frames between the bookcases.
+  // The Millennium Eye, gold, glowing over each bookcase.
+  const eye = canvasTexture(THREE, 512, 512, (g) => {
+    g.translate(256, 256)
+    g.strokeStyle = 'rgba(255,210,110,0.95)'
+    g.shadowColor = 'rgba(255,190,60,1)'
+    g.shadowBlur = 20
+    g.lineWidth = 9
+    g.beginPath()
+    g.moveTo(-190, 0)
+    g.quadraticCurveTo(0, -150, 190, 0)
+    g.quadraticCurveTo(0, 150, -190, 0)
+    g.stroke()
+    g.beginPath()
+    g.arc(0, 0, 58, 0, Math.PI * 2)
+    g.stroke()
+    g.fillStyle = 'rgba(255,215,120,0.9)'
+    g.beginPath()
+    g.arc(0, 0, 26, 0, Math.PI * 2)
+    g.fill()
+    g.lineWidth = 6
+    g.beginPath()
+    g.moveTo(0, -240)
+    g.lineTo(230, 200)
+    g.lineTo(-230, 200)
+    g.closePath()
+    g.stroke()
+  })
+  const eyeMat = new THREE.MeshBasicMaterial({ map: eye, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })
+  const eyeGeo = new THREE.PlaneGeometry(1.3, 1.3)
+  for (let c = 0; c < span.cases; c++) {
+    const m = new THREE.Mesh(eyeGeo, eyeMat)
+    m.position.set(c * (span.caseWidth + span.gap) + span.caseWidth / 2, span.height + 1.05, back + 0.05)
+    scene.add(m)
+  }
+  disposables.push(eye, eyeMat, eyeGeo)
+
+  // The legendary monsters, carved tablets in gold frames between the bookcases.
   const arts = kit.arts ?? []
-  const frames: Three.Group[] = []
   wallSpots(span, 1.3).forEach((x, i) => {
     const art = arts[i % Math.max(1, arts.length)]
     if (!art)
       return
-    const f = wallArt(THREE, art, new THREE.Vector3(x, span.height * 0.6, back + 0.08), 1.9, 1.9, { color: 0xD4AF37, metal: 1, width: 0.09 }, undefined, disposables)
-    scene.add(f)
-    frames.push(f)
+    scene.add(wallArt(THREE, art, new THREE.Vector3(x, span.height * 0.58, back + 0.08), 1.6, 1.6, { color: 0xC9A04A, metal: 1, width: 0.12 }, undefined, disposables))
   })
 
-  // Cyan light from the field, gold from above; it follows the bookcase in view.
-  const zone = new THREE.PointLight(0x4FC3F7, high ? 8 : 6, 10, 1.5)
-  const gold = new THREE.PointLight(0xFFD98A, high ? 6 : 4, 10, 1.6)
-  scene.add(zone, gold)
-  scene.fog = new THREE.FogExp2(0x070B1A, 0.02)
+  // A torch on each side of each bookcase: a bronze cup and its flame.
+  const cups: Three.BufferGeometry[] = []
+  const flamePos: number[] = []
+  for (let c = 0; c < span.cases; c++) {
+    const x0 = c * (span.caseWidth + span.gap)
+    for (const x of [x0 - 0.45, x0 + span.caseWidth + 0.45]) {
+      const g = new THREE.CylinderGeometry(0.13, 0.05, 0.24, 14)
+      g.translate(x, span.height * 0.86, back + 0.35)
+      cups.push(g)
+      flamePos.push(x, span.height * 0.86 + 0.24, back + 0.35)
+    }
+  }
+  const bronze = new THREE.Mesh(mergeAll(THREE, cups), new THREE.MeshStandardMaterial({ color: 0xB08A3A, metalness: 0.9, roughness: 0.35 }))
+  const flameGeo = new THREE.BufferGeometry()
+  flameGeo.setAttribute('position', new THREE.Float32BufferAttribute(flamePos, 3))
+  const flameTex = glowTexture(THREE, 'rgba(255,240,200,1)', 'rgba(255,130,30,0.6)')
+  const flameMat = new THREE.PointsMaterial({ map: flameTex, size: 0.75, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
+  scene.add(bronze, new THREE.Points(flameGeo, flameMat))
+  disposables.push(bronze.geometry, bronze.material as Three.Material, flameGeo, flameTex, flameMat)
 
-  const motes = dust(THREE, span, high ? 300 : 100, 0x7FD8FF, 0.04)
-  scene.add(motes.points)
-  disposables.push(motes)
+  const torch = new THREE.PointLight(0xFFA850, high ? 10 : 7, 11, 1.5)
+  const gold = new THREE.PointLight(0xFFD27A, 3.5, 9, 1.8)
+  scene.add(torch, gold)
+  scene.fog = new THREE.FogExp2(0x2A1C0C, 0.018)
+
+  const sand = dust(THREE, span, high ? 340 : 120, 0xFFD89A, 0.04)
+  scene.add(sand.points)
+  disposables.push(sand)
 
   return {
     update(t, dt, camX) {
-      zone.position.set(camX, 0.4, 2)
-      zone.intensity = (high ? 8 : 6) * (0.9 + Math.sin(t * 1.4) * 0.1)
-      gold.position.set(camX - 2, span.height + 1.2, 1.4)
-      floorMat.emissiveIntensity = 0.5 + Math.sin(t * 1.4) * 0.08
-      motes.update(t, dt)
+      const flicker = 1 + Math.sin(t * 9) * 0.07 + Math.sin(t * 21.3) * 0.04
+      torch.intensity = (high ? 10 : 7) * flicker
+      torch.position.set(camX, span.height + 0.6, 1.5)
+      gold.position.set(camX, span.height + 1.1, back + 0.9)
+      flameMat.size = 0.75 * flicker
+      eyeMat.opacity = 0.65 + Math.sin(t * 0.8) * 0.2
+      sand.update(t, dt)
       return true
     },
     dispose: () => disposables.forEach(d => d.dispose()),
@@ -755,24 +825,31 @@ function hextech(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Q
   scene.add(wall, floor)
   disposables.push(wallTex, wall.geometry, wall.material as Three.Material, floor.geometry, floor.material as Three.Material)
 
-  // The champions' splash art as banners, hanging from gold rods.
-  const arts = kit.arts ?? []
-  const banners: Three.Group[] = []
-  const rodGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.8, 10)
-  rodGeo.rotateZ(Math.PI / 2)
-  const gold = new THREE.MeshStandardMaterial({ color: 0xC8AA6E, metalness: 1, roughness: 0.3 })
-  disposables.push(rodGeo, gold)
+  // Arcane's first season along the back wall, Jinx first: each scene centred
+  // on a gap between the bookcases, where its figure shows; gold filigree
+  // above and below, as the client frames its splashes.
+  const murals = kit.murals ?? []
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0xC8AA6E, metalness: 1, roughness: 0.3 })
+  disposables.push(lineMat)
   wallSpots(span, 1.3).forEach((x, i) => {
-    const art = arts[i % Math.max(1, arts.length)]
+    const art = murals[i % Math.max(1, murals.length)]
     if (!art)
       return
-    const holder = new THREE.Group()
-    const banner = wallArt(THREE, art, new THREE.Vector3(0, -1.45, 0), 1.55, 2.7, { color: 0x785A28, metal: 0.9, width: 0.05 }, CARD_ART.riftbound, disposables)
-    const rod = new THREE.Mesh(rodGeo, gold)
-    holder.add(rod, banner)
-    holder.position.set(x, span.height + 0.5, back + 0.25)
-    scene.add(holder)
-    banners.push(holder)
+    const h = span.height + 0.6
+    const w = h * 1.69
+    const tex = cover(THREE, art.tex, w / h)
+    const mat = new THREE.MeshStandardMaterial({ map: tex, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: 0.28, roughness: 0.8 })
+    const mural = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat)
+    // Neighbours overlap behind the bookcases: alternate depths.
+    mural.position.set(x, h / 2 - 0.15, back + 0.03 + (i % 2) * 0.01)
+    scene.add(mural)
+    for (const y of [h - 0.15, -0.15]) {
+      const line = new THREE.Mesh(new THREE.BoxGeometry(w, 0.05, 0.03), lineMat)
+      line.position.set(x, y, back + 0.06)
+      scene.add(line)
+      disposables.push(line.geometry)
+    }
+    disposables.push(tex, mat, mural.geometry)
   })
 
   // The runes as medallions on each bookcase's cornice.
@@ -796,7 +873,6 @@ function hextech(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Q
 
   return {
     update(t, dt, camX) {
-      banners.forEach((b, i) => (b.rotation.z = Math.sin(t * 0.6 + i) * 0.012))
       medals.forEach((m, i) => (m.rotation.y = Math.sin(t * 0.8 + i) * 0.35))
       glow.position.set(camX + 2.5, span.height * 0.6, back + 1.2)
       lamp.position.set(camX - 1, span.height + 1, 1.6)

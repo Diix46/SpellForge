@@ -1,60 +1,49 @@
 <script setup lang="ts">
-import type { ShowcaseArt } from '~~/server/api/tcg/[game]/showcase.get'
-import { computed } from 'vue'
+// Pokémon backdrop: a meadow at the foot of the page, and Pokémon living in
+// it — Pikachu, Eevee, Charmander… running through the grass, their feet
+// hidden in it; Mew, Butterfree, Pidgey flying a little above. The games' own
+// animated sprites (Black & White, via /api/images/sprites). Night falls on
+// the meadow in dark mode. Fixed, behind everything; still under reduced
+// motion (they stand in the grass).
 
-// Pokémon backdrop: a meadow at the foot of the page, and over its hills the
-// mascots peeking — Pikachu first, then Mew, Eevee, Charizard… each one its
-// own card's illustration (the showcase), in a round bubble that bobs. Poké
-// Balls drift across the sky. Night falls on the meadow in dark mode. Fixed,
-// behind everything; still under reduced motion.
-const { locale } = useLocale()
-const { data } = useFetch<{ arts: ShowcaseArt[] }>('/api/tcg/pokemon/showcase', {
-  query: computed(() => ({ lang: locale.value })),
-  server: false,
-  lazy: true,
-  default: () => ({ arts: [] }),
-})
-
-// Where each bubble sits along the hills: left edge, height over the hill,
-// size; Pikachu (the first) the biggest, on the right.
-const SPOTS = [
-  { left: 84, bottom: 70, size: 118 },
-  { left: 6, bottom: 58, size: 88 },
-  { left: 20, bottom: 40, size: 72 },
-  { left: 70, bottom: 44, size: 80 },
-  { left: 36, bottom: 30, size: 64 },
-  { left: 56, bottom: 26, size: 60 },
+// Runners: dex number, seconds to cross, delay, height over the grass, way.
+const RUNNERS = [
+  { id: 25, dur: 22, delay: 0, lift: 34, right: true },
+  { id: 133, dur: 28, delay: -9, lift: 26, right: false },
+  { id: 4, dur: 26, delay: -17, lift: 30, right: true },
+  { id: 1, dur: 34, delay: -4, lift: 22, right: false },
+  { id: 7, dur: 30, delay: -23, lift: 28, right: true },
+  { id: 58, dur: 24, delay: -13, lift: 24, right: false },
 ]
-const mascots = computed(() => (data.value?.arts ?? []).slice(0, SPOTS.length).map((a, i) => ({ ...a, spot: SPOTS[i]! })))
-const BALLS = [
-  { top: 14, dur: 46, delay: 0, size: 26 },
-  { top: 28, dur: 60, delay: -22, size: 18 },
-  { top: 9, dur: 72, delay: -48, size: 14 },
+// Fliers: a slower crossing, higher up, drifting up and down.
+const FLIERS = [
+  { id: 151, dur: 46, delay: -6, lift: 170, right: true },
+  { id: 12, dur: 52, delay: -30, lift: 120, right: false },
+  { id: 16, dur: 40, delay: -18, lift: 210, right: false },
 ]
+const sprite = (id: number) => `/api/images/sprites/${id}.gif`
 </script>
 
 <template>
   <div class="meadow" aria-hidden="true">
-    <svg v-for="(b, i) in BALLS" :key="`ball-${i}`" class="ball" :style="{ top: `${b.top}%`, width: `${b.size}px`, animationDuration: `${b.dur}s`, animationDelay: `${b.delay}s` }" viewBox="0 0 32 32">
-      <path d="M2 16a14 14 0 0 1 28 0z" fill="#e03a30" />
-      <path d="M2 16a14 14 0 0 0 28 0z" fill="#f7f5ef" />
-      <circle cx="16" cy="16" r="14" fill="none" stroke="#1c1c1c" stroke-width="2" />
-      <path d="M2 16h28" stroke="#1c1c1c" stroke-width="2" />
-      <circle cx="16" cy="16" r="4.5" fill="#f7f5ef" stroke="#1c1c1c" stroke-width="2" />
+    <svg class="hills hills--back" viewBox="0 0 1200 160" preserveAspectRatio="none">
+      <path class="h1" d="M0 90C150 40 300 60 460 80S780 30 960 60 1140 90 1200 70V160H0z" />
+      <path class="h2" d="M0 120C180 80 320 110 520 104S860 70 1040 100 1160 118 1200 110V160H0z" />
     </svg>
 
     <div
-      v-for="(m, i) in mascots"
-      :key="m.path"
-      class="mascot"
-      :style="{ 'left': `${m.spot.left}%`, 'bottom': `${m.spot.bottom}px`, 'width': `${m.spot.size}px`, '--i': i, 'backgroundImage': `url('${m.thumb}')` }"
-      :title="m.name"
-    />
+      v-for="(p, i) in [...FLIERS, ...RUNNERS]"
+      :key="p.id"
+      class="mon"
+      :class="{ right: p.right, flier: p.lift > 100 }"
+      :style="{ 'bottom': `${p.lift}px`, 'animationDuration': `${p.dur}s`, 'animationDelay': `${p.delay}s`, '--i': i }"
+    >
+      <img :src="sprite(p.id)" alt="" loading="lazy" decoding="async">
+    </div>
 
-    <svg class="hills" viewBox="0 0 1200 160" preserveAspectRatio="none">
-      <path class="h1" d="M0 90C150 40 300 60 460 80S780 30 960 60 1140 90 1200 70V160H0z" />
-      <path class="h2" d="M0 120C180 80 320 110 520 104S860 70 1040 100 1160 118 1200 110V160H0z" />
-      <path class="h3" d="M0 140C200 124 420 146 640 134S1000 124 1200 138V160H0z" />
+    <!-- The front grass, over the runners' feet. -->
+    <svg class="hills hills--front" viewBox="0 0 1200 60" preserveAspectRatio="none">
+      <path class="h3" d="M0 30C60 18 90 34 140 24S230 12 290 26 380 34 440 22 540 14 600 26 700 34 760 22 860 14 920 26 1020 34 1080 22 1160 16 1200 26V60H0z" />
     </svg>
   </div>
 </template>
@@ -73,7 +62,12 @@ const BALLS = [
   right: 0;
   bottom: 0;
   width: 100%;
+}
+.hills--back {
   height: 150px;
+}
+.hills--front {
+  height: 52px;
 }
 .h1 {
   fill: #9fd48a;
@@ -93,66 +87,72 @@ const BALLS = [
 :global(html.dark) .h3 {
   fill: #0f2a1d;
 }
-/* A mascot in its bubble: its card's illustration window, framed round. */
-.mascot {
+/* A Pokémon crossing the page, the sprite hopping on the way. */
+.mon {
   position: absolute;
-  aspect-ratio: 1;
-  border: 4px solid #fffdf6;
-  border-radius: 50%;
-  background-repeat: no-repeat;
-  /* The card is 63 × 88: its art sits under the name, in the upper half. */
-  background-size: 190% auto;
-  /* Centred on the illustration window (11–47 % of the card's height). */
-  background-position: 50% 16%;
-  box-shadow:
-    0 0 0 2px rgba(27, 29, 42, 0.12),
-    0 10px 22px -8px rgba(27, 29, 42, 0.45);
-  translate: -50% 0;
-  animation: bob 3.6s ease-in-out infinite alternate;
-  animation-delay: calc(var(--i) * -0.7s);
-  opacity: 0.92;
+  left: 0;
+  animation: cross linear infinite;
+  animation-direction: reverse;
 }
-:global(html.dark) .mascot {
-  border-color: #2b3452;
-  opacity: 0.8;
+.mon.right {
+  animation-direction: normal;
 }
-@keyframes bob {
+.mon img {
+  display: block;
+  height: 64px;
+  image-rendering: pixelated;
+  animation: hop 0.42s ease-in-out infinite alternate;
+}
+/* The sprites face left: those going right turn round. */
+.mon.right img {
+  scale: -1 1;
+}
+.flier img {
+  height: 58px;
+  animation: drift 3.2s ease-in-out infinite alternate;
+}
+:global(html.dark) .mon img {
+  filter: brightness(0.8) saturate(0.9);
+}
+@keyframes cross {
   from {
-    transform: translateY(0) rotate(-2deg);
+    transform: translateX(-120px);
   }
   to {
-    transform: translateY(-10px) rotate(2deg);
+    transform: translateX(calc(100vw + 120px));
   }
 }
-.ball {
-  position: absolute;
-  left: -40px;
-  opacity: 0.28;
-  animation: drift linear infinite;
+@keyframes hop {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-7px);
+  }
 }
 @keyframes drift {
   from {
-    transform: translateX(0) rotate(0deg);
+    transform: translateY(0);
   }
   to {
-    transform: translateX(calc(100vw + 80px)) rotate(720deg);
+    transform: translateY(-24px);
   }
 }
 @media (max-width: 700px) {
-  .mascot:nth-child(n + 7) {
+  .mon:nth-child(n + 7) {
     display: none;
   }
-  .hills {
+  .hills--back {
     height: 100px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mascot,
-  .ball {
+  .mon,
+  .mon img {
     animation: none;
   }
-  .ball {
-    display: none;
+  .mon {
+    transform: translateX(calc(var(--i, 1) * 10vw));
   }
 }
 </style>
