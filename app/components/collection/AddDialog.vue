@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Condition, Finish } from '#shared/collection'
 import type { GameId } from '#shared/game'
-import type { OptcgCard } from '#shared/optcg/types'
 import type { PrintChoice } from '~/composables/useCollection'
 import type { ImportSource } from '~/composables/useCollectionAdd'
 import { computed, reactive, ref, watch } from 'vue'
 import { CONDITIONS, MAX_COPIES, optcgPrintingId } from '#shared/collection'
+import { collectionClient } from '~/utils/games/collection'
 
 // Adding copies: find the card, pick its exact printing, say which finish,
 // condition, language and how many (where they are, if you like). Closes once
@@ -16,6 +16,7 @@ const open = defineModel<boolean>('open', { required: true })
 const { t, locale } = useLocale()
 const toast = useToast()
 const collection = useCollection(props.game)
+const client = collectionClient(props.game)
 
 const query = ref('')
 const suggestions = ref<{ key: string, label: string, hint?: string, thumb?: string }[]>([])
@@ -38,8 +39,9 @@ const finishes = computed<Finish[]>(() => current.value?.finishes ?? ['nonfoil']
 const conditions = computed(() => CONDITIONS.map(c => ({ label: `${c} · ${t(`collection.condition.${c}`)}`, value: c })))
 
 watch(open, (v) => {
-  if (v && props.game === 'optcg' && props.initialPrinting?.startsWith('en:'))
-    copyLang.value = 'en'
+  const opened = client.langOf(props.initialPrinting ?? '')
+  if (v && opened)
+    copyLang.value = opened
   if (v && props.initialQuery) {
     query.value = props.initialQuery
     void choose({ key: props.initialQuery, label: props.initialQuery })
@@ -47,7 +49,7 @@ watch(open, (v) => {
 })
 // Magic: a printing picked brings its language.
 watch(current, (c) => {
-  if (c && props.game === 'mtg')
+  if (c && client.language === 'copy')
     copyLang.value = c.lang === 'fr' ? 'fr' : 'en'
 })
 // Closed: the next opening starts afresh.
@@ -80,15 +82,7 @@ async function suggest(q: string) {
     return
   }
   try {
-    if (props.game === 'mtg') {
-      // English or French names; the card is then found by its English one.
-      const { cards } = await $fetch<{ cards: { name: string, label: string, hint: string | null, thumb: string | null }[] }>('/api/collection/suggest', { query: { q, lang: locale.value } })
-      suggestions.value = cards.map(c => ({ key: c.name, label: c.label, hint: c.hint ?? undefined, thumb: c.thumb ?? undefined }))
-    }
-    else {
-      const { cards } = await $fetch<{ cards: OptcgCard[] }>('/api/optcg/autocomplete', { query: { q, lang: locale.value } })
-      suggestions.value = cards.slice(0, 8).map(c => ({ key: c.number, label: c.name, hint: c.number, thumb: c.thumb }))
-    }
+    suggestions.value = await client.suggest(q, locale.value === 'fr' ? 'fr' : 'en')
   }
   catch {
     suggestions.value = []
@@ -132,7 +126,7 @@ async function choose(s: { key: string, label: string }) {
 
 // One Piece: switching the copy language re-keys the arts.
 watch(copyLang, (lang) => {
-  if (props.game !== 'optcg')
+  if (client.language !== 'printing')
     return
   const art = selected.value?.split(':')[1]
   prints.value = relang(prints.value, lang)
@@ -149,7 +143,7 @@ async function add() {
     finish: form.finish,
     condition: form.condition,
     quantity,
-    lang: props.game === 'mtg' ? copyLang.value : undefined,
+    lang: client.language === 'copy' ? copyLang.value : undefined,
     location: form.location.trim() || undefined,
   })
   adding.value = false

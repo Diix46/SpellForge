@@ -4,6 +4,7 @@
  * (shared/collection-csv.ts) — so they get the same preview, and the same undo.
  */
 import type { ImportRow } from './collection-csv'
+import type { DeckEntry, ParseResult } from './decklist'
 import type { GameId } from './game'
 import { ownershipKey } from './collection'
 import { parseMtgDecklist } from './mtg/decklist'
@@ -66,16 +67,10 @@ function row(line: number, fields: Partial<ImportRow> & Pick<ImportRow, 'quantit
   }
 }
 
-/**
- * A precon's cards, each in its exact printing and foiling. In English the
- * Scryfall id is the printing; in French the same set and number, in French
- * when it was printed so (the import says when it was not).
- */
-export function preconImportRows(cards: readonly PreconCard[], lang: 'fr' | 'en', location: string | null = null, game: GameId = 'mtg'): ImportRow[] {
-  // One Piece: a card number, in its usual printing for the language.
-  if (game === 'optcg')
-    return cards.map((c, i) => row(i + 1, { name: c.number, lang, quantity: c.count, location }))
-  return cards.map((c, i) => row(i + 1, {
+// A precon's card as an import row, per game.
+const PRECON_ROW: Record<GameId, (c: PreconCard, line: number, lang: 'fr' | 'en', location: string | null) => ImportRow> = {
+  // The box's exact printing (English: its Scryfall id) and foiling.
+  mtg: (c, line, lang, location) => row(line, {
     name: c.name,
     set: c.set,
     number: c.number,
@@ -84,7 +79,31 @@ export function preconImportRows(cards: readonly PreconCard[], lang: 'fr' | 'en'
     finish: c.foil ? 'foil' : 'nonfoil',
     quantity: c.count,
     location,
-  }))
+  }),
+  // A card number, in its usual printing for the language.
+  optcg: (c, line, lang, location) => row(line, { name: c.number, lang, quantity: c.count, location }),
+}
+
+/**
+ * A precon's cards, each in its exact printing and foiling. In English the
+ * Scryfall id is the printing; in French the same set and number, in French
+ * when it was printed so (the import says when it was not).
+ */
+export function preconImportRows(cards: readonly PreconCard[], lang: 'fr' | 'en', location: string | null = null, game: GameId = 'mtg'): ImportRow[] {
+  return cards.map((c, i) => PRECON_ROW[game](c, i + 1, lang, location))
+}
+
+// Each game's decklist: its parser, and a line as an import row (Magic keeps a
+// pinned printing, One Piece a pinned art).
+const DECK: Record<GameId, { parse: (raw: string) => ParseResult, row: (e: DeckEntry, line: number, quantity: number, lang: 'fr' | 'en', location: string | null) => ImportRow }> = {
+  mtg: {
+    parse: parseMtgDecklist,
+    row: (e, line, quantity, lang, location) => row(line, { name: e.name, set: e.set?.toLowerCase() ?? null, number: e.collectorNumber ?? null, lang: e.lang ?? lang, quantity, location }),
+  },
+  optcg: {
+    parse: parseOptcgDecklist,
+    row: (e, line, quantity, lang, location) => row(line, { name: e.name, printingId: e.art ? `${lang}:${e.art}` : null, lang, quantity, location }),
+  },
 }
 
 /**
@@ -94,7 +113,7 @@ export function preconImportRows(cards: readonly PreconCard[], lang: 'fr' | 'en'
  * those cards twice. Magic keeps a pinned printing; One Piece a pinned art.
  */
 export function deckImportRows(game: GameId, raw: string, lang: 'fr' | 'en', opts: { owned?: ReadonlyMap<string, number>, location?: string | null } = {}): ImportRow[] {
-  const parsed = game === 'mtg' ? parseMtgDecklist(raw) : parseOptcgDecklist(raw)
+  const parsed = DECK[game].parse(raw)
   const left = opts.owned ? new Map(opts.owned) : null
   const out: ImportRow[] = []
   for (const e of [...parsed.mainboard, ...parsed.sideboard]) {
@@ -108,9 +127,7 @@ export function deckImportRows(game: GameId, raw: string, lang: 'fr' | 'en', opt
     }
     if (quantity <= 0)
       continue
-    out.push(game === 'mtg'
-      ? row(out.length + 1, { name: e.name, set: e.set?.toLowerCase() ?? null, number: e.collectorNumber ?? null, lang: e.lang ?? lang, quantity, location: opts.location ?? null })
-      : row(out.length + 1, { name: e.name, printingId: e.art ? `${lang}:${e.art}` : null, lang, quantity, location: opts.location ?? null }))
+    out.push(DECK[game].row(e, out.length + 1, quantity, lang, opts.location ?? null))
   }
   return out
 }

@@ -3,6 +3,7 @@ import type { SetProgress } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import { computed, onMounted, ref, watch } from 'vue'
 import { setKind } from '#shared/collection'
+import { collectionClient } from '~/utils/games/collection'
 
 // The binder shelf: the overall progress, then the binders of the sets
 // started on a 3D bookcase (or as a list), and the other sets to start one.
@@ -150,7 +151,7 @@ const sortItems = computed(() => [
           class="set"
           :class="{ 'is-done': s.owned >= s.total, 'is-new': !s.owned }"
         >
-          <span class="art" :class="{ card: game === 'optcg' }">
+          <span class="art" :class="{ card: collectionClient(game).setPictureIsCard }">
             <img v-if="s.art" :src="s.art" alt="" loading="lazy" decoding="async">
             <span class="emblem">
               <CollectionSetSymbol v-if="s.icon" :icon="s.icon" :rarity="s.owned >= s.total ? 'rare' : null" :size="22" />

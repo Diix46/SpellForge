@@ -195,10 +195,25 @@ const MTG_KIND: Record<string, SetKind> = {
   promo: 'promo',
 }
 const OPTCG_KIND: Record<string, SetKind> = { OP: 'main', EB: 'special', PRB: 'special', ST: 'starter', P: 'promo' }
+// Each game's set types (Magic: Scryfall's; One Piece: the code's kind) to families.
+const SET_KINDS_BY_GAME: Record<GameId, Record<string, SetKind>> = { mtg: MTG_KIND, optcg: OPTCG_KIND }
 
-/** A set's family, from its type (Magic) or its code's kind (One Piece). */
-export function setKind(game: 'mtg' | 'optcg', type: string | null): SetKind {
-  return (type && (game === 'mtg' ? MTG_KIND : OPTCG_KIND)[type]) || 'other'
+/** A set's family, from its type. */
+export function setKind(game: GameId, type: string | null): SetKind {
+  return (type && SET_KINDS_BY_GAME[game][type]) || 'other'
+}
+
+/** A card as a list line (quantity, then how the game names it). */
+export interface CardLine { quantity: number, name: string, number: string, set?: string | null, finish?: Finish }
+
+/**
+ * A card as a line of a list other sites read (a shop's wants list, a deck
+ * site): Magic "4 Sol Ring (CMM) 400 *F*" (no set: any printing), One Piece
+ * "4x OP01-016".
+ */
+export const CARD_LINE: Record<GameId, (c: CardLine) => string> = {
+  mtg: c => `${c.quantity} ${c.name}${c.set ? ` (${c.set.toUpperCase()}) ${c.number}` : ''}${c.finish === 'foil' ? ' *F*' : c.finish === 'etched' ? ' *E*' : ''}`,
+  optcg: c => `${c.quantity}x ${c.number}`,
 }
 
 /**

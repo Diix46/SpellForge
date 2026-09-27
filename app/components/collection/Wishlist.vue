@@ -2,7 +2,7 @@
 import type { WishItem } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import { computed, onMounted, ref } from 'vue'
-import { wishReached } from '#shared/collection'
+import { CARD_LINE, wishReached } from '#shared/collection'
 import { can, GAMES } from '#shared/game'
 
 // The cards the member is after: what each costs today against the price
@@ -55,9 +55,7 @@ function found(w: WishItem) {
 
 /** The wishlist as a shopping list (Cardmarket's wants list reads it). */
 async function copyList() {
-  const lines = wishlist.items.value.filter(w => w.card).map(w => props.game === 'optcg'
-    ? `${w.quantity}x ${w.card!.number}`
-    : w.anyPrinting ? `${w.quantity} ${w.card!.name}` : `${w.quantity} ${w.card!.name} (${w.card!.set.toUpperCase()}) ${w.card!.number}`)
+  const lines = wishlist.items.value.filter(w => w.card).map(w => CARD_LINE[props.game]({ quantity: w.quantity, name: w.card!.name, number: w.card!.number, set: w.anyPrinting ? null : w.card!.set }))
   try {
     await navigator.clipboard.writeText(lines.join('\n'))
     toast.add({ title: t('collection.wish.copied').replace('{n}', String(lines.length)), color: 'success', icon: 'i-lucide-clipboard-check' })

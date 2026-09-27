@@ -4,6 +4,7 @@ import type { PreconCard, PreconKind, PreconSummary } from '#shared/collection-d
 import type { GameId } from '#shared/game'
 import { computed, ref, watch } from 'vue'
 import { PRECON_KINDS, preconImportRows } from '#shared/collection-decks'
+import { collectionClient } from '~/utils/games/collection'
 
 // A Magic preconstructed deck to add whole: found by name, set or commander,
 // narrowed by family, then its cards in the box's exact printings and
@@ -13,7 +14,7 @@ const emit = defineEmits<{ rows: [rows: ImportRow[], name: string] }>()
 
 const { t, locale } = useLocale()
 const q = ref('')
-const kind = ref<PreconKind | 'all'>(props.game === 'mtg' ? 'commander' : 'all')
+const kind = ref<PreconKind | 'all'>(collectionClient(props.game).preconKinds ? 'commander' : 'all')
 const list = ref<PreconSummary[]>([])
 const loading = ref(false)
 const picked = ref<PreconSummary | null>(null)
@@ -72,7 +73,7 @@ function preview() {
   <div class="precons">
     <template v-if="!picked">
       <UInput v-model="q" icon="i-lucide-search" :placeholder="t(`collection.precon.search.${game}`)" size="lg" class="w-full" autofocus />
-      <div v-if="game === 'mtg'" class="chips" role="group">
+      <div v-if="collectionClient(game).preconKinds" class="chips" role="group">
         <button v-for="k in (['all', ...PRECON_KINDS] as const)" :key="k" type="button" :aria-pressed="kind === k" @click="kind = k">
           {{ t(`collection.precon.kind.${k}`) }}
         </button>

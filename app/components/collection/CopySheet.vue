@@ -3,6 +3,8 @@ import type { CollectionCopy, Condition, Finish } from '#shared/collection'
 import type { CopyEdit, PrintChoice } from '~/composables/useCollection'
 import { computed, reactive, ref, watch } from 'vue'
 import { CONDITIONS, MAX_COPIES, optcgPrintingId, unitValue } from '#shared/collection'
+import { GAMES } from '#shared/game'
+import { collectionClient } from '~/utils/games/collection'
 
 // Edit one copy line: its printing (the right set, when the wrong one was
 // picked) and language, finish, condition, quantity, location, note — or
@@ -20,6 +22,7 @@ const loadingPrints = ref(false)
 const game = computed(() => props.copy?.game ?? 'mtg')
 const { loadPrints, relang } = usePrintChoices(game.value)
 const collection = useCollection(game.value)
+const client = computed(() => collectionClient(game.value))
 
 watch(() => props.copy, (c) => {
   if (!c)
@@ -35,7 +38,7 @@ async function choose() {
     return
   loadingPrints.value = true
   try {
-    prints.value = await loadPrints(game.value === 'mtg' ? props.copy.card.name : props.copy.card.number, form.lang)
+    prints.value = await loadPrints(GAMES[game.value].cardKey === 'name' ? props.copy.card.name : props.copy.card.number, form.lang)
   }
   catch {
     prints.value = []
@@ -59,7 +62,7 @@ const where = computed(() => {
 function setLang(lang: 'fr' | 'en') {
   form.lang = lang
   // One Piece: the language is part of the printing.
-  if (game.value === 'optcg') {
+  if (client.value.language === 'printing') {
     form.printingId = optcgPrintingId(lang, form.printingId.split(':')[1]!)
     prints.value = relang(prints.value, lang)
   }
@@ -69,7 +72,7 @@ function pick(id: string) {
   const p = prints.value.find(x => x.printingId === id)
   // Magic: a printing picked brings its language (switch it back for a
   // copy Scryfall lacks in yours).
-  if (p && game.value === 'mtg')
+  if (p && client.value.language === 'copy')
     form.lang = p.lang === 'fr' ? 'fr' : 'en'
 }
 
@@ -103,7 +106,7 @@ function save() {
   }
   if (changed.value)
     edit.printingId = form.printingId
-  if (game.value === 'mtg' && form.lang !== props.copy.lang)
+  if (client.value.language === 'copy' && form.lang !== props.copy.lang)
     edit.lang = form.lang
   emit('save', props.copy.id, edit)
   open.value = false

@@ -11,7 +11,7 @@
  * merged tube. `update` animates it while the scene is awake.
  */
 import type * as Three from 'three'
-import type { MaterialMaps, Quality, Universe } from './library'
+import type { MaterialMaps, Quality, Room } from './library'
 import { scanned } from './library'
 
 /** What the room is made of (scanned maps from the page). */
@@ -75,8 +75,10 @@ function dust(THREE: typeof Three, span: Span, count: number, color: number, siz
   return { points, update, dispose: () => [geo, mat, tex].forEach(d => d.dispose()) }
 }
 
-export function buildAmbiance(THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: Span, universe: Universe, quality: Quality): Ambiance {
-  return universe === 'mtg' ? arcanist(THREE, scene, span, quality, kit) : cabin(THREE, scene, span, quality, kit)
+const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a) }
+
+export function buildAmbiance(THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: Span, room: Room, quality: Quality): Ambiance {
+  return ROOMS[room](THREE, scene, span, quality, kit)
 }
 
 // ---- Magic: an arcanist's library -----------------------------------------

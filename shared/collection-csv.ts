@@ -8,7 +8,7 @@
  * the same few fields, so an unknown CSV with sensible headers reads as well.
  */
 import type { CollectionCopy, Condition, Finish } from './collection'
-import { MAX_COPIES } from './collection'
+import { CARD_LINE, MAX_COPIES } from './collection'
 
 export const IMPORT_MAX_ROWS = 5000
 
@@ -373,9 +373,7 @@ export function exportCollection(copies: readonly CollectionCopy[], format: Expo
         known.map(c => [c.quantity, 0, c.card!.name, c.card!.set, MOXFIELD_CONDITION[c.condition], LANG_NAME[c.lang] ?? 'English', c.finish === 'nonfoil' ? '' : c.finish, '', '', c.card!.number, 'False', 'False', c.purchasePrice ?? '']),
       )
     case 'text':
-      return known.map(c => c.game === 'optcg'
-        ? `${c.quantity}x ${c.card!.number}`
-        : `${c.quantity} ${c.card!.name} (${c.card!.set.toUpperCase()}) ${c.card!.number}${c.finish === 'foil' ? ' *F*' : c.finish === 'etched' ? ' *E*' : ''}`).join('\n')
+      return known.map(c => CARD_LINE[c.game]({ quantity: c.quantity, name: c.card!.name, number: c.card!.number, set: c.card!.set, finish: c.finish })).join('\n')
     default:
       return csv(
         ['Printing ID', 'Name', 'Set code', 'Set name', 'Collector number', 'Language', 'Finish', 'Condition', 'Quantity', 'Purchase price', 'Location', 'Note'],
