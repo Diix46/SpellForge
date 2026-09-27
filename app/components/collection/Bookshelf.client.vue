@@ -7,6 +7,7 @@ import type { Library } from '~/utils/bookshelf/library'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { SET_KINDS, setKind } from '#shared/collection'
 import { layoutLibrary } from '~/utils/bookshelf/layout'
+import { collectionClient } from '~/utils/games/collection'
 
 // The collection as a 3D library (utils/bookshelf): the binders started on
 // shelves labelled by family, a shelf of new releases to start one, bookcases
@@ -241,8 +242,9 @@ onMounted(async () => {
   const perShelf = el.clientWidth < 640 ? 7 : el.clientWidth < 1100 ? 10 : 12
   try {
     // The spines' title face: an engraved serif for Magic, the poster one for One Piece.
-    const font = props.game === 'mtg' ? '600 1px Cinzel' : '400 1px Anton'
-    const face = props.game === 'mtg' ? 'Cinzel, Georgia, serif' : 'Anton, Impact, sans-serif'
+    const dress = collectionClient(props.game).library
+    const face = dress.face
+    const font = `${dress.weight} 1px ${face.split(',')[0]}`
     const fontReady = document.fonts?.load(font).catch(() => []) ?? Promise.resolve([])
     const [THREE, rounded, utils, room, lib3d, amb] = await Promise.all([
       import('three'),
@@ -263,11 +265,11 @@ onMounted(async () => {
     })
     const [leather, wood, wall] = await Promise.all([
       maps('leather'),
-      maps(props.game === 'mtg' ? 'wood_dark' : 'wood_planks'),
-      maps(props.game === 'mtg' ? 'wood_dark' : 'planks_wall'),
+      maps(dress.wood),
+      maps(dress.wall),
       fontReady,
     ])
-    const textures = { leather, wood, wall, grain: leather.map.image as HTMLImageElement, font: face, weight: props.game === 'mtg' ? 600 : 400 }
+    const textures = { leather, wood, wall, grain: leather.map.image as HTMLImageElement, font: face, weight: dress.weight }
     layout.value = layoutLibrary(props.sets, props.fresh, {
       perShelf,
       // Three shelves: the binders stay large enough to read.
@@ -278,7 +280,7 @@ onMounted(async () => {
       freshLabel: t('collection.shelf.fresh'),
     })
     const library = new lib3d.Library(THREE, el, {
-      universe: props.game,
+      room: dress.room,
       quality: low ? 'low' : 'high',
       freshLabel: t('collection.shelf.new'),
       perShelf,

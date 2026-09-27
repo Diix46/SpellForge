@@ -14,7 +14,8 @@ import type { Bookcase, ShelfBinder } from './layout'
 import { SpineAtlas } from './atlas'
 import { hueOf } from './layout'
 
-export type Universe = 'mtg' | 'optcg'
+/** The room around the bookcases (ambiance.ts). */
+export type Room = 'arcanist' | 'cabin'
 export type Quality = 'high' | 'low'
 
 export interface LibraryEvents {
@@ -29,7 +30,7 @@ export interface LibraryEvents {
 }
 
 export interface LibraryOptions extends LibraryEvents {
-  universe: Universe
+  room: Room
   quality: Quality
   freshLabel: string
   perShelf: number
@@ -42,7 +43,7 @@ export interface LibraryOptions extends LibraryEvents {
   }
   /** Scanned materials (Poly Haven, CC0), loaded by the page before building. */
   textures: LibraryTextures
-  buildAmbiance: (THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: { width: number, height: number, depth: number, cases: number, caseWidth: number, gap: number }, universe: Universe, quality: Quality) => Ambiance
+  buildAmbiance: (THREE: typeof Three, kit: AmbianceKit, scene: Three.Scene, span: { width: number, height: number, depth: number, cases: number, caseWidth: number, gap: number }, room: Room, quality: Quality) => Ambiance
 }
 
 /** A material's maps: colour, relief, roughness. */
@@ -281,7 +282,7 @@ export class Library {
 
     const span = { width: layout.length * (caseW + GAP) - GAP, height: caseH, depth: D, cases: layout.length, caseWidth: caseW, gap: GAP }
     this.lights(span)
-    this.ambiance = this.opts.buildAmbiance(THREE, { wall: tex.wall, wood: tex.wood }, this.scene, span, this.opts.universe, this.opts.quality)
+    this.ambiance = this.opts.buildAmbiance(THREE, { wall: tex.wall, wood: tex.wood }, this.scene, span, this.opts.room, this.opts.quality)
     // Centred between the plinth and what stands on the cornice (candles, a lantern).
     this.camY = (caseH - 0.35) / 2 + 0.15
     this.resize()
@@ -366,9 +367,9 @@ export class Library {
 
   private lights(span: { width: number, height: number }): void {
     const { THREE } = this
-    const warm = this.opts.universe === 'mtg' ? 0xFFD9A8 : 0xFFE7C4
+    const warm = this.opts.room === 'arcanist' ? 0xFFD9A8 : 0xFFE7C4
     // Magic: a dim room where the candles do the lighting; One Piece: daylight.
-    const mtg = this.opts.universe === 'mtg'
+    const mtg = this.opts.room === 'arcanist'
     this.scene.add(new THREE.HemisphereLight(0xFFF1DD, 0x2A1C12, mtg ? 0.32 : 0.7))
     const key = new THREE.DirectionalLight(warm, mtg ? 1.05 : 1.6)
     key.position.set(span.width / 2 + 2.5, span.height + 3, 6)

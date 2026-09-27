@@ -6,6 +6,7 @@ import type { PreviewRow } from '~/composables/useCollectionImport'
 import { computed, ref, watch } from 'vue'
 import { IMPORT_MAX_ROWS } from '#shared/collection-csv'
 import { IMPORT_FORMAT_LABEL } from '~/composables/useCollectionImport'
+import { collectionClient } from '~/utils/games/collection'
 
 // Importing a collection from a file (the CSV of ManaBox, Moxfield,
 // Cardmarket, Delver Lens, Prism) or a pasted card list: read, matched row by
@@ -75,7 +76,6 @@ async function undo(id: string) {
   await imp.undo(id)
 }
 
-const FORMATS = ['ManaBox', 'Moxfield', 'Cardmarket', 'Delver Lens', 'Prism']
 const sources = computed(() => [
   { value: 'file' as const, icon: 'i-lucide-file-up', label: 'collection.import.sourceFile' },
   { value: 'precon' as const, icon: 'i-lucide-box', label: 'collection.import.sourcePrecon' },
@@ -144,8 +144,8 @@ function fromRows(rows: ImportRow[], name: string) {
             <input ref="fileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" class="sr-only" @change="onPick">
           </label>
           <div class="formats">
-            <span v-for="f in (game === 'mtg' ? FORMATS : ['Prism'])" :key="f" class="chip">{{ f }}</span>
-            <span class="chip chip--mono">{{ game === 'mtg' ? '4 Sol Ring (CMM) 400' : '4x OP01-016' }}</span>
+            <span v-for="f in collectionClient(game).importApps" :key="f" class="chip">{{ f }}</span>
+            <span class="chip chip--mono">{{ collectionClient(game).sampleLine }}</span>
           </div>
           <div class="paste">
             <UTextarea v-model="pasted" :rows="5" :placeholder="t(`collection.import.pastePlaceholder.${game}`)" class="w-full" autoresize :maxrows="12" />

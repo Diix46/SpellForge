@@ -1,5 +1,6 @@
 import type { GameId } from '#shared/game'
 import { computed, onMounted } from 'vue'
+import { gameFromSlug } from '#shared/game'
 
 /**
  * The game universe of the page on screen, from its `universe` page meta.
@@ -13,7 +14,7 @@ import { computed, onMounted } from 'vue'
  */
 export function useUniverse() {
   const route = useRoute()
-  const shown = useState<GameId | null>('universe', () => route.meta.universe ?? null)
+  const shown = useState<GameId | null>('universe', () => route.meta.universe ?? gameFromSlug(route.params.universe))
   const universe = computed(() => shown.value)
   return { universe }
 }

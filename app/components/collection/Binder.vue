@@ -3,8 +3,9 @@ import type { ChecklistCard, CollectionCopy, Condition, Finish, SetProgress } fr
 import type { GameId } from '#shared/game'
 import type { BinderEntry } from '~/utils/bookshelf/entry'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, toRaw, watch } from 'vue'
-import { CONDITIONS } from '#shared/collection'
+import { CARD_LINE, CONDITIONS } from '#shared/collection'
 import { can, GAMES } from '#shared/game'
+import { collectionClient } from '~/utils/games/collection'
 
 // One set as a binder: pages of nine pockets in collector-number order, two
 // facing pages on a wide screen. Owned cards sit in their pockets, missing
@@ -145,7 +146,7 @@ function printingFor(c: ChecklistCard): { id: string, lang?: 'fr' | 'en' } | nul
   if (!id)
     return null
   // Magic: a French copy of a printing Scryfall only has in English.
-  return { id, lang: props.game === 'mtg' ? prefs.lang : undefined }
+  return { id, lang: collectionClient(props.game).language === 'copy' ? prefs.lang : undefined }
 }
 
 async function add(c: ChecklistCard) {
@@ -176,7 +177,7 @@ async function add(c: ChecklistCard) {
 function linesOf(c: ChecklistCard): CollectionCopy[] {
   return collection.copies.value
     // One Piece numbers are unique; Magic's within their set.
-    .filter(x => x.card && x.card.number === c.number && (props.game === 'optcg' || x.card.set === props.code))
+    .filter(x => x.card && x.card.number === c.number && (!collectionClient(props.game).cardPerSet || x.card.set === props.code))
     .sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
@@ -265,7 +266,7 @@ const done = computed(() => cards.value.length > 0 && ownedCount.value >= cards.
 const date = computed(() => (set.value?.releasedAt ? new Date(set.value.releasedAt).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { year: 'numeric', month: 'long' }) : null))
 
 async function copyMissing() {
-  const lines = cards.value.filter(c => !c.owned).map(c => (props.game === 'mtg' ? `1 ${c.name} (${props.code.toUpperCase()}) ${c.number}` : `1x ${c.number}`))
+  const lines = cards.value.filter(c => !c.owned).map(c => CARD_LINE[props.game]({ quantity: 1, name: c.name, number: c.number, set: props.code }))
   try {
     await navigator.clipboard.writeText(lines.join('\n'))
     toast.add({ title: t('collection.missingCopied').replace('{n}', String(lines.length)), color: 'success', icon: 'i-lucide-clipboard-check' })

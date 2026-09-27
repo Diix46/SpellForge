@@ -1,4 +1,11 @@
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import type { GameId } from '#shared/game'
+import { gameFromSlug } from '#shared/game'
+
+/** A page's universe: its meta, else its address (/[universe]/… pages). */
+export function universeOf(route: Pick<RouteLocationNormalizedLoaded, 'meta' | 'params'>): GameId | null {
+  return route.meta.universe ?? gameFromSlug(route.params.universe)
+}
 
 // The universe changes with the page on screen (see useUniverse), and so
 // does the frame of the home page (full width, its own footer): both would
@@ -10,11 +17,11 @@ import type { GameId } from '#shared/game'
 // too: page:finish, once it has rendered.
 export default defineNuxtPlugin((nuxtApp) => {
   const router = useRouter()
-  const shown = useState<GameId | null>('universe', () => router.currentRoute.value.meta.universe ?? null)
+  const shown = useState<GameId | null>('universe', () => universeOf(router.currentRoute.value))
   const home = useState<boolean>('page-home', () => router.currentRoute.value.path === '/')
   const showPage = () => {
     home.value = router.currentRoute.value.path === '/'
-    shown.value = router.currentRoute.value.meta.universe ?? null
+    shown.value = universeOf(router.currentRoute.value)
     // useHead writes <html data-universe> a tick later, after the new page
     // has painted once in the old universe: set it now (same value).
     if (import.meta.client) {
