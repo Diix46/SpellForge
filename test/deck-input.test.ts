@@ -14,7 +14,7 @@ describe('deck input', () => {
     expect(() => deckRaw('z'.repeat(MAX_DECK_RAW + 1))).toThrow(DeckInputError)
     expect(() => deckName(42)).toThrow(DeckInputError)
     expect(() => deckId('a/b?c#d')).toThrow(DeckInputError)
-    expect(() => deckGame('pokemon')).toThrow(DeckInputError)
+    expect(() => deckGame('hearthstone')).toThrow(DeckInputError)
   })
 
   it('reads games and ids as the client sends them', () => {
