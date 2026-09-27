@@ -13,6 +13,8 @@ import { collectionClient } from '~/utils/games/collection'
 // (language, finish, condition), a long press opens the details. Filters,
 // search and the shopping list of what is missing stay at hand.
 const props = defineProps<{ game: GameId, code: string }>()
+// A set whose logo doesn't load shows its code instead.
+const logoBroken = ref(false)
 
 const { t, locale, rarityLabel, finishLabel } = useLocale()
 const toast = useToast()
@@ -315,8 +317,10 @@ async function copyMissing() {
     <template v-else>
       <!-- One bar: the set and how far it goes. -->
       <section class="bar" :class="{ 'is-done': done }">
-        <span class="emblem">
-          <CollectionSetSymbol v-if="set.icon" :icon="set.icon" :rarity="done ? 'rare' : null" :size="22" />
+        <!-- Magic: its symbol in the rarity's colour; the others: their logo. -->
+        <img v-if="game !== 'mtg' && set.logo && !logoBroken" :src="set.logo" alt="" class="logo" @error="logoBroken = true">
+        <span v-else class="emblem">
+          <CollectionSetSymbol v-if="set.icon && game === 'mtg'" :icon="set.icon" :rarity="done ? 'rare' : null" :size="22" />
           <b v-else>{{ set.code }}</b>
         </span>
         <div class="bar-name">
@@ -507,6 +511,12 @@ async function copyMissing() {
   border-color: rgba(199, 154, 46, 0.6);
   background:
     radial-gradient(420px 160px at 100% 0%, rgba(240, 210, 122, 0.22), transparent 70%), var(--color-surface-1);
+}
+.logo {
+  flex: 0 0 auto;
+  width: 84px;
+  height: 40px;
+  object-fit: contain;
 }
 .emblem {
   display: grid;

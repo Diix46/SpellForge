@@ -20,6 +20,7 @@ import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { fold, getJson, rebuildSearch, SCHEMA, SCHEMA_VERSION, workingCopy } from './tcg/schema.mjs'
+import { applyTranslations, translationsDb } from './tcg/translations.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DB_PATH = process.env.YUGIOH_CARDS_DB ? resolve(process.env.YUGIOH_CARDS_DB) : resolve(ROOT, '.data/cards-yugioh.db')
@@ -199,6 +200,13 @@ async function main() {
     }
   }
   await db.batch(setInserts, 'write')
+  // The newest cards, without French text upstream, in the unofficial
+  // French kept so far (scripts/translate-tcg.mjs).
+  const tdb = translationsDb(resolve(dirname(DB_PATH), 'translations-yugioh.db'))
+  const translated = await applyTranslations(db, tdb, { onlyMissing: true })
+  tdb.close()
+  if (translated)
+    log(`  ${translated} cartes en français (traduction non officielle)`)
   await rebuildSearch(db)
   await db.batch([
     { sql: 'INSERT OR REPLACE INTO meta (key, value) VALUES (\'schema_version\', ?)', args: [SCHEMA_VERSION] },

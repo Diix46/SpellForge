@@ -151,6 +151,24 @@ function row(c, lang, en) {
   }
 }
 
+/**
+ * TCGdex names a scan for a card before it exists: the newest sets' special
+ * cards point to an image that answers 404. Checked on every run for the
+ * sets of the last months (a scan may come later), dropped where missing so
+ * the library shows these cards last, not as blank tiles on top.
+ */
+async function dropMissingScans(db) {
+  const { rows } = await db.execute(`SELECT c.id, c.lang, c.thumb FROM cards c JOIN sets s ON s.code = c.set_code AND s.lang = c.lang
+                                      WHERE c.thumb IS NOT NULL AND s.released >= date('now', '-240 days')`)
+  const missing = (await mapPool(rows, CONCURRENCY, async (r) => {
+    const res = await fetch(String(r.thumb), { method: 'HEAD' }).catch(() => null)
+    return res && res.status === 404 ? r : null
+  })).filter(Boolean)
+  if (missing.length)
+    await db.batch(missing.map(r => ({ sql: 'UPDATE cards SET image = NULL, thumb = NULL WHERE id = ? AND lang = ?', args: [r.id, r.lang] })), 'write')
+  log(`  scans vérifiés : ${rows.length}, ${missing.length} absents chez TCGdex`)
+}
+
 async function main() {
   const t0 = Date.now()
   mkdirSync(dirname(DB_PATH), { recursive: true })
@@ -218,6 +236,7 @@ async function main() {
       log(`  · ${set.id} (${lang}) : ${rows.length} cartes`)
     }
   }
+  await dropMissingScans(db)
   await rebuildSearch(db)
   await db.batch([
     { sql: 'INSERT OR REPLACE INTO meta (key, value) VALUES (\'schema_version\', ?)', args: [SCHEMA_VERSION] },

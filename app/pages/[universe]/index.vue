@@ -126,7 +126,7 @@ function newDeck(card?: TcgCard) {
 <style scoped>
 .library {
   display: grid;
-  gap: 22px;
+  gap: var(--page-gap);
 }
 .head {
   display: flex;
@@ -144,20 +144,20 @@ function newDeck(card?: TcgCard) {
   color: var(--accent-text);
 }
 .title {
-  margin: 2px 0 0;
+  margin: var(--page-kicker-gap) 0 0;
   font-size: clamp(38px, 6vw, 64px);
   line-height: 0.95;
   color: var(--color-text-high);
 }
 .sub {
   max-width: 60ch;
-  margin: 8px 0 0;
+  margin: var(--page-sub-gap) 0 0;
   color: var(--color-text-mid);
 }
 .body {
   display: grid;
   grid-template-columns: 290px 1fr;
-  gap: 28px;
+  gap: var(--rail-gap);
   align-items: start;
 }
 .rail {
@@ -183,7 +183,7 @@ function newDeck(card?: TcgCard) {
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(170px, 42vw), 1fr));
-  gap: 28px 20px;
+  gap: var(--grid-gap);
 }
 .more {
   display: flex;

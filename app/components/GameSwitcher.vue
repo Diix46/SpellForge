@@ -6,13 +6,16 @@ import { GAME_LIST, libraryPath } from '#shared/game'
 // "Libraries ▾" in the top bar: every game's library one click away, each in
 // its own colours with the decks it holds. A list, not a row of buttons, so a
 // tenth game costs the header nothing. Active inside a game; opens on click
-// (touch, keyboard) and, with a mouse, on hover.
+// (touch, keyboard) and, with a mouse, on hover. A game's collection and
+// decks light their own entries of the bar, not this one.
 const { t } = useLocale()
+const route = useRoute()
 const { universe } = useUniverse()
 const { decks } = useDeckStore()
 
 const GAMES = GAME_LIST
 const current = computed(() => GAMES.find(g => g.id === universe.value) ?? null)
+const inLibrary = computed(() => !!current.value && !/\/(?:collection|deck|shared)(?:\/|$)/.test(route.path))
 const counts = computed(() => {
   const n: Partial<Record<GameId, number>> = {}
   for (const d of decks.value)
@@ -69,7 +72,7 @@ onBeforeUnmount(() => clearTimeout(closing))
     <button
       type="button"
       class="switch"
-      :class="{ active: !!current }"
+      :class="{ active: inLibrary }"
       @mouseenter="enter"
       @mouseleave="leave"
     >

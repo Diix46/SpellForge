@@ -74,7 +74,9 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
 
 <style scoped>
 .gallery {
-  padding: 96px clamp(16px, 4vw, 56px) 110px;
+  padding: var(--l-section) var(--l-gutter);
+  /* Its neighbour above is the same paper: a hairline between them. */
+  border-top: 1px solid var(--l-line);
   background: var(--l-bg);
 }
 .head {
@@ -83,7 +85,7 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
   align-items: center;
   gap: 12px;
   max-width: 720px;
-  margin: 0 auto 48px;
+  margin: 0 auto var(--l-head-gap);
   text-align: center;
 }
 .kicker {
@@ -116,7 +118,7 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
   gap: 18px;
-  max-width: 1400px;
+  max-width: var(--l-width);
   margin: 0 auto;
   padding: 0;
   list-style: none;

@@ -51,7 +51,18 @@ if (import.meta.server && !c.value)
 
 const showBack = ref(false)
 const face = computed(() => (resolved.value?.backImageUrl && c.value?.card_faces ? c.value.card_faces[showBack.value ? 1 : 0] : null))
-const image = computed(() => (showBack.value ? resolved.value?.backImageUrl : resolved.value?.imageUrl) ?? null)
+
+// Every printing of the card, to flip through; the one picked shows its scan,
+// set and price in place of the default one.
+interface Printing { id: string, setName: string, number: string, lang: string, image: string, imageLarge: string | null, priceEur: string | null }
+const { data: printingsData } = useFetch<{ prints: Printing[] }>('/api/cards/printings', {
+  query: computed(() => ({ name: c.value?.name ?? name.value, lang: locale.value })),
+  default: () => ({ prints: [] }),
+})
+const printings = computed(() => printingsData.value?.prints ?? [])
+const picked = ref<string | null>(null)
+const pickedPrint = computed(() => printings.value.find(p => p.id === picked.value) ?? null)
+const image = computed(() => (showBack.value ? resolved.value?.backImageUrl : (pickedPrint.value?.imageLarge ?? pickedPrint.value?.image ?? resolved.value?.imageUrl)) ?? null)
 
 const englishName = computed(() => displayName(c.value, false, face.value))
 const localName = computed(() => displayName(c.value, true, face.value))
@@ -62,8 +73,15 @@ const manaCost = computed(() => face.value?.mana_cost ?? c.value?.mana_cost ?? '
 const oracle = computed(() => displayOracle(c.value, isFr.value, face.value))
 const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 
-const setLine = computed(() => (c.value ? [c.value.set_name, `#${c.value.collector_number}`, rarityLabel(c.value.rarity)].filter(Boolean).join(' · ') : ''))
-const price = computed(() => (resolved.value?.priceEur ? `${resolved.value.priceEur} €` : null))
+const setLine = computed(() => {
+  if (pickedPrint.value)
+    return [pickedPrint.value.setName, `#${pickedPrint.value.number}`, pickedPrint.value.lang.toUpperCase()].join(' · ')
+  return c.value ? [c.value.set_name, `#${c.value.collector_number}`, rarityLabel(c.value.rarity)].filter(Boolean).join(' · ') : ''
+})
+const price = computed(() => {
+  const eur = pickedPrint.value ? pickedPrint.value.priceEur : resolved.value?.priceEur
+  return eur ? `${eur} €` : null
+})
 const commanderLegal = computed(() => c.value?.legalities?.commander === 'legal')
 const canLead = computed(() => isCommanderType(c.value?.type_line ?? ''))
 
@@ -111,6 +129,25 @@ function startWith() {
           <UIcon name="i-lucide-flip-horizontal-2" class="h-4 w-4" />
           {{ showBack ? t('card.flipFront') : t('card.flipBack') }}
         </button>
+        <div v-if="printings.length > 1" class="arts">
+          <p class="arts-title">
+            {{ t('tcg.printings') }} ({{ printings.length }})
+          </p>
+          <div class="arts-row">
+            <button
+              v-for="(p, i) in printings"
+              :key="p.id"
+              type="button"
+              class="art-thumb"
+              :aria-pressed="picked ? p.id === picked : i === 0"
+              :title="`${p.setName} · #${p.number} · ${p.lang.toUpperCase()}`"
+              :aria-label="`${p.setName} ${p.number}`"
+              @click="picked = p.id; showBack = false"
+            >
+              <img :src="p.image" alt="" loading="lazy" decoding="async">
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="info">
@@ -170,6 +207,9 @@ function startWith() {
           <UButton v-if="canLead && commanderLegal" color="primary" icon="i-lucide-crown" @click="startWith">
             {{ t('mtg.library.startWith') }}
           </UButton>
+          <UButton v-else-if="commanderLegal" color="primary" icon="i-lucide-plus" @click="startWith">
+            {{ t('card.startDeckWith') }}
+          </UButton>
           <UButton color="neutral" variant="subtle" icon="i-lucide-search" :to="`/magic?q=${encodeURIComponent(c.name)}`">
             {{ t('card.inLibrary') }}
           </UButton>
@@ -221,13 +261,55 @@ function startWith() {
   border-radius: 4.5% / 3.2%;
   box-shadow: var(--shadow-elev-3);
 }
+.art {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
+.arts-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.arts-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.art-thumb {
+  flex: none;
+  width: 52px;
+  aspect-ratio: 63 / 88;
+  overflow: hidden;
+  border-radius: 4px;
+  opacity: 0.7;
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: opacity var(--dur-fast);
+}
+.art-thumb:hover,
+.art-thumb[aria-pressed='true'] {
+  opacity: 1;
+}
+.art-thumb[aria-pressed='true'] {
+  outline-color: var(--accent-text);
+}
+.art-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .flip {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  margin-top: 12px;
   padding: 8px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 3px;
@@ -237,7 +319,7 @@ function startWith() {
 .info {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   min-width: 0;
 }
 .head {

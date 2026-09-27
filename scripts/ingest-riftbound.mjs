@@ -5,7 +5,7 @@
  *
  * Source: https://api.riftcodex.com (every card, 100 a page, and the sets),
  * English only — Riot publishes no French card data; the unofficial French
- * rows come from scripts/translate-riftbound.mjs (its cache is applied here). A printing is a card in a set,
+ * rows come from scripts/translate-tcg.mjs (its cache is applied here). A printing is a card in a set,
  * variants included (alternate art, signature, overnumbered): "unl-116a-219".
  * The rules count copies by name, variants together.
  *
@@ -160,7 +160,7 @@ async function main() {
     sql: 'INSERT OR REPLACE INTO sets (code, lang, name, abbr, series, released, total, symbol, logo, signature) VALUES (?, \'en\', ?, ?, NULL, ?, ?, NULL, NULL, NULL)',
     args: [String(s.set_id).toUpperCase(), s.name, String(s.set_id).toUpperCase(), s.published_on ? String(s.published_on).slice(0, 10) : null, Number(s.card_count ?? 0)],
   })), 'write')
-  // The unofficial French kept so far (scripts/translate-riftbound.mjs).
+  // The unofficial French kept so far (scripts/translate-tcg.mjs).
   const tdb = translationsDb(resolve(dirname(DB_PATH), 'translations-riftbound.db'))
   const french = await applyTranslations(db, tdb)
   tdb.close()

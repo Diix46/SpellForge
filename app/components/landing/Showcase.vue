@@ -43,7 +43,7 @@ const { t, formatShortDate } = useLocale()
 
 <style scoped>
 .showcase {
-  padding: 90px clamp(20px, 5vw, 88px);
+  padding: var(--l-section) var(--l-gutter);
   background: var(--l-bg);
   color: var(--l-ink);
 }
@@ -53,8 +53,8 @@ const { t, formatShortDate } = useLocale()
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  max-width: 1180px;
-  margin: 0 auto 34px;
+  max-width: var(--l-width);
+  margin: 0 auto var(--l-head-gap);
 }
 .kicker {
   margin: 0 0 6px;
@@ -90,7 +90,7 @@ const { t, formatShortDate } = useLocale()
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 18px;
-  max-width: 1180px;
+  max-width: var(--l-width);
   margin: 0 auto;
   padding: 0;
   list-style: none;

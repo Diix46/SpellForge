@@ -183,6 +183,13 @@
   --glass-solid-sheen: rgba(255, 255, 255, 0.03);
   --texture-line: rgba(255, 255, 255, 0.03);
 
+  /* ============ PAGE RHYTHM (every library, collection and card page) ============ */
+  --page-gap: 28px; /* between a page's header and its body */
+  --page-kicker-gap: 4px; /* kicker → title */
+  --page-sub-gap: 10px; /* title → its sentence */
+  --rail-gap: 28px; /* filter rail → results */
+  --grid-gap: 28px 20px; /* card grids: rows, columns */
+
   /* ============ MOTION (modern-SaaS micro-interactions) ============ */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* enter */
   --ease-in: cubic-bezier(0.4, 0, 1, 1); /* exit */
@@ -961,4 +968,10 @@ a.bg-primary:hover {
   .lift {
     transform: none !important;
   }
+}
+
+/* A switch turned off must still read as a switch: Nuxt UI's off track is
+   the ink ramp's lightest shade, invisible on our light surfaces. */
+button[role='switch'][data-state='unchecked'] {
+  background-color: var(--color-border-strong);
 }

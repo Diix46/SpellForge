@@ -104,7 +104,7 @@ function pick(s: string) {
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: 96px 20px 40px;
+  padding: var(--l-section) var(--l-gutter) var(--l-head-gap);
   text-align: center;
 }
 .kicker {
@@ -223,9 +223,9 @@ function pick(s: string) {
 .results {
   display: grid;
   gap: 26px;
-  max-width: 1320px;
+  max-width: calc(var(--l-width) + var(--l-gutter) * 2);
   margin: 0 auto;
-  padding: 10px clamp(16px, 4vw, 56px) 100px;
+  padding: 10px var(--l-gutter) var(--l-section);
   transition: opacity 0.2s ease;
 }
 .results.busy {

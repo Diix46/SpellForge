@@ -196,11 +196,15 @@ a.tile {
   min-width: 0;
 }
 .name {
+  /* Two lines before an ellipsis: a deck's name is often a card's name. */
+  display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  line-height: 1.1;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 .sub {
   margin: 4px 0 0;

@@ -115,7 +115,7 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
             <b>{{ a.name }}</b>
           </p>
           <p v-if="a.effect" class="move-text">
-            {{ a.effect }}
+            <TcgRichText :game="game" :text="a.effect" />
           </p>
         </div>
         <div v-for="(a, i) in c.attacks" :key="`at-${i}`" class="move">
@@ -127,12 +127,12 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
             <span v-if="a.damage" class="dmg">{{ a.damage }}</span>
           </p>
           <p v-if="a.effect" class="move-text">
-            {{ a.effect }}
+            <TcgRichText :game="game" :text="a.effect" />
           </p>
         </div>
       </section>
       <p v-else-if="text" class="text">
-        {{ text }}
+        <TcgRichText :game="game" :text="text" />
       </p>
       <p v-if="flavour" class="flavour">
         {{ flavour }}
@@ -274,7 +274,8 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
 .sheet-info {
   display: grid;
   align-content: start;
-  gap: 14px;
+  /* The card's facts in groups with room between them, not one packed column. */
+  gap: 18px;
   min-width: 0;
 }
 .sheet-name {

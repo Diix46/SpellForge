@@ -87,7 +87,8 @@ const facts = computed(() => {
             >{{ t(`optcg.color.${c}`) }}</span>
           </span>
           <span>{{ t(`optcg.category.${card.category}`) }}</span>
-          <span v-if="current?.rarity ?? card.rarity">{{ current?.rarity ?? card.rarity }}</span>
+          <!-- A Leader's rarity is "Leader": said once. -->
+          <span v-if="(current?.rarity ?? card.rarity) && (current?.rarity ?? card.rarity) !== card.category">{{ current?.rarity ?? card.rarity }}</span>
           <span class="font-mono">{{ current?.id ?? card.number }}</span>
           <span v-if="current?.set ?? card.set" class="font-mono">{{ current?.set ?? card.set }}</span>
         </p>
@@ -191,7 +192,8 @@ const facts = computed(() => {
 .sheet-info {
   display: grid;
   align-content: start;
-  gap: 14px;
+  /* The card's facts in groups with room between them, not one packed column. */
+  gap: 18px;
   min-width: 0;
 }
 .sheet-name {

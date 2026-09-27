@@ -46,7 +46,7 @@ const { t } = useLocale()
   display: grid;
   grid-template-columns: 1.2fr 0.8fr 2fr;
   gap: 32px;
-  padding: 56px clamp(20px, 5vw, 88px) calc(40px + env(safe-area-inset-bottom, 0px));
+  padding: 56px var(--l-gutter) calc(40px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--l-line);
   background: var(--l-bg);
   color: var(--l-muted);

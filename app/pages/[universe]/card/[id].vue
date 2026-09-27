@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { deckPath, gameFromSlug, GAMES, libraryPath } from '#shared/game'
 import { isTcgGame } from '#shared/tcg/types'
 import { tcgLabel } from '~/utils/games/tcg'
+import { decodeEntities } from '~/utils/tcg/richText'
 
 // One printing of a generic-engine game, on its own page (/pokemon/card/sv03.5-006):
 // rendered by the server so it can be found and shared. The library sheet's view.
@@ -51,7 +52,8 @@ const description = computed(() => {
   if (!c)
     return t('card.missing')
   const head = `${c.name} (${c.setName ?? c.set} ${c.number}), ${tcgLabel(t, game, 'category', c.category)}, ${GAMES[game].label}.`
-  const text = c.text?.replace(/\s+/g, ' ').trim()
+  // Words only: the symbols are pictures on the page.
+  const text = c.text && decodeEntities(c.text).replace(/:rb_[a-z0-9_]+:/g, '').replace(/\s+/g, ' ').trim()
   return text ? `${head} ${text}`.slice(0, 200) : head
 })
 

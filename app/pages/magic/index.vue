@@ -141,7 +141,7 @@ function newDeck(commander?: ResolvedCard) {
 <style scoped>
 .library {
   display: grid;
-  gap: 26px;
+  gap: var(--page-gap);
 }
 .head {
   display: flex;
@@ -161,20 +161,20 @@ function newDeck(commander?: ResolvedCard) {
   color: var(--accent-text);
 }
 .title {
-  margin: 4px 0 0;
+  margin: var(--page-kicker-gap) 0 0;
   font-size: clamp(34px, 5vw, 56px);
   line-height: 1;
   color: var(--color-text-high);
 }
 .sub {
   max-width: 62ch;
-  margin: 10px 0 0;
+  margin: var(--page-sub-gap) 0 0;
   color: var(--color-text-mid);
 }
 .body {
   display: grid;
   grid-template-columns: 290px 1fr;
-  gap: 30px;
+  gap: var(--rail-gap);
   align-items: start;
 }
 .rail {
@@ -200,7 +200,7 @@ function newDeck(commander?: ResolvedCard) {
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(180px, 42vw), 1fr));
-  gap: 22px;
+  gap: var(--grid-gap);
 }
 .more {
   display: flex;

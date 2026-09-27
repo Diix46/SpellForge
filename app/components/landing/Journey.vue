@@ -32,7 +32,7 @@ const STEPS = [
 
 <style scoped>
 .journey {
-  padding: 100px clamp(20px, 5vw, 88px) 110px;
+  padding: var(--l-section) var(--l-gutter);
   background: #09090d;
   color: #f6f4ee;
 }
@@ -41,7 +41,7 @@ const STEPS = [
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  margin-bottom: 56px;
+  margin-bottom: var(--l-head-gap);
   text-align: center;
 }
 .kicker {
@@ -64,7 +64,7 @@ const STEPS = [
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 28px;
-  max-width: 1180px;
+  max-width: var(--l-width);
   margin: 0 auto;
   padding: 0;
   list-style: none;

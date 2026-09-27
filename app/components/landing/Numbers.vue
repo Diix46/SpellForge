@@ -69,7 +69,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 24px 48px;
-  padding: 44px clamp(16px, 5vw, 80px);
+  padding: 44px var(--l-gutter);
   background: var(--l-bg-2);
   border-block: 1px solid var(--l-line);
 }

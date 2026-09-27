@@ -1,25 +1,35 @@
 #!/usr/bin/env node
 /**
- * Riftbound in French, unofficially: Riot prints the game in English only
- * (even its French card gallery shows English cards). Each card's name, rules
- * text and flavour not translated yet goes to Claude, 10 at a time, with the
- * game's keywords fixed by a glossary so every card says them the same way;
- * the answers are kept (scripts/tcg/translations.mjs), then written into the
- * card database as French rows, marked unofficial.
+ * Cards in French, unofficially, for what the publisher does not print in
+ * French: all of Riftbound (Riot prints it in English only), and the newest
+ * Yu-Gi-Oh! cards (YGOPRODeck has no French text for them yet). Each card's
+ * name, rules text and flavour not translated yet goes to Claude, 10 at a
+ * time, with the game's keywords fixed by a glossary so every card says them
+ * the same way; the answers are kept (scripts/tcg/translations.mjs), then
+ * written into the card database as French rows, marked unofficial.
  *
  * Needs ANTHROPIC_API_KEY (the coach's key); without it, only the translations
- * already kept are applied. Usage: node scripts/translate-riftbound.mjs [--limit 50] [--reset]
+ * already kept are applied.
+ * Usage: node scripts/translate-tcg.mjs <riftbound|yugioh> [--limit 50] [--reset]
  */
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { createClient } from '@libsql/client'
 import { rebuildSearch, workingCopy } from './tcg/schema.mjs'
+import { TRANSLATED_GAMES } from './tcg/translation-games.mjs'
 import { applyTranslations, ensureTranslations, sourceOf, translationsDb } from './tcg/translations.mjs'
 
+const GAME = process.argv[2]
+const CONFIG = TRANSLATED_GAMES[GAME]
+if (!CONFIG) {
+  console.error(`Jeu inconnu : ${GAME} (${Object.keys(TRANSLATED_GAMES).join(', ')})`)
+  process.exit(1)
+}
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const DB_PATH = process.env.RIFTBOUND_CARDS_DB ? resolve(process.env.RIFTBOUND_CARDS_DB) : resolve(ROOT, '.data/cards-riftbound.db')
-const TR_PATH = resolve(dirname(DB_PATH), 'translations-riftbound.db')
+const ENV = `${GAME.toUpperCase()}_CARDS_DB`
+const DB_PATH = process.env[ENV] ? resolve(process.env[ENV]) : resolve(ROOT, `.data/cards-${GAME}.db`)
+const TR_PATH = resolve(dirname(DB_PATH), `translations-${GAME}.db`)
 const MODEL = 'claude-sonnet-5'
 const BATCH = 10
 // --reset: translate everything again (a prompt or glossary change).
@@ -28,72 +38,6 @@ const limitArg = process.argv.indexOf('--limit')
 const LIMIT = limitArg > 0 ? Number(process.argv[limitArg + 1]) : Infinity
 const log = (...a) => console.log(...a)
 
-/** The game's words, as every translated card must say them. */
-export const GLOSSARY = {
-  'Accelerate': 'Accélération',
-  'Action': 'Action',
-  'Assault': 'Assaut',
-  'Deathknell': 'Glas',
-  'Deflect': 'Déviation',
-  'Equip': 'Équipement',
-  'Ganking': 'Embuscade',
-  'Hidden': 'Dissimulé',
-  'Legion': 'Légion',
-  'Quick-Draw': 'Dégainer',
-  'Reaction': 'Réaction',
-  'Shield': 'Bouclier',
-  'Tank': 'Tank',
-  'Temporary': 'Temporaire',
-  'Vision': 'Vision',
-  'Weaponmaster': 'Maître d\'armes',
-  'Unique': 'Unique',
-  'Legend': 'Légende',
-  'Champion': 'Champion',
-  'Chosen Champion': 'Champion choisi',
-  'Signature': 'Signature',
-  'Battlefield': 'Champ de bataille',
-  'Rune': 'Rune',
-  'Unit': 'Unité',
-  'Spell': 'Sort',
-  'Gear': 'Équipement',
-  'Token': 'Jeton',
-  'Might': 'Puissance',
-  'Energy': 'Énergie',
-  'Power': 'Essence runique',
-  'XP': 'XP',
-  'conquer': 'conquérir',
-  'hold': 'tenir',
-  'Showdown': 'Affrontement',
-  'Combat': 'Combat',
-  'Recycle': 'Recycler',
-  'Channel': 'Canaliser',
-  'Exhaust': 'Épuiser',
-  'Ready': 'Préparer',
-  'Stun': 'Étourdir',
-  'Buff': 'Renforcer',
-  'Score': 'Score',
-  'Victory Score': 'Score de victoire',
-  'Base': 'Base',
-  'Trash': 'Défausse',
-  'Main Deck': 'Deck principal',
-  'Rune Deck': 'Deck de runes',
-  'Fury': 'Fureur',
-  'Calm': 'Calme',
-  'Mind': 'Esprit',
-  'Body': 'Corps',
-  'Chaos': 'Chaos',
-  'Order': 'Ordre',
-}
-
-const SYSTEM = `Tu traduis des cartes du jeu de cartes Riftbound (League of Legends) de l'anglais vers le français, pour des joueurs francophones.
-Règles :
-- Traduis TOUJOURS le nom de la carte, comme le ferait la version française de League of Legends. Seuls les noms propres de champions et de lieux de Runeterra restent tels quels (Jinx, Viktor, Piltover, Zaun, Demacia, Bandle…). Exemples : « Bewitching Spirit » → « Esprit ensorceleur » ; « Vi - Piltover Enforcer » → « Vi - Justicière de Piltover » ; « Jinx - Loose Cannon » → « Jinx - Canon déchaîné » ; « Voracious Gromp » → « Gromp vorace ».
-- Les mentions de variante entre parenthèses se traduisent aussi : (Alternate Art) → (Illustration alternative), (Overnumbered) → (Hors série), (Signature) → (Signature), (Showcase) → (Vitrine), (Metal) → (Métal).
-- Les mots-clés du jeu suivent ce glossaire, toujours, crochets compris (« [Assault 2] » → « [Assaut 2] ») : ${Object.entries(GLOSSARY).map(([en, fr]) => `${en} → ${fr}`).join(' ; ')}.
-- Garde tels quels les symboles et marqueurs : [S], [C], [1], [R], :rb_…:, les nombres, les retours à la ligne.
-- Le texte de règles est précis et impersonnel comme sur une carte française de jeu (« Quand vous jouez cette carte, piochez 1. ») ; le texte d'ambiance garde sa voix.
-Réponds uniquement par un tableau JSON, un objet par carte dans l'ordre reçu : {"id": …, "name": …, "text": …, "flavour": …} (text et flavour à null quand la carte n'en a pas).`
-
 async function translate(batch, key) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -101,7 +45,7 @@ async function translate(batch, key) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 16000,
-      system: SYSTEM,
+      system: CONFIG.system,
       messages: [{ role: 'user', content: JSON.stringify(batch.map(c => ({ id: c.hash, name: c.name, text: c.text, flavour: c.flavour }))) }],
     }),
   })
@@ -122,11 +66,14 @@ async function main() {
   await ensureTranslations(tdb)
   if (RESET)
     await tdb.execute('DELETE FROM translations')
-  const { rows } = await cards.execute('SELECT name, text, extra FROM cards WHERE lang = \'en\'')
+  const { rows } = await cards.execute(CONFIG.onlyMissing
+    // The cards without any French row: those YGOPRODeck has no text for.
+    ? 'SELECT name, text, extra FROM cards e WHERE lang = \'en\' AND NOT EXISTS (SELECT 1 FROM cards f WHERE f.card_key = e.card_key AND f.lang = \'fr\' AND f.extra NOT LIKE \'%"translated":true%\')'
+    : 'SELECT name, text, extra FROM cards WHERE lang = \'en\'')
   cards.close()
   const known = new Set((await tdb.execute('SELECT hash FROM translations')).rows.map(r => String(r.hash)))
   const todo = [...new Map(rows.map(r => sourceOf(r)).filter(s => !known.has(s.hash)).map(s => [s.hash, s])).values()].slice(0, LIMIT)
-  log(`Riftbound en français — ${known.size} cartes déjà traduites, ${todo.length} à traduire`)
+  log(`${CONFIG.label} en français — ${known.size} cartes déjà traduites, ${todo.length} à traduire`)
 
   const key = process.env.ANTHROPIC_API_KEY
   let done = 0
@@ -160,7 +107,7 @@ async function main() {
 
   // Into the card database, through a working copy as the ingest does.
   const work = workingCopy(DB_PATH)
-  const written = await applyTranslations(work.db, tdb)
+  const written = await applyTranslations(work.db, tdb, { onlyMissing: CONFIG.onlyMissing })
   await rebuildSearch(work.db)
   work.commit()
   tdb.close()
