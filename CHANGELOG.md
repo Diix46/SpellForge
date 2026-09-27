@@ -1,3 +1,9 @@
+## [0.53.2](https://github.com/Diix46/SpellForge/compare/v0.53.1...v0.53.2) (2026-09-27)
+
+### Bug Fixes
+
+* **finitions:** tour de l'app, marges, recherche cinq jeux, symboles Riftbound ([30c1a3e](https://github.com/Diix46/SpellForge/commit/30c1a3e104a880cb0a284082f8e76703e374feca))
+
 ## [0.53.1](https://github.com/Diix46/SpellForge/compare/v0.53.0...v0.53.1) (2026-09-27)
 
 ### Bug Fixes
