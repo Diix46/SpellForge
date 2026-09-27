@@ -62,7 +62,8 @@ Answer with one JSON object only: {"found": true|false, "name": "name as printed
     name: clean(read.name)!,
     nameEn: clean(read.nameEn),
     set: clean(read.set),
-    number: clean(read.number),
+    // "006/165": the number, not the set's size.
+    number: clean(read.number)?.split('/')[0]?.trim() || null,
     lang: read.lang === 'fr' || read.lang === 'en' ? read.lang : null,
   }
 })
