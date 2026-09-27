@@ -6,7 +6,8 @@ import { validateCredentials } from '../../utils/validateCredentials'
 // Create an account, then start a session. Display name derives from the email
 // local-part unless provided.
 export default defineEventHandler(async (event) => {
-  rateLimit(`auth:register:${getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'}`, 5, 10 * 60_000)
+  // Development: the browser tests create an account each; production keeps it tight.
+  rateLimit(`auth:register:${getRequestIP(event, { xForwardedFor: true }) ?? 'unknown'}`, import.meta.dev ? 500 : 5, 10 * 60_000)
   const body = await readBody(event).catch(() => null)
   const { email, password } = validateCredentials(body)
   const d = (body as Record<string, unknown> | null)?.displayName

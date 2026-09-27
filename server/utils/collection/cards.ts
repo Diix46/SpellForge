@@ -10,6 +10,7 @@ import { useMtgCardsDb, useOptcgCardsDb } from '../cards/db'
 import { imageUrl, setIconPath } from '../cards/mtg-shape'
 import { buildOptcgByIdQuery } from '../cards/optcg-query'
 import { toOptcgCard } from '../cards/optcg-shape'
+import { gameCollection } from './games'
 
 const COLOR_LETTERS = ['W', 'U', 'B', 'R', 'G'] as const
 const CHUNK = 400
@@ -122,9 +123,12 @@ async function optcgCards(db: Client, printingIds: readonly string[]): Promise<M
   return out
 }
 
+export const mtgCollectionCards = (ids: readonly string[]) => mtgCards(useMtgCardsDb(), ids)
+export const optcgCollectionCards = (ids: readonly string[]) => optcgCards(useOptcgCardsDb(), ids)
+
 /** The cards of these printings (unknown ids are left out). */
 export function collectionCards(game: GameId, printingIds: readonly string[]): Promise<Map<string, CollectionCard>> {
   if (!printingIds.length)
     return Promise.resolve(new Map())
-  return game === 'mtg' ? mtgCards(useMtgCardsDb(), printingIds) : optcgCards(useOptcgCardsDb(), printingIds)
+  return gameCollection(game).cards(printingIds)
 }
