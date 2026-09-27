@@ -1,25 +1,24 @@
 <script setup lang="ts">
-import type { LandingOverview } from '#shared/landing'
+import type { LandingOverview, LandingWorld } from '#shared/landing'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { GAMES } from '#shared/game'
 
-// The real figures of both databases, on the seam: One Piece on paper, Magic
-// on obsidian, and the one number both share in the middle. They count up
-// once, the first time they come into view; the server renders the final
-// values.
-const props = defineProps<{ stats: LandingOverview['stats'] }>()
+// The real figures of every card database, each in its world's colour, and
+// the one number they all share: no account to start. They count up once,
+// the first time they come into view; the server renders the final values.
+const props = defineProps<{ stats: LandingOverview['stats'], worlds: LandingWorld[] }>()
 
 const { t, locale } = useLocale()
 const root = useTemplateRef<HTMLElement>('root')
 const progress = ref(1)
 
 const fmt = (n: number) => Math.round(n * progress.value).toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US')
-const op = computed(() => [
-  { id: 'op-cards', value: fmt(props.stats.optcgCards), label: t('home.numbers.opCards') },
-  { id: 'op-arts', value: fmt(props.stats.optcgArts), label: t('home.numbers.opArts') },
-])
-const mtg = computed(() => [
-  { id: 'mtg-cards', value: fmt(props.stats.mtgCards), label: t('home.numbers.mtgCards') },
-])
+const figures = computed(() => props.worlds.filter(w => w.cards > 0).map(w => ({
+  id: w.game,
+  value: fmt(w.cards),
+  label: t('home.numbers.cardsOf').replace('{game}', GAMES[w.game].label),
+  swatch: GAMES[w.game].swatch,
+})))
 
 let observer: IntersectionObserver | null = null
 let raf = 0
@@ -50,8 +49,8 @@ onBeforeUnmount(() => {
 
 <template>
   <section id="numbers" ref="root" class="numbers">
-    <div class="half half--op">
-      <div v-for="n in op" :key="n.id" class="figure">
+    <div class="figures">
+      <div v-for="n in figures" :key="n.id" class="figure" :style="{ '--swatch': n.swatch }">
         <strong>{{ n.value }}</strong>
         <span>{{ n.label }}</span>
       </div>
@@ -60,71 +59,45 @@ onBeforeUnmount(() => {
       <strong>0</strong>
       <span>{{ t('home.numbers.account') }}</span>
     </div>
-    <div class="half half--mtg">
-      <div v-for="n in mtg" :key="n.id" class="figure">
-        <strong>{{ n.value }}</strong>
-        <span>{{ n.label }}</span>
-      </div>
-    </div>
   </section>
 </template>
 
 <style scoped>
 .numbers {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  background: linear-gradient(90deg, #e6d2aa 50%, #eff0ed 50%);
-  border-block: 1px solid rgba(27, 31, 34, 0.14);
-}
-.half {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px 44px;
-  padding: 44px clamp(20px, 5vw, 80px);
+  align-items: center;
+  justify-content: center;
+  gap: 24px 48px;
+  padding: 44px clamp(16px, 5vw, 80px);
+  background: #eff0ed;
+  border-block: 1px solid rgba(27, 31, 34, 0.14);
 }
-.half--op {
-  justify-content: flex-end;
-  color: #231708;
-}
-.half--mtg {
-  justify-content: flex-start;
-  color: #1b1f22;
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px 40px;
 }
 .figure {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: 220px;
+  min-width: 120px;
 }
 .figure strong {
-  font-size: clamp(40px, 4.4vw, 64px);
-  font-weight: 400;
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(32px, 3.6vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-}
-.half--op strong {
-  font-family: 'Anton', Impact, sans-serif;
-  color: #231708;
-}
-.half--mtg strong {
-  font-family: var(--mtg-face);
-  font-weight: 700;
-  background: linear-gradient(180deg, #dce6f2, #2d4f7c);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: color-mix(in srgb, var(--swatch) 78%, #1b1f22);
 }
 .figure span {
   font-size: 13px;
   line-height: 1.35;
-}
-.half--op span {
-  color: #5a4228;
-}
-.half--mtg span {
-  color: #616a6f;
+  color: #555d61;
 }
 .zero {
   display: flex;
@@ -137,17 +110,17 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   background:
     linear-gradient(#f7f7f5, #f7f7f5) padding-box,
-    linear-gradient(90deg, #c9312a, #2d4f7c) border-box;
+    linear-gradient(90deg, #c9312a, #e3b22b, #6b3fa0, #1f8a9a, #2d4f7c) border-box;
   color: #1b1f22;
   text-align: center;
-  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.6);
 }
 .zero strong {
-  font-family: 'Anton', Impact, sans-serif;
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
   font-size: 58px;
-  font-weight: 400;
+  font-weight: 700;
   line-height: 1;
-  background: linear-gradient(90deg, #ef6b5d, #2d4f7c);
+  background: linear-gradient(90deg, #ef6b5d, #6b3fa0, #2d4f7c);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -157,30 +130,10 @@ onBeforeUnmount(() => {
   letter-spacing: 0.06em;
   color: #454d52;
 }
-@media (max-width: 900px) {
-  .numbers {
-    grid-template-columns: 1fr;
-    background: none;
-  }
-  .half {
-    justify-content: center;
-    padding: 28px 20px;
-    text-align: center;
-  }
-  .half--op {
-    background: #e6d2aa;
-  }
-  .half--mtg {
-    background: #eff0ed;
-  }
+@media (max-width: 700px) {
   .figure {
     align-items: center;
-  }
-  .zero {
-    position: relative;
-    z-index: 1;
-    justify-self: center;
-    margin: -20px 0;
+    text-align: center;
   }
 }
 </style>

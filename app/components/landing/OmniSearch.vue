@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { LandingSearch } from '#shared/landing'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { GAME_LIST, libraryPath } from '#shared/game'
 
-// One field for both games. The field sits on the seam; One Piece results
-// land on the paper side, Magic results on the obsidian side. A first query is
-// rendered with the page so the section is never empty.
+// One field for every game: the results come back world by world, a row
+// each, in its colour. A first query is rendered with the page so the section
+// is never empty.
 const { t, locale } = useLocale()
 
-const SUGGESTIONS = ['Luffy', 'Sol Ring', 'Zoro', 'Atraxa', 'Shanks', 'Dragon']
+const SUGGESTIONS = ['Dragon', 'Luffy', 'Sol Ring', 'Pikachu', 'Magicien Sombre', 'Jinx']
 const text = ref('Dragon')
 const query = ref(text.value)
 
@@ -21,12 +22,12 @@ onBeforeUnmount(() => debounce && clearTimeout(debounce))
 
 const { data, status } = useFetch<LandingSearch>('/api/landing/search', {
   query: computed(() => ({ q: query.value, lang: locale.value })),
-  default: () => ({ optcg: [], mtg: [] }),
+  default: () => ({}),
 })
 const busy = computed(() => status.value === 'pending')
-const optcg = computed(() => data.value?.optcg ?? [])
-const mtg = computed(() => data.value?.mtg ?? [])
 const searched = computed(() => query.value.length >= 2)
+// Every world in display order; one without a hit says so in a line.
+const rows = computed(() => GAME_LIST.map(g => ({ def: g, hits: data.value?.[g.id] ?? [] })))
 
 function pick(s: string) {
   text.value = s
@@ -69,30 +70,27 @@ function pick(s: string) {
     </header>
 
     <div class="results" :class="{ busy }">
-      <ul class="col col--op" aria-label="One Piece">
-        <li v-for="(hit, i) in optcg" :key="hit.id" :style="{ '--i': i }">
-          <NuxtLink :to="hit.path" class="hit">
-            <img v-if="hit.image" :src="hit.image" :alt="hit.name" loading="lazy" width="600" height="838">
-            <span class="hit-name">{{ hit.name }}</span>
-            <span class="hit-meta">{{ hit.meta }}</span>
+      <section v-for="row in rows" :key="row.def.id" class="row" :style="{ '--swatch': row.def.swatch }" :aria-label="row.def.label">
+        <header class="row-head">
+          <UIcon :name="row.def.icon" class="h-4 w-4" />
+          <span>{{ row.def.label }}</span>
+          <NuxtLink v-if="row.hits.length" :to="`${libraryPath(row.def.id)}?q=${encodeURIComponent(query)}`" class="row-all">
+            {{ t('home.search.all') }}
           </NuxtLink>
-        </li>
-        <li v-if="searched && !optcg.length && !busy" class="none">
+        </header>
+        <ul v-if="row.hits.length" class="hits">
+          <li v-for="(hit, i) in row.hits" :key="hit.id" :style="{ '--i': i }">
+            <NuxtLink :to="hit.path" class="hit">
+              <img v-if="hit.image" :src="hit.image" :alt="hit.name" loading="lazy">
+              <span class="hit-name">{{ hit.name }}</span>
+              <span class="hit-meta">{{ hit.meta }}</span>
+            </NuxtLink>
+          </li>
+        </ul>
+        <p v-else-if="searched && !busy" class="none">
           {{ t('home.search.none') }}
-        </li>
-      </ul>
-      <ul class="col col--mtg" aria-label="Magic">
-        <li v-for="(hit, i) in mtg" :key="hit.id" :style="{ '--i': i }">
-          <NuxtLink :to="hit.path" class="hit">
-            <img v-if="hit.image" :src="hit.image" :alt="hit.name" loading="lazy" width="488" height="680">
-            <span class="hit-name">{{ hit.name }}</span>
-            <span class="hit-meta">{{ hit.meta }}</span>
-          </NuxtLink>
-        </li>
-        <li v-if="searched && !mtg.length && !busy" class="none">
-          {{ t('home.search.none') }}
-        </li>
-      </ul>
+        </p>
+      </section>
     </div>
   </section>
 </template>
@@ -100,7 +98,7 @@ function pick(s: string) {
 <style scoped>
 .search {
   position: relative;
-  background: linear-gradient(90deg, #f3e6c9 50%, #eceeea 50%);
+  background: #eceeea;
 }
 .head {
   display: flex;
@@ -236,32 +234,46 @@ function pick(s: string) {
 
 .results {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding: 10px 0 100px;
+  gap: 26px;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 10px clamp(16px, 4vw, 56px) 100px;
   transition: opacity 0.2s ease;
 }
 .results.busy {
   opacity: 0.6;
 }
-.col {
+.row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid color-mix(in srgb, var(--swatch) 55%, transparent);
+  font-size: 14px;
+  font-weight: 700;
+  color: #1b1f22;
+}
+.row-head .iconify {
+  color: var(--swatch);
+}
+.row-all {
+  margin-left: auto;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: #454d52;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.hits {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px 16px;
-  align-content: start;
-  width: 100%;
-  max-width: 560px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
   margin: 0;
-  padding: 10px clamp(16px, 4vw, 56px);
+  padding: 0;
   list-style: none;
 }
-/* each column hugs the seam */
-.col--op {
-  justify-self: end;
-}
-.col--mtg {
-  justify-self: start;
-}
-.col li {
+.hits li {
   min-width: 0;
   animation: pop 0.45s cubic-bezier(0.3, 1.4, 0.5, 1) both;
   animation-delay: calc(var(--i) * 45ms);
@@ -276,19 +288,32 @@ function pick(s: string) {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  color: #1b1f22;
   text-decoration: none;
 }
 .hit img {
   display: block;
   width: 100%;
-  height: auto;
+  aspect-ratio: 63 / 88;
+  object-fit: cover;
+  border-radius: 4.5% / 3.2%;
+  background: #e2e4e0;
+  box-shadow:
+    0 0 0 1px rgba(27, 31, 34, 0.12),
+    0 16px 30px -18px rgba(0, 0, 0, 0.8);
   transition:
     transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1),
     box-shadow 0.35s ease;
 }
+.hit:hover img {
+  transform: translateY(-4px);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--swatch) 60%, transparent),
+    0 22px 40px -18px rgba(27, 31, 34, 0.4);
+}
 .hit-name {
   overflow: hidden;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -298,100 +323,30 @@ function pick(s: string) {
   font-size: 11.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.hit:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 4px;
-}
-.col--op .hit {
-  color: #231708;
-}
-.col--op .hit img {
-  padding: 5px;
-  border: 1px solid rgba(58, 38, 22, 0.35);
-  background: #fbf3e3;
-  box-shadow: 0 12px 22px -14px rgba(58, 38, 22, 0.7);
-}
-.col--op li:nth-child(odd) .hit img {
-  rotate: -1.4deg;
-}
-.col--op li:nth-child(even) .hit img {
-  rotate: 1.2deg;
-}
-.col--op .hit:hover img {
-  transform: translateY(-4px) rotate(0.8deg) scale(1.02);
-}
-.col--op .hit-meta {
-  font-family: var(--font-mono);
-  color: #6b5236;
-}
-.col--mtg .hit {
-  color: #1b1f22;
-}
-.col--mtg .hit img {
-  border-radius: 4.5% / 3.2%;
-  box-shadow:
-    0 0 0 1px rgba(27, 31, 34, 0.14),
-    0 18px 34px -18px rgba(0, 0, 0, 0.9);
-}
-.col--mtg .hit:hover img {
-  transform: translateY(-4px);
-  box-shadow:
-    0 0 0 1px rgba(45, 79, 124, 0.5),
-    0 22px 40px -18px rgba(27, 31, 34, 0.35);
-}
-.col--mtg .hit-name {
-  font-family: var(--mtg-face);
-}
-.col--mtg .hit-meta {
-  font-family: var(--mtg-face);
-  font-size: 13px;
   color: #616a6f;
 }
-.results {
-  justify-items: stretch;
+.hit:focus-visible {
+  outline: 2px solid var(--swatch);
+  outline-offset: 4px;
 }
 .none {
-  grid-column: 1 / -1;
-  padding: 28px 0;
-  font-size: 14px;
-  text-align: center;
-  animation: none !important;
-}
-.col--op .none {
-  color: #6b5236;
-}
-.col--mtg .none {
+  margin: 0;
+  font-size: 13.5px;
   color: #616a6f;
 }
 @media (max-width: 900px) {
-  .search {
-    background:
-      linear-gradient(90deg, #f3e6c9 50%, #eceeea 50%) top / 100% 480px no-repeat,
-      #eceeea;
+  .hits {
+    grid-template-columns: repeat(6, 42%);
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-snap-type: x mandatory;
   }
-  .results {
-    grid-template-columns: 1fr;
-    padding-bottom: 0;
-  }
-  .col {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding-block: 24px;
-  }
-  .col--op,
-  .col--mtg {
-    justify-self: stretch;
-    max-width: none;
-  }
-  .col--op {
-    background: #f3e6c9;
-  }
-  .col--mtg {
-    background: #eceeea;
+  .hits li {
+    scroll-snap-align: start;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .col li {
+  .hits li {
     animation: none;
   }
   .hit img {
