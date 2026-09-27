@@ -103,9 +103,23 @@ async function main() {
       continue
     // "unl-116a-219": set, number (a letter or * for variants), the set's size
     // of reference — which tells promos apart, several sharing a number.
-    const id = String(c.riftbound_id ?? '').toLowerCase().replace(/\*/g, 's')
-    if (!id || seen.has(id))
+    let id = String(c.riftbound_id ?? '').toLowerCase().replace(/\*/g, 's')
+    if (!id)
       continue
+    // Riftcodex gives some printings the id of another: the Metal Miss Fortune
+    // shares "opp-267-298" with the plain one. A second printing with a mark
+    // of its own ("(Metal)") gets its own id, its mark's letter after the
+    // number ("opp-267m-298"); a plain duplicate is the same card twice.
+    if (seen.has(id)) {
+      const mark = /\(([^)]+)\)\s*$/.exec(c.name)?.[1]
+      if (!mark)
+        continue
+      const [set, num, total] = id.split('-')
+      const letters = mark.toLowerCase().replace(/[^a-z]/g, '')
+      id = [1, 2, 3].map(n => `${set}-${num}${letters.slice(0, n)}-${total}`).find(x => !seen.has(x)) ?? ''
+      if (!id)
+        continue
+    }
     seen.add(id)
     const number = id.split('-')[1] ?? String(c.collector_number)
     const meta = c.metadata ?? {}

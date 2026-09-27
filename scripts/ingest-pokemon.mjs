@@ -69,8 +69,41 @@ function pricesOf(c) {
     if (pf)
       foil ??= pf
   }
+  // Many cards carry their Cardmarket price on the card, not on a variant.
+  const cm = c.pricing?.cardmarket
+  if (cm) {
+    id ??= cm.idProduct ?? null
+    normal ??= cm.trend ?? cm.avg ?? cm.avg30 ?? null
+    foil ??= cm['trend-holo'] || cm['avg-holo'] || null
+  }
   // A card only printed holo: its price is the holo's.
   return { normal: normal ?? (c.variants?.normal ? null : foil), foil, id }
+}
+
+/**
+ * Today's prices for every card: a set is re-read only when its contents
+ * change, but prices move every day. One English read per card (Cardmarket
+ * prices a product, the same in both languages), both rows updated.
+ */
+async function refreshPrices(db) {
+  const t0 = Date.now()
+  const { rows } = await db.execute('SELECT DISTINCT id FROM cards')
+  let priced = 0
+  let failed = 0
+  const updates = (await mapPool(rows.map(r => String(r.id)), CONCURRENCY, async (id) => {
+    const card = await getJson(`${API}/en/cards/${encodeURIComponent(id)}`).catch(() => null)
+    if (!card) {
+      failed++
+      return null
+    }
+    const { normal, foil, id: product } = pricesOf(card)
+    if (normal != null || foil != null)
+      priced++
+    return { sql: 'UPDATE cards SET price_eur = ?, price_eur_foil = ?, cardmarket_id = COALESCE(?, cardmarket_id) WHERE id = ?', args: [normal, foil, product, id] }
+  })).filter(Boolean)
+  for (let i = 0; i < updates.length; i += 500)
+    await db.batch(updates.slice(i, i + 500), 'write')
+  log(`  prix du jour : ${priced} cartes cotées sur ${rows.length}${failed ? `, ${failed} illisibles` : ''} · ${Math.round((Date.now() - t0) / 1000)} s`)
 }
 
 function finishesOf(c) {
@@ -236,6 +269,7 @@ async function main() {
       log(`  · ${set.id} (${lang}) : ${rows.length} cartes`)
     }
   }
+  await refreshPrices(db)
   await dropMissingScans(db)
   await rebuildSearch(db)
   await db.batch([
