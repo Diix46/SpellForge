@@ -200,14 +200,15 @@ export function tcgCollection(game: TcgGameId): GameCollection {
   /** Each set's most sought-after card (its highest price), in the site's language. */
   async function setArts(chunk: readonly string[], lang: Lang): Promise<Map<string, string>> {
     const { rows } = await db().execute({
-      sql: `SELECT set_code, image FROM (
-              SELECT c.set_code, c.image, ROW_NUMBER() OVER (PARTITION BY c.set_code
+      sql: `SELECT set_code, image, thumb FROM (
+              SELECT c.set_code, c.image, c.thumb, ROW_NUMBER() OVER (PARTITION BY c.set_code
                        ORDER BY (c.lang = ?) DESC, COALESCE(c.price_eur, c.price_eur_foil, 0) DESC, CAST(c.number AS INTEGER)) AS rn
                 FROM cards c WHERE c.image IS NOT NULL AND c.set_code IN (${marks(chunk.length)})
             ) WHERE rn = 1`,
       args: [lang, ...chunk] as InValue[],
     })
-    return new Map(rows.map(r => [String(r.set_code), image(r.image)]))
+    // Small: a spine, a binder's corner. The source's small scan, else the route's.
+    return new Map(rows.map(r => [String(r.set_code), r.thumb && r.thumb !== r.image ? image(r.thumb) : `${image(r.image)}?size=thumb`]))
   }
 
   /**

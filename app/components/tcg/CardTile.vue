@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TcgCard, TcgGameId } from '#shared/tcg/types'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { TCG_UI } from '~/utils/games/tcg'
 
 // A card in a grid: the scan, a lift on hover, its copies in the deck and a
@@ -26,12 +26,18 @@ const frame = computed(() => TCG_UI[props.game].frame?.(props.card) ?? null)
 // A scan the source announced but does not serve: the blank card instead.
 const broken = ref(false)
 watch(() => props.card.thumb, () => (broken.value = false))
+// A scan that failed before the page came alive fired its error unheard.
+const img = useTemplateRef<HTMLImageElement>('img')
+onMounted(() => {
+  if (img.value?.complete && !img.value.naturalWidth)
+    broken.value = true
+})
 </script>
 
 <template>
   <article class="tile" :class="{ framed: frame }" :style="{ '--i': Math.min(index, 24), '--frame': frame ?? undefined }">
     <button type="button" class="face" :style="{ aspectRatio: aspect }" :aria-label="card.name" @click="emit('open', card)">
-      <img v-if="card.thumb && !broken" :src="card.thumb" :alt="card.name" :class="{ landscape: card.landscape }" loading="lazy" decoding="async" @error="broken = true">
+      <img v-if="card.thumb && !broken" ref="img" :src="card.thumb" :alt="card.name" :class="{ landscape: card.landscape }" loading="lazy" decoding="async" @error="broken = true">
       <span v-else class="blank">
         <span class="blank-name">{{ card.name }}</span>
         <span class="font-mono">{{ card.set }} · {{ card.number }}</span>

@@ -151,6 +151,22 @@ onBeforeUnmount(() => clearTimeout(closing))
   font-weight: 700;
   letter-spacing: 0.04em;
 }
+.name--pokemon {
+  font-family: 'Fredoka', ui-sans-serif, sans-serif;
+  font-weight: 700;
+}
+.name--yugioh {
+  font-family: 'Oswald', 'Arial Narrow', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.name--riftbound {
+  font-family: var(--rift-face);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .games {
   display: grid;
   gap: 2px;

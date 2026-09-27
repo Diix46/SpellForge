@@ -16,7 +16,7 @@ const LOOK: Record<GameId, { bg: string, ink: string, muted: string, accent: str
   mtg: { bg: 'linear-gradient(160deg, #1d2530, #0f1318)', ink: '#eef0f1', muted: '#a9b3ba', accent: '#7aa0d4', onAccent: '#0f1318', face: '\'Cinzel\', Georgia, serif', weight: 700, upper: false },
   pokemon: { bg: 'linear-gradient(160deg, #fff7d6, #ffe07a)', ink: '#1b1d2a', muted: '#4a4d5e', accent: '#d6342e', onAccent: '#ffffff', face: '\'Fredoka\', ui-sans-serif, sans-serif', weight: 700, upper: false },
   yugioh: { bg: 'radial-gradient(120% 80% at 50% 0%, #1b2f6b, #070b1a 70%)', ink: '#eef1fb', muted: '#aab3d4', accent: '#d4af37', onAccent: '#140f04', face: '\'Oswald\', \'Arial Narrow\', sans-serif', weight: 600, upper: true },
-  riftbound: { bg: 'radial-gradient(120% 80% at 50% 0%, #0a323c, #010a13 70%)', ink: '#f0e6d2', muted: '#a09b8c', accent: '#c8aa6e', onAccent: '#010a13', face: '\'Cinzel\', Georgia, serif', weight: 700, upper: true },
+  riftbound: { bg: 'radial-gradient(120% 80% at 50% 0%, #0a323c, #010a13 70%)', ink: '#f0e6d2', muted: '#a09b8c', accent: '#c8aa6e', onAccent: '#010a13', face: 'var(--rift-face)', weight: 700, upper: true },
 }
 
 const list = computed(() => props.worlds.filter(w => GAMES[w.game]).map(w => ({ ...w, def: GAMES[w.game], look: LOOK[w.game] })))

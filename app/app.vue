@@ -144,6 +144,7 @@ function isActive(to: string) {
   <UApp>
     <FxOnePieceSea v-if="universe === 'optcg'" />
     <FxMagicTable v-else-if="universe === 'mtg'" />
+    <FxPokemonMeadow v-else-if="universe === 'pokemon'" />
     <FxYugiohField v-else-if="universe === 'yugioh'" />
     <FxRiftboundSplash v-else-if="universe === 'riftbound'" />
     <!-- The home page paints its own ground over it: no hidden animation there. -->
