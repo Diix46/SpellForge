@@ -82,8 +82,8 @@ interface BinderData { set: SetProgress, cards: ChecklistCard[] }
 async function roomArts(THREE: typeof import('three'), loader: import('three').TextureLoader, low: boolean) {
   if (!isTcgGame(props.game))
     return {}
-  const sc = await $fetch<{ arts: { image: string, card: boolean }[], emblems: { image: string, card: boolean }[] }>(`/api/tcg/${props.game}/showcase`, { query: { lang: locale.value } })
-    .catch(() => ({ arts: [], emblems: [] }))
+  const sc = await $fetch<{ arts: { image: string, card: boolean, splash?: string | null }[], emblems: { image: string, card: boolean }[], murals?: string[] }>(`/api/tcg/${props.game}/showcase`, { query: { lang: locale.value } })
+    .catch(() => ({ arts: [], emblems: [], murals: [] }))
   // Full scans are heavy (Riftbound's, 1.4 MB): the medium copy is enough on a wall.
   const url = (a: { image: string, card: boolean }, size: string) => (a.image.startsWith('/api/images/tcg/') && !a.image.includes('?') ? `${a.image}?size=${size}` : a.image)
   const load = (a: { image: string, card: boolean }, size: string) => loader.loadAsync(url(a, size)).then((tex) => {
@@ -91,11 +91,12 @@ async function roomArts(THREE: typeof import('three'), loader: import('three').T
     tex.anisotropy = low ? 2 : 4
     return { tex, card: a.card }
   }).catch(() => null)
-  const [arts, emblems] = await Promise.all([
+  const [arts, emblems, murals] = await Promise.all([
     Promise.all(sc.arts.slice(0, 6).map(a => load(a, 'medium'))),
     Promise.all(sc.emblems.slice(0, 9).map(a => load(a, 'thumb'))),
+    Promise.all((sc.murals ?? []).map(m => load({ image: m, card: false }, 'full'))),
   ])
-  return { arts: arts.filter(x => x != null), emblems: emblems.filter(x => x != null) }
+  return { arts: arts.filter(x => x != null), emblems: emblems.filter(x => x != null), murals: murals.filter(x => x != null) }
 }
 
 /**

@@ -3,6 +3,7 @@ import type { SetProgress } from '#shared/collection'
 import type { GameId } from '#shared/game'
 import { computed, onMounted, ref, watch } from 'vue'
 import { setKind } from '#shared/collection'
+import { warmBookshelf } from '~/utils/bookshelf/warm'
 import { collectionClient } from '~/utils/games/collection'
 
 // The binder shelf: the overall progress, then the binders of the sets
@@ -31,6 +32,9 @@ onMounted(() => {
       mode.value = 'list'
   }
   catch {}
+  // The bookcase's code and materials, fetched alongside the collection.
+  if (mode.value === '3d')
+    warmBookshelf(props.game)
 })
 watch(mode, (m) => {
   try {
@@ -64,7 +68,8 @@ const fresh = computed(() => (filters.all
       .slice(0, 12)))
 // Built once the new releases are known (not twice, before and after).
 const shelfKey = computed(() => [...shelfSets.value, ...fresh.value].map(s => s.code).join('|'))
-const shelfReady = computed(() => mode.value === '3d' && everyStatus.value !== 'pending' && everyStatus.value !== 'idle' && (shelfSets.value.length > 0 || fresh.value.length > 0))
+// With every set on the shelves there is no new releases shelf to wait for.
+const shelfReady = computed(() => mode.value === '3d' && (filters.all || (everyStatus.value !== 'pending' && everyStatus.value !== 'idle')) && (shelfSets.value.length > 0 || fresh.value.length > 0))
 
 const sortItems = computed(() => [
   { label: t('collection.setSortRecent'), value: 'recent' },

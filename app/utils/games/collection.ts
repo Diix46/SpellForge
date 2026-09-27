@@ -101,7 +101,7 @@ export const COLLECTION_CLIENT: Record<GameId, CollectionClient> = {
     rarityOrder: ['mythic', 'rare', 'uncommon', 'common', 'special', 'bonus'],
     colourless: 'C',
     colour: id => ({ hex: MTG_COLOR[id] ?? '#999', label: `collection.color.${id}` }),
-    library: { face: 'Cinzel, Georgia, serif', weight: 600, wood: 'wood_dark', wall: 'wood_dark', room: 'arcanist' },
+    library: { face: 'Philosopher, Georgia, serif', weight: 700, wood: 'wood_dark', wall: 'wood_dark', room: 'arcanist' },
   },
   optcg: {
     async suggest(q, lang) {
@@ -138,7 +138,7 @@ export const COLLECTION_CLIENT: Record<GameId, CollectionClient> = {
     library: { face: 'Anton, Impact, sans-serif', weight: 400, wood: 'wood_planks', wall: 'planks_wall', room: 'cabin' },
   },
   pokemon: tcgClient('pokemon', { face: 'Cabin, \'Gill Sans\', sans-serif', weight: 700, wood: 'wood_planks', wall: 'planks_wall', room: 'lab' }),
-  yugioh: tcgClient('yugioh', { face: '\'Spectral SC\', Georgia, serif', weight: 700, wood: 'wood_dark', wall: 'wood_dark', room: 'shrine' }),
+  yugioh: tcgClient('yugioh', { face: '\'Enriqueta\', Georgia, serif', weight: 700, wood: 'wood_planks', wall: 'planks_wall', room: 'shrine' }),
   riftbound: tcgClient('riftbound', { face: 'Cinzel, Georgia, serif', weight: 700, wood: 'wood_dark', wall: 'wood_dark', room: 'hextech' }),
 }
 

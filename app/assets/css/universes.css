@@ -311,14 +311,14 @@ html[data-universe='pokemon'] body {
 /* ------------------------------------------------------------------ Yu-Gi-Oh! */
 /* Master Duel: always at night (GameDef.forcedMode). Deep duel-field blue,
    gold trim, the cyan light of the zones; the cards' own small caps (Matrix,
-   its free look-alike Spectral SC). The card frames' official colours dress the cards
+   its free look-alike Enriqueta, set in small caps). The card frames' official colours dress the cards
    (utils/games/tcg YGO_FRAME). */
 html[data-universe='yugioh'],
 html.dark[data-universe='yugioh'] {
   color-scheme: dark;
 
-  --font-display: 'Spectral SC', 'Matrix Small Caps', Georgia, serif;
-  --font-sfx: 'Spectral SC', 'Matrix Small Caps', Georgia, serif;
+  --font-display: 'Enriqueta', 'Matrix Small Caps', Georgia, serif;
+  --font-sfx: 'Enriqueta', 'Matrix Small Caps', Georgia, serif;
   --u-case: none;
   --u-track: 0.01em;
 
@@ -386,7 +386,9 @@ html[data-universe='yugioh'] body {
 }
 html[data-universe='yugioh'] .u-display,
 html[data-universe='yugioh'] :where(h1, h2) {
-  font-weight: 600;
+  font-weight: 700;
+  /* Names are set in small caps on the cards. */
+  font-variant-caps: small-caps;
 }
 /* Titles in gold leaf. */
 html[data-universe='yugioh'] h1 {
@@ -748,7 +750,7 @@ html[data-universe] :focus-visible {
   animation: ufx-don 0.8s cubic-bezier(0.25, 1.4, 0.45, 1) forwards;
 }
 .ufx--yugioh {
-  font-family: 'Spectral SC', 'Matrix Small Caps', Georgia, serif;
+  font-family: 'Enriqueta', 'Matrix Small Caps', Georgia, serif;
   text-transform: uppercase;
   font-weight: 700;
   font-size: 30px;

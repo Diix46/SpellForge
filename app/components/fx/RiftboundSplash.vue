@@ -3,8 +3,9 @@ import type { ShowcaseArt } from '~~/server/api/tcg/[game]/showcase.get'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 // Riftbound backdrop, the League of Legends client's home: a champion's
-// splash across the top of the page — the illustration of one of the game's
-// Legends, cropped from its card — dimmed and fading into hextech black, the
+// splash across the top of the page — the champion of one of the game's
+// Legends, in League's own splash art (sharp; its card's art otherwise) —
+// dimmed and fading into hextech black, the
 // next champion every twenty-five seconds; a gold filigree under the bar and
 // hextech motes rising. Fixed, behind everything; still under reduced motion.
 const { locale } = useLocale()
@@ -14,7 +15,7 @@ const { data } = useFetch<{ arts: ShowcaseArt[] }>('/api/tcg/riftbound/showcase'
   lazy: true,
   default: () => ({ arts: [] }),
 })
-const arts = computed(() => data.value?.arts ?? [])
+const arts = computed(() => (data.value?.arts ?? []).map(a => ({ ...a, src: a.splash ?? a.image, wide: !!a.splash })))
 const index = ref(0)
 const shown = computed(() => arts.value[index.value % Math.max(1, arts.value.length)] ?? null)
 
@@ -39,7 +40,7 @@ const MOTES = Array.from({ length: 22 }, (_, i) => ({
 <template>
   <div class="rift-bg" aria-hidden="true">
     <Transition name="splash">
-      <div v-if="shown" :key="shown.image" class="splash" :style="{ backgroundImage: `url('${shown.image}')` }" />
+      <div v-if="shown" :key="shown.src" class="splash" :class="{ wide: shown.wide }" :style="{ backgroundImage: `url('${shown.src}')` }" />
     </Transition>
     <div class="veil" />
     <div class="filigree" />
@@ -75,6 +76,11 @@ const MOTES = Array.from({ length: 22 }, (_, i) => ({
     linear-gradient(180deg, #000 0%, #000 45%, transparent 100%),
     linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
   mask-composite: intersect;
+}
+/* A splash art is already the scene: it covers the band, the figure centred. */
+.splash.wide {
+  background-size: cover;
+  background-position: 50% 22%;
 }
 .splash-enter-active,
 .splash-leave-active {

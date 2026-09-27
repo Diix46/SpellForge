@@ -65,6 +65,8 @@ export interface LibraryTextures {
   /** The universe's own images, hung in the room (utils/bookshelf/ambiance). */
   arts?: RoomArt[]
   emblems?: RoomArt[]
+  /** Wide scenes for the back wall (Riftbound: Arcane). */
+  murals?: RoomArt[]
 }
 
 /** A material from scanned maps, the maps repeated `rx` × `ry` (clones share the image). */
@@ -80,7 +82,9 @@ export function scanned(THREE: typeof Three, m: MaterialMaps, rx: number, ry: nu
 }
 
 // Sizes, in scene units: a binder, the step between two, a shelf's height.
-export const DIM = { W: 0.36, H: 1.4, D: 1.1, PITCH: 0.42, ROW: 1.86, BOARD: 0.09, SIDE: 0.14, GAP: 1.1, MARGIN: 0.22 }
+// GAP: room between two bookcases for what the universe hangs there (a poster,
+// a banner, a framed art up to 1.8 wide), never behind a bookcase.
+export const DIM = { W: 0.36, H: 1.4, D: 1.1, PITCH: 0.42, ROW: 1.86, BOARD: 0.09, SIDE: 0.14, GAP: 2.3, MARGIN: 0.22 }
 
 interface Placed {
   binder: ShelfBinder
@@ -288,7 +292,7 @@ export class Library {
 
     const span = { width: layout.length * (caseW + GAP) - GAP, height: caseH, depth: D, cases: layout.length, caseWidth: caseW, gap: GAP }
     this.lights(span)
-    this.ambiance = this.opts.buildAmbiance(THREE, { wall: tex.wall, wood: tex.wood, arts: tex.arts ?? [], emblems: tex.emblems ?? [] }, this.scene, span, this.opts.room, this.opts.quality)
+    this.ambiance = this.opts.buildAmbiance(THREE, { wall: tex.wall, wood: tex.wood, arts: tex.arts ?? [], emblems: tex.emblems ?? [], murals: tex.murals ?? [] }, this.scene, span, this.opts.room, this.opts.quality)
     // Centred between the plinth and what stands on the cornice (candles, a lantern).
     this.camY = (caseH - 0.35) / 2 + 0.15
     this.resize()
@@ -344,11 +348,13 @@ export class Library {
       g.fillStyle = '#3a2a10'
       g.textAlign = 'center'
       g.textBaseline = 'middle'
+      // Engraved in the game's own face, as its spines are.
+      const face = `${this.opts.textures.weight} SIZEpx ${this.opts.textures.font}`
       let size = 46
-      g.font = `700 ${size}px Georgia, serif`
+      g.font = face.replace('SIZE', String(size))
       while (g.measureText(row.label).width > 470 && size > 24) {
         size -= 2
-        g.font = `700 ${size}px Georgia, serif`
+        g.font = face.replace('SIZE', String(size))
       }
       g.fillText(row.label, 256, y0 + 50)
       const plate = new THREE.PlaneGeometry(1.7, 0.3)
