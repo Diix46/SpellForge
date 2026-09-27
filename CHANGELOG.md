@@ -1,3 +1,9 @@
+## [0.48.0](https://github.com/Diix46/SpellForge/compare/v0.47.0...v0.48.0) (2026-09-27)
+
+### Features
+
+* **accueil:** galerie des cinq mondes, recherche et chiffres pour tous les jeux ([4278c40](https://github.com/Diix46/SpellForge/commit/4278c4079c85d8d616eb3ee06d42600e19ecaa87))
+
 ## [0.47.0](https://github.com/Diix46/SpellForge/compare/v0.46.0...v0.47.0) (2026-09-27)
 
 ### Features
