@@ -47,7 +47,7 @@ async function chunked<T>(items: readonly string[], run: (chunk: string[]) => Pr
 export function tcgSetType(code: string): string {
   if (/^(?:mcd|tk-)/.test(code))
     return 'starter'
-  if (/p$|^p-|promo/i.test(code))
+  if (/p$|^p-|promo|^(?:pr|jdg)$/i.test(code))
     return 'promo'
   return 'expansion'
 }
@@ -97,7 +97,7 @@ export function tcgCollection(game: TcgGameId): GameCollection {
         colors: JSON.parse(String(r.types ?? '[]')),
         manaCost: null,
         image: image(r.image),
-        thumb: image(r.thumb) || image(r.image),
+        thumb: r.thumb && r.thumb !== r.image ? image(r.thumb) : image(r.image) && `${image(r.image)}?size=thumb`,
         price: r.price_eur == null ? null : Number(r.price_eur),
         priceFoil: r.price_eur_foil == null ? null : Number(r.price_eur_foil),
         finishes: finishesOf(r.finishes),
@@ -161,7 +161,7 @@ export function tcgCollection(game: TcgGameId): GameCollection {
         name: r.name_en == null ? String(r.name) : String(r.name_en),
         printedName: r.name_en != null && r.name_en !== r.name ? String(r.name) : null,
         rarity: r.rarity == null ? null : String(r.rarity),
-        thumb: image(r.thumb) || image(r.image),
+        thumb: r.thumb && r.thumb !== r.image ? image(r.thumb) : image(r.image) && `${image(r.image)}?size=thumb`,
         printingId: optcgPrintingId(r.lang === 'fr' ? 'fr' : 'en', id),
         printings: { fr: has.has(`${id}|fr`) ? `fr:${id}` : null, en: has.has(`${id}|en`) ? `en:${id}` : null },
         finishes: finishesOf(r.finishes),

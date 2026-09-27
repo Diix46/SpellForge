@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
     const { rows } = await db.execute({
       sql: `SELECT c.id, c.name_folded, c.card_key FROM cards c LEFT JOIN sets s ON s.code = c.set_code AND s.lang = c.lang
              WHERE (c.name_folded IN (${marks}) OR c.card_key IN (${marks}))
-             ORDER BY c.image IS NULL, (c.lang = ?) DESC, s.released DESC`,
+             ORDER BY c.image IS NULL, c.name_folded != c.card_key, c.rarity = 'Promo', (c.lang = ?) DESC, s.released DESC`,
       args: [...names, ...names, lang] as InValue[],
     })
     for (const r of rows) {

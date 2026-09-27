@@ -28,6 +28,7 @@ export interface TcgFilters {
 export const IMAGE_ORIGIN: Record<TcgGameId, string> = {
   pokemon: 'https://assets.tcgdex.net/',
   yugioh: 'https://images.ygoprodeck.com/',
+  riftbound: 'https://cmsassets.rgpub.io/',
 }
 
 /** An upstream image URL as the app serves it: from its own cache. */
@@ -203,7 +204,8 @@ export function toTcgCard(game: TcgGameId, r: Row): TcgCard {
     stats: json(r.stats, {}),
     text: r.text == null ? null : String(r.text),
     image,
-    thumb: tcgImageUrl(game, r.thumb) ?? image,
+    // A source without small scans: the image route makes one.
+    thumb: r.thumb && r.thumb !== r.image ? tcgImageUrl(game, r.thumb) ?? image : image && image.startsWith('/api/') ? `${image}?size=thumb` : image,
     finishes: (Object.keys(FINISH_BIT) as TcgFinish[]).filter(f => mask & FINISH_BIT[f]),
     price: num(r.price_eur),
     priceFoil: num(r.price_eur_foil),
@@ -223,6 +225,9 @@ export function toTcgCard(game: TcgGameId, r: Row): TcgCard {
     archetype: extra.archetype ?? null,
     linkMarkers: extra.linkmarkers ?? [],
     extraDeck: !!extra.extraDeck,
+    tags: extra.tags ?? [],
+    landscape: !!extra.landscape,
+    flavour: extra.flavour ?? null,
   }
 }
 

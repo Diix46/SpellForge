@@ -54,8 +54,8 @@ export interface TcgRules {
   zones: readonly TcgZone[]
   /** Formats the rules can check, the first one the default. */
   formats: readonly string[]
-  /** Where a card goes when added. */
-  zoneFor: (card: TcgCard) => string
+  /** Where a card goes when added (to this deck: Riftbound's Chosen Champion). */
+  zoneFor: (card: TcgCard, lines?: readonly TcgLine[]) => string
   /** Whether a card may sit in a zone. */
   fits?: (card: TcgCard, zone: string) => boolean
   /** Copies of one card (all printings, all zones) a deck may hold. */
@@ -79,13 +79,17 @@ export function parseTcgDecklist(raw: string, zones: readonly TcgZone[]): ParseR
   for (const line of raw.split('\n').map(l => l.trim()).filter(Boolean)) {
     if (COMMENT.test(line))
       continue
-    const heading = HEADING.exec(line)
+    // Prism's headings only ("## Extra"): another app's "Champion:" is left to
+    // the import, which places those cards by the rules.
+    const heading = /^(?:#{1,3}|!)/.test(line) ? HEADING.exec(line) : null
     if (heading && ids.has(heading[1]!.toLowerCase())) {
       zone = heading[1]!.toLowerCase()
       continue
     }
     const m = LINE.exec(line)
-    if (!m) {
+    // A printing id carries a digit ("sv03.5-006", "LOB-EN005"): "1 Jinx - Loose
+    // Cannon" is a name, for the import to match.
+    if (!m || !/\d/.test(m[2]!)) {
       errors.push(line)
       continue
     }
@@ -141,7 +145,7 @@ export function limitOf(rules: TcgRules, card: TcgCard): number {
 export type TcgAddVerdict = { ok: true, zone: string } | { ok: false, reason: string }
 
 /** Whether one more copy of a card fits, and where. */
-export function canAdd(rules: TcgRules, lines: readonly TcgLine[], card: TcgCard, zone = rules.zoneFor(card)): TcgAddVerdict {
+export function canAdd(rules: TcgRules, lines: readonly TcgLine[], card: TcgCard, zone = rules.zoneFor(card, lines)): TcgAddVerdict {
   if (card.banned)
     return { ok: false, reason: 'banned' }
   if (rules.fits && !rules.fits(card, zone))
@@ -202,7 +206,7 @@ const ENERGY_SYMBOL: Record<string, string> = { G: 'Grass', R: 'Fire', W: 'Water
 const QUANTITY = /^\d{1,2}x?$/
 const SET = /^[A-Z][A-Z0-9-]{1,7}$/
 const NUMBER = /^[A-Z]{0,3}\d{1,4}[a-z]?$/
-// Section headings: "Pokémon: 12", "Trainer: 36", "Total Cards: 60".
+// Section headings: "Pokémon: 12", "Trainer: 36", "Total Cards: 60", "MainDeck:".
 const SECTION = /^\D.*:\s*\d*$/
 
 /**

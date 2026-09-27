@@ -12,6 +12,7 @@ import { Buffer } from 'node:buffer'
 import { createReadStream, existsSync, mkdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { hasFile, makeThumbnail } from '../../../../utils/images/thumbnail'
 import { tcgGame } from '../../../../utils/tcg/params'
 import { IMAGE_ORIGIN } from '../../../../utils/tcg/query'
 
@@ -55,6 +56,16 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, statusMessage: 'Image not found' })
   }
   setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
+  // ?size=thumb: a 320 px WebP made once beside the cache, for a source that
+  // publishes only full-size scans (Riftbound). Without sharp, the image itself.
+  if (getQuery(event).size === 'thumb') {
+    const thumb = resolve(ROOT, game, 'thumb', `${path}.webp`)
+    const bytes = hasFile(thumb) ? null : await makeThumbnail(file, thumb)
+    if (bytes || hasFile(thumb)) {
+      setHeader(event, 'Content-Type', 'image/webp')
+      return bytes ?? sendStream(event, createReadStream(thumb))
+    }
+  }
   setHeader(event, 'Content-Type', MIME[m[1] as keyof typeof MIME])
   return sendStream(event, createReadStream(file))
 })

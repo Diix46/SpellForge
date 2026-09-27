@@ -68,6 +68,7 @@ const ADAPTERS: Record<GameId, GameCollection> = {
   },
   pokemon: tcgCollection('pokemon'),
   yugioh: tcgCollection('yugioh'),
+  riftbound: tcgCollection('riftbound'),
 }
 
 /** A game's collection adapter. */
