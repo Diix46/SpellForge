@@ -1,6 +1,7 @@
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import type { GameId } from '#shared/game'
 import { gameFromSlug } from '#shared/game'
+import { applyUniverseMode } from '~/utils/universeMode'
 
 /** A page's universe: its meta, else its address (/[universe]/… pages). */
 export function universeOf(route: Pick<RouteLocationNormalizedLoaded, 'meta' | 'params'>): GameId | null {
@@ -32,6 +33,8 @@ export default defineNuxtPlugin((nuxtApp) => {
         document.documentElement.dataset.universe = shown.value
       else
         delete document.documentElement.dataset.universe
+      // A world that is always at night puts <html> in the dark as it comes in.
+      applyUniverseMode(shown.value, useColorMode().value === 'dark')
     }
   }
   let untransitioned = false

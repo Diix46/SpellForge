@@ -22,13 +22,14 @@ const emit = defineEmits<{
 const { t } = useLocale()
 const aspect = computed(() => TCG_UI[props.game].aspect)
 const price = computed(() => props.card.price ?? props.card.priceFoil)
+const frame = computed(() => TCG_UI[props.game].frame?.(props.card) ?? null)
 // A scan the source announced but does not serve: the blank card instead.
 const broken = ref(false)
 watch(() => props.card.thumb, () => (broken.value = false))
 </script>
 
 <template>
-  <article class="tile" :style="{ '--i': Math.min(index, 24) }">
+  <article class="tile" :class="{ framed: frame }" :style="{ '--i': Math.min(index, 24), '--frame': frame ?? undefined }">
     <button type="button" class="face" :style="{ aspectRatio: aspect }" :aria-label="card.name" @click="emit('open', card)">
       <img v-if="card.thumb && !broken" :src="card.thumb" :alt="card.name" :class="{ landscape: card.landscape }" loading="lazy" decoding="async" @error="broken = true">
       <span v-else class="blank">
@@ -122,6 +123,19 @@ watch(() => props.card.thumb, () => (broken.value = false))
   font-size: 15px;
   font-weight: 700;
   color: var(--color-text-high);
+}
+/* The card's frame colour in its game, as a rim and a glow on hover. */
+.framed .face {
+  box-shadow:
+    0 0 0 2px var(--frame),
+    var(--shadow-elev-2);
+}
+.framed .face:hover,
+.framed .face:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 0 22px -2px color-mix(in srgb, var(--frame) 70%, transparent),
+    var(--shadow-elev-3);
 }
 .qty {
   position: absolute;

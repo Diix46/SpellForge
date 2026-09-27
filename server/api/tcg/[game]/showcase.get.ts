@@ -2,6 +2,8 @@
  * A game's signature illustrations, for its page backdrop and its 3D room:
  * Yu-Gi-Oh's legendary monsters (their art alone), Riftbound's Legends and
  * Pokémon's illustration rares (their whole card; the client crops the art).
+ * And its emblems, for medallions: Riftbound's rune cards, Pokémon's basic
+ * Energy (their symbol fills the card's middle).
  * One hour of cache: they move with the nightly refresh, rarely.
  */
 import type { InValue } from '@libsql/client'
@@ -51,8 +53,25 @@ async function ids(game: TcgGameId): Promise<string[]> {
   return rows.map(r => String(r.id))
 }
 
-const showcase = defineCachedFunction(async (game: TcgGameId, lang: 'fr' | 'en'): Promise<ShowcaseArt[]> => {
-  const list = await ids(game)
+/** One card per emblem: each Rune, each basic Energy; newest printing with a scan. */
+async function emblemIds(game: TcgGameId): Promise<string[]> {
+  const where = game === 'riftbound'
+    ? `c.category = 'Rune'`
+    : game === 'pokemon' ? `c.category = 'Energy' AND c.subtype IN ('Normal', 'Basic')` : null
+  if (!where)
+    return []
+  const { rows } = await useTcgDb(game).execute({
+    sql: `SELECT id FROM (
+            SELECT c.id, ROW_NUMBER() OVER (PARTITION BY c.card_key ORDER BY s.released DESC) AS rn
+              FROM cards c LEFT JOIN sets s ON s.code = c.set_code AND s.lang = c.lang
+             WHERE ${where} AND c.image IS NOT NULL AND c.name NOT LIKE '%(%')
+           WHERE rn = 1 LIMIT 9`,
+    args: [],
+  })
+  return rows.map(r => String(r.id))
+}
+
+async function cardsOf(game: TcgGameId, list: string[], lang: 'fr' | 'en'): Promise<ShowcaseArt[]> {
   if (!list.length)
     return []
   const { rows } = await useTcgDb(game).execute(buildByIdQuery(list, lang))
@@ -63,9 +82,14 @@ const showcase = defineCachedFunction(async (game: TcgGameId, lang: 'fr' | 'en')
       return []
     return [{ name: c.name, image: c.art ?? c.image, card: !c.art, path: cardPath(game, c.id) }]
   })
-}, { maxAge: 60 * 60, name: 'tcg-showcase', getKey: (game: string, lang: string) => `${game}:${lang}` })
+}
+
+const showcase = defineCachedFunction(async (game: TcgGameId, lang: 'fr' | 'en'): Promise<{ arts: ShowcaseArt[], emblems: ShowcaseArt[] }> => {
+  const [arts, emblems] = await Promise.all([ids(game), emblemIds(game)])
+  return { arts: await cardsOf(game, arts, lang), emblems: await cardsOf(game, emblems, lang) }
+}, { maxAge: 60 * 60, name: 'tcg-showcase-2', getKey: (game: string, lang: string) => `${game}:${lang}` })
 
 export default defineEventHandler(async (event) => {
   const game = tcgGame(event)
-  return { arts: await showcase(game, tcgLang(getQuery(event).lang)).catch(() => []) }
+  return showcase(game, tcgLang(getQuery(event).lang)).catch(() => ({ arts: [], emblems: [] }))
 })

@@ -56,11 +56,13 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 404, statusMessage: 'Image not found' })
   }
   setHeader(event, 'Cache-Control', 'public, max-age=31536000, immutable')
-  // ?size=thumb: a 320 px WebP made once beside the cache, for a source that
-  // publishes only full-size scans (Riftbound). Without sharp, the image itself.
-  if (getQuery(event).size === 'thumb') {
-    const thumb = resolve(ROOT, game, 'thumb', `${path}.webp`)
-    const bytes = hasFile(thumb) ? null : await makeThumbnail(file, thumb)
+  // ?size=thumb (320 px) or medium (640 px, the 3D rooms' wall art): a WebP
+  // made once beside the cache, for a source that publishes only full-size
+  // scans (Riftbound). Without sharp, the image itself.
+  const size = getQuery(event).size
+  if (size === 'thumb' || size === 'medium') {
+    const thumb = resolve(ROOT, game, size, `${path}.webp`)
+    const bytes = hasFile(thumb) ? null : await makeThumbnail(file, thumb, size === 'medium' ? 640 : undefined)
     if (bytes || hasFile(thumb)) {
       setHeader(event, 'Content-Type', 'image/webp')
       return bytes ?? sendStream(event, createReadStream(thumb))

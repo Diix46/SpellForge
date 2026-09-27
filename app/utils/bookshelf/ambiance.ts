@@ -5,23 +5,26 @@
  * the wall, candles on the bookcases, gold dust in the air, a violet haze.
  * One Piece, a ship's cabin: planks and nails, portholes on the sea, ropes
  * along the bookcases, a swinging lantern, light off the water on the walls.
- * Pokémon, a professor's lab: pale walls, bay windows on green hills, a
+ * Pokémon, a professor's lab: pale walls, bay windows on green hills and the
+ * game's illustrations as posters, Energy symbols above them, a
  * red-and-white lamp on each bookcase, daylight and floating sparkles.
- * Yu-Gi-Oh, a pharaoh's shrine: sandstone carved with glyphs, a golden eye
- * glowing between the bookcases, torches, and sand in the air.
- * Riftbound, a Piltover hextech workshop: slate and brass, blue hextech
- * crystals turning between the bookcases, sparks of arcane in the air.
+ * Yu-Gi-Oh, a Master Duel arena: night-blue walls trimmed in gold, the
+ * legendary monsters' art framed between the bookcases, the duel field
+ * glowing on the floor. Riftbound, a League of Legends hall: hextech black
+ * and gold filigree, champions' splash art as banners, runes as medallions.
+ * The worlds on the generic engine hang their own images (kit.arts,
+ * kit.emblems: /api/tcg/<game>/showcase), never drawn ones.
  *
  * Kept cheap: the moving lights follow the camera (two of them, whatever the
  * number of bookcases), flames and dust are one point cloud each, ropes one
  * merged tube. `update` animates it while the scene is awake.
  */
 import type * as Three from 'three'
-import type { MaterialMaps, Quality, Room } from './library'
+import type { MaterialMaps, Quality, Room, RoomArt } from './library'
 import { scanned } from './library'
 
 /** What the room is made of (scanned maps from the page). */
-export interface AmbianceKit { wall?: MaterialMaps, wood?: MaterialMaps }
+export interface AmbianceKit { wall?: MaterialMaps, wood?: MaterialMaps, arts?: RoomArt[], emblems?: RoomArt[] }
 
 export interface Ambiance {
   /** Advance the room's life; `camX` is where the camera looks. */
@@ -79,6 +82,80 @@ function dust(THREE: typeof Three, span: Span, count: number, color: number, siz
     mat.opacity = 0.65 + Math.sin(t * 0.8) * 0.1
   }
   return { points, update, dispose: () => [geo, mat, tex].forEach(d => d.dispose()) }
+}
+
+/** Where a whole card keeps its illustration, in texture space (u from the left, v from the bottom). */
+export interface ArtRegion { u0: number, u1: number, v0: number, v1: number }
+
+/** Riftbound's cards: the upper half. Pokémon's: the window under the name. */
+export const CARD_ART: Record<'riftbound' | 'pokemon', ArtRegion> = {
+  riftbound: { u0: 0.04, u1: 0.96, v0: 0.44, v1: 0.97 },
+  pokemon: { u0: 0.09, u1: 0.91, v0: 0.53, v1: 0.89 },
+}
+
+/**
+ * A texture showing `region` of the image, cropped to fill a plane of aspect
+ * `aspect` (width / height) the way CSS's `cover` does. A copy: the same
+ * image may be hung twice, cropped differently.
+ */
+function cover(THREE: typeof Three, source: Three.Texture, aspect: number, region: ArtRegion = { u0: 0, u1: 1, v0: 0, v1: 1 }): Three.Texture {
+  const tex = source.clone()
+  const img = tex.image as { width?: number, height?: number } | undefined
+  const iw = img?.width || 1
+  const ih = img?.height || 1
+  const rw = (region.u1 - region.u0) * iw
+  const rh = (region.v1 - region.v0) * ih
+  const cu = (region.u0 + region.u1) / 2
+  const cv = (region.v0 + region.v1) / 2
+  if (rw / rh > aspect) {
+    const w = (rh * aspect) / iw
+    tex.repeat.set(w, region.v1 - region.v0)
+    tex.offset.set(cu - w / 2, region.v0)
+  }
+  else {
+    const h = rw / aspect / ih
+    tex.repeat.set(region.u1 - region.u0, h)
+    tex.offset.set(region.u0, cv - h / 2)
+  }
+  tex.needsUpdate = true
+  return tex
+}
+
+/**
+ * One of the universe's illustrations on the wall, in a frame: `w` by `h`,
+ * centred on `at`, facing the room. `region`: where the art sits when the
+ * image is a whole card.
+ */
+function wallArt(THREE: typeof Three, art: RoomArt, at: Three.Vector3, w: number, h: number, frame: { color: number, metal: number, width?: number }, region: ArtRegion | undefined, disposables: { dispose: () => void }[]): Three.Group {
+  const g = new THREE.Group()
+  const tex = cover(THREE, art.tex, w / h, art.card ? region : undefined)
+  const pic = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: 0.18 }))
+  const fw = frame.width ?? 0.08
+  const back = new THREE.Mesh(new THREE.BoxGeometry(w + fw * 2, h + fw * 2, 0.06), new THREE.MeshStandardMaterial({ color: frame.color, metalness: frame.metal, roughness: 0.35 }))
+  back.position.z = -0.035
+  pic.position.z = 0.001
+  back.castShadow = true
+  g.add(back, pic)
+  g.position.copy(at)
+  disposables.push(tex, pic.geometry, pic.material as Three.Material, back.geometry, back.material as Three.Material)
+  return g
+}
+
+/** An emblem (a rune, an Energy symbol) as a round medallion with a metal rim. */
+function medallion(THREE: typeof Three, art: RoomArt, radius: number, rim: number, disposables: { dispose: () => void }[]): Three.Group {
+  const g = new THREE.Group()
+  // The symbol fills the middle of its card.
+  const tex = cover(THREE, art.tex, 1, art.card ? { u0: 0.18, u1: 0.82, v0: 0.4, v1: 0.84 } : undefined)
+  const face = new THREE.Mesh(new THREE.CircleGeometry(radius, 40), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: 0.35, roughness: 0.4 }))
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, radius * 0.09, 10, 48), new THREE.MeshStandardMaterial({ color: rim, metalness: 1, roughness: 0.3 }))
+  g.add(face, ring)
+  disposables.push(tex, face.geometry, face.material as Three.Material, ring.geometry, ring.material as Three.Material)
+  return g
+}
+
+/** Where the room hangs things: between the bookcases, and one on each side. */
+function wallSpots(span: Span, margin: number): number[] {
+  return [-span.gap - margin, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + margin]
 }
 
 const ROOMS: Record<Room, typeof arcanist> = { arcanist: (...a) => arcanist(...a), cabin: (...a) => cabin(...a), lab: (...a) => lab(...a), shrine: (...a) => shrine(...a), hextech: (...a) => hextech(...a) }
@@ -462,9 +539,17 @@ function lab(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quali
   const paneGeo = new THREE.PlaneGeometry(1.5, 1.9)
   const barV = new THREE.BoxGeometry(0.06, 1.95, 0.06)
   const barH = new THREE.BoxGeometry(1.56, 0.06, 0.06)
-  const spots = [-span.gap - 1.3, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + 1.3]
-  for (const x of spots) {
+  const spots = wallSpots(span, 1.3)
+  const arts = kit.arts ?? []
+  spots.forEach((x, i) => {
     const y = span.height * 0.6
+    // The game's illustrations as posters, a window between two of them (and
+    // windows everywhere while there is none).
+    const art = arts.length && i % 2 === 0 ? arts[(i / 2) % arts.length] : null
+    if (art) {
+      scene.add(wallArt(THREE, art, new THREE.Vector3(x, y, back + 0.06), 1.5, 1.9, { color: 0xFAFAF6, metal: 0, width: 0.07 }, CARD_ART.pokemon, disposables))
+      return
+    }
     const pane = new THREE.Mesh(paneGeo, glassMat)
     pane.position.set(x, y, back + 0.02)
     scene.add(pane)
@@ -478,8 +563,19 @@ function lab(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quali
       bar.position.set(x, y + dy, back + 0.05)
       scene.add(bar)
     }
-  }
+  })
   disposables.push(view, glassMat, frameMat, paneGeo, barV, barH)
+
+  // The Energy symbols along the top of the wall, above each hanging.
+  const emblems = kit.emblems ?? []
+  spots.forEach((x, i) => {
+    const art = emblems[i % Math.max(1, emblems.length)]
+    if (!art)
+      return
+    const m = medallion(THREE, art, 0.26, 0xE0E0E0, disposables)
+    m.position.set(x, span.height * 0.6 + 1.35, back + 0.08)
+    scene.add(m)
+  })
 
   // A red-and-white lamp on each bookcase's cornice.
   const ball = canvasTexture(THREE, 128, 64, (g) => {
@@ -521,7 +617,7 @@ function lab(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quali
   }
 }
 
-// ---- Yu-Gi-Oh: a pharaoh's shrine ------------------------------------------
+// ---- Yu-Gi-Oh: a duel arena ------------------------------------------------
 
 function shrine(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
   const disposables: { dispose: () => void }[] = []
@@ -529,132 +625,95 @@ function shrine(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Qu
   const cx = span.width / 2
   const back = -span.depth / 2 - 0.25
 
-  // Sandstone blocks, a band of carved glyphs at eye height.
+  // Night-blue panels trimmed in gold, Master Duel's arena walls.
   const wallTex = canvasTexture(THREE, 512, 512, (g) => {
-    g.fillStyle = '#6e5634'
+    const grad = g.createLinearGradient(0, 0, 0, 512)
+    grad.addColorStop(0, '#0b1230')
+    grad.addColorStop(1, '#070b1a')
+    g.fillStyle = grad
     g.fillRect(0, 0, 512, 512)
-    for (let y = 0; y < 512; y += 64) {
-      const offset = (y / 64) % 2 ? 64 : 0
-      for (let x = -offset; x < 512; x += 128) {
-        const tone = 96 + Math.random() * 18
-        g.fillStyle = `rgb(${tone + 14},${tone * 0.8},${tone * 0.5})`
-        g.fillRect(x + 2, y + 2, 124, 60)
-        for (let i = 0; i < 18; i++) {
-          g.fillStyle = `rgba(40,25,10,${0.05 + Math.random() * 0.08})`
-          g.fillRect(x + Math.random() * 120, y + Math.random() * 58, 2 + Math.random() * 6, 1 + Math.random() * 3)
-        }
-      }
+    for (let x = 0; x < 512; x += 128) {
+      g.strokeStyle = 'rgba(212,175,55,0.35)'
+      g.lineWidth = 2
+      g.strokeRect(x + 10, 14, 108, 484)
+      g.strokeStyle = 'rgba(79,195,247,0.12)'
+      g.strokeRect(x + 18, 22, 92, 468)
     }
-    g.fillStyle = 'rgba(30,18,6,0.55)'
-    g.font = '30px serif'
-    g.textAlign = 'center'
-    const glyphs = '𓂀𓋹𓆣𓇳𓊽𓅓𓃭𓁹𓆓𓂋'
-    for (let i = 0; i < 10; i++)
-      g.fillText([...glyphs][i % 10]!, 26 + i * 51, 300)
   })
   wallTex.wrapS = THREE.RepeatWrapping
   wallTex.repeat.set((span.width + 30) / 6, 1)
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.95 }))
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.8, metalness: 0.1 }))
   wall.position.set(cx, span.height / 2 + 1.5, back)
   wall.receiveShadow = true
-  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 5, { color: 0x8A6A48 }) : new THREE.MeshStandardMaterial({ color: 0x5A4428, roughness: 0.85 })
+
+  // The duel field on the floor: its zones in gold, lit from within.
+  const fieldTex = canvasTexture(THREE, 1024, 512, (g) => {
+    g.fillStyle = '#060a18'
+    g.fillRect(0, 0, 1024, 512)
+    const zone = (x: number, y: number, w: number, h: number, glow: string) => {
+      g.shadowColor = glow
+      g.shadowBlur = 14
+      g.strokeStyle = 'rgba(212,175,55,0.8)'
+      g.lineWidth = 3
+      g.strokeRect(x, y, w, h)
+      g.fillStyle = 'rgba(79,195,247,0.06)'
+      g.fillRect(x, y, w, h)
+    }
+    for (let k = 0; k < 5; k++) {
+      zone(212 + k * 124, 150, 96, 130, 'rgba(79,195,247,0.8)')
+      zone(212 + k * 124, 320, 96, 130, 'rgba(79,195,247,0.5)')
+    }
+    zone(336, 20, 96, 110, 'rgba(212,175,55,0.8)')
+    zone(584, 20, 96, 110, 'rgba(212,175,55,0.8)')
+    zone(70, 150, 96, 130, 'rgba(79,195,247,0.8)')
+    zone(858, 320, 96, 130, 'rgba(79,195,247,0.8)')
+  })
+  const floorMat = new THREE.MeshStandardMaterial({ map: fieldTex, emissive: 0xFFFFFF, emissiveMap: fieldTex, emissiveIntensity: 0.55, roughness: 0.6 })
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
+  fieldTex.wrapS = THREE.RepeatWrapping
+  fieldTex.repeat.set((span.width + 30) / 9, 1)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(cx, -0.3, 4)
   floor.receiveShadow = true
   scene.add(wall, floor)
-  disposables.push(wallTex, wall.geometry, wall.material as Three.Material, floor.geometry, floor.material as Three.Material)
+  disposables.push(wallTex, fieldTex, wall.geometry, wall.material as Three.Material, floor.geometry, floorMat)
 
-  // The golden eye between the bookcases, breathing light.
-  const eye = canvasTexture(THREE, 512, 512, (g) => {
-    g.translate(256, 256)
-    g.strokeStyle = 'rgba(255,210,110,0.95)'
-    g.shadowColor = 'rgba(255,190,60,1)'
-    g.shadowBlur = 20
-    g.lineWidth = 9
-    g.beginPath()
-    g.moveTo(-190, 0)
-    g.quadraticCurveTo(0, -150, 190, 0)
-    g.quadraticCurveTo(0, 150, -190, 0)
-    g.stroke()
-    g.beginPath()
-    g.arc(0, 0, 58, 0, Math.PI * 2)
-    g.stroke()
-    g.fillStyle = 'rgba(255,215,120,0.9)'
-    g.beginPath()
-    g.arc(0, 0, 26, 0, Math.PI * 2)
-    g.fill()
-    g.beginPath()
-    g.moveTo(-40, 70)
-    g.quadraticCurveTo(-30, 160, -110, 190)
-    g.moveTo(30, 80)
-    g.lineTo(60, 200)
-    g.stroke()
-    // The triangle around it.
-    g.lineWidth = 5
-    g.beginPath()
-    g.moveTo(0, -240)
-    g.lineTo(230, 200)
-    g.lineTo(-230, 200)
-    g.closePath()
-    g.stroke()
+  // The legendary monsters' own art, in gold frames between the bookcases.
+  const arts = kit.arts ?? []
+  const frames: Three.Group[] = []
+  wallSpots(span, 1.3).forEach((x, i) => {
+    const art = arts[i % Math.max(1, arts.length)]
+    if (!art)
+      return
+    const f = wallArt(THREE, art, new THREE.Vector3(x, span.height * 0.6, back + 0.08), 1.9, 1.9, { color: 0xD4AF37, metal: 1, width: 0.09 }, undefined, disposables)
+    scene.add(f)
+    frames.push(f)
   })
-  const eyeMat = new THREE.MeshBasicMaterial({ map: eye, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })
-  const eyeGeo = new THREE.PlaneGeometry(2.4, 2.4)
-  const spots = [-span.gap - 1.2, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + 1.2]
-  for (const x of spots) {
-    const m = new THREE.Mesh(eyeGeo, eyeMat)
-    m.position.set(x, span.height * 0.62, back + 0.02)
-    scene.add(m)
-  }
-  disposables.push(eye, eyeMat, eyeGeo)
 
-  // A torch on each side of each bookcase: a bronze cup and its flame.
-  const cups: Three.BufferGeometry[] = []
-  const flamePos: number[] = []
-  for (let c = 0; c < span.cases; c++) {
-    const x0 = c * (span.caseWidth + span.gap)
-    for (const x of [x0 - 0.35, x0 + span.caseWidth + 0.35]) {
-      const g = new THREE.CylinderGeometry(0.12, 0.05, 0.22, 14)
-      g.translate(x, span.height * 0.8, back + 0.35)
-      cups.push(g)
-      flamePos.push(x, span.height * 0.8 + 0.22, back + 0.35)
-    }
-  }
-  const bronze = new THREE.Mesh(mergeAll(THREE, cups), new THREE.MeshStandardMaterial({ color: 0xB08A3A, metalness: 0.9, roughness: 0.35 }))
-  const flameGeo = new THREE.BufferGeometry()
-  flameGeo.setAttribute('position', new THREE.Float32BufferAttribute(flamePos, 3))
-  const flameTex = glowTexture(THREE, 'rgba(255,240,200,1)', 'rgba(255,130,30,0.6)')
-  const flameMat = new THREE.PointsMaterial({ map: flameTex, size: 0.7, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })
-  const flames = new THREE.Points(flameGeo, flameMat)
-  scene.add(bronze, flames)
-  disposables.push(bronze.geometry, bronze.material as Three.Material, flameGeo, flameTex, flameMat)
+  // Cyan light from the field, gold from above; it follows the bookcase in view.
+  const zone = new THREE.PointLight(0x4FC3F7, high ? 8 : 6, 10, 1.5)
+  const gold = new THREE.PointLight(0xFFD98A, high ? 6 : 4, 10, 1.6)
+  scene.add(zone, gold)
+  scene.fog = new THREE.FogExp2(0x070B1A, 0.02)
 
-  const torch = new THREE.PointLight(0xFFA850, high ? 9 : 6, 10, 1.5)
-  const gold = new THREE.PointLight(0xFFD27A, 3, 9, 1.8)
-  scene.add(torch, gold)
-  scene.fog = new THREE.FogExp2(0x2A1E10, 0.02)
-
-  const sand = dust(THREE, span, high ? 320 : 110, 0xFFD89A, 0.04)
-  scene.add(sand.points)
-  disposables.push(sand)
+  const motes = dust(THREE, span, high ? 300 : 100, 0x7FD8FF, 0.04)
+  scene.add(motes.points)
+  disposables.push(motes)
 
   return {
     update(t, dt, camX) {
-      const flicker = 1 + Math.sin(t * 9) * 0.07 + Math.sin(t * 21.3) * 0.04
-      torch.intensity = (high ? 9 : 6) * flicker
-      torch.position.set(camX, span.height + 0.6, 1.5)
-      gold.position.set(camX + 3, span.height * 0.62, back + 0.8)
-      flameMat.size = 0.7 * flicker
-      eyeMat.opacity = 0.5 + Math.sin(t * 0.8) * 0.15
-      sand.update(t, dt)
+      zone.position.set(camX, 0.4, 2)
+      zone.intensity = (high ? 8 : 6) * (0.9 + Math.sin(t * 1.4) * 0.1)
+      gold.position.set(camX - 2, span.height + 1.2, 1.4)
+      floorMat.emissiveIntensity = 0.5 + Math.sin(t * 1.4) * 0.08
+      motes.update(t, dt)
       return true
     },
     dispose: () => disposables.forEach(d => d.dispose()),
   }
 }
 
-// ---- Riftbound: a hextech workshop -----------------------------------------
+// ---- Riftbound: a League of Legends hall ------------------------------------
 
 function hextech(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Quality, kit: AmbianceKit): Ambiance {
   const disposables: { dispose: () => void }[] = []
@@ -662,25 +721,25 @@ function hextech(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Q
   const cx = span.width / 2
   const back = -span.depth / 2 - 0.25
 
-  // Slate panels framed in brass, rivets at the corners.
+  // Hextech black panels, Gold 4 filigree, as the client frames its screens.
   const wallTex = canvasTexture(THREE, 512, 512, (g) => {
-    g.fillStyle = '#1c2a30'
+    g.fillStyle = '#010a13'
     g.fillRect(0, 0, 512, 512)
     for (let x = 0; x < 512; x += 128) {
-      for (let y = 0; y < 512; y += 256) {
-        const tone = 38 + Math.random() * 10
-        g.fillStyle = `rgb(${tone},${tone + 14},${tone + 20})`
-        g.fillRect(x + 6, y + 6, 116, 244)
-        g.strokeStyle = 'rgba(201,160,74,0.45)'
-        g.lineWidth = 3
-        g.strokeRect(x + 6, y + 6, 116, 244)
-        g.fillStyle = 'rgba(214,176,90,0.8)'
-        for (const [rx, ry] of [[14, 14], [114, 14], [14, 242], [114, 242]] as const) {
-          g.beginPath()
-          g.arc(x + rx, y + ry, 3, 0, Math.PI * 2)
-          g.fill()
-        }
-      }
+      g.fillStyle = '#091428'
+      g.fillRect(x + 8, 8, 112, 496)
+      g.strokeStyle = 'rgba(120,90,40,0.9)'
+      g.lineWidth = 2
+      g.beginPath()
+      // Cut corners, the client's shape.
+      g.moveTo(x + 22, 8)
+      g.lineTo(x + 120, 8)
+      g.lineTo(x + 120, 490)
+      g.lineTo(x + 106, 504)
+      g.lineTo(x + 8, 504)
+      g.lineTo(x + 8, 22)
+      g.closePath()
+      g.stroke()
     }
   })
   wallTex.wrapS = THREE.RepeatWrapping
@@ -688,7 +747,7 @@ function hextech(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Q
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, span.height + 10), new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.7, metalness: 0.2 }))
   wall.position.set(cx, span.height / 2 + 1.5, back)
   wall.receiveShadow = true
-  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 5, { color: 0x5A6A70 }) : new THREE.MeshStandardMaterial({ color: 0x223036, roughness: 0.8 })
+  const floorMat = kit.wood ? scanned(THREE, kit.wood, (span.width + 30) / 3, 5, { color: 0x3A4450 }) : new THREE.MeshStandardMaterial({ color: 0x0A1428, roughness: 0.8 })
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(span.width + 30, 14), floorMat)
   floor.rotation.x = -Math.PI / 2
   floor.position.set(cx, -0.3, 4)
@@ -696,41 +755,50 @@ function hextech(THREE: typeof Three, scene: Three.Scene, span: Span, quality: Q
   scene.add(wall, floor)
   disposables.push(wallTex, wall.geometry, wall.material as Three.Material, floor.geometry, floor.material as Three.Material)
 
-  // A hextech crystal between the bookcases, turning in a brass ring.
-  const crystalGeo = new THREE.OctahedronGeometry(0.42, 0)
-  crystalGeo.scale(0.75, 1.3, 0.75)
-  const crystalMat = new THREE.MeshStandardMaterial({ color: 0x5FD4F0, emissive: 0x2AB0E0, emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.9 })
-  const ringGeo = new THREE.TorusGeometry(0.72, 0.045, 10, 48)
-  const brass = new THREE.MeshStandardMaterial({ color: 0xC9A04A, metalness: 1, roughness: 0.3 })
-  const crystals: Three.Mesh[] = []
-  const spots = [-span.gap - 1.2, ...Array.from({ length: Math.max(0, span.cases - 1) }, (_, i) => (i + 1) * (span.caseWidth + span.gap) - span.gap / 2), span.width + span.gap + 1.2]
-  for (const x of spots) {
-    const c = new THREE.Mesh(crystalGeo, crystalMat)
-    c.position.set(x, span.height * 0.62, back + 0.5)
-    const ring = new THREE.Mesh(ringGeo, brass)
-    ring.position.set(x, span.height * 0.62, back + 0.3)
-    scene.add(c, ring)
-    crystals.push(c)
+  // The champions' splash art as banners, hanging from gold rods.
+  const arts = kit.arts ?? []
+  const banners: Three.Group[] = []
+  const rodGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.8, 10)
+  rodGeo.rotateZ(Math.PI / 2)
+  const gold = new THREE.MeshStandardMaterial({ color: 0xC8AA6E, metalness: 1, roughness: 0.3 })
+  disposables.push(rodGeo, gold)
+  wallSpots(span, 1.3).forEach((x, i) => {
+    const art = arts[i % Math.max(1, arts.length)]
+    if (!art)
+      return
+    const holder = new THREE.Group()
+    const banner = wallArt(THREE, art, new THREE.Vector3(0, -1.45, 0), 1.55, 2.7, { color: 0x785A28, metal: 0.9, width: 0.05 }, CARD_ART.riftbound, disposables)
+    const rod = new THREE.Mesh(rodGeo, gold)
+    holder.add(rod, banner)
+    holder.position.set(x, span.height + 0.5, back + 0.25)
+    scene.add(holder)
+    banners.push(holder)
+  })
+
+  // The runes as medallions on each bookcase's cornice.
+  const emblems = kit.emblems ?? []
+  const medals: Three.Group[] = []
+  for (let c = 0; c < span.cases && emblems.length; c++) {
+    const m = medallion(THREE, emblems[c % emblems.length]!, 0.24, 0xC8AA6E, disposables)
+    m.position.set(c * (span.caseWidth + span.gap) + span.caseWidth / 2, span.height + 0.42, span.depth / 2 + 0.05)
+    scene.add(m)
+    medals.push(m)
   }
-  disposables.push(crystalGeo, crystalMat, ringGeo, brass)
 
-  const glow = new THREE.PointLight(0x4CC8F0, high ? 7 : 5, 10, 1.6)
-  const lamp = new THREE.PointLight(0xFFD9A0, high ? 6 : 4, 10, 1.6)
+  const glow = new THREE.PointLight(0x0AC8B9, high ? 7 : 5, 10, 1.6)
+  const lamp = new THREE.PointLight(0xF0E6D2, high ? 6 : 4, 10, 1.6)
   scene.add(glow, lamp)
-  scene.fog = new THREE.FogExp2(0x0E1C22, 0.02)
+  scene.fog = new THREE.FogExp2(0x010A13, 0.02)
 
-  const sparks = dust(THREE, span, high ? 300 : 100, 0x7FDFFF, 0.04)
+  const sparks = dust(THREE, span, high ? 300 : 100, 0x0AC8B9, 0.04)
   scene.add(sparks.points)
   disposables.push(sparks)
 
   return {
     update(t, dt, camX) {
-      crystals.forEach((c, i) => {
-        c.rotation.y = t * 0.6 + i
-        c.position.y = span.height * 0.62 + Math.sin(t * 1.3 + i) * 0.06
-      })
-      crystalMat.emissiveIntensity = 1.4 + Math.sin(t * 2) * 0.3
-      glow.position.set(camX + 3, span.height * 0.62, back + 1)
+      banners.forEach((b, i) => (b.rotation.z = Math.sin(t * 0.6 + i) * 0.012))
+      medals.forEach((m, i) => (m.rotation.y = Math.sin(t * 0.8 + i) * 0.35))
+      glow.position.set(camX + 2.5, span.height * 0.6, back + 1.2)
       lamp.position.set(camX - 1, span.height + 1, 1.6)
       sparks.update(t, dt)
       return true

@@ -48,6 +48,9 @@ export interface LibraryOptions extends LibraryEvents {
 
 /** A material's maps: colour, relief, roughness. */
 export interface MaterialMaps { map: Three.Texture, normal: Three.Texture, rough: Three.Texture }
+/** An illustration of the universe for the room's walls: its texture, and whether it is a whole card (its art to be cropped). */
+export interface RoomArt { tex: Three.Texture, card: boolean }
+
 export interface LibraryTextures {
   leather: MaterialMaps
   /** The leather's colour as an image, for the spines' grain. */
@@ -59,6 +62,9 @@ export interface LibraryTextures {
   /** The spines' title face, loaded, and its weight. */
   font: string
   weight: number
+  /** The universe's own images, hung in the room (utils/bookshelf/ambiance). */
+  arts?: RoomArt[]
+  emblems?: RoomArt[]
 }
 
 /** A material from scanned maps, the maps repeated `rx` × `ry` (clones share the image). */
@@ -282,7 +288,7 @@ export class Library {
 
     const span = { width: layout.length * (caseW + GAP) - GAP, height: caseH, depth: D, cases: layout.length, caseWidth: caseW, gap: GAP }
     this.lights(span)
-    this.ambiance = this.opts.buildAmbiance(THREE, { wall: tex.wall, wood: tex.wood }, this.scene, span, this.opts.room, this.opts.quality)
+    this.ambiance = this.opts.buildAmbiance(THREE, { wall: tex.wall, wood: tex.wood, arts: tex.arts ?? [], emblems: tex.emblems ?? [] }, this.scene, span, this.opts.room, this.opts.quality)
     // Centred between the plinth and what stands on the cornice (candles, a lantern).
     this.camY = (caseH - 0.35) / 2 + 0.15
     this.resize()
