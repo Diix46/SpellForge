@@ -1,3 +1,9 @@
+## [0.54.1](https://github.com/Diix46/SpellForge/compare/v0.54.0...v0.54.1) (2026-09-27)
+
+### Bug Fixes
+
+* **og,scan:** titre de l'aperçu dans sa colonne, numéro lu sans la taille de l'extension ([256ad52](https://github.com/Diix46/SpellForge/commit/256ad5286943404d6f5052626bead369dd28b671))
+
 ## [0.54.0](https://github.com/Diix46/SpellForge/compare/v0.53.2...v0.54.0) (2026-09-27)
 
 ### Features
