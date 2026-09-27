@@ -1,3 +1,9 @@
+## [0.51.0](https://github.com/Diix46/SpellForge/compare/v0.50.0...v0.51.0) (2026-09-27)
+
+### Features
+
+* **riftbound:** cartes en français (traduction non officielle signalée), polices des cartes pour Pokémon, Yu-Gi-Oh et Riftbound ([79fb707](https://github.com/Diix46/SpellForge/commit/79fb707a101264d1f57555e70c753451db66bfa3))
+
 ## [0.50.0](https://github.com/Diix46/SpellForge/compare/v0.49.0...v0.50.0) (2026-09-27)
 
 ### Features
