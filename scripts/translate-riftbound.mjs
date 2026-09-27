@@ -2,13 +2,13 @@
 /**
  * Riftbound in French, unofficially: Riot prints the game in English only
  * (even its French card gallery shows English cards). Each card's name, rules
- * text and flavour not translated yet goes to Claude, 25 at a time, with the
+ * text and flavour not translated yet goes to Claude, 10 at a time, with the
  * game's keywords fixed by a glossary so every card says them the same way;
  * the answers are kept (scripts/tcg/translations.mjs), then written into the
  * card database as French rows, marked unofficial.
  *
  * Needs ANTHROPIC_API_KEY (the coach's key); without it, only the translations
- * already kept are applied. Usage: node scripts/translate-riftbound.mjs [--limit 50]
+ * already kept are applied. Usage: node scripts/translate-riftbound.mjs [--limit 50] [--reset]
  */
 import { dirname, resolve } from 'node:path'
 import process from 'node:process'
@@ -21,7 +21,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const DB_PATH = process.env.RIFTBOUND_CARDS_DB ? resolve(process.env.RIFTBOUND_CARDS_DB) : resolve(ROOT, '.data/cards-riftbound.db')
 const TR_PATH = resolve(dirname(DB_PATH), 'translations-riftbound.db')
 const MODEL = 'claude-sonnet-5'
-const BATCH = 25
+const BATCH = 10
+// --reset: translate everything again (a prompt or glossary change).
+const RESET = process.argv.includes('--reset')
 const limitArg = process.argv.indexOf('--limit')
 const LIMIT = limitArg > 0 ? Number(process.argv[limitArg + 1]) : Infinity
 const log = (...a) => console.log(...a)
@@ -85,7 +87,8 @@ export const GLOSSARY = {
 
 const SYSTEM = `Tu traduis des cartes du jeu de cartes Riftbound (League of Legends) de l'anglais vers le français, pour des joueurs francophones.
 Règles :
-- Les noms de champions et de lieux de Runeterra restent tels quels (Jinx, Viktor, Piltover, Zaun, Demacia…) ; traduis le reste du nom (« Jinx - Loose Cannon » → « Jinx - Canon déchaîné »), dans le ton de League of Legends en français.
+- Traduis TOUJOURS le nom de la carte, comme le ferait la version française de League of Legends. Seuls les noms propres de champions et de lieux de Runeterra restent tels quels (Jinx, Viktor, Piltover, Zaun, Demacia, Bandle…). Exemples : « Bewitching Spirit » → « Esprit ensorceleur » ; « Vi - Piltover Enforcer » → « Vi - Justicière de Piltover » ; « Jinx - Loose Cannon » → « Jinx - Canon déchaîné » ; « Voracious Gromp » → « Gromp vorace ».
+- Les mentions de variante entre parenthèses se traduisent aussi : (Alternate Art) → (Illustration alternative), (Overnumbered) → (Hors série), (Signature) → (Signature), (Showcase) → (Vitrine), (Metal) → (Métal).
 - Les mots-clés du jeu suivent ce glossaire, toujours, crochets compris (« [Assault 2] » → « [Assaut 2] ») : ${Object.entries(GLOSSARY).map(([en, fr]) => `${en} → ${fr}`).join(' ; ')}.
 - Garde tels quels les symboles et marqueurs : [S], [C], [1], [R], :rb_…:, les nombres, les retours à la ligne.
 - Le texte de règles est précis et impersonnel comme sur une carte française de jeu (« Quand vous jouez cette carte, piochez 1. ») ; le texte d'ambiance garde sa voix.
@@ -97,7 +100,7 @@ async function translate(batch, key) {
     headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 8000,
+      max_tokens: 16000,
       system: SYSTEM,
       messages: [{ role: 'user', content: JSON.stringify(batch.map(c => ({ id: c.hash, name: c.name, text: c.text, flavour: c.flavour }))) }],
     }),
@@ -105,8 +108,10 @@ async function translate(batch, key) {
   if (!res.ok)
     throw new Error(`Claude ${res.status}: ${(await res.text()).slice(0, 200)}`)
   const body = await res.json()
-  const out = body.content?.map(p => p.text ?? '').join('') ?? ''
+  const out = body.content?.filter(p => p.type === 'text').map(p => p.text ?? '').join('') ?? ''
   const json = out.slice(out.indexOf('['), out.lastIndexOf(']') + 1)
+  if (!json)
+    throw new Error(`réponse sans JSON (${body.stop_reason}, ${(body.content ?? []).map(p => p.type).join(',')}) : ${out.slice(0, 160)}`)
   return JSON.parse(json)
 }
 
@@ -115,6 +120,8 @@ async function main() {
   const cards = createClient({ url: `file:${DB_PATH}` })
   const tdb = translationsDb(TR_PATH)
   await ensureTranslations(tdb)
+  if (RESET)
+    await tdb.execute('DELETE FROM translations')
   const { rows } = await cards.execute('SELECT name, text, extra FROM cards WHERE lang = \'en\'')
   cards.close()
   const known = new Set((await tdb.execute('SELECT hash FROM translations')).rows.map(r => String(r.hash)))
