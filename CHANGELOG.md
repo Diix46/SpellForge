@@ -1,3 +1,9 @@
+## [0.51.1](https://github.com/Diix46/SpellForge/compare/v0.51.0...v0.51.1) (2026-09-27)
+
+### Bug Fixes
+
+* **riftbound:** noms des cartes traduits aussi, lots de 10, --reset ([3e9056e](https://github.com/Diix46/SpellForge/commit/3e9056eccc5af22ef5675349edf0db02d269609e))
+
 ## [0.51.0](https://github.com/Diix46/SpellForge/compare/v0.50.0...v0.51.0) (2026-09-27)
 
 ### Features
