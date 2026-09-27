@@ -1,3 +1,10 @@
+## [0.47.0](https://github.com/Diix46/SpellForge/compare/v0.46.0...v0.47.0) (2026-09-27)
+
+### Features
+
+* **riftbound:** ingestion Riftcodex et prix Cardmarket, règles de deck Riftbound ([e3f932f](https://github.com/Diix46/SpellForge/commit/e3f932f2c8a902b3c8c171a49252155a01ac5208))
+* **riftbound:** Riftbound complet (bibliothèque, fiche, deck, collection, atelier hextech, thème) ([2b2a260](https://github.com/Diix46/SpellForge/commit/2b2a260b13beaca8a2ec1a7c9d6ba656a913aabe))
+
 ## [0.46.0](https://github.com/Diix46/SpellForge/compare/v0.45.0...v0.46.0) (2026-09-27)
 
 ### Features
