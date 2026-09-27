@@ -458,6 +458,11 @@ a.tile {
   transform: scale(1.35);
   transform-origin: 50% 24%;
 }
+.tile--yugioh .art img {
+  object-position: 50% 30%;
+  transform: scale(1.5);
+  transform-origin: 50% 30%;
+}
 .tile--mtg .art::after {
   content: '';
   position: absolute;
@@ -548,6 +553,11 @@ html.dark /* A whole card, not an art crop: its illustration sits under the name
   object-position: 50% 24%;
   transform: scale(1.35);
   transform-origin: 50% 24%;
+}
+.tile--yugioh .art img {
+  object-position: 50% 30%;
+  transform: scale(1.5);
+  transform-origin: 50% 30%;
 }
 .tile--mtg .art::after {
   background:

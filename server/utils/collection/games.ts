@@ -67,6 +67,7 @@ const ADAPTERS: Record<GameId, GameCollection> = {
     ownLanguage: false,
   },
   pokemon: tcgCollection('pokemon'),
+  yugioh: tcgCollection('yugioh'),
 }
 
 /** A game's collection adapter. */

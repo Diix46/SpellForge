@@ -3,7 +3,7 @@ import type { DeckEntry } from '#shared/decklist'
 import type { TcgLine } from '#shared/tcg/deck'
 import type { TcgCard, TcgGameId } from '#shared/tcg/types'
 import { computed, ref, shallowRef, toValue, watch } from 'vue'
-import { canAdd, copiesOf, parseTcgDecklist, readTcgFormat, validateTcgDeck, writeTcgDecklist, zoneOf } from '#shared/tcg/deck'
+import { canAdd, copiesOf, limitOf, parseTcgDecklist, readTcgFormat, validateTcgDeck, writeTcgDecklist, zoneOf } from '#shared/tcg/deck'
 import { TCG_RULES } from '#shared/tcg/rules'
 
 /**
@@ -85,9 +85,9 @@ export function useTcgDeck(options: {
     cards.value = next
   }
 
-  /** One more copy of this printing, in its zone. */
-  function add(card: TcgCard) {
-    const verdict = canAdd(rules, lines.value, card)
+  /** One more copy of this printing, in its zone (or the one asked: the Side Deck). */
+  function add(card: TcgCard, into?: string) {
+    const verdict = canAdd(rules, lines.value, card, into ?? rules.zoneFor(card))
     if (!verdict.ok)
       return verdict
     remember(card)
@@ -108,7 +108,7 @@ export function useTcgDeck(options: {
     // The copy limit spans every printing of the card.
     if (card) {
       const others = copiesOf(lines.value, card.key) - entry.quantity
-      quantity = Math.min(quantity, Math.max(1, rules.copyLimit(card) - others))
+      quantity = Math.min(quantity, Math.max(1, limitOf(rules, card) - others))
     }
     entry.quantity = quantity
     save()

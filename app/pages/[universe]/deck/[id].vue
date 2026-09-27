@@ -115,8 +115,8 @@ watch(lang, runSearch, { immediate: true })
 onBeforeUnmount(() => debounce && clearTimeout(debounce))
 
 // ---- Adding cards ----
-function add(card: TcgCard, from?: HTMLElement | null) {
-  const result = tcgDeck.add(card)
+function add(card: TcgCard, from?: HTMLElement | null, zone?: string) {
+  const result = tcgDeck.add(card, zone)
   if (!result.ok) {
     toast.add({ title: t(`tcg.add.${result.reason}`), color: 'warning', icon: 'i-lucide-ban' })
     return

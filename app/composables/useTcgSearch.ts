@@ -1,5 +1,6 @@
 import type { TcgBrowseResponse, TcgCard, TcgGameId, TcgSortOrder } from '#shared/tcg/types'
 import { shallowRef } from 'vue'
+import { TCG_UI } from '~/utils/games/tcg'
 
 export interface TcgFilters {
   text: string
@@ -18,8 +19,10 @@ export function emptyTcgFilters(): TcgFilters {
 }
 
 /** Query parameters for /api/tcg/<game>/browse; only what actually filters. */
-export function tcgBrowseParams(f: TcgFilters, lang: 'fr' | 'en', page: number): Record<string, string> {
+export function tcgBrowseParams(f: TcgFilters, lang: 'fr' | 'en', page: number, unique = false): Record<string, string> {
   const p: Record<string, string> = { lang, order: f.order, page: String(page) }
+  if (unique)
+    p.unique = '1'
   for (const key of ['category', 'subtype', 'rarity', 'set', 'format'] as const) {
     if (f[key])
       p[key] = f[key]
@@ -60,7 +63,7 @@ export function useTcgSearch(game: TcgGameId) {
     last = { filters: { ...filters, types: [...filters.types] }, lang }
     state.value = { ...state.value, loading: true, failed: false }
     try {
-      const res = await $fetch<TcgBrowseResponse>(`/api/tcg/${game}/browse`, { params: tcgBrowseParams(filters, lang, page), signal: ac.signal })
+      const res = await $fetch<TcgBrowseResponse>(`/api/tcg/${game}/browse`, { params: tcgBrowseParams(filters, lang, page, TCG_UI[game].uniqueSearch), signal: ac.signal })
       if (id !== seq)
         return
       state.value = { loading: false, failed: false, total: res.total, hasMore: res.hasMore, page, cards: append ? [...state.value.cards, ...res.cards] : res.cards }
