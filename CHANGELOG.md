@@ -1,3 +1,9 @@
+## [0.60.0](https://github.com/Diix46/SpellForge/compare/v0.59.0...v0.60.0) (2026-09-28)
+
+### Features
+
+* derniers retours d'Antho (noms Riftbound, extensions VO, accueil) ([96fbac6](https://github.com/Diix46/SpellForge/commit/96fbac60c4666bbb4028470de11ce873d71b555e))
+
 ## [0.59.0](https://github.com/Diix46/SpellForge/compare/v0.58.0...v0.59.0) (2026-09-28)
 
 ### Features
