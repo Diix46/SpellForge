@@ -842,3 +842,31 @@ de la bibliothèque. Ordre des lots :
   erreurs (serveur, navigateur, imports de nuit) consultable par Viktor.
 - **Après** : une vraie app mobile (Capacitor autour de la PWA, stores) — à
   rediscuter une fois la PWA en main.
+
+## 21. Retours d'Antho (28/09)
+
+Décisions de Viktor : la collection reste liée au compte, l'accueil le dit
+clairement ; la salle 3D est annoncée « avec un compte » ; l'accueil est
+dédoublonné (un seul choix de monde, recherche vide, bouton principal en
+premier au clavier) ; mêmes fonctions dans les cinq jeux ; le domaine
+spellforge sera changé à la fin ; les ~2 min de coupure au déploiement
+restent.
+
+- **Lot A — bugs.** `/decks?new=<jeu>` crée le deck local (invité compris)
+  et ouvre l'éditeur ; « Mes decks » invité liste tous ses decks locaux ;
+  recherche de l'accueil sur les noms français (Magic, One Piece) ;
+  compteurs d'accueil = ceux des bibliothèques ; nombres et prix au format
+  fr-FR ; accent « TÊTE » ; galerie en 5 colonnes, compteur et boutons en
+  bas ; contrastes relevés ; pluriels ; texte mobile One Piece ; bouton de
+  fiche mobile ; tris tronqués ; mode sombre des surfaces claires de
+  l'accueil ; 404 pour les sous-pages inconnues ; CLS du deck partagé ;
+  tailles d'image adaptées et fond teinté pendant le chargement.
+- **Lot B — parité.** Panneau statistiques + prix total dans l'éditeur des
+  cinq jeux ; lien Cardmarket ; export .ydk ; nom automatique d'un deck
+  Riftbound d'après sa Légende.
+- **Lot C — système commun.** Gouttière unique (en-tête, contenu, pied),
+  échelle d'espacement 8·16·24·40·64·96, boutons 32·40·48, trois niveaux de
+  titre, un seul pied de page, une seule page d'erreur.
+- **Lot D — alignement.** Magic et One Piece sur le gabarit générique
+  (fiche, textes communs, « Trier par », « Réinitialiser »), badge « VO »
+  commun quand la traduction manque, séparateur de ligne de type unique.
