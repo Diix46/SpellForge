@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import type { GameId } from '#shared/game'
+import type { TcgCard } from '#shared/tcg/types'
 import { computed, ref, watch } from 'vue'
 import { deckPath, GAME_LIST } from '#shared/game'
 import { parseMtgDecklist, withoutLangMarkers } from '#shared/mtg/decklist'
+import { parseTcgDecklist, writeYdk } from '#shared/tcg/deck'
+import { TCG_RULES } from '#shared/tcg/rules'
 import { useDeckImport } from '~/composables/useDeckImport'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { errMessage } from '~/composables/useErrors'
@@ -112,6 +115,30 @@ function downloadList() {
   a.download = `${name}.txt`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/** Yu-Gi-Oh!: the deck as a .ydk file, the passcodes resolved from its printings. */
+async function downloadYdk() {
+  const raw = target.value?.read() ?? ''
+  const rules = TCG_RULES.yugioh
+  const entries = parseTcgDecklist(raw, rules.zones).mainboard
+  const ids = [...new Set(entries.map(e => e.name))]
+  try {
+    const { cards } = ids.length
+      ? await $fetch<{ cards: (TcgCard | null)[] }>('/api/tcg/yugioh/resolve', { method: 'POST', body: { lang: 'en', ids } })
+      : { cards: [] }
+    const codes = new Map(ids.map((id, i) => [id, cards[i]?.code ?? null]))
+    const name = (target.value?.name() || 'deck').replace(/[^a-z0-9]+/gi, '_').toLowerCase()
+    const url = URL.createObjectURL(new Blob([writeYdk(entries, id => codes.get(id))], { type: 'text/plain;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${name}.ydk`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  catch {
+    toast.add({ title: t('build.ydkFailed'), color: 'error', icon: 'i-lucide-x' })
+  }
 }
 
 async function onFile(e: Event) {
@@ -224,7 +251,7 @@ async function onFile(e: Event) {
       <input
         ref="fileInput"
         type="file"
-        accept=".txt,.dec,text/plain"
+        accept=".txt,.dec,.ydk,text/plain"
         class="hidden"
         @change="onFile"
       >
@@ -238,6 +265,9 @@ async function onFile(e: Event) {
           </UButton>
           <UButton color="neutral" variant="ghost" icon="i-lucide-file-down" @click="downloadList">
             {{ t('build.downloadTxt') }}
+          </UButton>
+          <UButton v-if="target.game === 'yugioh'" color="neutral" variant="ghost" icon="i-lucide-file-down" @click="downloadYdk">
+            {{ t('build.downloadYdk') }}
           </UButton>
         </template>
         <UButton color="neutral" variant="subtle" class="ml-auto" @click="hide()">

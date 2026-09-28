@@ -79,6 +79,7 @@ function addToWishlist(card: TcgCard) {
             <UButton color="primary" icon="i-lucide-layers" @click="emit('start', shownCard)">
               {{ t('tcg.startWith') }}
             </UButton>
+            <CardAddToDeck :game="game" :card-key="shownCard.id" :zone="TCG_RULES[game].zoneFor(shownCard)" />
             <UButton color="neutral" variant="subtle" icon="i-lucide-gem" @click="addToCollection(shownCard)">
               {{ t('collection.addToCollection') }}
             </UButton>

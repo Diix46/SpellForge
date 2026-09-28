@@ -2,6 +2,7 @@
 import type { OptcgCard, OptcgPrint } from '#shared/optcg/types'
 import { computed, ref } from 'vue'
 import { deckPath } from '#shared/game'
+import { cardmarketSearch } from '~/composables/useCardmarket'
 
 // One One Piece card, on its own page: rendered by the server so it can be
 // found and shared. The same view as the library's sheet.
@@ -92,8 +93,12 @@ function startWith(c: OptcgCard) {
             <UButton v-if="card.category === 'Leader'" color="primary" icon="i-lucide-anchor" @click="startWith(shownCard)">
               {{ t('optcg.library.startWith') }}
             </UButton>
+            <CardAddToDeck game="optcg" :card-key="card.number" />
             <UButton color="neutral" variant="subtle" icon="i-lucide-search" :to="`/one-piece?q=${encodeURIComponent(card.number)}`">
               {{ t('card.inLibrary') }}
+            </UButton>
+            <UButton color="neutral" variant="ghost" icon="i-lucide-shopping-cart" :to="cardmarketSearch('optcg', card.name, locale)" target="_blank">
+              {{ t('card.cardmarket') }}
             </UButton>
           </footer>
         </template>

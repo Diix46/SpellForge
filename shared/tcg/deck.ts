@@ -269,3 +269,21 @@ export function parseYdk(text: string): { code: string, zone: string, quantity: 
   }
   return out
 }
+
+/**
+ * A YDK file from a deck (the other way round of parseYdk): each copy's
+ * passcode on its own line, under #main, #extra and !side. `codeOf` gives a
+ * printing's passcode; a card it doesn't know is left out.
+ */
+export function writeYdk(entries: readonly DeckEntry[], codeOf: (id: string) => string | null | undefined): string {
+  const zones: Record<string, string[]> = { main: [], extra: [], side: [] }
+  for (const e of entries) {
+    const code = codeOf(e.name)
+    if (!code)
+      continue
+    const list = zones[e.zone ?? 'main'] ?? zones.main!
+    for (let i = 0; i < e.quantity; i++)
+      list.push(code)
+  }
+  return ['#created by Prism', '#main', ...zones.main!, '#extra', ...zones.extra!, '!side', ...zones.side!, ''].join('\n')
+}

@@ -210,6 +210,7 @@ function startWith() {
           <UButton v-else-if="commanderLegal" color="primary" icon="i-lucide-plus" @click="startWith">
             {{ t('card.startDeckWith') }}
           </UButton>
+          <CardAddToDeck game="mtg" :card-key="c.name" />
           <UButton color="neutral" variant="subtle" icon="i-lucide-search" :to="`/magic?q=${encodeURIComponent(c.name)}`">
             {{ t('card.inLibrary') }}
           </UButton>

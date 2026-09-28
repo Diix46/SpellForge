@@ -1,3 +1,4 @@
+import type { GameId } from '#shared/game'
 import type { DeckEntry } from './useDecklist'
 import type { ResolvedCard } from './useScryfall'
 
@@ -21,6 +22,14 @@ function aggregate<T>(items: T[], nameOf: (item: T) => string, qtyOf: (item: T) 
     seen.set(name, (seen.get(name) ?? 0) + qtyOf(item))
   }
   return [...seen.entries()]
+}
+
+/** Cardmarket's own name for each game, in its addresses. */
+const CM_GAME: Record<GameId, string> = { mtg: 'Magic', optcg: 'OnePiece', pokemon: 'Pokemon', yugioh: 'YuGiOh', riftbound: 'Riftbound' }
+
+/** A card searched on Cardmarket, in any game, the marketplace in the site's language. */
+export function cardmarketSearch(game: GameId, name: string, lang: BuyLang = 'fr'): string {
+  return `https://www.cardmarket.com/${CM_LOCALE_SEG[lang]}/${CM_GAME[game]}/Products/Search?searchString=${encodeURIComponent(name)}`
 }
 
 export function useCardmarket() {
