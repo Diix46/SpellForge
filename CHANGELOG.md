@@ -1,3 +1,9 @@
+## [0.60.1](https://github.com/Diix46/SpellForge/compare/v0.60.0...v0.60.1) (2026-09-28)
+
+### Bug Fixes
+
+* **riftbound:** un même format de nom avec virgule ([e49e6e6](https://github.com/Diix46/SpellForge/commit/e49e6e68519b00fc8f93bff94e537999722216cb))
+
 ## [0.60.0](https://github.com/Diix46/SpellForge/compare/v0.59.0...v0.60.0) (2026-09-28)
 
 ### Features
