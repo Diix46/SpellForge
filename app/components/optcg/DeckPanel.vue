@@ -286,9 +286,6 @@ function cardTitle(card: OptcgCard | null, entry: DeckEntry): string {
   rotate: -2deg;
   transition: rotate var(--dur) var(--ease-spring);
 }
-.leader-art:hover {
-  rotate: 0deg;
-}
 .leader-art img {
   display: block;
   width: 100%;

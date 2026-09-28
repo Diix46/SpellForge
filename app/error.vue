@@ -126,9 +126,6 @@ function home() {
   box-shadow: inset 0 3px 0 var(--swatch);
   transition: transform 0.25s ease;
 }
-.door:hover {
-  transform: translateY(-2px);
-}
 .door:focus-visible {
   outline: 2px solid var(--swatch);
   outline-offset: 3px;
@@ -143,5 +140,10 @@ function home() {
 }
 .door-name.upper {
   text-transform: uppercase;
+}
+.door:hover {
+  box-shadow:
+    inset 0 3px 0 var(--swatch),
+    0 0 0 2px color-mix(in srgb, var(--swatch) 60%, transparent);
 }
 </style>

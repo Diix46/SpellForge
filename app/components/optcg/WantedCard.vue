@@ -91,7 +91,6 @@ function onAdd(e: MouseEvent) {
 }
 .poster:hover,
 .poster:focus-within {
-  transform: rotate(0deg) translateY(-4px) scale(1.02);
   z-index: 2;
 }
 .poster-body {
@@ -255,7 +254,6 @@ function onAdd(e: MouseEvent) {
 .poster:focus-within .add,
 .add:focus-visible {
   opacity: 1;
-  transform: scale(1);
 }
 .add:active {
   transform: scale(0.9);

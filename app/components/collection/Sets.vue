@@ -311,9 +311,6 @@ const sortItems = computed(() => [
     border-color 0.18s,
     box-shadow 0.18s;
 }
-.set:hover {
-  transform: translateY(-3px);
-}
 .set.is-new {
   opacity: 0.8;
 }
@@ -341,9 +338,6 @@ const sortItems = computed(() => [
 /* One Piece: a whole card, its picture sits high on it. */
 .art.card img {
   object-position: center 22%;
-}
-.set:hover .art img {
-  transform: scale(1.05);
 }
 .set.is-new .art img {
   filter: saturate(0.55);
@@ -416,5 +410,8 @@ const sortItems = computed(() => [
 .pct {
   font-weight: 600;
   color: var(--color-text-mid);
+}
+.set:hover {
+  border-color: var(--color-border-strong);
 }
 </style>

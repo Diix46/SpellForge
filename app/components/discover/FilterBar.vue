@@ -187,7 +187,6 @@ function toggleColor(c: string) {
 }
 .chip:hover {
   opacity: 0.85;
-  transform: translateY(-1px);
 }
 .chip[aria-pressed='true'] {
   opacity: 1;

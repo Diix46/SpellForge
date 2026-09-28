@@ -179,9 +179,6 @@ const modalUi = {
     transform 0.3s cubic-bezier(0.3, 1.7, 0.5, 1),
     border-color 0.2s ease;
 }
-.world:hover {
-  transform: translateY(-2px);
-}
 .world[aria-pressed='true'] {
   border-color: var(--world);
   box-shadow:

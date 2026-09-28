@@ -446,9 +446,6 @@ function hideAcSoon() {
     0 0 0 4px var(--pip),
     0 0 14px -3px var(--pip);
 }
-.mana-toggle.is-active:hover {
-  transform: translateY(-2px) scale(1.15);
-}
 
 /* Pop in with a spring overshoot the moment a colour becomes selected. */
 @keyframes pip-pop {
@@ -505,7 +502,6 @@ function hideAcSoon() {
     transition:
       box-shadow var(--dur) var(--ease-out),
       opacity var(--dur) var(--ease-out);
-    transform: none;
     animation: none;
   }
 }

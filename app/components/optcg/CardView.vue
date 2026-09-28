@@ -177,7 +177,6 @@ const facts = computed(() => {
 }
 .art-thumb:hover {
   opacity: 1;
-  transform: translateY(-2px);
 }
 .art-thumb[aria-pressed='true'] {
   border-color: rgb(var(--accent-rgb));

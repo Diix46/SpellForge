@@ -1,44 +1,40 @@
 <script setup lang="ts">
-import { GAME_LIST, libraryPath } from '#shared/game'
-import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
+import type { LandingWorld } from '#shared/landing'
+import { computed } from 'vue'
+import { GAMES, libraryPath } from '#shared/game'
+import { WORLD_LOOK } from '~/utils/landing/looks'
 
-// The last word: the prism once more, and a door to each of the five worlds,
-// in its own colours and its cards' face.
+// The last word, kept quiet: the question, and a door to each world — one of
+// its most sought-after cards, its name in the face its cards are set in.
+// One hover effect: the door's edge takes the world's colour.
+const props = defineProps<{ worlds: LandingWorld[] }>()
 const { t } = useLocale()
+const doors = computed(() => props.worlds.filter(w => GAMES[w.game]).map(w => ({ ...w, def: GAMES[w.game], look: WORLD_LOOK[w.game], card: w.fan[0] ?? null })))
 </script>
 
 <template>
   <section class="finale">
-    <div class="lit">
-      <!-- The prism's five rays, each landing on its door. -->
-      <svg class="rays" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-        <polygon
-          v-for="(g, i) in GAME_LIST"
-          :key="g.id"
-          :points="`${497 + i * 1.5},0 ${503 + i * 1.5},0 ${(i + 1) * 200 - 30},1000 ${i * 200 + 30},1000`"
-          :fill="g.swatch"
-        />
-      </svg>
-      <svg class="prism" viewBox="0 0 80 72" aria-hidden="true">
-        <path d="M40 3 L77 69 L3 69 Z" fill="rgba(255,255,255,.14)" stroke="#fff" stroke-opacity=".85" stroke-width="2" stroke-linejoin="round" />
-      </svg>
+    <header class="head">
       <h2 class="title">
         {{ t('home.finale.title') }}
       </h2>
       <p class="sub">
         {{ t('home.finale.sub') }}
       </p>
-    </div>
+    </header>
     <nav class="doors" :aria-label="t('home.gallery.kicker')">
       <NuxtLink
-        v-for="g in GAME_LIST"
-        :key="g.id"
-        :to="libraryPath(g.id)"
+        v-for="d in doors"
+        :key="d.game"
+        :to="libraryPath(d.game)"
         class="door"
-        :style="{ ...lookVars(g.id), '--swatch': g.swatch }"
+        :style="{ '--swatch': d.def.swatch, '--face': d.look.face, '--weight': d.look.weight }"
       >
-        <span class="door-name" :class="{ upper: WORLD_LOOK[g.id].upper }">{{ g.label }}</span>
-        <UIcon name="i-lucide-arrow-right" class="door-arrow" />
+        <span class="art">
+          <img v-if="d.card" :src="d.card.image" alt="" loading="lazy" decoding="async">
+        </span>
+        <span class="name" :class="{ upper: d.look.upper }">{{ d.def.label }}</span>
+        <span class="go">{{ t('home.gallery.library') }} <UIcon name="i-lucide-arrow-right" class="h-3.5 w-3.5" /></span>
       </NuxtLink>
     </nav>
   </section>
@@ -49,118 +45,85 @@ const { t } = useLocale()
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: var(--l-head-gap);
   padding: var(--l-section) var(--l-gutter);
-  background: radial-gradient(50% 60% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 70%), #09090d;
+  background: #0b0b10;
   color: #f6f4ee;
+}
+.head {
+  display: grid;
+  gap: 10px;
   text-align: center;
-}
-.lit {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  width: min(var(--l-width), 100%);
-  padding-bottom: 36px;
-}
-.rays {
-  position: absolute;
-  z-index: 0;
-  top: 29px;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: calc(100% - 29px);
-  opacity: 0.32;
-  filter: blur(4px);
-  mix-blend-mode: screen;
-}
-.prism,
-.title,
-.sub {
-  position: relative;
-  z-index: 1;
-}
-.prism {
-  width: 64px;
-  height: 58px;
-  filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.4));
 }
 .title {
   margin: 0;
-  font-family: 'Anton', Impact, sans-serif;
-  font-size: clamp(40px, 5vw, 72px);
-  font-weight: 400;
-  line-height: 1;
-  text-transform: uppercase;
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(32px, 4.2vw, 52px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
 }
 .sub {
   margin: 0;
-  color: rgba(246, 244, 238, 0.72);
+  color: rgba(246, 244, 238, 0.66);
   font-size: 16px;
 }
 .doors {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
   width: min(var(--l-width), 100%);
 }
 .door {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  justify-items: center;
   gap: 10px;
-  padding: 22px 20px;
-  overflow: hidden;
-  border-radius: 14px;
-  background: var(--bg);
-  color: var(--ink);
+  padding: 22px 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: #14141b;
+  color: #f6f4ee;
   text-decoration: none;
-  box-shadow:
-    inset 0 3px 0 var(--swatch),
-    0 24px 44px -26px var(--swatch);
-  transition:
-    transform 0.35s cubic-bezier(0.2, 0.9, 0.25, 1),
-    box-shadow 0.35s ease;
+  transition: border-color var(--dur) var(--ease-out);
 }
-.door:hover {
-  transform: translateY(-4px);
-}
+.door:hover,
 .door:focus-visible {
-  outline: 2px solid var(--swatch);
-  outline-offset: 3px;
+  border-color: var(--swatch);
 }
-.door-name {
+.art {
+  display: block;
+  width: min(130px, 80%);
+  aspect-ratio: 63 / 88;
+  margin-bottom: 6px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 12px 24px -12px rgba(0, 0, 0, 0.8);
+}
+.art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.name {
   font-family: var(--face);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: var(--weight);
   line-height: 1;
-  white-space: nowrap;
 }
-.door-name.upper {
+.name.upper {
   text-transform: uppercase;
 }
-.door-arrow {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  color: var(--accent);
-  transition: translate 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+.go {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(246, 244, 238, 0.6);
+  font-size: 13px;
 }
-.door:hover .door-arrow {
-  translate: 5px 0;
-}
-@media (max-width: 1000px) {
+@media (max-width: 900px) {
   .doors {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .door,
-  .door-arrow {
-    transition: none;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 </style>

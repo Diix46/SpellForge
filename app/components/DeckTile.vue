@@ -274,10 +274,6 @@ a.tile {
 .tile--op:nth-child(even) {
   rotate: 0.9deg;
 }
-.tile--op:hover {
-  rotate: 0deg;
-  transform: translateY(-4px) scale(1.015);
-}
 .tile--op .pin {
   position: absolute;
   top: 6px;
@@ -376,9 +372,6 @@ a.tile {
   filter: sepia(0.22) saturate(1.05) contrast(1.04);
   transition: transform 0.45s cubic-bezier(0.3, 1.7, 0.5, 1);
 }
-.tile--op:hover .portrait img {
-  transform: scale(1.4);
-}
 .tile--op .doa {
   display: flex;
   align-items: center;
@@ -433,9 +426,6 @@ a.tile {
     box-shadow 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
     border-color 0.26s ease;
 }
-.tile--mtg:hover {
-  transform: translateY(-3px);
-}
 /* The commander's art: the deck box's window, full width, fading into it. */
 .tile--mtg .art {
   position: relative;
@@ -472,9 +462,6 @@ a.tile {
 }
 .tile--mtg:has(.art) {
   outline-color: transparent; /* the stitch would cross the art */
-}
-.tile--mtg:hover .art img {
-  transform: scale(1.04);
 }
 .tile--mtg .world {
   font-family: var(--mtg-face);
@@ -547,7 +534,7 @@ html.dark .tile--mtg:hover {
   border-color: rgba(122, 160, 212, 0.45);
   box-shadow: 0 18px 34px -18px rgba(0, 0, 0, 0.85);
 }
-html.dark /* A whole card, not an art crop: its illustration sits under the name bar. */
+/* A whole card, not an art crop: its illustration sits under the name bar. */
 .tile--pokemon .art img {
   object-position: 50% 24%;
   transform: scale(1.35);

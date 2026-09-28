@@ -50,7 +50,6 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
 .page:focus-visible {
   border-color: rgba(var(--accent-rgb), 0.5);
   box-shadow: var(--shadow-elev-2);
-  transform: translateY(-3px);
 }
 .frame {
   position: relative;

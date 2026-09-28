@@ -318,9 +318,6 @@ const restDecks = computed(() =>
   cursor: pointer;
   transition: transform 0.25s cubic-bezier(0.3, 1.7, 0.5, 1);
 }
-.empty-world:hover {
-  transform: translateY(-3px);
-}
 .empty-world:focus-visible {
   outline: 2px solid var(--world);
   outline-offset: 2px;
@@ -414,5 +411,10 @@ const restDecks = computed(() =>
   border-radius: var(--radius-md);
   border: 1px solid currentColor;
   transition: transform var(--dur-slow) var(--ease-spring);
+}
+.empty-world:hover {
+  box-shadow:
+    inset 0 3px 0 var(--world),
+    0 0 0 2px color-mix(in srgb, var(--world) 60%, transparent);
 }
 </style>

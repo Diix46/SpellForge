@@ -452,9 +452,6 @@ body {
     border-color var(--dur) var(--ease-out),
     background var(--dur) var(--ease-out);
 }
-.lift:hover {
-  transform: translateY(-4px);
-}
 
 /* ---------------- FLOATING CARD PREVIEW ----------------
    Big card that pops up beside a deck-list row on hover. Teleported to <body>,
@@ -906,9 +903,6 @@ a.bg-primary:active {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
-  }
-  .lift:hover {
-    transform: none;
   }
 }
 

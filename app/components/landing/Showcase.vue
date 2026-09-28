@@ -104,9 +104,6 @@ const { t, formatShortDate } = useLocale()
   text-decoration: none;
   transition: transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
-.deck:hover {
-  transform: translateY(-4px);
-}
 .deck:focus-visible {
   outline: 2px solid var(--swatch);
   outline-offset: 3px;
@@ -147,5 +144,10 @@ const { t, formatShortDate } = useLocale()
 }
 .meta {
   color: var(--muted);
+}
+.deck:hover {
+  box-shadow:
+    inset 0 3px 0 var(--swatch),
+    0 0 0 2px color-mix(in srgb, var(--swatch) 60%, transparent);
 }
 </style>

@@ -79,7 +79,6 @@ function untilt() {
 }
 .tile:hover .art,
 .tile:focus-visible .art {
-  transform: translateY(-3px);
   box-shadow: var(--shadow-elev-2);
 }
 .art img {
