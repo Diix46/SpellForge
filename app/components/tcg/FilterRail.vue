@@ -42,11 +42,14 @@ const { data: setsData } = useFetch<{ sets: (TcgSet & { cards: number })[] }>(()
   query: computed(() => ({ lang: props.lang })),
   default: () => ({ sets: [] }),
 })
+// Sets known only by their original name: each marked, or said once when
+// they all are (Yu-Gi-Oh!).
+const allSetsVo = computed(() => !!setsData.value?.sets.length && setsData.value.sets.every(s => s.vo))
 const setItems = computed(() => {
   const bySeries = new Map<string, { label: string, value: string }[]>()
   for (const s of setsData.value?.sets ?? []) {
     const list = bySeries.get(s.series ?? '') ?? []
-    list.push({ label: `${s.name} · ${s.code}`, value: s.code })
+    list.push({ label: `${s.name} · ${s.code}${s.vo && !allSetsVo.value ? ` · ${t('card.vo')}` : ''}`, value: s.code })
     bySeries.set(s.series ?? '', list)
   }
   return [[{ label: t('tcg.filter.anySet'), value: 'any' }], ...[...bySeries.entries()].map(([series, items]) => [{ type: 'label' as const, label: series }, ...items])]
@@ -209,6 +212,9 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
 
       <section class="grp">
         <USelect v-model="setModel" :items="setItems" :aria-label="t('tcg.filter.set')" class="w-full" />
+        <p v-if="allSetsVo" class="sets-vo">
+          <VoBadge /> {{ t('tcg.filter.setsVo') }}
+        </p>
         <USelect v-model="rarityModel" :items="rarityItems" :aria-label="t('tcg.filter.rarity')" class="w-full" />
       </section>
 
@@ -264,6 +270,14 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
 .grp {
   display: grid;
   gap: 7px;
+}
+.sets-vo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .grp-title {
   display: flex;

@@ -72,6 +72,8 @@ export interface TcgCard {
   /** Riftbound: champion and region tags ("Vi", "Piltover"), a landscape card (Battlefield), a signature card. */
   tags: string[]
   landscape: boolean
+  /** Riftbound: the variant's mark, out of its name ("Alternate Art", "Signature"). */
+  mark: string | null
   flavour: string | null
   /** The illustration alone, when the source publishes it (Yu-Gi-Oh). */
   art: string | null
@@ -89,6 +91,8 @@ export interface TcgSet {
   total: number
   symbol: string | null
   logo: string | null
+  /** Its name in its original language: the set was never published in the one asked for, or the source only knows its English name (Yu-Gi-Oh!). */
+  vo: boolean
 }
 
 export type TcgSortOrder = 'recent' | 'name' | 'number' | 'price'

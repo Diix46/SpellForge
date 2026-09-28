@@ -13,17 +13,15 @@ const { t, formatShortDate } = useLocale()
 <template>
   <section class="showcase">
     <header class="head">
-      <div>
-        <p class="kicker">
-          {{ t('home.showcase.kicker') }}
-        </p>
-        <h2 class="title">
-          {{ t('home.showcase.title') }}
-        </h2>
-        <p class="sub">
-          {{ t('home.showcase.sub') }}
-        </p>
-      </div>
+      <p class="kicker">
+        {{ t('home.showcase.kicker') }}
+      </p>
+      <h2 class="title">
+        {{ t('home.showcase.title') }}
+      </h2>
+      <p class="sub">
+        {{ t('home.showcase.sub') }}
+      </p>
       <NuxtLink to="/discover" class="all">
         {{ t('home.showcase.all') }}
         <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
@@ -49,31 +47,42 @@ const { t, formatShortDate } = useLocale()
 }
 .head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  max-width: var(--l-width);
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 720px;
   margin: 0 auto var(--l-head-gap);
+  text-align: center;
 }
 .kicker {
-  margin: 0 0 6px;
-  color: var(--l-muted);
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--l-chip);
+  color: var(--l-chip-ink);
   font-size: 11px;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 .title {
   margin: 0;
-  font-size: clamp(28px, 3vw, 42px);
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(34px, 4.6vw, 58px);
   font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--l-ink);
 }
 .sub {
-  margin: 6px 0 0;
-  color: var(--l-muted);
+  margin: 0;
+  color: var(--l-mid);
+  font-size: 16px;
+  line-height: 1.55;
+  text-wrap: balance;
 }
 .all {
   display: inline-flex;
+  margin-top: var(--space-1);
   align-items: center;
   gap: 8px;
   padding: 9px 16px;

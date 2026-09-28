@@ -39,11 +39,24 @@ export function sourceOf(row) {
 }
 
 /**
- * A French row beside every English one the cache has a translation for.
- * `onlyMissing`: the game has official French rows, kept; only the cards with
- * none get a translated one.
+ * Riftbound names a champion's card "Vi - Piltover Enforcer": the French one
+ * the same way, its title capitalised ("Akali, arme mortelle" and "Akali -
+ * Arme mortelle" came back for the same card).
  */
-export async function applyTranslations(db, tdb, { onlyMissing = false } = {}) {
+export function titledName(fr, en) {
+  if (!/ - /.test(en))
+    return fr
+  const m = /^(.+?)(?: - |, )(.+)$/.exec(fr)
+  return m ? `${m[1]} - ${m[2].charAt(0).toLocaleUpperCase('fr')}${m[2].slice(1)}` : fr
+}
+
+/**
+ * A French row beside every English one the cache has a translation for.
+ * A card's printings all take one French name, the plain printing's.
+ * `onlyMissing`: the game has official French rows, kept; only the cards with
+ * none get a translated one. `titled`: names like Riftbound's (titledName).
+ */
+export async function applyTranslations(db, tdb, { onlyMissing = false, titled = false } = {}) {
   await ensureTranslations(tdb)
   const { rows: tr } = await tdb.execute('SELECT hash, name, text, flavour FROM translations')
   const byHash = new Map(tr.map(r => [String(r.hash), r]))
@@ -55,19 +68,24 @@ export async function applyTranslations(db, tdb, { onlyMissing = false } = {}) {
     ? 'SELECT * FROM cards e WHERE lang = \'en\' AND NOT EXISTS (SELECT 1 FROM cards f WHERE f.card_key = e.card_key AND f.lang = \'fr\')'
     : 'SELECT * FROM cards WHERE lang = \'en\'')
   const inserts = []
-  for (const r of rows) {
+  const variantOf = r => JSON.parse(String(r.extra ?? '{}')).variant ? 1 : 0
+  const frName = new Map()
+  for (const r of [...rows].sort((a, b) => variantOf(a) - variantOf(b))) {
     const src = sourceOf(r)
     const t = byHash.get(src.hash)
     if (!t)
       continue
+    if (!frName.has(src.name))
+      frName.set(src.name, titled ? titledName(String(t.name), src.name) : String(t.name))
+    const name = frName.get(src.name)
     const extra = JSON.parse(String(r.extra ?? '{}'))
     const cols = Object.keys(r).filter(k => Number.isNaN(Number(k)))
     const values = {
       ...Object.fromEntries(cols.map(k => [k, r[k]])),
       lang: 'fr',
-      name: String(t.name),
+      name,
       name_en: src.name,
-      name_folded: fold(String(t.name)),
+      name_folded: fold(name),
       text: t.text == null ? r.text : String(t.text),
       extra: JSON.stringify({ ...extra, flavour: t.flavour ?? extra.flavour ?? null, translated: true, textEn: r.text ?? null, flavourEn: extra.flavour ?? null }),
     }

@@ -103,7 +103,7 @@ function pick(s: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   padding: var(--l-section) var(--l-gutter);
   text-align: center;
 }

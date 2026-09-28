@@ -7,6 +7,7 @@ import { buildSetsQuery, toTcgSet } from '../../../utils/tcg/query'
 
 export default defineCachedEventHandler(async (event) => {
   const game = tcgGame(event)
-  const { rows } = await useTcgDb(game).execute(buildSetsQuery(tcgLang(getQuery(event).lang)))
-  return { sets: rows.map(r => toTcgSet(game, r)) }
-}, { maxAge: 3600, getKey: event => `tcg-sets:${getRouterParam(event, 'game')}:${getQuery(event).lang}` })
+  const lang = tcgLang(getQuery(event).lang)
+  const { rows } = await useTcgDb(game).execute(buildSetsQuery(lang))
+  return { sets: rows.map(r => toTcgSet(game, r, lang)) }
+}, { maxAge: 3600, getKey: event => `tcg-sets-2:${getRouterParam(event, 'game')}:${getQuery(event).lang}` })

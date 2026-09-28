@@ -227,6 +227,7 @@ export function toTcgCard(game: TcgGameId, r: Row): TcgCard {
     extraDeck: !!extra.extraDeck,
     tags: extra.tags ?? [],
     landscape: !!extra.landscape,
+    mark: extra.mark ?? null,
     flavour: extra.flavour ?? null,
     art: tcgImageUrl(game, extra.art),
     translated: !!extra.translated,
@@ -235,7 +236,10 @@ export function toTcgCard(game: TcgGameId, r: Row): TcgCard {
   }
 }
 
-export function toTcgSet(game: TcgGameId, r: Row): TcgSet & { cards: number } {
+// Yu-Gi-Oh! sets have French names, but YGOPRODeck knows only the English ones.
+const ENGLISH_SET_NAMES = new Set<TcgGameId>(['yugioh'])
+
+export function toTcgSet(game: TcgGameId, r: Row, lang = 'en'): TcgSet & { cards: number } {
   return {
     code: String(r.code),
     name: String(r.name),
@@ -244,6 +248,7 @@ export function toTcgSet(game: TcgGameId, r: Row): TcgSet & { cards: number } {
     total: Number(r.total ?? 0),
     symbol: tcgImageUrl(game, r.symbol),
     logo: tcgImageUrl(game, r.logo),
+    vo: lang !== 'en' && (String(r.lang) !== lang || ENGLISH_SET_NAMES.has(game)),
     cards: Number(r.cards ?? 0),
   }
 }

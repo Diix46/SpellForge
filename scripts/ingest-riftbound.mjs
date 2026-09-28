@@ -147,9 +147,12 @@ async function main() {
         id,
         fold(baseName(c.name)),
         c.tcgplayer_id ? String(c.tcgplayer_id) : null,
-        c.name,
-        c.name,
-        fold(c.name),
+        // The name without its variant's mark ("(Alternate Art)"): a printing
+        // says what it is by its number and its mark below, and the card and
+        // its variants share one translation.
+        baseName(c.name),
+        baseName(c.name),
+        fold(baseName(c.name)),
         number,
         String(c.set?.set_id ?? '').toUpperCase(),
         cls.rarity ?? null,
@@ -170,6 +173,7 @@ async function main() {
           landscape: c.orientation === 'landscape',
           signature: !!meta.signature,
           variant,
+          mark: /\(([^)]+)\)\s*$/.exec(c.name)?.[1] ?? null,
         }),
       ],
     })
@@ -182,7 +186,7 @@ async function main() {
   })), 'write')
   // The unofficial French kept so far (scripts/translate-tcg.mjs).
   const tdb = translationsDb(resolve(dirname(DB_PATH), 'translations-riftbound.db'))
-  const french = await applyTranslations(db, tdb)
+  const french = await applyTranslations(db, tdb, { titled: true })
   tdb.close()
   if (french)
     log(`  ${french} cartes en français (traduction non officielle)`)
