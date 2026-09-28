@@ -39,15 +39,21 @@ export function sourceOf(row) {
 }
 
 /**
- * Riftbound names a champion's card "Vi - Piltover Enforcer": the French one
- * the same way, its title capitalised ("Akali, arme mortelle" and "Akali -
- * Arme mortelle" came back for the same card).
+ * Riftbound names a champion's card "Vi - Piltover Enforcer" (or, in some
+ * sets, "Akali, Deadly Weapon"): the French one with the same separator, its
+ * title capitalised unless it opens on an article ("Sona, l'Harmonieuse").
+ * "Akali, arme mortelle" and "Akali, Silencieuse" came back side by side.
  */
+const FR_ARTICLE = /^(?:l'|l’|la |le |les |d'|d’|du |des |un |une )/i
 export function titledName(fr, en) {
-  if (!/ - /.test(en))
+  const sep = / - /.test(en) ? ' - ' : /^[^,]+, /.test(en) ? ', ' : null
+  if (!sep)
     return fr
   const m = /^(.+?)(?: - |, )(.+)$/.exec(fr)
-  return m ? `${m[1]} - ${m[2].charAt(0).toLocaleUpperCase('fr')}${m[2].slice(1)}` : fr
+  if (!m)
+    return fr
+  const title = FR_ARTICLE.test(m[2]) ? m[2] : m[2].charAt(0).toLocaleUpperCase('fr') + m[2].slice(1)
+  return `${m[1]}${sep}${title}`
 }
 
 /**
