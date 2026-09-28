@@ -1,3 +1,9 @@
+## [0.58.0](https://github.com/Diix46/SpellForge/compare/v0.57.0...v0.58.0) (2026-09-28)
+
+### Features
+
+* retours d'Antho, lot C (un système commun) ([ce963e3](https://github.com/Diix46/SpellForge/commit/ce963e3bfd48144f694ff290531d0ab1e761cb19))
+
 ## [0.57.0](https://github.com/Diix46/SpellForge/compare/v0.56.5...v0.57.0) (2026-09-28)
 
 ### Features
