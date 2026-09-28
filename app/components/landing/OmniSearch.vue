@@ -296,9 +296,6 @@ function pick(s: string) {
     transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1),
     box-shadow 0.35s ease;
 }
-.hit:hover img {
-  transform: translateY(-4px);
-}
 .hit-name {
   overflow: hidden;
   font-size: 13px;

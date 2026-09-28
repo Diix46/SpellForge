@@ -138,9 +138,6 @@ const { t } = useLocale()
     box-shadow 0.25s ease,
     background 0.25s ease;
 }
-.cta:hover {
-  transform: translateY(-2px);
-}
 .cta:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 3px;

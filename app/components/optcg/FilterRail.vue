@@ -354,7 +354,6 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
     opacity var(--dur-fast) ease;
 }
 .pip:hover {
-  transform: scale(1.12) rotate(-6deg);
   opacity: 0.75;
 }
 .pip[aria-pressed='true'] {

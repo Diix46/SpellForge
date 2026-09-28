@@ -246,9 +246,6 @@ watch(() => props.card.owned, (now, before) => {
 .add:focus-visible {
   opacity: 1;
 }
-.add:hover {
-  transform: scale(1.12);
-}
 @media (hover: none) {
   .add {
     opacity: 0.9;

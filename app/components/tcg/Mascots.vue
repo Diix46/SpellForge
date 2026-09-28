@@ -67,7 +67,6 @@ const mascots = computed(() => (props.game === 'pokemon' ? (data.value?.arts ?? 
 .bubble:hover,
 .bubble:focus-visible {
   z-index: 1;
-  transform: translateY(-6px) scale(1.12);
 }
 @keyframes pop {
   from {

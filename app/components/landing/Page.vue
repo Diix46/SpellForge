@@ -28,7 +28,7 @@ const worlds = computed(() => worldsData.value?.worlds ?? [])
       <LandingGallery :worlds="worlds" />
       <LandingJourney />
       <LandingShowcase v-if="decks.length" :decks="decks" />
-      <LandingFinale />
+      <LandingFinale :worlds="worlds" />
     </main>
     <LandingFooter />
   </div>

@@ -90,7 +90,6 @@ onMounted(() => {
 }
 .face:hover,
 .face:focus-visible {
-  transform: translateY(-4px) rotate(-0.6deg);
   box-shadow: var(--shadow-elev-3);
 }
 .face img {

@@ -138,9 +138,6 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
     transform 0.4s cubic-bezier(0.2, 0.9, 0.25, 1),
     box-shadow 0.4s ease;
 }
-.world:hover {
-  transform: translateY(-6px);
-}
 @keyframes world-in {
   from {
     opacity: 0;
