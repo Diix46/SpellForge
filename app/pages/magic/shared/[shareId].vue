@@ -89,21 +89,14 @@ function copyToMine() {
 
 <template>
   <div class="fade-up" :style="themeStyle">
-    <!-- Loading -->
-    <div v-if="loading" class="glass mx-auto flex max-w-md flex-col items-center rounded-[var(--radius-2xl)] py-16 text-center">
-      <UIcon name="i-lucide-loader-circle" class="mb-3 h-10 w-10 animate-spin text-(--accent-text)" />
-    </div>
-
-    <!-- Not found -->
-    <div v-else-if="notFound || !deck" class="glass mx-auto flex max-w-md flex-col items-center gap-4 rounded-[var(--radius-2xl)] py-16 text-center">
-      <UIcon name="i-lucide-unlink" class="h-12 w-12 text-(--color-text-muted)" />
-      <p class="text-(--color-text-muted)">
-        {{ t('share.notFound') }}
-      </p>
-      <UButton to="/magic" color="primary" icon="i-lucide-book-open">
-        {{ t('share.home') }}
-      </UButton>
-    </div>
+    <DeckSkeleton v-if="loading" />
+    <ErrorPanel v-else-if="notFound || !deck" icon="i-lucide-unlink" :title="t('share.notFound')">
+      <template #actions>
+        <UButton to="/magic" color="primary" icon="i-lucide-book-open">
+          {{ t('share.home') }}
+        </UButton>
+      </template>
+    </ErrorPanel>
 
     <template v-else>
       <!-- Header -->

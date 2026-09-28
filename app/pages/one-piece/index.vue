@@ -157,7 +157,7 @@ function newDeck(leader?: OptcgCard) {
 }
 .title {
   margin: var(--page-kicker-gap) 0 0;
-  font-size: clamp(38px, 6vw, 64px);
+  font-size: var(--title-page);
   line-height: 0.95;
   color: var(--color-text-high);
   rotate: -1deg;

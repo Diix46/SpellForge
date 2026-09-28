@@ -955,3 +955,9 @@ html.light[data-universe='pokemon'] {
   --gradient-accent: linear-gradient(135deg, #c62f29, #a3231e);
   --color-text-on-neon: #ffffff;
 }
+
+/* One Piece's display face, Anton, exists in one weight: a heading asking
+   for 600 or 700 got a faked bold, its letters run together. */
+html[data-universe='optcg'] :is(h1, h2, h3, .u-display) {
+  font-weight: 400 !important;
+}

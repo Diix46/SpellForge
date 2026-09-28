@@ -208,7 +208,7 @@ const errored = computed(() => !!error.value)
 .discover-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: var(--title-page);
   font-weight: 600;
   letter-spacing: -0.03em;
   color: var(--color-text-high);

@@ -184,14 +184,33 @@
   --texture-line: rgba(255, 255, 255, 0.03);
 
   /* The top bar's controls: search, languages, theme, alerts, account. */
-  --control-h: 34px;
+  --control-h: 32px;
+
+  /* ============ SHELL: one gutter, one width, for the top bar, the pages,
+     the home page's sections and the footer, so their edges line up. */
+  --gutter: 24px;
+  --shell-max: 1720px;
+
+  /* ============ SPACING SCALE: 8 · 16 · 24 · 40 · 64 · 96 ============ */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 40px;
+  --space-5: 64px;
+  --space-6: 96px;
 
   /* ============ PAGE RHYTHM (every library, collection and card page) ============ */
-  --page-gap: 28px; /* between a page's header and its body */
+  --page-gap: var(--space-3); /* between a page's header and its body */
   --page-kicker-gap: 4px; /* kicker → title */
-  --page-sub-gap: 10px; /* title → its sentence */
-  --rail-gap: 28px; /* filter rail → results */
-  --grid-gap: 28px 20px; /* card grids: rows, columns */
+  --page-sub-gap: var(--space-1); /* title → its sentence */
+  --rail-gap: var(--space-3); /* filter rail → results */
+  --grid-gap: var(--space-3) var(--space-2); /* card grids: rows, columns */
+
+  /* ============ TITLES: three levels for every page ============ */
+  --title-page: clamp(32px, 3.2vw, 44px); /* a page's own title (h1) */
+  --title-section: 22px; /* a section within a page (h2) */
+  --title-card: 17px; /* a card or panel (h3) */
+  --title-sheet: clamp(24px, 2.4vw, 30px); /* a card's name on its sheet */
 
   /* ============ MOTION (modern-SaaS micro-interactions) ============ */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* enter */
@@ -1010,4 +1029,11 @@ html.dark [data-world='pokemon'] {
   --muted: #d8cb93 !important;
   --accent: #f2c230 !important;
   --on-accent: #1b1d2a !important;
+}
+
+/* A phone: a narrower gutter. */
+@media (max-width: 640px) {
+  :root {
+    --gutter: 16px;
+  }
 }

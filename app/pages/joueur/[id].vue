@@ -161,7 +161,7 @@ usePublicSeo({
 .head h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: var(--title-page);
   font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--color-text-high);

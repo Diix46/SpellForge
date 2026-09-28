@@ -284,7 +284,7 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  font-size: 28px;
+  font-size: var(--title-sheet);
   line-height: 1.1;
   color: var(--color-text-high);
 }

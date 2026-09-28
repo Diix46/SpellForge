@@ -27,7 +27,6 @@ const worlds = computed(() => worldsData.value?.worlds ?? [])
       <LandingJourney />
       <LandingShowcase v-if="decks.length" :decks="decks" />
     </main>
-    <LandingFooter />
   </div>
 </template>
 
@@ -48,11 +47,13 @@ const worlds = computed(() => worldsData.value?.worlds ?? [])
   --l-empty: #e2e4e0;
   /* One rhythm for every section: the same breath above and below, the same
      side gutter, the same content width. */
-  --l-section: clamp(64px, 7vw, 96px);
-  --l-gutter: clamp(16px, 5vw, 80px);
-  --l-width: 1320px;
+  --l-section: clamp(var(--space-5), 7vw, var(--space-6));
+  /* The site's gutter and width (main.css): the sections' edges line up
+     with the top bar's and the footer's. */
+  --l-gutter: var(--gutter);
+  --l-width: calc(var(--shell-max) - var(--gutter) * 2);
   /* Between a section's heading and what it shows. */
-  --l-head-gap: 40px;
+  --l-head-gap: var(--space-4);
   min-height: 100vh;
   background: var(--l-bg);
   color: var(--l-ink);

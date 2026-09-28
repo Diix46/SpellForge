@@ -117,10 +117,7 @@ function startWith() {
       </NuxtLink>
     </nav>
 
-    <div v-if="!c || !resolved" class="missing">
-      <UIcon name="i-lucide-search-x" class="h-10 w-10" />
-      <p>{{ t('card.missing') }}</p>
-    </div>
+    <ErrorPanel v-if="!c || !resolved" :title="t('card.missing')" />
 
     <article v-else class="page">
       <div class="art">
@@ -332,7 +329,7 @@ function startWith() {
 .name {
   margin: 0;
   font-family: var(--mtg-face);
-  font-size: clamp(26px, 3.4vw, 38px);
+  font-size: var(--title-sheet);
   font-weight: 700;
   line-height: 1.1;
   color: var(--color-text-high);
@@ -403,13 +400,5 @@ function startWith() {
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 6px;
-}
-.missing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 80px 0;
-  color: var(--color-text-muted);
 }
 </style>
