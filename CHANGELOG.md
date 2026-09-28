@@ -1,3 +1,9 @@
+## [0.56.4](https://github.com/Diix46/SpellForge/compare/v0.56.3...v0.56.4) (2026-09-28)
+
+### Bug Fixes
+
+* **ui:** fin du liseré coloré en haut des tuiles ([cd1e71d](https://github.com/Diix46/SpellForge/commit/cd1e71df5609440ed22ed5c9d83b8b10fb588e8e))
+
 ## [0.56.3](https://github.com/Diix46/SpellForge/compare/v0.56.2...v0.56.3) (2026-09-28)
 
 ### Bug Fixes
