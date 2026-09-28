@@ -1,3 +1,9 @@
+## [0.56.5](https://github.com/Diix46/SpellForge/compare/v0.56.4...v0.56.5) (2026-09-28)
+
+### Bug Fixes
+
+* retours d'Antho, lot A (création sans compte, accueil, formats, contrastes) ([fb127aa](https://github.com/Diix46/SpellForge/commit/fb127aa8ec6ba07fc86f62317b874211f785fe89))
+
 ## [0.56.4](https://github.com/Diix46/SpellForge/compare/v0.56.3...v0.56.4) (2026-09-28)
 
 ### Bug Fixes
