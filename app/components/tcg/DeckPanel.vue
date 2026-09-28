@@ -6,6 +6,7 @@ import type { TcgGameId } from '#shared/tcg/types'
 import { computed } from 'vue'
 import { copiesOf, limitOf, zoneOf } from '#shared/tcg/deck'
 import { TCG_RULES } from '#shared/tcg/rules'
+import { tcgDeckStats } from '#shared/tcg/stats'
 import { TCG_UI, tcgCover, tcgLabel } from '~/utils/games/tcg'
 
 // The deck side of a generic-engine builder: its cover card, the count of
@@ -32,7 +33,7 @@ const emit = defineEmits<{
 /** The format the deck is checked against. */
 const format = defineModel<string>('format', { default: '' })
 
-const { t } = useLocale()
+const { t, formatPrice } = useLocale()
 const rules = computed(() => TCG_RULES[props.game])
 const ui = computed(() => TCG_UI[props.game])
 const label = (kind: string, v: string | null | undefined) => tcgLabel(t, props.game, kind, v)
@@ -86,6 +87,10 @@ function describe(i: TcgIssue): { text: string, level: TcgIssue['level'] } {
 function canMore(line: TcgLine): boolean {
   return !line.card || copiesOf(props.lines, line.card.key) < limitOf(rules.value, line.card)
 }
+
+// The deck in numbers (shared/tcg/stats): its curve, its make-up, its price.
+const stats = computed(() => tcgDeckStats(props.game, props.lines))
+const curveMax = computed(() => Math.max(1, ...stats.value.curve))
 
 /** Copies per type, for the pips under the list. */
 const typeCounts = computed(() => {
@@ -186,6 +191,30 @@ const typeCounts = computed(() => {
         </section>
       </template>
     </div>
+
+    <!-- Numbers, as One Piece's and Magic's builders show theirs. -->
+    <footer v-if="stats.count" class="numbers">
+      <div v-if="stats.curve.length" class="curve" :aria-label="t('optcg.stats.curve')">
+        <div v-for="(n, cost) in stats.curve" :key="cost" class="bar-col">
+          <span class="bar" :style="{ height: `${(n / curveMax) * 100}%` }" :title="`${n}`" />
+          <span class="bar-label">{{ cost === 10 ? '10+' : cost }}</span>
+        </div>
+      </div>
+      <dl class="figures">
+        <div v-if="stats.averageCost != null">
+          <dt>{{ t('optcg.stats.average') }}</dt>
+          <dd>{{ stats.averageCost }}</dd>
+        </div>
+        <div v-for="[cat, n] in stats.byCategory" :key="cat">
+          <dt>{{ label('category', cat) }}</dt>
+          <dd>{{ n }}</dd>
+        </div>
+        <div v-if="stats.price > 0">
+          <dt>{{ t('tcg.stats.price') }}</dt>
+          <dd>{{ formatPrice(stats.price, 0) }}<small v-if="stats.unpriced"> · {{ t('tcg.stats.unpriced').replace('{n}', String(stats.unpriced)) }}</small></dd>
+        </div>
+      </dl>
+    </footer>
   </section>
 </template>
 
@@ -467,5 +496,55 @@ const typeCounts = computed(() => {
   font-size: 14px;
   text-align: center;
   color: var(--color-text-high);
+}
+.numbers {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+.curve {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  gap: 4px;
+  height: 64px;
+}
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 2px;
+}
+.bar {
+  width: 100%;
+  min-height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: rgb(var(--accent-rgb));
+}
+.bar-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+}
+.figures dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.figures dd {
+  margin: 1px 0 0;
+  color: var(--color-text-high);
+  font-variant-numeric: tabular-nums;
+}
+.figures small {
+  color: var(--color-text-muted);
 }
 </style>

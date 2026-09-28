@@ -83,6 +83,7 @@ function onAdd(e: MouseEvent, card: OptcgCard) {
             <UButton v-if="card.category === 'Leader'" color="primary" icon="i-lucide-anchor" @click="emit('start', shownCard)">
               {{ t('optcg.library.startWith') }}
             </UButton>
+            <CardAddToDeck game="optcg" :card-key="card.number" />
             <UButton color="neutral" variant="subtle" icon="i-lucide-gem" @click="addToCollection(shownCard)">
               {{ t('collection.addToCollection') }}
             </UButton>

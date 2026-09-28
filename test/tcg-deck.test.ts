@@ -246,3 +246,17 @@ describe('generic decklist, names', () => {
     expect(r.errors).toEqual(['1 Jinx - Loose Cannon'])
   })
 })
+
+describe('writeYdk', () => {
+  it('writes each copy\'s passcode in its zone, the unknown left out', async () => {
+    const { writeYdk, parseYdk } = await import('../shared/tcg/deck')
+    const codes: Record<string, string> = { 'LOB-EN001': '89631139', 'MAMO-EN038': '2111707' }
+    const ydk = writeYdk([
+      { quantity: 3, name: 'LOB-EN001' },
+      { quantity: 1, name: 'MAMO-EN038', zone: 'extra' },
+      { quantity: 1, name: 'NOPE-001' },
+    ], id => codes[id])
+    expect(ydk.split('\n').slice(1, 7)).toEqual(['#main', '89631139', '89631139', '89631139', '#extra', '2111707'])
+    expect(parseYdk(ydk)).toEqual([{ code: '89631139', zone: 'main', quantity: 3 }, { code: '2111707', zone: 'extra', quantity: 1 }])
+  })
+})

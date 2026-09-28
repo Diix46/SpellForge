@@ -2,7 +2,9 @@
 import type { TcgCard, TcgGameId } from '#shared/tcg/types'
 import { computed, ref } from 'vue'
 import { deckPath, gameFromSlug, GAMES, libraryPath } from '#shared/game'
+import { TCG_RULES } from '#shared/tcg/rules'
 import { isTcgGame } from '#shared/tcg/types'
+import { cardmarketSearch } from '~/composables/useCardmarket'
 import { tcgLabel } from '~/utils/games/tcg'
 import { decodeEntities } from '~/utils/tcg/richText'
 
@@ -92,8 +94,12 @@ function startWith(c: TcgCard) {
             <UButton color="primary" :icon="GAMES[game].icon" @click="startWith(shownCard)">
               {{ t('tcg.startWith') }}
             </UButton>
+            <CardAddToDeck :game="game" :card-key="shownCard.id" :zone="TCG_RULES[game].zoneFor(shownCard)" />
             <UButton color="neutral" variant="subtle" icon="i-lucide-search" :to="`${libraryPath(game)}?q=${encodeURIComponent(card.name)}`">
               {{ t('card.inLibrary') }}
+            </UButton>
+            <UButton color="neutral" variant="ghost" icon="i-lucide-shopping-cart" :to="cardmarketSearch(game, shownCard.nameEn ?? shownCard.name, locale)" target="_blank">
+              {{ t('card.cardmarket') }}
             </UButton>
           </footer>
         </template>

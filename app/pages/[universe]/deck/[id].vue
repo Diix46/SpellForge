@@ -6,6 +6,7 @@ import type { TcgFilters } from '~/composables/useTcgSearch'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { isDefaultDeckName } from '#shared/decks'
 import { collectionPath, deckPath, gameFromSlug, GAMES } from '#shared/game'
+import { tcgDeckStats } from '#shared/tcg/stats'
 import { isTcgGame } from '#shared/tcg/types'
 import { TCG_UI, tcgCover } from '~/utils/games/tcg'
 
@@ -181,6 +182,8 @@ const dots = computed(() => {
   }
   return [...types.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([ty]) => TCG_UI[game].typeColor[ty] ?? '#999')
 })
+// What the deck costs at today's prices, in the toolbar (the panel shows the rest).
+const deckStats = computed(() => tcgDeckStats(game, tcgDeck.lines.value))
 const summary = computed(() => `${tcgDeck.count.value} ${t('dash.cards')}`)
 const format = computed({ get: () => tcgDeck.format.value, set: tcgDeck.setFormat })
 </script>
@@ -191,6 +194,7 @@ const format = computed({ get: () => tcgDeck.format.value, set: tcgDeck.setForma
       v-model:deck-name="name"
       :dots="dots"
       :card-count="tcgDeck.count.value"
+      :price-total="deckStats.price"
       :owned="ownership.summary.value"
       :collection-to="collectionPath(game)"
       :logged-in="loggedIn"

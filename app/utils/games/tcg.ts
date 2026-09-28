@@ -213,9 +213,17 @@ export function tcgLabel(t: (key: string) => string, game: TcgGameId, kind: stri
  */
 export function tcgCover<L extends { card: TcgCard | null, entry: { quantity: number } }>(game: TcgGameId, lines: readonly L[]): L | null {
   const known = lines.filter(l => l.card)
-  // Riftbound: the Legend leads the deck.
-  if (game === 'riftbound')
-    return known.find(l => l.card!.category === 'Legend') ?? known[0] ?? null
+  // Riftbound: the Legend leads the deck; before it is picked, its champion,
+  // else its most played card — never a rune or a battlefield (a deck named
+  // « Rune de Fureur » said nothing of it).
+  if (game === 'riftbound') {
+    const legend = known.find(l => l.card!.category === 'Legend')
+    if (legend)
+      return legend
+    const body = known.filter(l => !['Rune', 'Battlefield'].includes(l.card!.category))
+    const champion = body.find(l => l.card!.category === 'Unit' && l.card!.subtype === 'Champion')
+    return champion ?? [...body].sort((a, b) => b.entry.quantity - a.entry.quantity)[0] ?? known[0] ?? null
+  }
   if (game === 'pokemon') {
     const star = (l: L) => l.card!.category === 'Pokemon' && !!l.card!.suffix
     const ranked = [...known].sort((a, b) => Number(star(b)) - Number(star(a)) || Number(b.card!.category === 'Pokemon') - Number(a.card!.category === 'Pokemon') || b.entry.quantity - a.entry.quantity)
