@@ -60,6 +60,8 @@ const shownPrint = computed(() => previewPrint.value ?? chosenPrint.value ?? nul
 const c = computed(() => mtgRaw(props.card?.card))
 const isDfc = computed(() => !!props.card?.backImageUrl)
 
+// The image shown once loaded (the skeleton before).
+const loadedImage = ref<string | null>(null)
 const displayImage = computed(() => {
   if (shownPrint.value)
     return shownPrint.value.imageLarge ?? shownPrint.value.image
@@ -221,12 +223,16 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
         <!-- Image: sized to the card's natural width so it fills its column
              (no floating in an oversized panel = no "card-in-card" gaps). -->
         <div class="relative">
-          <img
-            v-if="displayImage"
-            :src="displayImage"
-            :alt="englishName || props.card?.entry.name || 'Carte'"
-            class="mx-auto block w-full max-w-[300px] rounded-[var(--radius-lg)] object-contain shadow-[var(--shadow-elev-3)]"
-          >
+          <!-- The card's place kept while its image loads: nothing jumps. -->
+          <div v-if="displayImage" class="card-slot mx-auto aspect-[63/88] w-full max-w-[300px]" :class="{ loading: loadedImage !== displayImage }">
+            <img
+              :key="displayImage"
+              :src="displayImage"
+              :alt="englishName || props.card?.entry.name || 'Carte'"
+              class="block h-full w-full rounded-[var(--radius-lg)] object-contain shadow-[var(--shadow-elev-3)]"
+              @load="loadedImage = displayImage"
+            >
+          </div>
           <div
             v-else
             class="flex aspect-[63/88] items-center justify-center rounded-[var(--radius-lg)] bg-(--color-surface-2) text-(--color-text-muted)"
@@ -503,5 +509,30 @@ const { keywordTerms, oracleSegments } = useOracleText(c, oracle, isFr)
 .oracle :deep(.kw) {
   color: var(--accent-text);
   font-weight: 600;
+}
+.card-slot {
+  position: relative;
+  border-radius: var(--radius-lg);
+}
+.card-slot.loading {
+  background: linear-gradient(
+      100deg,
+      var(--color-surface-2) 30%,
+      var(--color-surface-3) 50%,
+      var(--color-surface-2) 70%
+    )
+    0 0 / 300% 100%;
+  animation: card-shimmer 1.2s linear infinite;
+}
+.card-slot.loading img {
+  opacity: 0;
+}
+.card-slot img {
+  transition: opacity 0.25s ease;
+}
+@keyframes card-shimmer {
+  to {
+    background-position: -150% 0;
+  }
 }
 </style>

@@ -183,6 +183,9 @@
   --glass-solid-sheen: rgba(255, 255, 255, 0.03);
   --texture-line: rgba(255, 255, 255, 0.03);
 
+  /* The top bar's controls: search, languages, theme, alerts, account. */
+  --control-h: 34px;
+
   /* ============ PAGE RHYTHM (every library, collection and card page) ============ */
   --page-gap: 28px; /* between a page's header and its body */
   --page-kicker-gap: 4px; /* kicker → title */
@@ -248,6 +251,11 @@
   --glass-highlight: rgba(255, 255, 255, 0.6);
   --glass-solid-sheen: rgba(0, 0, 0, 0.015);
   --texture-line: rgba(0, 0, 0, 0.04);
+
+  /* Success and error as text on white: the darker shades (the bright ones
+     fall under AA, 2.2:1). */
+  --ui-success: #15803d;
+  --ui-error: #b91c1c;
 }
 html,
 body {
@@ -676,7 +684,6 @@ body {
     box-shadow var(--dur) var(--ease-out);
 }
 .coach-pill:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-elev-3), var(--accent-glow);
 }
 .coach-pill:active {
@@ -834,10 +841,11 @@ body {
 }
 
 /* ---------------- INTERACTIVE HOVER AFFORDANCES ----------------
-   Discreet, consistent micro-interactions so everything clickable feels alive.
-   Kept subtle (small scale / colour shift) and built on the motion tokens.
-   Scoped to plain elements; Nuxt UI components manage their own hover states
-   and are left untouched (we only smooth their transitions). */
+   One effect per hover, never two: a button changes its ground (background
+   or border), a link its colour, a card lifts. No icon that grows on top of
+   a colour change, no button that jumps as well as it lights up.
+   Nuxt UI components manage their own hover states (we only smooth their
+   transitions). */
 
 /* Smooth colour/opacity transitions on any interactive element that doesn't
    already declare its own transition inline. Cheap, never moves layout. */
@@ -851,25 +859,34 @@ body {
     transform var(--dur) var(--ease-spring);
 }
 
-/* Bare icon buttons (no background utility) get a gentle pop + accent tint. */
 @media (hover: hover) {
-  button:where(:not([class*='bg-']):not(.lift):not([data-slot])):hover :where(svg, .iconify) {
-    transform: scale(1.12);
-  }
-  button :where(svg, .iconify) {
-    transition: transform var(--dur) var(--ease-spring);
-  }
-
   /* Text links (not styled as buttons) warm toward the accent on hover. */
   a:where(:not([class*='bg-']):not([class*='rounded']):not([role='button'])):hover {
     color: var(--accent-text);
   }
+}
 
-  /* Accent/primary CTAs lift a touch on hover so they feel clickable. */
-  button.bg-primary:hover,
-  a.bg-primary:hover {
-    transform: translateY(-1px);
-  }
+/* The top bar's round controls (and the few like them): one height, one
+   shape, one hover — the ground lights up. */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-1);
+  color: var(--color-text-mid);
+  cursor: pointer;
+}
+.icon-btn:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-2);
+}
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
 }
 
 /* Satisfying press: tactile scale-down on the main accent buttons (works on
@@ -911,14 +928,14 @@ a.bg-primary:active {
   transform: scale(0.985);
 }
 
-/* ---------------- GLOBAL FOCUS RING (accent-driven) ---------------- */
+/* ---------------- GLOBAL FOCUS RING (accent-driven) ----------------
+   The ring follows the element's own shape: a pill stays a pill, a round
+   button round (forcing a radius here changed their shape on focus). */
 :where(a, button, [role='button'], input, select, textarea, [tabindex]):focus-visible {
   outline: none;
   box-shadow:
     0 0 0 2px var(--color-bg-base),
-    0 0 0 4px rgb(var(--accent-rgb)),
-    0 0 16px -2px rgba(var(--accent-rgb), 0.6);
-  border-radius: var(--radius-sm);
+    0 0 0 4px rgb(var(--accent-rgb));
 }
 
 /* ---------------- ACCENT HELPER CLASSES ---------------- */

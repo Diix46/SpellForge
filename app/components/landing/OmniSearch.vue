@@ -168,9 +168,15 @@ function pick(s: string) {
 .field input::placeholder {
   color: var(--l-muted);
 }
+.field input:focus-visible {
+  /* The field shows the focus, around its rainbow edge. */
+  outline: none;
+  box-shadow: none;
+}
 .field:focus-within {
   box-shadow:
-    0 0 0 4px rgba(45, 79, 124, 0.3),
+    0 0 0 3px var(--l-bg),
+    0 0 0 5px color-mix(in srgb, var(--l-ink) 55%, transparent),
     0 24px 50px -24px rgba(0, 0, 0, 0.7);
 }
 .field-icon {
@@ -197,9 +203,7 @@ function pick(s: string) {
 }
 .try span {
   padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--l-line);
-  color: var(--l-muted);
+  color: var(--l-mid);
 }
 .try button {
   padding: 4px 11px;
@@ -213,7 +217,6 @@ function pick(s: string) {
 }
 .try button:hover {
   border-color: var(--l-ink);
-  transform: translateY(-1px);
 }
 .try button:focus-visible {
   outline: 2px solid var(--l-ink);
@@ -295,9 +298,6 @@ function pick(s: string) {
 }
 .hit:hover img {
   transform: translateY(-4px);
-  box-shadow:
-    0 0 0 2px color-mix(in srgb, var(--swatch) 60%, transparent),
-    0 22px 40px -18px rgba(27, 31, 34, 0.4);
 }
 .hit-name {
   overflow: hidden;

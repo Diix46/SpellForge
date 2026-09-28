@@ -313,8 +313,6 @@ const sortItems = computed(() => [
 }
 .set:hover {
   transform: translateY(-3px);
-  border-color: var(--color-border-strong);
-  box-shadow: var(--shadow-elev-2);
 }
 .set.is-new {
   opacity: 0.8;

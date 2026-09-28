@@ -188,6 +188,8 @@ function hideAcSoon() {
         :model-value="filters.text"
         name="card-search"
         :aria-label="t('build.searchAria')"
+        role="combobox"
+        aria-autocomplete="list"
         :aria-expanded="showAc"
         :placeholder="t('build.searchPlaceholder')"
         icon="i-lucide-search"
@@ -302,10 +304,13 @@ function hideAcSoon() {
       <div class="mb-3 grid grid-cols-2 gap-2">
         <USelect
           v-model="typeModel"
+          size="sm"
+          :aria-label="t('build.typeAria')"
           :items="TYPE_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
         />
         <UInput
           :model-value="filters.subtype"
+          size="sm"
           name="subtype"
           :aria-label="t('build.subtypeAria')"
           :placeholder="t('build.subtype')"
@@ -357,7 +362,8 @@ function hideAcSoon() {
         </label>
         <USelect
           v-model="sortModel"
-          size="xs"
+          size="sm"
+          :aria-label="t('build.sortBy')"
           :items="SORT_OPTIONS.map(o => ({ label: t(o.key), value: o.value }))"
           class="flex-1"
         />
@@ -413,12 +419,8 @@ function hideAcSoon() {
   filter: saturate(0.55);
 }
 .mana-toggle:hover {
-  transform: translateY(-2px) scale(1.15);
   opacity: 1;
   filter: none;
-  box-shadow:
-    0 0 0 2px rgba(0, 0, 0, 0.15),
-    0 8px 18px -4px var(--pip);
 }
 .mana-toggle:active {
   transform: scale(0.92); /* satisfying press */

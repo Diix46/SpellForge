@@ -405,7 +405,6 @@ const restDecks = computed(() =>
   border-color: var(--accent-border);
   color: var(--accent-text);
   background: var(--accent-soft);
-  transform: translateY(-4px);
 }
 .new-plus {
   display: grid;
@@ -415,8 +414,5 @@ const restDecks = computed(() =>
   border-radius: var(--radius-md);
   border: 1px solid currentColor;
   transition: transform var(--dur-slow) var(--ease-spring);
-}
-.new-tile:hover .new-plus {
-  transform: rotate(90deg);
 }
 </style>
