@@ -1,3 +1,13 @@
+## [0.57.0](https://github.com/Diix46/SpellForge/compare/v0.56.5...v0.57.0) (2026-09-28)
+
+### Features
+
+* retours d'Antho, lot B (mêmes fonctions dans les cinq jeux) ([f3b0e87](https://github.com/Diix46/SpellForge/commit/f3b0e876485ceb509fec46e29ab96798080d4b16))
+
+### Bug Fixes
+
+* **test:** fonction nommée dans le test des statistiques (lint de la CI) ([f0fcae6](https://github.com/Diix46/SpellForge/commit/f0fcae6eb3b27b88e710c57666fe8055e90d8f0a))
+
 ## [0.56.5](https://github.com/Diix46/SpellForge/compare/v0.56.4...v0.56.5) (2026-09-28)
 
 ### Bug Fixes
