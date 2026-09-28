@@ -1,3 +1,9 @@
+## [0.56.3](https://github.com/Diix46/SpellForge/compare/v0.56.2...v0.56.3) (2026-09-28)
+
+### Bug Fixes
+
+* **accueil:** zoom au survol des cartes trouvées, trois rangées par monde dans le héros ([7b8fda8](https://github.com/Diix46/SpellForge/commit/7b8fda830bd454282f2d8796d899ed7a0ef5ea87))
+
 ## [0.56.2](https://github.com/Diix46/SpellForge/compare/v0.56.1...v0.56.2) (2026-09-28)
 
 ### Bug Fixes
