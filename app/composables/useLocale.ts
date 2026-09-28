@@ -58,7 +58,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'home.hero.l2': 'Un atelier.',
     'home.hero.start': 'Commencer un deck',
     'home.hero.search': 'Chercher une carte',
-    'home.hero.sub': 'Magic, One Piece, Pokémon, Yu-Gi-Oh! et Riftbound : construis tes decks et range ta collection. Toutes les cartes sont là, les règles de chaque jeu sont vérifiées à chaque ajout, et aucun compte n\'est demandé pour commencer.',
+    'home.hero.sub': 'Magic, One Piece, Pokémon, Yu-Gi-Oh! et Riftbound : toutes les cartes, les règles de chaque jeu vérifiées à chaque ajout. Tes decks se construisent sans compte ; ta collection, elle, se range dans ton compte.',
     'home.numbers.opCards': 'cartes One Piece',
     'home.numbers.opArts': 'illustrations One Piece, en français et en anglais',
     'home.numbers.mtgCards': 'cartes Magic jouables en Commander',
@@ -70,11 +70,11 @@ const messages: Record<Locale, Record<string, string>> = {
     'home.search.all': 'Tout voir dans la bibliothèque',
     'home.search.label': 'Chercher une carte dans tous les jeux',
     'home.search.placeholder': 'Luffy, Sol Ring, Pikachu, Jinx…',
-    'home.search.try': 'Essaie',
+    'home.search.try': 'Par exemple :',
     'home.search.none': 'Rien dans ce monde-ci.',
     'home.gallery.kicker': 'Cinq mondes',
     'home.gallery.title': 'Choisis ton monde',
-    'home.gallery.sub': 'Chaque jeu a sa bibliothèque, ses règles de deck vérifiées en direct, sa collection en classeurs et sa salle en 3D.',
+    'home.gallery.sub': 'Chaque jeu a sa bibliothèque et ses règles de deck vérifiées en direct. Avec un compte, sa collection en classeurs et sa salle en 3D.',
     'home.gallery.optcg': 'Des avis de recherche pour chaque carte, un Leader, des DON!! : l\'équipage se monte au grand jour.',
     'home.gallery.mtg': 'Commander avant tout : le coach, les proxies à imprimer, les prix Cardmarket et les suggestions d\'EDHREC.',
     'home.gallery.pokemon': 'Tout le JCC en français, Standard et Étendu, et l\'import des listes de Pokémon TCG Live.',
@@ -141,7 +141,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'mtg.library.title': 'La bibliothèque',
     'mtg.library.sub': 'Toutes les cartes jouables en Commander, en français quand elles existent. Tape un nom, un effet, ou de la syntaxe Scryfall.',
     'mtg.library.newDeck': 'Commencer un deck',
-    'mtg.library.startWith': 'Commencer un deck avec ce commandant',
+    'mtg.library.startWith': 'Nouveau deck avec ce commandant',
     'account.title': 'Mon compte',
     'account.worlds': 'Tes mondes',
     'account.worldsHelp': 'Tes decks et ta collection jeu par jeu. L\'étoile marque ton jeu préféré : la Collection et les nouveaux decks s\'y ouvrent.',
@@ -462,6 +462,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'members.decks': 'Tes decks sont gardés dans ton compte : crée-le ou connecte-toi pour les retrouver ici, sur tous tes appareils.',
     'members.preview': 'L\'aperçu et l\'impression des proxies sont réservés aux membres. Un compte, et c\'est ouvert.',
     'members.artwork': 'Le choix des illustrations (galerie, versions HD, anglais) est réservé aux membres. Un compte, et c\'est ouvert.',
+    'dash.guestNote': 'Tes decks sont gardés dans ce navigateur. Crée un compte pour les retrouver sur tous tes appareils, les partager et ranger ta collection.',
     'members.gateTitle': 'Tes decks, dans ton compte',
     'members.gateBody': 'Sans compte, tu peux parcourir les bibliothèques et commencer un deck : il reste dans ce navigateur et rejoint ton compte dès que tu te connectes.',
     'members.gateResume': 'Reprendre « {name} »',
@@ -523,10 +524,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'optcg.library.title': 'Bibliothèque',
     'optcg.library.sub': 'Toutes les cartes du jeu, en français dès que Bandai les a traduites.',
     'optcg.library.newDeck': 'Construire un deck',
-    'optcg.library.startWith': 'Commencer un deck avec ce Leader',
+    'optcg.library.startWith': 'Nouveau deck avec ce Leader',
     'optcg.deck.leader': 'Leader',
     'optcg.deck.chooseLeader': 'Choisis ton Leader',
-    'optcg.deck.chooseLeaderHint': 'Il fixe les couleurs du deck. Les Leaders sont affichés à droite.',
+    'optcg.deck.chooseLeaderHint': 'Il fixe les couleurs du deck. Choisis-le parmi les Leaders de la recherche.',
     'optcg.deck.don': 'DON!! ×10, à côté du deck',
     'optcg.deck.byCost': 'Par coût',
     'optcg.deck.byType': 'Par catégorie',
@@ -690,6 +691,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'dash.decks': 'decks',
     'dash.deck': 'deck',
     'dash.cards': 'cartes',
+    'dash.card': 'carte',
     'dash.lastUpdate': 'maj',
     'dash.ready': 'Prêts à jouer',
     'dash.recent': 'Récemment ouvert',
@@ -861,6 +863,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Validation
     'valid.ok': 'Deck valide',
     'valid.size': 'cartes (100 attendues)',
+    'valid.size.one': 'carte (100 attendues)',
     'valid.singleton': 'en double (singleton requis)',
     'valid.identity': 'hors identité couleur',
     'valid.noCommander': 'Aucun commandant défini',
@@ -887,7 +890,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'card.missing': 'Cette carte est introuvable.',
     'card.backToLibrary': 'Retour à la bibliothèque',
     'card.inLibrary': 'Voir dans la bibliothèque',
-    'card.startDeckWith': 'Commencer un deck avec',
+    'card.startDeckWith': 'Nouveau deck avec cette carte',
     'card.edition': 'Édition',
     'card.artist': 'Illustration',
     'card.legal': 'Légale',
@@ -1087,7 +1090,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'home.hero.l2': 'One workshop.',
     'home.hero.start': 'Start a deck',
     'home.hero.search': 'Find a card',
-    'home.hero.sub': 'Magic, One Piece, Pokémon, Yu-Gi-Oh! and Riftbound: build your decks and file your collection. Every card is here, each game\'s rules are checked on every add, and no account is needed to start.',
+    'home.hero.sub': 'Magic, One Piece, Pokémon, Yu-Gi-Oh! and Riftbound: every card, each game\'s rules checked on every add. Your decks need no account; your collection lives in your account.',
     'home.numbers.opCards': 'One Piece cards',
     'home.numbers.opArts': 'One Piece artworks, in English and French',
     'home.numbers.mtgCards': 'Magic cards playable in Commander',
@@ -1098,12 +1101,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'home.search.sub': 'One field for all five games. Type a name and results come back world by world.',
     'home.search.label': 'Search a card in every game',
     'home.search.placeholder': 'Luffy, Sol Ring, Pikachu, Jinx…',
-    'home.search.try': 'Try',
+    'home.search.try': 'For example:',
     'home.search.none': 'Nothing in this world.',
     'home.search.all': 'See all in the library',
     'home.gallery.kicker': 'Five worlds',
     'home.gallery.title': 'Pick your world',
-    'home.gallery.sub': 'Each game has its library, its deck rules checked live, its collection in binders and its own 3D room.',
+    'home.gallery.sub': 'Each game has its library and its deck rules checked live. With an account, its collection in binders and its 3D room.',
     'home.gallery.optcg': 'A wanted poster for every card, a Leader, DON!!: the crew comes together in broad daylight.',
     'home.gallery.mtg': 'Commander first: the coach, printable proxies, Cardmarket prices and EDHREC suggestions.',
     'home.gallery.pokemon': 'The whole TCG in English and French, Standard and Expanded, and Pokémon TCG Live list import.',
@@ -1170,7 +1173,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'mtg.library.title': 'The library',
     'mtg.library.sub': 'Every card playable in Commander, in French where it exists. Type a name, an effect, or Scryfall syntax.',
     'mtg.library.newDeck': 'Start a deck',
-    'mtg.library.startWith': 'Start a deck with this commander',
+    'mtg.library.startWith': 'New deck with this commander',
     'wall.title.optcg': 'Your crew is ready',
     'account.title': 'My account',
     'account.worlds': 'Your worlds',
@@ -1492,6 +1495,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'members.decks': 'Your decks live in your account: create one or sign in to find them here, on every device.',
     'members.preview': 'The proxy preview and printing are for members. One account, and it\'s open.',
     'members.artwork': 'Choosing artworks (gallery, HD versions, English) is for members. One account, and it\'s open.',
+    'dash.guestNote': 'Your decks are kept in this browser. Create an account to find them on every device, share them and file your collection.',
     'members.gateTitle': 'Your decks, in your account',
     'members.gateBody': 'Without an account you can browse the libraries and start a deck: it stays in this browser and joins your account as soon as you sign in.',
     'members.gateResume': 'Resume “{name}”',
@@ -1552,10 +1556,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'optcg.library.title': 'Library',
     'optcg.library.sub': 'Every card in the game, in French wherever Bandai has translated it.',
     'optcg.library.newDeck': 'Build a deck',
-    'optcg.library.startWith': 'Start a deck with this Leader',
+    'optcg.library.startWith': 'New deck with this Leader',
     'optcg.deck.leader': 'Leader',
     'optcg.deck.chooseLeader': 'Pick your Leader',
-    'optcg.deck.chooseLeaderHint': 'It sets the deck\'s colours. Leaders are listed on the right.',
+    'optcg.deck.chooseLeaderHint': 'It sets the deck\'s colours. Pick one among the Leaders in the search.',
     'optcg.deck.don': 'DON!! x10, beside the deck',
     'optcg.deck.byCost': 'By cost',
     'optcg.deck.byType': 'By category',
@@ -1714,6 +1718,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'dash.decks': 'decks',
     'dash.deck': 'deck',
     'dash.cards': 'cards',
+    'dash.card': 'card',
     'dash.lastUpdate': 'updated',
     'dash.ready': 'Ready to play',
     'dash.recent': 'Recently opened',
@@ -1879,6 +1884,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Validation
     'valid.ok': 'Valid deck',
     'valid.size': 'cards (100 expected)',
+    'valid.size.one': 'card (100 expected)',
     'valid.singleton': 'duplicated (singleton required)',
     'valid.identity': 'outside color identity',
     'valid.noCommander': 'No commander set',
@@ -1904,7 +1910,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'card.missing': 'This card was not found.',
     'card.backToLibrary': 'Back to the library',
     'card.inLibrary': 'Find in the library',
-    'card.startDeckWith': 'Start a deck with it',
+    'card.startDeckWith': 'New deck with this card',
     'card.edition': 'Edition',
     'card.artist': 'Artist',
     'card.legal': 'Legal',
@@ -2146,5 +2152,22 @@ export function useLocale() {
     return new Date(ts).toLocaleDateString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { day: '2-digit', month: 'short', timeZone: 'Europe/Paris' })
   }
 
-  return { locale, setLocale, toggle, t, rarityLabel, finishLabel, isFr, formatShortDate }
+  /** A count as the site's language writes it: « 32 116 ». */
+  function formatNumber(n: number): string {
+    return n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US')
+  }
+
+  /**
+   * A price in euros as the site's language writes it: « 0,81 € ». Takes a
+   * number or the decimal strings the card data carries ("0.81"); `digits`: 0
+   * for a total rounded to the euro.
+   */
+  function formatPrice(value: number | string | null | undefined, digits = 2): string {
+    const n = typeof value === 'string' ? Number(value) : value
+    if (n == null || !Number.isFinite(n))
+      return ''
+    return n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'EUR', minimumFractionDigits: digits, maximumFractionDigits: digits })
+  }
+
+  return { locale, setLocale, toggle, t, rarityLabel, finishLabel, isFr, formatShortDate, formatNumber, formatPrice }
 }

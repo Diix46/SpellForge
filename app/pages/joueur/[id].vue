@@ -75,7 +75,7 @@ usePublicSeo({
         <h2>{{ t('profile.decks') }}</h2>
         <ul class="decks">
           <li v-for="d in profile.decks" :key="d.shareId ?? d.name">
-            <NuxtLink v-if="d.shareId" :to="sharedPath(d.game, d.shareId)" class="deck" :style="{ ...lookVars(d.game), '--swatch': GAMES[d.game].swatch }">
+            <NuxtLink v-if="d.shareId" :to="sharedPath(d.game, d.shareId)" class="deck" :data-world="d.game" :style="{ ...lookVars(d.game), '--swatch': GAMES[d.game].swatch }">
               <span class="deck-game">{{ GAMES[d.game].label }}</span>
               <b class="deck-name" :class="{ upper: WORLD_LOOK[d.game].upper }">{{ d.name }}</b>
               <span class="deck-meta">

@@ -78,7 +78,7 @@ function showCommanderPreview(e: MouseEvent) {
   showPreviewSrc(props.commanderImage, e)
 }
 
-const { t, isFr } = useLocale()
+const { t, isFr, formatPrice } = useLocale()
 const { colorVar, colorCode } = useManaIdentity()
 
 // Colour distribution: count cards (×qty) contributing to each WUBRG colour,
@@ -111,7 +111,11 @@ const warnings = computed(() => props.validation.filter(v => v.level === 'warnin
 const isValid = computed(() => props.validation.length === 0)
 
 function issueText(issue: ValidationIssue): string {
-  return issue.value != null ? `${issue.value} ${t(issue.key)}` : t(issue.key)
+  // « 1 carte », « 34 cartes »: a key's singular (`.one`) when there is one.
+  if (issue.value == null)
+    return t(issue.key)
+  const one = `${issue.key}.one`
+  return `${issue.value} ${Math.abs(Number(issue.value)) <= 1 && t(one) !== one ? t(one) : t(issue.key)}`
 }
 </script>
 
@@ -219,7 +223,7 @@ function issueText(issue: ValidationIssue): string {
         {{ t('build.stats') }}
         <span class="ml-auto flex items-center gap-3 normal-case tracking-normal">
           <span v-if="curve && curve.spells > 0">{{ t('build.avgCmc') }} <b class="text-(--color-text-mid)">{{ curve.avg.toFixed(1) }}</b></span>
-          <span v-if="price && price.total > 0" class="text-(--accent-text)">{{ price.total.toFixed(0) }} €</span>
+          <span v-if="price && price.total > 0" class="text-(--accent-text)">{{ formatPrice(price.total, 0) }}</span>
         </span>
       </button>
 

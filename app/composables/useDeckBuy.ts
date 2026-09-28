@@ -36,7 +36,7 @@ interface BuyCtx {
 export function useDeckBuy(ctx: BuyCtx) {
   const { resolvedCards, allEntries, price, resolvedFor, locale } = ctx
   const { searchUrl, linksForResolved, wantsListText, wantsListImportUrl } = useCardmarket()
-  const { t } = useLocale()
+  const { t, formatPrice } = useLocale()
   const toast = useToast()
 
   // Cardmarket marketplace language (which site locale to open links in). Cards
@@ -100,7 +100,7 @@ export function useDeckBuy(ctx: BuyCtx) {
   })
 
   function fmtEur(n: number): string {
-    return `${n.toFixed(2)} €`
+    return formatPrice(n)
   }
 
   async function openAllCardmarket() {

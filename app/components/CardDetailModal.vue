@@ -29,7 +29,7 @@ const emit = defineEmits<{
   'setPrinting': [payload: { name: string, set?: string, collectorNumber?: string, lang?: 'en', hd?: true }]
 }>()
 
-const { t, rarityLabel, isFr, locale } = useLocale()
+const { t, rarityLabel, isFr, locale, formatPrice } = useLocale()
 
 // Only legendary creatures / planeswalkers can be commanders.
 const canBeCommander = computed(() => isCommanderType(props.card?.card?.typeLine ?? ''))
@@ -115,9 +115,9 @@ const setLine = computed(() => {
 })
 const priceEur = computed(() => {
   if (shownPrint.value)
-    return shownPrint.value.priceEur ? `${shownPrint.value.priceEur} €` : null
+    return shownPrint.value.priceEur ? formatPrice(shownPrint.value.priceEur) : null
   const p = props.card?.priceEur ?? c.value?.prices?.eur
-  return p ? `${p} €` : null
+  return p ? formatPrice(p) : null
 })
 const cmUrl = computed(() => searchUrl(englishName.value || props.card?.entry.name || ''))
 const scryUrl = computed(() => c.value?.scryfall_uri?.replace(/\?.*$/, '') ?? null)

@@ -9,10 +9,9 @@ import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
 // size. The whole column is the door to its library; hovered, it widens.
 const props = defineProps<{ world: LandingWorld, index: number }>()
 
-const { t, locale } = useLocale()
+const { t } = useLocale()
 const def = computed(() => GAMES[props.world.game])
 const look = computed(() => WORLD_LOOK[props.world.game])
-const count = computed(() => props.world.cards.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US'))
 // Three rows of cards, each twice over so the loop never shows a seam.
 const rows = computed(() => {
   const cards = props.world.strip.length ? props.world.strip : props.world.fan
@@ -46,7 +45,6 @@ const rows = computed(() => {
     </span>
     <span class="label">
       <span class="name" :class="{ upper: look.upper }">{{ def.label }}</span>
-      <span v-if="world.cards" class="count"><strong>{{ count }}</strong> {{ t('home.gallery.cards') }}</span>
       <span class="enter">
         {{ t('home.gallery.library') }}
         <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />
@@ -166,15 +164,6 @@ const rows = computed(() => {
 }
 .name.upper {
   text-transform: uppercase;
-}
-.count {
-  color: rgba(246, 244, 238, 0.72);
-  font-size: 13px;
-  white-space: nowrap;
-}
-.count strong {
-  color: color-mix(in srgb, var(--swatch) 45%, #ffffff);
-  font-variant-numeric: tabular-nums;
 }
 .enter {
   display: inline-flex;

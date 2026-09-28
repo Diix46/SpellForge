@@ -986,3 +986,28 @@ a.bg-primary:hover {
 button[role='switch'][data-state='unchecked'] {
   background-color: var(--color-border-strong);
 }
+
+/* Placeholders in dark mode: Nuxt UI's dimmed shade reads at 2.2:1 on the
+   dark inputs; this one at 4.6:1. */
+html.dark :where(input, textarea)::placeholder {
+  color: #8c8c96;
+}
+
+/* By night, the worlds whose own ground is light (One Piece's paper,
+   Pokémon's sun) take a dark one in their colours, wherever a world's look
+   is set on an element (utils/landing/looks, [data-world]). Over the inline
+   look, hence !important. */
+html.dark [data-world='optcg'] {
+  --bg: linear-gradient(160deg, #3a2a18, #20160b) !important;
+  --ink: #f4e4c3 !important;
+  --muted: #cdb895 !important;
+  --accent: #ef6b5d !important;
+  --on-accent: #1b0f07 !important;
+}
+html.dark [data-world='pokemon'] {
+  --bg: linear-gradient(160deg, #2e2810, #1a1608) !important;
+  --ink: #fff4cc !important;
+  --muted: #d8cb93 !important;
+  --accent: #f2c230 !important;
+  --on-accent: #1b1d2a !important;
+}

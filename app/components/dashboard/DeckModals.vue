@@ -60,7 +60,7 @@ const modalUi = {
           :key="g.id"
           type="button"
           class="world"
-          :style="{ ...lookVars(g.id), '--world': g.swatch }"
+          :data-world="g.id" :style="{ ...lookVars(g.id), '--world': g.swatch }"
           :aria-pressed="newDeckGame === g.id"
           @click="emit('update:newDeckGame', g.id)"
         >

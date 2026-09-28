@@ -13,10 +13,6 @@ const { t } = useLocale()
 
 <template>
   <section class="hero">
-    <nav class="worlds" :aria-label="t('home.gallery.kicker')">
-      <LandingHeroWorld v-for="(w, i) in worlds" :key="w.game" :world="w" :index="i" />
-    </nav>
-
     <div class="words">
       <p class="games">
         {{ GAME_LIST.map(g => g.label).join(' · ') }}
@@ -39,6 +35,11 @@ const { t } = useLocale()
         </NuxtLink>
       </div>
     </div>
+
+    <!-- After the words in the page: the keyboard reaches the main button first. -->
+    <nav class="worlds" :aria-label="t('home.gallery.kicker')">
+      <LandingHeroWorld v-for="(w, i) in worlds" :key="w.game" :world="w" :index="i" />
+    </nav>
   </section>
 </template>
 

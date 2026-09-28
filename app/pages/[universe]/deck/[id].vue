@@ -20,7 +20,7 @@ const game = gameFromSlug(route.params.universe) as TcgGameId
 const deckId = computed(() => String(route.params.id))
 const { getDeck, ready: storeReady } = useDeckStore()
 const { loggedIn } = useAuth()
-const { t, locale } = useLocale()
+const { t, locale, formatNumber } = useLocale()
 const toast = useToast()
 const { burst } = useUniverseFx()
 
@@ -235,7 +235,7 @@ const format = computed({ get: () => tcgDeck.format.value, set: tcgDeck.setForma
         <div class="ws-results">
           <p class="meta">
             <span v-if="state.loading">{{ t('build.searching') }}</span>
-            <span v-else>{{ state.total }} {{ t('tcg.results') }}</span>
+            <span v-else>{{ formatNumber(state.total) }} {{ t('tcg.results') }}</span>
           </p>
           <p v-if="state.failed" role="alert" class="empty">
             {{ t('tcg.searchFailed') }}
