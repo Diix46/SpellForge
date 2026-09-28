@@ -3,10 +3,12 @@ import type { TcgCard } from '../shared/tcg/types'
 import { describe, expect, it } from 'vitest'
 import { tcgDeckStats } from '../shared/tcg/stats'
 
-const line = (quantity: number, card: Partial<TcgCard> | null): TcgLine => ({
-  entry: { quantity, name: 'x' },
-  card: card ? { category: 'Unit', stats: {}, price: null, ...card } as TcgCard : null,
-})
+function line(quantity: number, card: Partial<TcgCard> | null): TcgLine {
+  return {
+    entry: { quantity, name: 'x' },
+    card: card ? { category: 'Unit', stats: {}, price: null, ...card } as TcgCard : null,
+  }
+}
 
 describe('tcgDeckStats', () => {
   it('draws Riftbound\'s energy curve and prices the deck', () => {
