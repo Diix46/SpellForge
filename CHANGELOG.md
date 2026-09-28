@@ -1,3 +1,9 @@
+## [0.59.0](https://github.com/Diix46/SpellForge/compare/v0.58.0...v0.59.0) (2026-09-28)
+
+### Features
+
+* retours d'Antho, lot D (les cinq jeux alignés) ([9d9aa6c](https://github.com/Diix46/SpellForge/commit/9d9aa6c74141f019a568ff01d23cdb5f732514d1))
+
 ## [0.58.0](https://github.com/Diix46/SpellForge/compare/v0.57.0...v0.58.0) (2026-09-28)
 
 ### Features
