@@ -124,7 +124,7 @@ const { t, formatShortDate } = useLocale()
   font-size: 12.5px;
 }
 .deck {
-  border-top: 3px solid var(--swatch);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
   border-radius: 12px;
   background: var(--bg);
   color: var(--ink);
@@ -146,8 +146,6 @@ const { t, formatShortDate } = useLocale()
   color: var(--muted);
 }
 .deck:hover {
-  box-shadow:
-    inset 0 3px 0 var(--swatch),
-    0 0 0 2px color-mix(in srgb, var(--swatch) 60%, transparent);
+  border-color: var(--swatch);
 }
 </style>

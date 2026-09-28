@@ -123,8 +123,8 @@ function home() {
   background: var(--bg);
   color: var(--ink);
   text-decoration: none;
-  box-shadow: inset 0 3px 0 var(--swatch);
-  transition: transform 0.25s ease;
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  transition: border-color var(--dur) var(--ease-out);
 }
 .door:focus-visible {
   outline: 2px solid var(--swatch);
@@ -142,8 +142,6 @@ function home() {
   text-transform: uppercase;
 }
 .door:hover {
-  box-shadow:
-    inset 0 3px 0 var(--swatch),
-    0 0 0 2px color-mix(in srgb, var(--swatch) 60%, transparent);
+  border-color: var(--swatch);
 }
 </style>

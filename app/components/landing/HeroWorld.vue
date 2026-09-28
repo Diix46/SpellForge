@@ -85,16 +85,6 @@ const rows = computed(() => {
   text-decoration: underline;
   text-underline-offset: 6px;
 }
-/* Where the ray lands: a line of the world's colour along the top. */
-.world::before {
-  content: '';
-  position: absolute;
-  z-index: 2;
-  inset: 0 0 auto;
-  height: 3px;
-  background: var(--swatch);
-  box-shadow: 0 0 18px 2px var(--swatch);
-}
 @keyframes world-in {
   from {
     opacity: 0;
@@ -219,11 +209,6 @@ const rows = computed(() => {
   }
   .world + .world {
     margin-left: 0;
-  }
-  .world::before {
-    inset: 0 auto 0 0;
-    width: 4px;
-    height: auto;
   }
   .strip {
     inset: 0 0 0 45%;

@@ -167,12 +167,10 @@ const money = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 
   border-radius: var(--radius-lg);
   background: var(--bg);
   color: var(--ink);
-  box-shadow: inset 0 3px 0 var(--swatch);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
 }
 .world.fav {
-  box-shadow:
-    inset 0 3px 0 var(--swatch),
-    0 0 0 2px var(--swatch);
+  border-color: var(--swatch);
 }
 .world-top {
   display: flex;

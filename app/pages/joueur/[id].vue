@@ -228,7 +228,11 @@ usePublicSeo({
   background: var(--bg);
   color: var(--ink);
   text-decoration: none;
-  box-shadow: inset 0 3px 0 var(--swatch);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  transition: border-color var(--dur) var(--ease-out);
+}
+.deck:hover {
+  border-color: var(--swatch);
 }
 .deck-game {
   font-size: 11px;

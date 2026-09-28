@@ -174,16 +174,13 @@ const modalUi = {
   background: var(--bg);
   color: var(--ink);
   text-align: left;
-  box-shadow: inset 0 3px 0 var(--world);
-  transition:
-    transform 0.3s cubic-bezier(0.3, 1.7, 0.5, 1),
-    border-color 0.2s ease;
+  transition: border-color 0.2s ease;
+}
+.world:hover {
+  border-color: color-mix(in srgb, var(--world) 45%, transparent);
 }
 .world[aria-pressed='true'] {
   border-color: var(--world);
-  box-shadow:
-    inset 0 3px 0 var(--world),
-    0 10px 24px -12px var(--world);
 }
 .world:focus-visible {
   outline: 2px solid var(--world);
