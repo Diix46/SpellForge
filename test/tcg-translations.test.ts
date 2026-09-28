@@ -53,6 +53,8 @@ describe('unofficial translations', () => {
     expect(titledName('Akali, arme mortelle', 'Akali - Deadly')).toBe('Akali - Arme mortelle')
     expect(titledName('Vi - justicière de Piltover', 'Vi - Piltover Enforcer')).toBe('Vi - Justicière de Piltover')
     expect(titledName('Gromp vorace', 'Voracious Gromp')).toBe('Gromp vorace')
+    expect(titledName('Akali, arme mortelle', 'Akali, Deadly Weapon')).toBe('Akali, Arme mortelle')
+    expect(titledName('Sona, l\'Harmonieuse', 'Sona, Harmonious')).toBe('Sona, l\'Harmonieuse')
   })
 
   it('keys a card by its English words: an edited card is translated again', () => {
