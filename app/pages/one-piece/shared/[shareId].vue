@@ -91,19 +91,15 @@ function startWith(card: OptcgCard) {
 
 <template>
   <div class="op-shared fade-up">
-    <div v-if="loading" class="state">
-      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-(--accent-text)" />
-    </div>
+    <DeckSkeleton v-if="loading" />
 
-    <div v-else-if="notFound || !deck" class="state">
-      <UIcon name="i-lucide-unlink" class="h-10 w-10 text-(--color-text-muted)" />
-      <p class="text-(--color-text-muted)">
-        {{ t('share.notFound') }}
-      </p>
-      <UButton to="/one-piece" color="primary" icon="i-lucide-anchor">
-        {{ t('share.home') }}
-      </UButton>
-    </div>
+    <ErrorPanel v-else-if="notFound || !deck" icon="i-lucide-unlink" :title="t('share.notFound')">
+      <template #actions>
+        <UButton to="/one-piece" color="primary" icon="i-lucide-anchor">
+          {{ t('share.home') }}
+        </UButton>
+      </template>
+    </ErrorPanel>
 
     <template v-else>
       <header class="head">
@@ -164,14 +160,6 @@ function startWith(card: OptcgCard) {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 80px 0;
-  text-align: center;
 }
 .head {
   display: flex;

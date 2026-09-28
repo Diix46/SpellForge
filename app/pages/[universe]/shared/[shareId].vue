@@ -87,19 +87,15 @@ function startWith(card: TcgCard) {
 
 <template>
   <div class="tcg-shared fade-up">
-    <div v-if="loading" class="state">
-      <UIcon name="i-lucide-loader-circle" class="h-8 w-8 animate-spin text-(--accent-text)" />
-    </div>
+    <DeckSkeleton v-if="loading" />
 
-    <div v-else-if="notFound || !deck" class="state">
-      <UIcon name="i-lucide-unlink" class="h-10 w-10 text-(--color-text-muted)" />
-      <p class="text-(--color-text-muted)">
-        {{ t('share.notFound') }}
-      </p>
-      <UButton :to="libraryPath(game)" color="primary" :icon="GAMES[game].icon">
-        {{ t('share.home') }}
-      </UButton>
-    </div>
+    <ErrorPanel v-else-if="notFound || !deck" icon="i-lucide-unlink" :title="t('share.notFound')">
+      <template #actions>
+        <UButton :to="libraryPath(game)" color="primary" :icon="GAMES[game].icon">
+          {{ t('share.home') }}
+        </UButton>
+      </template>
+    </ErrorPanel>
 
     <template v-else>
       <header class="head">
@@ -154,14 +150,6 @@ function startWith(card: TcgCard) {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  padding: 80px 0;
-  text-align: center;
 }
 .head {
   display: flex;

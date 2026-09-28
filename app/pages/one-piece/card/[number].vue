@@ -81,10 +81,7 @@ function startWith(c: OptcgCard) {
       </NuxtLink>
     </nav>
 
-    <div v-if="!card" class="missing">
-      <UIcon name="i-lucide-search-x" class="h-10 w-10" />
-      <p>{{ t('card.missing') }}</p>
-    </div>
+    <ErrorPanel v-if="!card" :title="t('card.missing')" />
 
     <article v-else class="sheet">
       <OptcgCardView v-model:shown="shown" :card="card" :prints="prints" :lang="lang" heading="h1">
@@ -130,14 +127,6 @@ function startWith(c: OptcgCard) {
   border-radius: var(--radius-md);
   background: var(--glass-bg);
   box-shadow: var(--shadow-elev-1);
-}
-.missing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 80px 0;
-  color: var(--color-text-muted);
 }
 .actions {
   display: flex;

@@ -162,7 +162,7 @@ function newDeck(commander?: ResolvedCard) {
 }
 .title {
   margin: var(--page-kicker-gap) 0 0;
-  font-size: clamp(34px, 5vw, 56px);
+  font-size: var(--title-page);
   line-height: 1;
   color: var(--color-text-high);
 }

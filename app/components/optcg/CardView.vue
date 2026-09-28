@@ -127,12 +127,24 @@ const facts = computed(() => {
 <style scoped>
 .sheet-grid {
   display: grid;
-  gap: 20px;
-  padding: 20px;
+  /* minmax(0, …): the strip of printings scrolls, it never widens the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  padding: 14px;
 }
-@media (min-width: 640px) {
+.sheet-art {
+  width: 100%;
+  min-width: 0;
+  max-width: 300px;
+  margin-inline: auto;
+}
+@media (min-width: 641px) {
   .sheet-grid {
-    grid-template-columns: minmax(220px, 300px) 1fr;
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+    padding: 18px;
+  }
+  .sheet-art {
+    max-width: none;
   }
 }
 .frame {
@@ -197,7 +209,7 @@ const facts = computed(() => {
 }
 .sheet-name {
   margin: 0;
-  font-size: 26px;
+  font-size: var(--title-sheet);
   line-height: 1.05;
   color: var(--color-text-high);
 }
