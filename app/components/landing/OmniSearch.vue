@@ -296,6 +296,16 @@ function pick(s: string) {
     transform 0.35s cubic-bezier(0.3, 1.5, 0.5, 1),
     box-shadow 0.35s ease;
 }
+.hit {
+  /* The card's corners clip its zoom. */
+  border-radius: 4.5% / 3.2%;
+}
+/* Hovered, the card grows a little in place: a card you can open. The only
+   effect, and nothing around it moves. */
+.hit:hover img,
+.hit:focus-visible img {
+  transform: scale(1.04);
+}
 .hit-name {
   overflow: hidden;
   font-size: 13px;

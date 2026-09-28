@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import { GAMES, libraryPath } from '#shared/game'
 import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
 
-// One world's column at the foot of the hero: its cards filing past in two
+// One world's column at the foot of the hero: its cards filing past in three
 // rows going opposite ways, its name in the face its cards are set in, its
 // size. The whole column is the door to its library; hovered, it widens.
 const props = defineProps<{ world: LandingWorld, index: number }>()
@@ -13,12 +13,13 @@ const { t, locale } = useLocale()
 const def = computed(() => GAMES[props.world.game])
 const look = computed(() => WORLD_LOOK[props.world.game])
 const count = computed(() => props.world.cards.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'en-US'))
-// Two rows of cards, each twice over so the loop never shows a seam.
+// Three rows of cards, each twice over so the loop never shows a seam.
 const rows = computed(() => {
   const cards = props.world.strip.length ? props.world.strip : props.world.fan
-  const a = cards.filter((_, i) => i % 2 === 0)
-  const b = cards.filter((_, i) => i % 2 === 1)
-  return [a, b.length ? b : a].map(r => [...r, ...r])
+  return [0, 1, 2].map((k) => {
+    const row = cards.filter((_, i) => i % 3 === k)
+    return row.length ? [...row, ...row] : [...cards, ...cards]
+  })
 })
 </script>
 
@@ -75,7 +76,7 @@ const rows = computed(() => {
 }
 .world:hover,
 .world:focus-visible {
-  flex-grow: 1.7;
+  flex-grow: 1.3;
 }
 .world:focus-visible {
   outline: none;
@@ -107,19 +108,15 @@ const rows = computed(() => {
   inset: -20px 0 0;
   display: flex;
   justify-content: center;
-  gap: 12px;
-  padding-inline: 12px;
-  opacity: 0.78;
-  transition: opacity 0.5s ease;
-}
-.world:hover .strip {
-  opacity: 1;
+  gap: 8px;
+  padding-inline: 8px;
+  opacity: 0.9;
 }
 .row {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: min(190px, 44%);
+  gap: 8px;
+  width: min(150px, 31%);
   flex-shrink: 0;
   animation: file 70s linear infinite;
 }
@@ -127,6 +124,10 @@ const rows = computed(() => {
   margin-top: -90px;
   animation-direction: reverse;
   animation-duration: 84s;
+}
+.row--2 {
+  margin-top: -40px;
+  animation-duration: 78s;
 }
 .card {
   display: block;
@@ -235,7 +236,8 @@ const rows = computed(() => {
     height: 76px;
     animation: none;
   }
-  .row--1 {
+  .row--1,
+  .row--2 {
     display: none;
   }
   .card {
