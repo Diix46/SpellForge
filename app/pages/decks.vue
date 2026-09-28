@@ -314,9 +314,9 @@ const restDecks = computed(() =>
   background: var(--bg);
   color: var(--ink);
   text-align: left;
-  box-shadow: inset 0 3px 0 var(--world);
+  border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.3, 1.7, 0.5, 1);
+  transition: border-color var(--dur) var(--ease-out);
 }
 .empty-world:focus-visible {
   outline: 2px solid var(--world);
@@ -413,8 +413,6 @@ const restDecks = computed(() =>
   transition: transform var(--dur-slow) var(--ease-spring);
 }
 .empty-world:hover {
-  box-shadow:
-    inset 0 3px 0 var(--world),
-    0 0 0 2px color-mix(in srgb, var(--world) 60%, transparent);
+  border-color: var(--world);
 }
 </style>
