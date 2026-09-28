@@ -20,12 +20,12 @@ const emit = defineEmits<{
   preview: [print: PrintOption]
 }>()
 
-const { t } = useLocale()
+const { t, formatPrice } = useLocale()
 
 const title = computed(() => [
   `${props.print.setName} · #${props.print.collectorNumber}`,
   props.print.artist ?? '',
-  props.print.priceEur ? `${props.print.priceEur} €` : '',
+  props.print.priceEur ? formatPrice(props.print.priceEur) : '',
   props.print.highres ? '' : t('print.lowres'),
 ].filter(Boolean).join(' · '))
 </script>

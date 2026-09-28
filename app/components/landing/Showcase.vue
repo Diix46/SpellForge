@@ -31,7 +31,7 @@ const { t, formatShortDate } = useLocale()
     </header>
     <ul class="grid">
       <li v-for="d in decks" :key="d.path">
-        <NuxtLink :to="d.path" class="deck" :style="{ ...lookVars(d.game), '--swatch': GAMES[d.game].swatch }">
+        <NuxtLink :to="d.path" class="deck" :data-world="d.game" :style="{ ...lookVars(d.game), '--swatch': GAMES[d.game].swatch }">
           <span class="world">{{ GAMES[d.game].label }}</span>
           <strong class="name" :class="{ upper: WORLD_LOOK[d.game].upper }">{{ d.name }}</strong>
           <span class="meta">{{ t('home.showcase.by') }} {{ d.owner }} · {{ formatShortDate(d.updatedAt) }}</span>

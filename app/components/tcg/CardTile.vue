@@ -19,7 +19,7 @@ const emit = defineEmits<{
   add: [card: TcgCard, from: HTMLElement]
 }>()
 
-const { t } = useLocale()
+const { t, formatPrice } = useLocale()
 const aspect = computed(() => TCG_UI[props.game].aspect)
 const price = computed(() => props.card.price ?? props.card.priceFoil)
 const frame = computed(() => TCG_UI[props.game].frame?.(props.card) ?? null)
@@ -57,7 +57,7 @@ onMounted(() => {
       <span class="name">{{ card.name }}</span>
       <span class="meta">
         <span class="font-mono">{{ card.set }} · {{ card.number }}</span>
-        <span v-if="price != null" class="price">{{ price.toFixed(2) }} €</span>
+        <span v-if="price != null" class="price">{{ formatPrice(price) }}</span>
       </span>
     </p>
   </article>

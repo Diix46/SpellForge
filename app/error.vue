@@ -41,7 +41,7 @@ function home() {
         :key="g.id"
         :href="libraryPath(g.id)"
         class="door"
-        :style="{ ...lookVars(g.id), '--swatch': g.swatch }"
+        :data-world="g.id" :style="{ ...lookVars(g.id), '--swatch': g.swatch }"
       >
         <span class="door-name" :class="{ upper: WORLD_LOOK[g.id].upper }">{{ g.label }}</span>
         <UIcon name="i-lucide-arrow-right" class="h-4 w-4" />

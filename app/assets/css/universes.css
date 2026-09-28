@@ -127,7 +127,8 @@ html[data-universe='mtg'] {
 
   --color-text-high: #1b1f22;
   --color-text-mid: #454d52;
-  --color-text-muted: #616a6f; /* 5.9:1 on the page paper */
+  /* 6:1 on the paper, 5.4:1 on its darker panels and its felt (AA with room). */
+  --color-text-muted: #565e63;
   --color-text-disabled: #8a9296;
 
   --color-border-hairline: rgba(27, 31, 34, 0.1);

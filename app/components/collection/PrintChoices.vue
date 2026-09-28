@@ -6,7 +6,7 @@ import type { PrintChoice } from '~/composables/useCollection'
 defineProps<{ prints: PrintChoice[], selected: string | null, owned: Map<string, number> }>()
 defineEmits<{ select: [printingId: string] }>()
 
-const { t } = useLocale()
+const { t, formatPrice } = useLocale()
 </script>
 
 <template>
@@ -29,7 +29,7 @@ const { t } = useLocale()
         <span class="code">{{ p.set.toUpperCase() }} #{{ p.number }}</span>
         <span class="lang">{{ p.lang.toUpperCase() }}</span>
       </span>
-      <span v-if="p.price" class="price">{{ p.price }} €</span>
+      <span v-if="p.price" class="price">{{ formatPrice(p.price) }}</span>
     </button>
   </div>
 </template>

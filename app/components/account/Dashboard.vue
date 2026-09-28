@@ -48,7 +48,7 @@ const money = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 
       <UIcon name="i-lucide-loader-circle" class="h-6 w-6 animate-spin" />
     </div>
     <ul v-else class="worlds">
-      <li v-for="g in games" :key="g.game" class="world" :class="{ fav: favorite === g.game }" :style="{ ...lookVars(g.game), '--swatch': GAMES[g.game].swatch }">
+      <li v-for="g in games" :key="g.game" class="world" :class="{ fav: favorite === g.game }" :data-world="g.game" :style="{ ...lookVars(g.game), '--swatch': GAMES[g.game].swatch }">
         <div class="world-top">
           <span class="world-name" :class="{ upper: WORLD_LOOK[g.game].upper }">{{ GAMES[g.game].label }}</span>
           <button

@@ -334,7 +334,8 @@ export function buildAutocompleteQuery(prefix: string, limit = 20) {
      WHERE o.oracle_id IN (SELECT oracle_id FROM card_search WHERE card_search MATCH ?)
        AND o.is_extra = 0 AND o.is_funny = 0`
     // FTS5 marks the last token of a phrase as a prefix when `*` follows it.
-    args.push(`name_folded : ${phrase}*`)
+    // The printed (French) name too: « Contresort » finds Counterspell.
+    args.push(`{name_folded printed_name} : ${phrase}*`)
   }
   args.push(limit)
 

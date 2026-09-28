@@ -7,6 +7,7 @@ import { useDeckAnalysis } from '~/composables/useDeckAnalysis'
 import { useDecklist } from '~/composables/useDecklist'
 import { useManaIdentity } from '~/composables/useManaIdentity'
 import { useScryfall } from '~/composables/useScryfall'
+import { thumbOf } from '~/utils/cardImage'
 
 // A shared Magic deck, read-only, at night like the rest of Magic.
 definePageMeta({ universe: 'mtg' })
@@ -156,10 +157,13 @@ function copyToMine() {
         <img
           v-for="card in gridCards"
           :key="card.card?.id ?? card.entry.name"
-          :src="card.imageUrl!"
+          :src="thumbOf(card.imageUrl)!"
           :alt="card.card?.name ?? card.entry.name"
           loading="lazy"
-          class="block aspect-[63/88] w-full rounded-[var(--radius-md)] object-cover ring-1 ring-(--color-border-subtle)"
+          decoding="async"
+          width="320"
+          height="446"
+          class="block aspect-[63/88] h-auto w-full rounded-[var(--radius-md)] bg-(--color-surface-3) object-cover ring-1 ring-(--color-border-subtle)"
         >
       </div>
     </template>

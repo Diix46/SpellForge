@@ -337,6 +337,13 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
 .sort > :deep(*) {
   min-width: 0;
 }
+/* The order's name whole (« Plus récentes »): the select takes the row's
+   room, the reset link goes under it when it must. */
+.sort > :deep(button[role='combobox']),
+.sort > :deep(.flex-1) {
+  flex: 1 1 150px;
+  min-width: 150px;
+}
 .reset {
   margin-left: auto;
   font-size: 12px;

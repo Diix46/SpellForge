@@ -7,15 +7,15 @@ import { useDeckFingerprints } from '~/composables/useDeckFingerprints'
 import { useDeckStore } from '~/composables/useDeckStore'
 import { lookVars, WORLD_LOOK } from '~/utils/landing/looks'
 
-// The workshop's home: every deck of the account, both worlds together. A
-// guest gets the way in instead (DashboardMembersGate): the list is for
-// members, the deck started in this browser stays one click away.
-const { t, formatShortDate } = useLocale()
+// The workshop's home: every deck, every game together — the account's, or a
+// guest's kept in this browser (with a word on what an account adds).
+const { t, formatShortDate, formatNumber } = useLocale()
 
 const route = useRoute()
 const router = useRouter()
 const { decks, duplicateDeck, getDeck, ready, syncFailed, syncFromCloud } = useDeckStore()
 const { loggedIn } = useAuth()
+const authOverlay = useAuthOverlay()
 
 function openDeck(id: string) {
   const deck = getDeck(id)
@@ -71,8 +71,7 @@ const restDecks = computed(() =>
 
 <template>
   <div>
-    <DashboardMembersGate v-if="!loggedIn" :decks="decks" />
-    <div v-else class="fade-up dash">
+    <div class="fade-up dash">
       <!-- PAGE HEAD -->
       <header class="dash-head">
         <div class="min-w-0">
@@ -81,7 +80,7 @@ const restDecks = computed(() =>
           </h1>
           <p class="dash-sub">
             <template v-if="decks.length">
-              {{ decks.length }} {{ decks.length === 1 ? t('dash.deck') : t('dash.decks') }} · {{ totalCardsAll }} {{ t('dash.cards') }} · {{ t('dash.lastUpdate') }} {{ lastUpdated }}
+              {{ decks.length }} {{ decks.length === 1 ? t('dash.deck') : t('dash.decks') }} · {{ formatNumber(totalCardsAll) }} {{ totalCardsAll === 1 ? t('dash.card') : t('dash.cards') }} · {{ t('dash.lastUpdate') }} {{ lastUpdated }}
             </template>
             <template v-else>
               {{ t('dash.subtitle') }}
@@ -108,6 +107,15 @@ const restDecks = computed(() =>
           </UButton>
         </div>
       </header>
+
+      <!-- A guest's decks live in this browser: what an account adds. -->
+      <div v-if="!loggedIn" class="guest-note">
+        <UIcon name="i-lucide-hard-drive" class="h-5 w-5 shrink-0" />
+        <p>{{ t('dash.guestNote') }}</p>
+        <UButton size="sm" color="neutral" variant="subtle" icon="i-lucide-user-plus" @click="authOverlay.show('register')">
+          {{ t('members.unlock') }}
+        </UButton>
+      </div>
 
       <UAlert
         v-if="syncFailed"
@@ -143,7 +151,7 @@ const restDecks = computed(() =>
             :key="g.id"
             type="button"
             class="empty-world"
-            :style="{ ...lookVars(g.id), '--world': g.swatch }"
+            :data-world="g.id" :style="{ ...lookVars(g.id), '--world': g.swatch }"
             @click="modals.newDeckGame.value = g.id; modals.showNewDeck.value = true"
           >
             <span class="empty-world-name" :class="{ upper: WORLD_LOOK[g.id].upper }">{{ g.label }}</span>
@@ -298,6 +306,23 @@ const restDecks = computed(() =>
   margin: 8px 0 24px;
   color: var(--color-text-muted);
   font-size: 14px;
+}
+.guest-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+  color: var(--color-text-mid);
+  font-size: 14px;
+}
+.guest-note p {
+  flex: 1 1 320px;
+  margin: 0;
 }
 .empty-worlds {
   display: grid;

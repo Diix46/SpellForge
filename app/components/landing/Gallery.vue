@@ -33,7 +33,7 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
         v-for="(w, i) in list"
         :key="w.game"
         class="world"
-        :style="{ '--bg': w.look.bg, '--ink': w.look.ink, '--muted': w.look.muted, '--accent': w.look.accent, '--on-accent': w.look.onAccent, '--face': w.look.face, '--weight': w.look.weight, '--i': i }"
+        :data-world="w.game" :style="{ '--bg': w.look.bg, '--ink': w.look.ink, '--muted': w.look.muted, '--accent': w.look.accent, '--on-accent': w.look.onAccent, '--face': w.look.face, '--weight': w.look.weight, '--i': i }"
       >
         <div class="fan" aria-hidden="true">
           <NuxtLink v-for="(c, k) in w.fan" :key="c.path" :to="c.path" class="fan-card" :style="{ '--k': k, '--n': w.fan.length }" tabindex="-1">
@@ -116,8 +116,9 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-  gap: 18px;
+  /* The five worlds on one row; fewer per row on a narrower screen. */
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
   max-width: var(--l-width);
   margin: 0 auto;
   padding: 0;
@@ -183,12 +184,12 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
   flex: 1;
   flex-direction: column;
   gap: 10px;
-  padding: 22px 22px 22px;
+  padding: 20px 18px;
 }
 .name {
   margin: 0;
   font-family: var(--face);
-  font-size: 30px;
+  font-size: clamp(22px, 1.9vw, 28px);
   font-weight: var(--weight);
   line-height: 1;
 }
@@ -211,26 +212,34 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
   color: var(--ink);
 }
 .count {
-  margin: 0;
+  /* The count and the doors at the foot, level from one world to the next. */
+  margin: auto 0 0;
   font-size: 12.5px;
   color: var(--muted);
 }
 .count strong {
   font-family: 'Geist Mono', ui-monospace, monospace;
   font-size: 15px;
-  color: var(--accent);
+  /* The world's ink, not its accent: the accents fall under AA on the
+     light grounds (One Piece's red 3.7:1, Pokémon's 3.9:1). */
+  color: var(--ink);
 }
 .doors {
-  display: flex;
-  flex-wrap: wrap;
+  /* The library across, the deck and the collection under it, side by side. */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: auto;
   padding-top: 8px;
+}
+.door--main {
+  grid-column: 1 / -1;
 }
 .door {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  white-space: nowrap;
   padding: 7px 12px;
   border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
   border-radius: 999px;
@@ -253,6 +262,11 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
 .door:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+@media (max-width: 1180px) {
+  .grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .world,

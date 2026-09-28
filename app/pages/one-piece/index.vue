@@ -8,7 +8,7 @@ import { deckPath } from '#shared/game'
 // Reading only: a card opens its sheet; a Leader can start a deck.
 definePageMeta({ universe: 'optcg' })
 
-const { t, locale } = useLocale()
+const { t, locale, formatNumber } = useLocale()
 const { createDeck } = useDeckStore()
 
 usePublicSeo({
@@ -101,7 +101,7 @@ function newDeck(leader?: OptcgCard) {
       <section>
         <p class="meta">
           <span v-if="state.loading">{{ t('build.searching') }}</span>
-          <span v-else>{{ state.total }} {{ t('optcg.results') }}</span>
+          <span v-else>{{ formatNumber(state.total) }} {{ t('optcg.results') }}</span>
         </p>
         <p v-if="state.failed" role="alert" class="empty">
           {{ t('optcg.searchFailed') }}

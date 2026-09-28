@@ -4,7 +4,8 @@ import type { GameId } from '#shared/game'
  * Each world's look on the landing, from its cards: its colours, the face its
  * cards are set in (a free look-alike), whether its name is set in capitals.
  * The universes' own tokens live on their pages; these dress the landing's
- * doors to them (hero, gallery, showcase, finale).
+ * doors to them. By night, the light grounds turn dark in main.css
+ * ([data-world]): set as CSS, the server-rendered page has them too.
  */
 export interface WorldLook {
   bg: string

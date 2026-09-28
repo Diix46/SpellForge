@@ -4,12 +4,11 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { GAME_LIST, libraryPath } from '#shared/game'
 
 // One field for every game: the results come back world by world, a row
-// each, in its colour. A first query is rendered with the page so the section
-// is never empty.
+// each, in its colour. Empty until a name is typed (or an example picked).
 const { t, locale } = useLocale()
 
 const SUGGESTIONS = ['Dragon', 'Luffy', 'Sol Ring', 'Pikachu', 'Magicien Sombre', 'Jinx']
-const text = ref('Dragon')
+const text = ref('')
 const query = ref(text.value)
 
 let debounce: ReturnType<typeof setTimeout> | null = null
@@ -68,7 +67,8 @@ function pick(s: string) {
       </p>
     </header>
 
-    <div class="results" :class="{ busy }">
+    <!-- Nothing asked, nothing shown: the section waits for a name. -->
+    <div v-if="searched" class="results" :class="{ busy }">
       <section v-for="row in rows" :key="row.def.id" class="row" :style="{ '--swatch': row.def.swatch }" :aria-label="row.def.label">
         <header class="row-head">
           <UIcon :name="row.def.icon" class="h-4 w-4" />
@@ -104,7 +104,7 @@ function pick(s: string) {
   flex-direction: column;
   align-items: center;
   gap: 14px;
-  padding: var(--l-section) var(--l-gutter) var(--l-head-gap);
+  padding: var(--l-section) var(--l-gutter);
   text-align: center;
 }
 .kicker {
@@ -124,6 +124,10 @@ function pick(s: string) {
   font-weight: 400;
   line-height: 0.95;
   text-transform: uppercase;
+  /* The gradient only paints inside the box: room above the capitals for
+     their accents (TÊTE), given back by the margin. */
+  padding-top: 0.14em;
+  margin-top: -0.14em;
   /* The five worlds' colours, as the prism in the hero spreads them. */
   background: linear-gradient(90deg, #c9312a, #d09a16, #6b3fa0, #1f8a9a, #2d4f7c);
   -webkit-background-clip: text;
@@ -228,7 +232,8 @@ function pick(s: string) {
   gap: 26px;
   max-width: calc(var(--l-width) + var(--l-gutter) * 2);
   margin: 0 auto;
-  padding: 10px var(--l-gutter) var(--l-section);
+  padding: 0 var(--l-gutter) var(--l-section);
+  margin-top: calc(var(--l-section) * -1 + var(--l-head-gap));
   transition: opacity 0.2s ease;
 }
 .results.busy {

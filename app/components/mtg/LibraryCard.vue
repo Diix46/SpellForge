@@ -3,6 +3,7 @@ import type { ScryfallCard } from '~/composables/useScryfall'
 import { computed } from 'vue'
 import { displayName, displayType } from '~/composables/useMtg'
 import { getImageUris } from '~/composables/useScryfall'
+import { thumbOf } from '~/utils/cardImage'
 
 // A Magic card as it sits on the table: the card in a brass-edged sleeve, its name
 // engraved beneath, the type line in italic. Perfectly square to the page,
@@ -10,17 +11,18 @@ import { getImageUris } from '~/composables/useScryfall'
 const props = defineProps<{ card: ScryfallCard }>()
 const emit = defineEmits<{ open: [card: ScryfallCard] }>()
 
-const { isFr } = useLocale()
+const { isFr, formatPrice } = useLocale()
 const name = computed(() => displayName(props.card, isFr.value))
 const type = computed(() => displayType(props.card, isFr.value))
 const image = computed(() => getImageUris(props.card)?.normal ?? null)
-const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur} €` : ''))
+const price = computed(() => (props.card.prices?.eur ? formatPrice(props.card.prices.eur) : ''))
 </script>
 
 <template>
   <button type="button" class="page" :aria-label="name" @click="emit('open', card)">
     <span class="frame">
-      <img v-if="image" :src="image" :alt="name" loading="lazy" decoding="async" width="488" height="680">
+      <!-- The light copy where the tile is small, the full scan on a sharp screen. -->
+      <img v-if="image" :src="thumbOf(image)!" :srcset="`${thumbOf(image)} 320w, ${image} 488w`" sizes="(max-width: 640px) 45vw, 200px" :alt="name" loading="lazy" decoding="async" width="488" height="680">
       <span v-else class="missing">{{ name }}</span>
     </span>
     <span class="name">{{ name }}</span>
@@ -64,6 +66,8 @@ const price = computed(() => (props.card.prices?.eur ? `${props.card.prices.eur}
   aspect-ratio: 63 / 88;
   border-radius: 4.5% / 3.2%;
   object-fit: cover;
+  /* Its place tinted while it loads, not a blank frame. */
+  background: var(--color-surface-3);
 }
 .missing {
   display: grid;

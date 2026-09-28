@@ -25,7 +25,7 @@ const emit = defineEmits<{
   dropRemove: [name: string]
 }>()
 
-const { t, locale } = useLocale()
+const { t, locale, formatNumber } = useLocale()
 const { dragging, readDrop } = useCardDnd()
 const { state, search, loadMore, suggest, autocomplete } = useCardSearch()
 
@@ -161,7 +161,7 @@ onMounted(() => {
         <!-- Results meta -->
         <div class="mb-2 flex items-center justify-between text-xs text-(--color-text-muted)">
           <span v-if="state.loading">{{ t('build.searching') }}</span>
-          <span v-else-if="state.total">{{ state.total }} {{ t('build.results') }}</span>
+          <span v-else-if="state.total">{{ formatNumber(state.total) }} {{ t('build.results') }}</span>
           <span v-else />
         </div>
 

@@ -14,7 +14,7 @@ import { mtgRaw } from '~/composables/useScryfall'
 definePageMeta({ universe: 'mtg' })
 
 const route = useRoute()
-const { t, locale, isFr, rarityLabel } = useLocale()
+const { t, locale, isFr, rarityLabel, formatPrice } = useLocale()
 const { createDeck } = useDeckStore()
 const { searchUrl } = useCardmarket()
 
@@ -80,7 +80,7 @@ const setLine = computed(() => {
 })
 const price = computed(() => {
   const eur = pickedPrint.value ? pickedPrint.value.priceEur : resolved.value?.priceEur
-  return eur ? `${eur} €` : null
+  return eur ? formatPrice(eur) : null
 })
 const commanderLegal = computed(() => c.value?.legalities?.commander === 'legal')
 const canLead = computed(() => isCommanderType(c.value?.type_line ?? ''))

@@ -10,7 +10,7 @@ import { toMtgCard } from '~/composables/useScryfall'
 // Reading only: a card opens its sheet; a possible commander can start a deck.
 definePageMeta({ universe: 'mtg' })
 
-const { t, locale } = useLocale()
+const { t, locale, formatNumber } = useLocale()
 const { createDeck } = useDeckStore()
 
 usePublicSeo({
@@ -110,7 +110,7 @@ function newDeck(commander?: ResolvedCard) {
       <section>
         <p class="meta">
           <span v-if="state.loading">{{ t('build.searching') }}</span>
-          <span v-else>{{ state.total }} {{ t('build.results') }}</span>
+          <span v-else>{{ formatNumber(state.total) }} {{ t('build.results') }}</span>
         </p>
         <p v-if="state.error && !state.loading" role="alert" class="empty">
           {{ state.error }}

@@ -38,7 +38,7 @@ const emit = defineEmits<{
   'redo': []
 }>()
 
-const { t } = useLocale()
+const { t, formatPrice } = useLocale()
 </script>
 
 <template>
@@ -99,7 +99,7 @@ const { t } = useLocale()
         class="shrink-0 rounded-full bg-(--color-surface-2) px-2.5 py-1 font-mono text-xs font-semibold text-(--accent-text) ring-1 ring-(--color-border-subtle)"
         :title="t('buy.estTotal')"
       >
-        ~{{ priceTotal.toFixed(0) }} €
+        ~{{ formatPrice(priceTotal, 0) }}
       </span>
       <!-- Owned: how much of the deck the collection already covers. -->
       <!-- Something missing: what, and at what price (CollectionMissingDialog). -->

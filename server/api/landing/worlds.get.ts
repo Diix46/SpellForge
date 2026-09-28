@@ -14,7 +14,7 @@ import { useMtgCardsDb, useOptcgCardsDb } from '../../utils/cards/db'
 import { imageUrl } from '../../utils/cards/mtg-shape'
 import { optcgImageUrl } from '../../utils/cards/optcg-shape'
 import { useTcgDb } from '../../utils/tcg/db'
-import { tcgImageUrl } from '../../utils/tcg/query'
+import { buildBrowseQuery, tcgImageUrl } from '../../utils/tcg/query'
 
 const FAN = 3
 const STRIP = 12
@@ -83,10 +83,15 @@ async function optcg(lang: 'fr' | 'en'): Promise<LandingWorld> {
   }
 }
 
+// The count its library shows with no filter (Yu-Gi-Oh!'s lists one printing
+// per card), so the landing and the library say the same number.
+const UNIQUE: Partial<Record<TcgGameId, boolean>> = { yugioh: true }
+
 async function tcg(game: TcgGameId, lang: 'fr' | 'en'): Promise<LandingWorld> {
   const db = useTcgDb(game)
+  const count = buildBrowseQuery({ unique: UNIQUE[game] ?? false }, lang)
   const [{ rows: [n] }, { rows }] = await Promise.all([
-    db.execute('SELECT COUNT(DISTINCT card_key) AS n FROM cards'),
+    db.execute({ sql: count.countSql.replace('COUNT(*) AS total', 'COUNT(*) AS n'), args: count.countArgs }),
     // Its dearest cards, one printing each (no variant), in the site language when printed so.
     db.execute({
       sql: `SELECT id, name, image, thumb FROM (
@@ -109,6 +114,6 @@ const worlds = defineCachedFunction(async (lang: 'fr' | 'en'): Promise<LandingWo
   const one = (g: GameId) => (isTcgGame(g) ? tcg(g, lang) : g === 'mtg' ? mtg(lang) : optcg(lang))
     .catch(() => ({ game: g, cards: 0, fan: [], strip: [] }))
   return Promise.all(GAME_IDS.map(one))
-}, { maxAge: 60 * 60, name: 'landing-worlds-2', getKey: (lang: string) => lang })
+}, { maxAge: 60 * 60, name: 'landing-worlds-3', getKey: (lang: string) => lang })
 
 export default defineEventHandler(async event => ({ worlds: await worlds(getQuery(event).lang === 'en' ? 'en' : 'fr') }))

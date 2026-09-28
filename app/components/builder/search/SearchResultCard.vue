@@ -23,12 +23,12 @@ const emit = defineEmits<{
   details: [card: ScryfallCard]
 }>()
 
-const { isFr, t } = useLocale()
+const { isFr, t, formatPrice } = useLocale()
 const { startDrag, endDrag } = useCardDnd()
 
 const name = computed(() => displayName(props.card, isFr.value))
 const image = computed(() => getImageUris(props.card)?.normal ?? null)
-const price = computed(() => props.card.prices?.eur ? `${props.card.prices.eur} €` : '')
+const price = computed(() => props.card.prices?.eur ? formatPrice(props.card.prices.eur) : '')
 const root = useTemplateRef<HTMLElement>('root')
 </script>
 
