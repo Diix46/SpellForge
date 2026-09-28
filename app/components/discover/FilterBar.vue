@@ -66,8 +66,9 @@ function toggleColor(c: string) {
           {{ g.label() }}
         </button>
       </div>
-      <USelect v-model="filters.period" :items="periodItems" icon="i-lucide-calendar" class="w-44" :aria-label="t('discover.period')" />
-      <USelect v-model="filters.sort" :items="sortItems" icon="i-lucide-arrow-down-wide-narrow" class="w-44" :aria-label="t('discover.sort')" />
+      <!-- Wide enough for « Toutes les dates »; each takes the row on a phone (USelect has no root of its own: utility classes, not scoped CSS). -->
+      <USelect v-model="filters.period" :items="periodItems" icon="i-lucide-calendar" class="flex-[1_1_190px] max-w-[220px] max-sm:max-w-none" :aria-label="t('discover.period')" />
+      <USelect v-model="filters.sort" :items="sortItems" icon="i-lucide-arrow-down-wide-narrow" class="flex-[1_1_190px] max-w-[220px] max-sm:max-w-none" :aria-label="t('discover.sort')" />
     </div>
 
     <div class="row row--sub">

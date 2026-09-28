@@ -98,10 +98,18 @@ watch(() => getDeck(deckId.value), (now, before) => {
     navigateTo('/decks')
 })
 
-// A deck without a name of its own takes its cover card's.
+// A deck without a name of its own takes its cover card's, and follows it
+// while nobody renames it. Riftbound: only its Legend or its champion names
+// it (a deck called « Rune de Fureur » said nothing of it).
 const cover = computed(() => tcgCover(game, tcgDeck.lines.value))
-watch(() => cover.value?.card?.name, (star) => {
-  if (star && isDefaultDeckName(name.value))
+const namer = computed(() => {
+  const card = cover.value?.card
+  if (game === 'riftbound' && card && card.category !== 'Legend' && !(card.category === 'Unit' && card.subtype === 'Champion'))
+    return null
+  return card?.name ?? null
+})
+watch(namer, (star, before) => {
+  if (star && (isDefaultDeckName(name.value) || name.value === before))
     name.value = star
 })
 

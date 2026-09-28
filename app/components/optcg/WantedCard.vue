@@ -68,7 +68,7 @@ function onAdd(e: MouseEvent) {
 
     <span v-if="card.banned" class="stamp stamp--ban">{{ t('optcg.banned') }}</span>
     <span v-else-if="rotated" class="stamp">{{ t('optcg.rotated') }}</span>
-    <span v-if="untranslated" class="flag">{{ t('optcg.enOnly') }}</span>
+    <VoBadge v-if="untranslated" class="flag" />
 
     <span v-if="quantity" class="qty" :aria-label="`${quantity} ${t('optcg.detail.inDeck')}`">×{{ quantity }}</span>
     <button
@@ -207,13 +207,6 @@ function onAdd(e: MouseEvent) {
   top: 24px;
   right: 10px;
   z-index: 3;
-  padding: 1px 5px;
-  border-radius: 2px;
-  background: #1d6f92;
-  color: #fbf4e6;
-  font-size: 9.5px;
-  font-weight: 600;
-  pointer-events: none;
 }
 .qty {
   position: absolute;

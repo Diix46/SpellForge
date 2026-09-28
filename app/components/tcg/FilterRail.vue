@@ -24,6 +24,11 @@ const filters = defineModel<TcgFilters>('filters', { required: true })
 const { t } = useLocale()
 const ui = computed(() => TCG_UI[props.game])
 const label = (kind: string, v: string) => tcgLabel(t, props.game, kind, v)
+// Pokémon's types, Yu-Gi-Oh!'s attributes, Riftbound's domains.
+const typesTitle = computed(() => {
+  const own = t(`${props.game}.filter.types`)
+  return own === `${props.game}.filter.types` ? t('tcg.filter.types') : own
+})
 const SORTS: TcgSortOrder[] = ['recent', 'name', 'number', 'price']
 
 const openFilters = ref(false)
@@ -185,7 +190,7 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
 
       <section class="grp">
         <h4 class="grp-title">
-          {{ t('tcg.filter.types') }}
+          {{ typesTitle }}
         </h4>
         <div class="pips">
           <button

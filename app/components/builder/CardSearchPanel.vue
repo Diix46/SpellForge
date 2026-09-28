@@ -230,7 +230,7 @@ onMounted(() => {
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(150px, 40vw), 1fr));
-  gap: 14px 12px;
+  gap: 22px 16px;
   /* Room for a card tilting and growing under the pointer: the scrolling
      box clips at its edges, the first row and the side columns included. */
   padding: 12px 10px;
