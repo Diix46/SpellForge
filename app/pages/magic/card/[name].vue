@@ -67,6 +67,8 @@ const image = computed(() => (showBack.value ? resolved.value?.backImageUrl : (p
 const englishName = computed(() => displayName(c.value, false, face.value))
 const localName = computed(() => displayName(c.value, true, face.value))
 const title = computed(() => (isFr.value ? localName.value : englishName.value))
+// No French printing yet: the English words, marked as such.
+const vo = computed(() => isFr.value && !!c.value && !c.value.printed_name)
 const subtitle = computed(() => (isFr.value && englishName.value.toLowerCase() !== localName.value.toLowerCase() ? englishName.value : ''))
 const typeLine = computed(() => displayType(c.value, isFr.value, face.value))
 const manaCost = computed(() => face.value?.mana_cost ?? c.value?.mana_cost ?? '')
@@ -179,6 +181,13 @@ function startWith() {
           </template>
         </p>
 
+        <div class="legal">
+          <span class="format" :class="{ ok: commanderLegal }">
+            <UIcon :name="commanderLegal ? 'i-lucide-check' : 'i-lucide-x'" class="h-3.5 w-3.5" />
+            Commander
+          </span>
+        </div>
+
         <dl class="facts">
           <div>
             <dt>{{ t('card.edition') }}</dt>
@@ -189,16 +198,14 @@ function startWith() {
             <dd>{{ c.artist }}</dd>
           </div>
           <div>
-            <dt>Commander</dt>
-            <dd :class="commanderLegal ? 'legal' : 'illegal'">
-              {{ commanderLegal ? t('card.legal') : t('card.notLegal') }}
-            </dd>
-          </div>
-          <div>
             <dt>{{ t('card.price') }}</dt>
             <dd>{{ price ?? t('card.priceNa') }}</dd>
           </div>
         </dl>
+
+        <p v-if="vo" class="note">
+          <VoBadge /> {{ t('card.vo.hint') }}
+        </p>
 
         <footer class="actions">
           <UButton v-if="canLead && commanderLegal" color="primary" icon="i-lucide-crown" @click="startWith">
@@ -240,16 +247,27 @@ function startWith() {
 }
 .page {
   display: grid;
-  gap: 28px;
-  padding: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  padding: 14px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
   background: var(--color-surface-1);
   box-shadow: var(--shadow-elev-2);
 }
-@media (min-width: 720px) {
+/* The generic sheet's frame (components/tcg/CardView): 300px of card. */
+.art {
+  width: 100%;
+  max-width: 300px;
+  margin-inline: auto;
+}
+@media (min-width: 641px) {
   .page {
-    grid-template-columns: minmax(240px, 320px) 1fr;
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+    padding: 18px;
+  }
+  .art {
+    max-width: none;
   }
 }
 .art img {
@@ -389,11 +407,29 @@ function startWith() {
   color: var(--color-text-mid);
   font-size: 14px;
 }
-.facts .legal {
-  color: var(--ui-success);
+.legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-.facts .illegal {
-  color: var(--ui-error);
+.format {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.format.ok {
+  border-color: color-mix(in srgb, #2f8a4f 45%, transparent);
+  color: #2f8a4f;
+}
+.note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 .actions {
   display: flex;

@@ -111,7 +111,7 @@ const appFullscreen = useState('app-fullscreen', () => false)
     <NuxtLoadingIndicator :height="2" color="rgb(var(--accent-rgb))" />
 
     <div class="app-shell" :class="{ 'app-shell--fullscreen': appFullscreen, 'app-shell--bare': isHome }" :style="{ zIndex: 'var(--z-content)' }">
-      <a href="#content" class="sr-only">Aller au contenu</a>
+      <a href="#content" class="sr-only">{{ t('a11y.skip') }}</a>
       <AppHeader />
 
       <!-- ============ MAIN ============ -->

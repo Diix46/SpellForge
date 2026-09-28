@@ -292,7 +292,7 @@ async function addAssociatedTokens(card: ScryfallCard) {
 const fx = useMtgFx()
 function addSearchCard(card: ScryfallCard, from: HTMLElement | null = null) {
   if (!isWithinIdentity(card)) {
-    toast.add({ title: t('toast.outOfIdentity'), description: card.name, color: 'warning', icon: 'i-lucide-shield-alert' })
+    toast.add({ title: t('toast.outOfIdentity'), description: displayName(card, locale.value === 'fr'), color: 'warning', icon: 'i-lucide-shield-alert' })
     return
   }
   remember(card)
@@ -300,7 +300,7 @@ function addSearchCard(card: ScryfallCard, from: HTMLElement | null = null) {
   // Cast, then dealt onto its line in the deck.
   void fx.cast(from, card.mana_cost ?? card.card_faces?.[0]?.mana_cost, card.color_identity ?? [])
     .then(() => fx.deal(card.name, getImageUris(card)?.normal ?? null, from))
-  toast.add({ title: t('toast.added'), description: card.name, color: 'success', icon: 'i-lucide-plus' })
+  toast.add({ title: t('toast.added'), description: displayName(card, locale.value === 'fr'), color: 'success', icon: 'i-lucide-plus' })
   addAssociatedTokens(card)
 }
 // Remove a card from the deck via the search grid's green-check toggle.

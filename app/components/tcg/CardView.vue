@@ -187,7 +187,7 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
         {{ t('tcg.illustrator') }} {{ c.illustrator }}
       </p>
       <p v-if="c.lang !== lang && !c.translated" class="note">
-        {{ t('tcg.otherLang') }}
+        <VoBadge /> {{ t('card.vo.hint') }}
       </p>
 
       <slot name="actions" :shown-card="c" />

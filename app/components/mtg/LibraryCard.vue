@@ -12,6 +12,8 @@ const props = defineProps<{ card: ScryfallCard }>()
 const emit = defineEmits<{ open: [card: ScryfallCard] }>()
 
 const { isFr, formatPrice } = useLocale()
+// No French printing of the card yet: its English name and text.
+const vo = computed(() => isFr.value && !props.card.printed_name)
 const name = computed(() => displayName(props.card, isFr.value))
 const type = computed(() => displayType(props.card, isFr.value))
 const image = computed(() => getImageUris(props.card)?.normal ?? null)
@@ -24,6 +26,7 @@ const price = computed(() => (props.card.prices?.eur ? formatPrice(props.card.pr
       <!-- The light copy where the tile is small, the full scan on a sharp screen. -->
       <img v-if="image" :src="thumbOf(image)!" :srcset="`${thumbOf(image)} 320w, ${image} 488w`" sizes="(max-width: 640px) 45vw, 200px" :alt="name" loading="lazy" decoding="async" width="488" height="680">
       <span v-else class="missing">{{ name }}</span>
+      <VoBadge v-if="vo" class="vo" />
     </span>
     <span class="name">{{ name }}</span>
     <span class="type u-prose">{{ type }}</span>
@@ -59,6 +62,11 @@ const price = computed(() => (props.card.prices?.eur ? formatPrice(props.card.pr
   padding: 4px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
+}
+.vo {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 .frame img {
   display: block;

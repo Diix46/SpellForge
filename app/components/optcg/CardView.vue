@@ -116,7 +116,7 @@ const facts = computed(() => {
       </div>
 
       <p v-if="card.lang === 'en' && lang === 'fr'" class="note">
-        {{ t('optcg.enOnly') }}
+        <VoBadge /> {{ t('card.vo.hint') }}
       </p>
 
       <slot name="actions" :shown-card="shownCard" />
@@ -179,7 +179,7 @@ const facts = computed(() => {
 }
 .art-thumb {
   flex: 0 0 auto;
-  width: 44px;
+  width: 52px;
   border: 2px solid transparent;
   border-radius: 3px;
   opacity: 0.7;

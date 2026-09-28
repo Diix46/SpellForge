@@ -364,8 +364,23 @@ export function displayType(card: ScryfallCard | null, isFr: boolean, face?: Fac
     return (src.type_line ?? src.printed_type_line) ?? ''
   // FR: prefer Scryfall's printed type, else translate the English one.
   if (src.printed_type_line)
-    return src.printed_type_line
+    return normalizeFrTypeLine(src.printed_type_line)
   return translateTypeLine(src.type_line ?? '')
+}
+
+/**
+ * The French cards print their type line three ways over the years
+ * ("Créature : humain et barbare", "Créature — Gobelin", "Créature - elfe"):
+ * one way here, the translator's, so a list reads the same from card to card.
+ */
+export function normalizeFrTypeLine(line: string): string {
+  const text = line.trim()
+  const sep = /\s[:—–-]\s/.exec(text)
+  if (!sep)
+    return text
+  const types = text.slice(0, sep.index).trim()
+  const subs = text.slice(sep.index + sep[0].length).trim().split(/\s+/).map(w => (w === 'et' ? w : w.charAt(0).toLocaleUpperCase('fr') + w.slice(1)))
+  return `${types} — ${subs.join(' ')}`
 }
 
 /** Localized oracle text. */

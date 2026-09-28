@@ -19,8 +19,10 @@ const emit = defineEmits<{
   add: [card: TcgCard, from: HTMLElement]
 }>()
 
-const { t, formatPrice } = useLocale()
+const { t, locale, formatPrice } = useLocale()
 const aspect = computed(() => TCG_UI[props.game].aspect)
+// Shown in another language than the site's, and not by our translation.
+const vo = computed(() => props.card.lang !== locale.value && !props.card.translated)
 const price = computed(() => props.card.price ?? props.card.priceFoil)
 const frame = computed(() => TCG_UI[props.game].frame?.(props.card) ?? null)
 // A scan the source announced but does not serve: the blank card instead.
@@ -43,6 +45,7 @@ onMounted(() => {
         <span class="font-mono">{{ card.set }} · {{ card.number }}</span>
       </span>
       <span v-if="quantity" class="qty">×{{ quantity }}</span>
+      <VoBadge v-if="vo" class="vo" />
     </button>
     <UButton
       v-if="addable"
@@ -171,10 +174,15 @@ onMounted(() => {
     opacity: 1;
   }
 }
+.vo {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
 .cap {
   display: grid;
   gap: 1px;
-  margin: 7px 2px 0;
+  margin: 7px 0 0;
   font-size: 12.5px;
   line-height: 1.3;
 }
