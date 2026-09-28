@@ -107,7 +107,7 @@ async function main() {
 
   // Into the card database, through a working copy as the ingest does.
   const work = workingCopy(DB_PATH)
-  const written = await applyTranslations(work.db, tdb, { onlyMissing: CONFIG.onlyMissing })
+  const written = await applyTranslations(work.db, tdb, { onlyMissing: CONFIG.onlyMissing, titled: CONFIG.titled })
   await rebuildSearch(work.db)
   work.commit()
   tdb.close()

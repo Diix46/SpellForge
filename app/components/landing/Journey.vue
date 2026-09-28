@@ -33,6 +33,9 @@ const STEPS = [
 <style scoped>
 .journey {
   padding: var(--l-section) var(--l-gutter);
+  /* Night in both modes: the chip reads light on it. */
+  --l-chip: #f6f4ee;
+  --l-chip-ink: #09090d;
   background: #09090d;
   color: #f6f4ee;
 }
@@ -40,15 +43,18 @@ const STEPS = [
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: var(--l-head-gap);
   text-align: center;
 }
 .kicker {
   margin: 0;
-  color: rgba(246, 244, 238, 0.6);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--l-chip);
+  color: var(--l-chip-ink);
   font-size: 11px;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 .title {

@@ -87,6 +87,7 @@ const race = computed(() => [c.value.race, c.value.archetype && c.value.archetyp
         <p class="sheet-meta">
           <span>{{ c.setName ?? c.set }}</span>
           <span class="font-mono">{{ c.set }} · {{ c.number }}</span>
+          <span v-if="c.mark">{{ label('mark', c.mark) }}</span>
           <span v-if="c.regulation" class="mark" :title="t('tcg.regulation')">{{ c.regulation }}</span>
         </p>
         <p v-if="c.evolveFrom" class="evolve">

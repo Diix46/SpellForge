@@ -46,6 +46,7 @@ function card(id: string, over: Partial<TcgCard> = {}): TcgCard {
     extraDeck: false,
     tags: [],
     landscape: false,
+    mark: null,
     flavour: null,
     art: null,
     translated: false,

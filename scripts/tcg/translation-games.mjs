@@ -2,7 +2,8 @@
  * The games translated unofficially into French (scripts/translate-tcg.mjs):
  * the words each must keep, and what is translated. `onlyMissing`: the game is
  * printed in French, only the cards without any French text are translated,
- * and the official French rows are kept.
+ * and the official French rows are kept. `titled`: its names read
+ * "Champion - Title" (translations.mjs titledName).
  */
 
 /** The game's words, as every translated card must say them. */
@@ -166,6 +167,6 @@ Règles :
 Réponds uniquement par un tableau JSON, un objet par carte dans l'ordre reçu : {"id": …, "name": …, "text": …, "flavour": …} (text et flavour à null quand la carte n'en a pas).`
 
 export const TRANSLATED_GAMES = {
-  riftbound: { label: 'Riftbound', glossary: RIFTBOUND_GLOSSARY, system: RIFTBOUND_SYSTEM, onlyMissing: false },
+  riftbound: { label: 'Riftbound', glossary: RIFTBOUND_GLOSSARY, system: RIFTBOUND_SYSTEM, onlyMissing: false, titled: true },
   yugioh: { label: 'Yu-Gi-Oh!', glossary: YUGIOH_GLOSSARY, system: YUGIOH_SYSTEM, onlyMissing: true },
 }
