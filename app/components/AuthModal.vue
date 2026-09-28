@@ -72,7 +72,7 @@ async function submit() {
     v-model:open="open"
     :title="mode === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')"
     :description="mode === 'login' ? t('auth.subLogin') : t('auth.subRegister')"
-    :ui="{ content: 'sm:max-w-sm' }"
+    :ui="{ overlay: 'z-[calc(var(--z-modal)+2)]', content: 'sm:max-w-sm z-[calc(var(--z-modal)+2)]' }"
   >
     <template #body>
       <p v-if="members.reason.value" class="members-why">

@@ -277,9 +277,6 @@ a.tile {
 .tile--op:hover {
   rotate: 0deg;
   transform: translateY(-4px) scale(1.015);
-  box-shadow:
-    0 1px 0 rgba(58, 38, 22, 0.1),
-    0 22px 36px -18px rgba(58, 38, 22, 0.7);
 }
 .tile--op .pin {
   position: absolute;
@@ -438,8 +435,6 @@ a.tile {
 }
 .tile--mtg:hover {
   transform: translateY(-3px);
-  border-color: rgba(45, 79, 124, 0.45);
-  box-shadow: 0 16px 30px -18px rgba(27, 31, 34, 0.5);
 }
 /* The commander's art: the deck box's window, full width, fading into it. */
 .tile--mtg .art {

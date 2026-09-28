@@ -121,7 +121,6 @@ const { t } = useLocale()
 }
 .feature:hover {
   border-color: var(--accent-border);
-  transform: translateY(-3px);
 }
 .feature::after {
   content: '';
@@ -155,9 +154,6 @@ const { t } = useLocale()
 .feature > .feature-art--op {
   object-position: 50% 21%;
   filter: sepia(0.14) saturate(1.08);
-}
-.feature:hover > .feature-art {
-  transform: scale(1.03);
 }
 .feature-tag {
   display: inline-flex;

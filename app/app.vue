@@ -479,9 +479,10 @@ function isActive(to: string) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 11px;
+  height: var(--control-h);
+  padding: 0 8px 0 12px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   background: var(--color-surface-1);
   color: var(--color-text-muted);
   font-size: 13px;
@@ -493,7 +494,6 @@ function isActive(to: string) {
 .top-search:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-2);
-  color: var(--color-text-mid);
 }
 .top-search .ph {
   min-width: 84px;
@@ -517,6 +517,8 @@ function isActive(to: string) {
 
 .lang {
   display: flex;
+  align-items: center;
+  height: var(--control-h);
   background: var(--color-surface-1);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-full);
@@ -524,6 +526,7 @@ function isActive(to: string) {
   flex-shrink: 0;
 }
 .lang button {
+  height: 100%;
   font: inherit;
   font-size: 11px;
   font-weight: 600;
@@ -542,33 +545,12 @@ function isActive(to: string) {
   color: var(--color-text-high);
 }
 
-.icon-btn {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-1);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition:
-    color var(--dur-fast) var(--ease-out),
-    background var(--dur-fast) var(--ease-out),
-    border-color var(--dur-fast) var(--ease-out);
-}
-.icon-btn:hover {
-  color: var(--color-text-high);
-  border-color: var(--color-border-strong);
-  background: var(--color-surface-2);
-}
-
 .acct {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 11px 4px 4px;
+  height: var(--control-h);
+  padding: 0 11px 0 3px;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-full);
   background: var(--color-surface-1);
@@ -582,13 +564,11 @@ function isActive(to: string) {
     background var(--dur) var(--ease-out);
 }
 .acct.guest {
-  padding: 7px 13px;
-  color: var(--color-text-mid);
+  padding: 0 13px;
 }
 .acct:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-2);
-  color: var(--color-text-high);
 }
 .acct .avatar {
   width: 26px;
@@ -704,17 +684,16 @@ function isActive(to: string) {
   .top-search .kk {
     display: none;
   }
-  .top-search {
-    padding: 8px;
+  /* Round, like the other controls. */
+  .top-search,
+  .acct,
+  .acct.guest {
+    justify-content: center;
+    width: var(--control-h);
+    padding: 0;
   }
   .acct .who {
     display: none;
-  }
-  .acct {
-    padding: 4px;
-  }
-  .acct.guest {
-    padding: 8px;
   }
   .burger {
     display: grid;

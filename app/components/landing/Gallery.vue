@@ -140,7 +140,6 @@ const fmt = (n: number) => n.toLocaleString(locale.value === 'fr' ? 'fr-FR' : 'e
 }
 .world:hover {
   transform: translateY(-6px);
-  box-shadow: 0 40px 70px -30px rgba(0, 0, 0, 0.6);
 }
 @keyframes world-in {
   from {

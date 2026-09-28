@@ -144,12 +144,13 @@ function toggleColor(c: string) {
   scrollbar-width: none;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--color-border-hairline);
-  border-radius: var(--radius-sm);
+  /* The inputs' own frame (Nuxt UI): same corners, same edge. */
+  border: 1px solid var(--ui-border-accented);
+  border-radius: calc(var(--ui-radius) * 1.5);
 }
 .seg button {
   padding: 5px 11px;
-  border-radius: calc(var(--radius-sm) - 2px);
+  border-radius: var(--ui-radius);
   font-size: 13px;
   color: var(--color-text-muted);
   white-space: nowrap;

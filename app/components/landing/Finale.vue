@@ -127,9 +127,6 @@ const { t } = useLocale()
 }
 .door:hover {
   transform: translateY(-4px);
-  box-shadow:
-    inset 0 3px 0 var(--swatch),
-    0 30px 50px -22px var(--swatch);
 }
 .door:focus-visible {
   outline: 2px solid var(--swatch);

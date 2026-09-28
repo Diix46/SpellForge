@@ -346,7 +346,8 @@ html.dark[data-universe='yugioh'] {
   --ui-primary: #d4af37;
   --ui-secondary: #4fc3f7;
   /* The primary buttons' plate (main.css), gold leaf with dark ink. */
-  --gradient-accent: linear-gradient(180deg, #f1d57a, #c99a2b 55%, #8f6a17);
+  /* Gold that keeps its dark text readable end to end (AA, ≥ 4.5:1). */
+  --gradient-accent: linear-gradient(180deg, #f1d57a, #d2a53c 55%, #b98c2c);
   --color-text-on-neon: #140f04;
 
   --radius-xs: 2px;
@@ -935,4 +936,21 @@ html.dark .ufx--mtg {
   100% {
     transform: scale(1);
   }
+}
+
+/* ---- Main buttons readable in daylight (WCAG AA, ≥ 4.5:1) ----
+   By day, One Piece's, Magic's and Pokémon's accents run from a deep colour to
+   a light one: no text colour reads on both ends (black on Magic's blue was
+   2.4:1). Their main buttons take the deep end only, in white. */
+html.light[data-universe='optcg'] {
+  --gradient-accent: linear-gradient(135deg, #c9312a, #9c231d);
+  --color-text-on-neon: #ffffff;
+}
+html.light[data-universe='mtg'] {
+  --gradient-accent: linear-gradient(135deg, #2d4f7c, #37608f);
+  --color-text-on-neon: #ffffff;
+}
+html.light[data-universe='pokemon'] {
+  --gradient-accent: linear-gradient(135deg, #c62f29, #a3231e);
+  --color-text-on-neon: #ffffff;
 }

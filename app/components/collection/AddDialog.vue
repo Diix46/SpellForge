@@ -236,7 +236,7 @@ async function add() {
 </script>
 
 <template>
-  <UModal v-model:open="open" :title="t('collection.add')" :ui="{ content: 'sm:max-w-4xl' }">
+  <UModal v-model:open="open" :title="t('collection.add')" :ui="{ overlay: 'z-[calc(var(--z-modal)+2)]', content: 'sm:max-w-4xl z-[calc(var(--z-modal)+2)]' }">
     <template #body>
       <div class="add">
         <!-- Not one card but a whole deck: the import dialog, on that source. -->

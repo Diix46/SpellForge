@@ -111,11 +111,6 @@ function onAdd(e: MouseEvent) {
   color: #231708;
   overflow: hidden;
 }
-.poster:hover .poster-body {
-  box-shadow:
-    0 1px 0 rgba(58, 38, 22, 0.1),
-    0 18px 30px -14px rgba(58, 38, 22, 0.6);
-}
 .pin {
   position: absolute;
   top: 5px;

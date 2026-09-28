@@ -143,6 +143,8 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
         :model-value="filters.text"
         name="optcg-search"
         :aria-label="t('optcg.search.placeholder')"
+        role="combobox"
+        aria-autocomplete="list"
         :aria-expanded="showSuggestions"
         :placeholder="t('optcg.search.placeholder')"
         icon="i-lucide-search"
@@ -333,7 +335,6 @@ onBeforeUnmount(() => timer && clearTimeout(timer))
     color var(--dur-fast) ease;
 }
 .chip:hover {
-  transform: translateY(-1px) rotate(-1deg);
   color: var(--color-text-high);
 }
 .chip[aria-pressed='true'] {
