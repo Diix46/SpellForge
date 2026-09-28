@@ -1,3 +1,9 @@
+## [0.56.2](https://github.com/Diix46/SpellForge/compare/v0.56.1...v0.56.2) (2026-09-28)
+
+### Bug Fixes
+
+* **ui:** plus aucun mouvement au survol, fin de page refaite ([3436e42](https://github.com/Diix46/SpellForge/commit/3436e429c8e6c1bd936dd2b2c3dd6872f9eb94eb))
+
 ## [0.56.1](https://github.com/Diix46/SpellForge/compare/v0.56.0...v0.56.1) (2026-09-28)
 
 ### Bug Fixes
