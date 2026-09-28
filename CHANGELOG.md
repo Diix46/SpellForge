@@ -1,3 +1,9 @@
+## [0.56.1](https://github.com/Diix46/SpellForge/compare/v0.56.0...v0.56.1) (2026-09-28)
+
+### Bug Fixes
+
+* **ui:** passe cohérence et accessibilité (retours de relecture) ([bad5234](https://github.com/Diix46/SpellForge/commit/bad5234944e5faee8cd49c420521540677ec0645))
+
 ## [0.56.0](https://github.com/Diix46/SpellForge/compare/v0.55.0...v0.56.0) (2026-09-27)
 
 ### Features
