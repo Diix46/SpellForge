@@ -24,6 +24,7 @@ import collections
 import gzip
 import io
 import json
+import os
 import sqlite3
 import sys
 import time
@@ -147,6 +148,9 @@ def process_free(fr, en, out_dir, why):
                     ref = None
                 im, reason = freeform.compose_free(scan, faces, fr['layout'], fr.get('frame'), ref)
             except Exception as err:
+                if os.environ.get('RECOMPOSE_TRACE'):
+                    import traceback
+                    traceback.print_exc()
                 im, reason = None, f'{type(err).__name__}: {err}'
             if im is not None:
                 im.save(out_dir / f'{fid}{suffix}.jpg', quality=92, optimize=True, progressive=True)

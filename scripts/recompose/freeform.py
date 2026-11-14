@@ -44,9 +44,10 @@ def strip_prefix(p, layout, type_line):
 def polarity(img, box):
     """True when the text in `box` is lighter than what it sits on."""
     x0, y0, x1, y1 = box
-    g = cv2.cvtColor(img[max(0, y0):y1, max(0, x0):x1], cv2.COLOR_RGB2GRAY).astype(np.int16)
-    if g.size == 0:
+    crop = img[max(0, y0):y1, max(0, x0):x1]
+    if crop.size == 0:
         return False
+    g = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY).astype(np.int16)
     bg = np.median(g)
     lo, hi = np.percentile(g, 3), np.percentile(g, 97)
     return (hi - bg) > (bg - lo)
@@ -224,7 +225,7 @@ def loyalty_badges(img, y0, y1, costs):
     found = []
     # The badge is a dark shield ringed in light metal (or the reverse):
     # try both, keep the reading that gives the expected count.
-    for mask in (strip > 150, strip < 70):
+    for mask in (strip > 150, strip < 70, strip < 55, strip < 45, strip < 35):
         m = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
         n, _, stats, cent = cv2.connectedComponentsWithStats(m, 8)
         comps = sorted((y0 + cent[i][1], 4 + stats[i, cv2.CC_STAT_LEFT] + stats[i, cv2.CC_STAT_WIDTH]) for i in range(1, n)
@@ -235,7 +236,7 @@ def loyalty_badges(img, y0, y1, costs):
         # Nested rings of one badge count once.
         uniq = []
         for y in ys:
-            if not uniq or y - uniq[-1] > 25:
+            if not uniq or y - uniq[-1] > 55:
                 uniq.append(y)
         found.append(uniq)
     for uniq in found:
@@ -573,9 +574,11 @@ def leftover_english(img, en_all, fr_all, areas):
     """English words still in the rewritten areas (not also French, not names)."""
     # OCR often drops accents: "créature" reads "creature", still French.
     plain = lambda t: unicodedata.normalize('NFKD', t).encode('ascii', 'ignore').decode()
-    french = set(locate._tokens(plain(' '.join(fr_all.values()))))
-    names = {t for k, v in en_all.items() if k.endswith('name') for t in locate._tokens(v)}
-    english = {t for v in en_all.values() for t in locate._tokens(v) if len(t) >= 4} - french - names
+    # A text can be a list of paragraphs (planeswalker abilities, sagas).
+    flat = lambda v: ' '.join(flat(x) for x in v) if isinstance(v, (list, tuple)) else str(v or '')
+    french = set(locate._tokens(plain(' '.join(flat(v) for v in fr_all.values()))))
+    names = {t for k, v in en_all.items() if k.endswith('name') for t in locate._tokens(flat(v))}
+    english = {t for v in en_all.values() for t in locate._tokens(flat(v)) if len(t) >= 4} - french - names
     def inside(w):
         cy = w[2] + w[4] / 2
         # Everywhere above the artist and copyright line; not the fine print
