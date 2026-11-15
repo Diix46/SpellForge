@@ -1,3 +1,9 @@
+## [0.60.2](https://github.com/Diix46/SpellForge/compare/v0.60.1...v0.60.2) (2026-11-15)
+
+### Bug Fixes
+
+* **recompose:** textes en liste, badges de loyauté plus robustes, zones vides ([4e84590](https://github.com/Diix46/SpellForge/commit/4e845906d5a0f92347f2c794330cc8ff565bf7f9))
+
 ## [0.60.1](https://github.com/Diix46/SpellForge/compare/v0.60.0...v0.60.1) (2026-09-28)
 
 ### Bug Fixes
