@@ -203,8 +203,11 @@ def measure_line(img, box, dark_text):
 
     Scans are not cropped alike and the old frames were not typeset alike:
     the French line takes the English one's place, card by card."""
-    x0, y0, x1, y1 = box
-    gray = cv2.cvtColor(img[y0:y1, x0:x1], cv2.COLOR_RGB2GRAY).astype(np.int16)
+    x0, y0, x1, y1 = max(0, box[0]), max(0, box[1]), box[2], box[3]
+    crop = img[y0:y1, x0:x1]
+    if crop.size == 0:
+        return None
+    gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY).astype(np.int16)
     bg = cv2.medianBlur(gray.astype(np.uint8), 31).astype(np.int16)
     diff = (bg - gray) if dark_text else (gray - bg)
     ink = (diff > 35).astype(np.uint8)
